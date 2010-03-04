@@ -1,0 +1,31 @@
+# Ignore Files in the MPAS Direcory
+
+# All pre-processed Fortran files in MPAS specific directories
+src/core_*/*.f90
+src/framework/*.f90
+src/driver/*.f90
+src/operators/*.f90
+
+# All object files
+*.o
+
+# All mod files
+*.mod
+
+# All libraries
+*.a
+
+# Executables
+*.exe
+src/registry/parse
+
+# NetCDF Files
+*.nc
+
+# Graph files and partition files
+*.info
+*.info.part.*
+
+# Directories with individual .gitignore files are:
+# src/external (Externals might have a different compilation method)
+# src/inc (Include files do not exist until build time. But directory needs to exist.)
