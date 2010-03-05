@@ -1,0 +1,21 @@
+&sw_model
+   config_test_case = 5
+   config_time_integration = 'RK4'
+   config_dt = 300.0
+   config_ntimesteps = 3000 
+   config_output_interval = 300
+   config_stats_interval = 10 
+   config_visc  = 4.0
+/
+
+&io
+   config_input_name = grid.nc
+   config_output_name = output.nc
+   config_restart_name = restart.nc
+/
+
+&restart
+   config_restart_interval = 864000
+   config_do_restart = .false.
+   config_restart_time = 1036800.0
+/
