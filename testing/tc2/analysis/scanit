@@ -1,0 +1,87 @@
+ifort -o scanner scanner.F90
+rm -f summary
+
+setenv ANALYSIS /Volumes/Simulations/MPAS/svn-mpas-model.cgd.ucar.edu/trunk/swmodel/run/tc2/analysis
+
+setenv SPACE 
+date "+D20%y%m%d" > summary
+echo $SPACE >> summary
+cd /Volumes/Simulations/MPAS/svn-mpas-model.cgd.ucar.edu/trunk/swmodel 
+svn info >> $ANALYSIS/summary
+svn info > $ANALYSIS/svn.info
+
+cd $ANALYSIS
+
+#-------------------------------------------------------------------------
+# strip data from netcdf files
+setenv RES 2562
+ncdump -v h ../$RES/output.nc > thickness.$RES.out
+
+setenv RES 10242
+ncdump -v h ../$RES/output.nc > thickness.$RES.out
+
+setenv RES 40962
+ncdump -v h ../$RES/output.nc > thickness.$RES.out
+
+setenv RES 163842
+ncdump -v h ../$RES/output.nc > thickness.$RES.out
+
+setenv RES 655362
+ncdump -v h ../$RES/output.nc > thickness.$RES.out
+# end strip data
+#-------------------------------------------------------------------------
+
+
+#-------------------------------------------------------------------------
+# scan data for diagnostics
+setenv NDAYS 16
+setenv NSKIP 66
+rm -f fort.10
+
+setenv NDATA 2562
+rm -f input
+echo $NDAYS > input
+echo $NDATA >> input
+echo $NSKIP >> input
+cp -f thickness.$NDATA.out fort.10
+scanner < input > minmax.$NDATA.out
+rm -f fort.10
+
+setenv NDATA 10242
+rm -f input
+echo $NDAYS > input
+echo $NDATA >> input
+echo $NSKIP >> input
+cp -f thickness.$NDATA.out fort.10
+scanner < input > minmax.$NDATA.out
+rm -f fort.10
+
+setenv NDATA 40962
+rm -f input
+echo $NDAYS > input
+echo $NDATA >> input
+echo $NSKIP >> input
+cp -f thickness.$NDATA.out fort.10
+scanner < input > minmax.$NDATA.out
+rm -f fort.10
+
+#setenv NDATA 163842
+rm -f input
+echo $NDAYS > input
+echo $NDATA >> input
+echo $NSKIP >> input
+cp -f thickness.$NDATA.out fort.10
+scanner < input > minmax.$NDATA.out
+rm -f fort.10
+
+#setenv NDATA 655362
+rm -f input
+echo $NDAYS > input
+echo $NDATA >> input
+echo $NSKIP >> input
+cp -f thickness.$NDATA.out fort.10
+scanner < input > minmax.$NDATA.out
+rm -f fort.10
+
+#end scan data
+#-------------------------------------------------------------------------

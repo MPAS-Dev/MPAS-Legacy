@@ -1,0 +1,79 @@
+
+#
+# TC == test case to run (note: must be also set in $DIR/namelist.input)
+# PROCS == number of procs to run
+# GRID == head directory for all the grid resolutions to be run
+# DIR == head directory where output will be stored and scanned (directory tree must already exist)
+# BASE == is the path to Makefile to build swmodel
+# SCRATCH == path to where simulations will be run (NOTE: this directory will be recursively REMOVED)
+
+setenv TC tc2
+setenv PROCS 4
+setenv GRID /Volumes/Simulations/MPAS/svn-mpas-model.cgd.ucar.edu/trunk/swmodel/grids
+setenv DIR /Volumes/Simulations/MPAS/svn-mpas-model.cgd.ucar.edu/trunk/swmodel/testing/$TC
+setenv BASE /Volumes/Simulations/MPAS/svn-mpas-model.cgd.ucar.edu/trunk/swmodel
+setenv SCRATCH /Volumes/Simulations/scratch
+
+cd $BASE
+make clean
+make
+
+rm -f -r $SCRATCH
+mkdir $SCRATCH
+cd $SCRATCH
+
+cp $BASE/swmodel .
+cp $DIR/namelist.input .
+
+# 2562
+setenv RES 2562
+cp $GRID/$RES/grid.nc .
+cp $GRID/$RES/graph.info.part.$PROCS .
+mpirun -np $PROCS swmodel
+rm -f $DIR/$RES/output.nc $DIR/$RES/log*
+cp output.nc $DIR/$RES/.
+cp log* $DIR/$RES
+rm -f grid.nc graph.info.part.$PROCS log* output.nc
+
+# 10242
+setenv RES 10242
+cp $GRID/$RES/grid.nc .
+cp $GRID/$RES/graph.info.part.$PROCS .
+mpirun -np $PROCS swmodel
+rm -f $DIR/$RES/output.nc $DIR/$RES/log*
+cp output.nc $DIR/$RES/.
+cp log* $DIR/$RES
+rm -f grid.nc graph.info.part.$PROCS log* output.nc
+
+# 40962
+setenv RES 40962
+cp $GRID/$RES/grid.nc .
+cp $GRID/$RES/graph.info.part.$PROCS .
+mpirun -np $PROCS swmodel
+rm -f $DIR/$RES/output.nc $DIR/$RES/log*
+cp output.nc $DIR/$RES/.
+cp log* $DIR/$RES
+rm -f grid.nc graph.info.part.$PROCS log* output.nc
+
+# 163842
+setenv RES 163842
+cp $GRID/$RES/grid.nc .
+cp $GRID/$RES/graph.info.part.$PROCS .
+mpirun -np $PROCS swmodel
+rm -f $DIR/$RES/output.nc $DIR/$RES/log*
+cp  output.nc $DIR/$RES/.
+cp log* $DIR/$RES
+rm -f grid.nc graph.info.part.$PROCS log* output.nc
+
+# 655362
+setenv RES 655362
+cp $GRID/$RES/grid.nc .
+cp $GRID/$RES/graph.info.part.$PROCS .
+mpirun -np $PROCS swmodel
+rm -f $DIR/$RES/output.nc $DIR/$RES/log*
+cp output.nc $DIR/$RES/.
+cp log* $DIR/$RES
+rm -f grid.nc graph.info.part.$PROCS log* output.nc
+
+cd $DIR/analysis
+csh scanit

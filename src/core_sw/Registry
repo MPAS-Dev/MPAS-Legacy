@@ -1,0 +1,110 @@
+#
+# namelist  type  namelist_record  name  default_value
+#
+namelist integer   sw_model config_test_case         5
+namelist character sw_model config_time_integration  RK4
+namelist real      sw_model config_dt                172.8
+namelist integer   sw_model config_ntimesteps        7500
+namelist integer   sw_model config_output_interval   500
+namelist real      sw_model config_visc              0.0
+namelist character io       config_input_name        grid.nc
+namelist character io       config_output_name       output.nc
+namelist character io       config_restart_name      restart.nc
+namelist integer   restart  config_restart_interval  0
+namelist logical   restart  config_do_restart        false
+namelist real      restart  config_restart_time      172800.0
+
+#
+# dim  type  name_in_file  name_in_code
+#
+dim nCells nCells
+dim nEdges nEdges
+dim maxEdges maxEdges
+dim maxEdges2 maxEdges2
+dim nVertices nVertices
+dim TWO 2
+dim R3 3
+dim vertexDegree vertexDegree
+dim nVertLevels nVertLevels
+dim nTracers nTracers
+
+#
+# var  type  name_in_file  ( dims )  iro-  name_in_code super-array array_class
+#
+var real    xtime ( Time ) ro xtime - -
+
+var real    latCell ( nCells ) iro latCell - -
+var real    lonCell ( nCells ) iro lonCell - -
+var real    xCell ( nCells ) iro xCell - -
+var real    yCell ( nCells ) iro yCell - -
+var real    zCell ( nCells ) iro zCell - -
+var integer indexToCellID ( nCells ) iro indexToCellID - -
+
+var real    latEdge ( nEdges ) iro latEdge - -
+var real    lonEdge ( nEdges ) iro lonEdge - -
+var real    xEdge ( nEdges ) iro xEdge - -
+var real    yEdge ( nEdges ) iro yEdge - -
+var real    zEdge ( nEdges ) iro zEdge - -
+var integer indexToEdgeID ( nEdges ) iro indexToEdgeID - -
+
+var real    latVertex ( nVertices ) iro latVertex - -
+var real    lonVertex ( nVertices ) iro lonVertex - -
+var real    xVertex ( nVertices ) iro xVertex - -
+var real    yVertex ( nVertices ) iro yVertex - -
+var real    zVertex ( nVertices ) iro zVertex - -
+var integer indexToVertexID ( nVertices ) iro indexToVertexID - -
+
+var integer cellsOnEdge ( TWO nEdges ) iro cellsOnEdge - -
+var integer nEdgesOnCell ( nCells ) iro nEdgesOnCell - -
+var integer nEdgesOnEdge ( nEdges ) iro nEdgesOnEdge - -
+var integer edgesOnCell ( maxEdges nCells ) iro edgesOnCell - -
+var integer edgesOnEdge ( maxEdges2 nEdges ) iro edgesOnEdge - -
+
+var real    weightsOnEdge ( maxEdges2 nEdges ) iro weightsOnEdge - -
+var real    dvEdge ( nEdges ) iro dvEdge - -
+var real    dcEdge ( nEdges ) iro dcEdge - -
+var real    angleEdge ( nEdges ) iro angleEdge - -
+var real    areaCell ( nCells ) iro areaCell - -
+var real    areaTriangle ( nVertices ) iro areaTriangle - -
+
+var integer cellsOnCell ( maxEdges nCells ) iro cellsOnCell - -
+var integer verticesOnCell ( maxEdges nCells ) iro verticesOnCell - -
+var integer verticesOnEdge ( TWO nEdges ) iro verticesOnEdge - -
+var integer edgesOnVertex ( vertexDegree nVertices ) iro edgesOnVertex - -
+var integer cellsOnVertex ( vertexDegree nVertices ) iro cellsOnVertex - -
+var real    kiteAreasOnVertex ( vertexDegree nVertices ) iro kiteAreasOnVertex - -
+var real    fEdge ( nEdges ) iro fEdge - -
+var real    fVertex ( nVertices ) iro fVertex - -
+var real    h_s ( nCells ) iro h_s - -
+
+# Arrays required for reconstruction of velocity field
+var real    matrix_reconstruct ( maxEdges maxEdges nCells ) - matrix_reconstruct - -
+var real    normal ( R3 maxEdges nCells ) - normal - -
+var real    rbf_value ( maxEdges nCells ) - rbf_value - -
+
+# Boundary conditions: read from input, saved in restart and written to output
+var integer uBC ( nVertLevels nEdges ) iro uBC - -
+
+# Prognostic variables: read from input, saved in restart, and written to output
+var real    u ( nVertLevels nEdges Time ) iro u - -
+var real    h ( nVertLevels nCells Time ) iro h - -
+var real    tracers ( nTracers nVertLevels nCells Time ) iro tracers - -
+
+# Diagnostic fields: only written to output
+var real    v ( nVertLevels nEdges Time ) o v - -
+var real    divergence ( nVertLevels nCells Time ) o divergence - -
+var real    vorticity ( nVertLevels nVertices Time ) o vorticity - -
+var real    pv_edge ( nVertLevels nEdges Time ) o pv_edge - -
+var real    h_edge ( nVertLevels nEdges Time ) o h_edge - -
+var real    ke ( nVertLevels nCells Time ) o ke - -
+var real    pv_vertex ( nVertLevels nVertices Time ) o pv_vertex - -
+var real    pv_cell ( nVertLevels nCells Time ) o pv_cell - -
+var real    uReconstructX ( nVertLevels nCells Time ) o uReconstructX - -
+var real    uReconstructY ( nVertLevels nCells Time ) o uReconstructY - -
+var real    uReconstructZ ( nVertLevels nCells Time ) o uReconstructZ - -
+
+# Other diagnostic variables: neither read nor written to any files
+var real    vh ( nVertLevels nEdges Time ) - vh - -
+var real    circulation ( nVertLevels nVertices Time ) - circulation - -
+var real    gradPVt ( nVertLevels nEdges Time ) - gradPVt - -
+var real    gradPVn ( nVertLevels nEdges Time ) - gradPVn - -
