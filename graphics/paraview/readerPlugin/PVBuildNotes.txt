@@ -1,0 +1,47 @@
+Instructions for building ParaView and the plugin:
+(note substitute ParaView3.6.1 for the latest release of Paraview)
+
+1.  Download and install cmake from www.cmake.org.  I used version 2.6.4.
+
+2.  Download and install qt from qt.nokia.com.  I used version 4.3.5.  I did not try the 64 bit version.
+
+3.  Download ParaView 3.6.1 from paraview.org.  I renamed the source directory to ParaView3.6.1.
+
+4.  Build ParaView.
+	mkdir $FOO/pv3.6.1-bin
+	cd $FOO/pv3.6.1-bin
+	ccmake $FOO/ParaView3.6.1
+	# edit the following variables
+	PARAVIEW_USE_MPI  set to ON  (I assume you already have mpi installed)
+	VTK_RPATH_ON
+	BUILD_SHARED_LIBS set to ON
+	# iterate using "c" to check for configuration, then edit more variables,
+	#  then "c" again until it is in a steady state.
+	# when done setting the variables, type "g" to generate makefile
+	# then "e" to exit.
+	make
+	# I didn't do a make install, just used the paraview from the
+	# $FOO/pv3.6.1-bin/paraview.app/Contents/MacOS/paraview
+
+5.  Build Plugin
+	Put plugin code into some dir $BAR/PVPlugins/NewPopReader
+	mkdir $BAR/plugin-build
+	cd $BAR/plugin-build
+	ccmake $BAR/PVPlugins/NewPopReader
+	#set PARAVIEW_DIR to $FOO/pv3.6.1-bin
+	# iterate using "c" to check for configuration, then edit more variables,
+	# It will want the netcdf include and libs
+        #  then "c" again until it is in a steady state.        
+	# when done setting the variables, type "g" to generate makefile         
+	# then "e" to exit.
+	make
+	export PV_PLUGIN_PATH=$BAR/plugin-build
+
+6.  Start ParaView -- the plugin should load automatically
+	$FOO/pv3.6.1-bin/paraview.app/Contents/MacOS/paraview
+
+7.  Open the .nc file and the reader will be able to read it properly.  Select the variable you want to view in Properties, hit apply, then go to the Display tab and select how you want it colored by (what variable).
+	
+8.  Note that if you install a new version of ParaView, you need to recompile the plugin.  If you don't ParaView can seg fault right away.  (Learned this the hard way!)
+
+	
