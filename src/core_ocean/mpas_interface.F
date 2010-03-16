@@ -30,8 +30,12 @@ subroutine mpas_init(block, mesh, dt)
    ! call init_reconstruct(block_ptr % mesh)
    ! xsad 10-02-09 end
 
+! mrp 100316 In order for this to work, we need to pass domain % dminfo as an 
+! input arguement into mpas_init.  Ask about that later.  For now, there will be
+! no initial statistics write.
+
 !   call timer_start("global diagnostics")
-!   call computeGlobalDiagnostics(domain % dminfo, block_ptr % time_levs(1) % state, block_ptr % mesh, 0, dt)
+!   call computeGlobalDiagnostics(domain % dminfo, block % time_levs(1) % state, mesh, 0, dt)
 !   call timer_stop("global diagnostics")
 !   ! xsad 10-02-08 end
 !   call output_state_init(output_obj, domain, "OUTPUT")
@@ -48,7 +52,7 @@ subroutine mpas_query(key, ivalue)
    integer, intent(out) :: ivalue
 
    if (index(key,'STORAGE_FACTOR') /= 0) then
-      ivalue = 1
+      ivalue = 2
    end if
 
 end subroutine mpas_query
@@ -58,32 +62,36 @@ subroutine mpas_timestep(domain, itimestep, dt)
 
    use grid_types
    use time_integration
+   use timer
+   use global_diagnostics
 
    implicit none
 
    type (domain_type), intent(inout) :: domain 
    integer, intent(in) :: itimestep
    real (kind=RKIND), intent(in) :: dt
+   type (block_type), pointer :: block_ptr
 
    call timestep(domain, dt)
 
-!   ! mrp 100120:
-!   if (mod(itimestep, config_stats_interval) == 0) then
-!      ! xsad 10-02-08:
-!      !call write_stats(domain, itimestep, dt)
-!      block_ptr => domain % blocklist
-!      if(associated(block_ptr % next)) then
-!         write(0,*) 'Error: computeGlobalDiagnostics assumes that there is only one block per processor.'
-!         call dmpar_abort(domain % dminfo)
-!      end if
-!
-!      call timer_start("global diagnostics")
-!      call computeGlobalDiagnostics(domain % dminfo, block_ptr % time_levs(2) % state, block_ptr % mesh, &
-!         itimestep, dt)
-!      call timer_stop("global diagnostics")
-!      ! xsad 10-02-08 end
-!   end if
-!   ! mrp 100120 end
+   ! mrp 100120:
+   if (mod(itimestep, config_stats_interval) == 0) then
+      ! xsad 10-02-08:
+      !call write_stats(domain, itimestep, dt)
+      block_ptr => domain % blocklist
+      if(associated(block_ptr % next)) then
+         write(0,*) 'Error: computeGlobalDiagnostics assumes ',&
+            'that there is only one block per processor.'
+      end if
+
+      call timer_start("global diagnostics")
+      call computeGlobalDiagnostics(domain % dminfo, &
+         block_ptr % time_levs(2) % state, block_ptr % mesh, &
+         itimestep, dt)
+      call timer_stop("global diagnostics")
+      ! xsad 10-02-08 end
+   end if
+   ! mrp 100120 end
 
 end subroutine mpas_timestep
 

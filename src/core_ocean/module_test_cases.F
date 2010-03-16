@@ -21,8 +21,12 @@ module test_cases
 
       type (domain_type), intent(inout) :: domain
 
-      integer :: i
+      integer :: i, iCell, iEdge, iVtx, iLevel
       type (block_type), pointer :: block_ptr
+      real (kind=RKIND), dimension(:,:), pointer :: h, u, u_src
+      real (kind=RKIND), dimension(:), pointer :: rho, alpha
+      real (kind=RKIND) :: delta_rho
+      integer :: nCells, nEdges, nVertices, nVertLevels
 
       if (config_test_case == 0) then
          write(0,*) 'Using initial conditions supplied in input file'
@@ -91,6 +95,65 @@ module test_cases
          stop
       end if
 
+      ! mrp 100121:
+      !
+      ! Initialize u_src, rho, alpha
+      ! This is a temporary fix until everything is specified correctly 
+      ! in an initial conditions file.
+      !
+      block_ptr => domain % blocklist
+      do while (associated(block_ptr))
+         h          => block_ptr % time_levs(1) % state % h % array
+         u          => block_ptr % time_levs(1) % state % u % array
+
+         u_src      => block_ptr % mesh % u_src % array
+         rho        => block_ptr % mesh % rho % array
+         alpha      => block_ptr % mesh % alpha % array
+
+         nCells      = block_ptr % mesh % nCells
+         nEdges      = block_ptr % mesh % nEdges
+         nVertices   = block_ptr % mesh % nVertices
+         nVertLevels = block_ptr % mesh % nVertLevels
+
+
+         ! Momentum forcing u_src
+         ! for shallow water test cases:
+         ! u_src = 0.0
+         ! for rectangular basin:
+         do iEdge=1,nEdges
+            u_src(1:nVertLevels, iEdge) = u_src(1, iEdge) / nVertLevels
+         end do
+
+         ! define the density for multiple layers
+         delta_rho=0.1
+         do iLevel = 1,nVertLevels
+           rho(iLevel) = delta_rho*(iLevel-1)
+         enddo
+         rho = rho - sum(rho)/nVertLevels + 1000.0
+         alpha = 1/rho
+
+         do i=2,nTimeLevs
+            call copy_state(block_ptr % time_levs(1) % state, &
+                            block_ptr % time_levs(i) % state)
+         end do
+
+         ! print some diagnostics
+         print '(10a)', 'ilevel',&
+            '  rho      ',&
+            '  min u       max u     ',&
+            '  min h       max h     ',&
+            '  min u_src   max u_src '
+         do iLevel = 1,nVertLevels
+            print '(i5,20es12.4)', ilevel, rho(ilevel), &
+              minval(u(iLevel,:)), maxval(u(iLevel,:)), &
+              minval(h(iLevel,:)), maxval(h(iLevel,:)), &
+              minval(u_src(iLevel,:)), maxval(u_src(iLevel,:))
+         enddo
+
+         block_ptr => block_ptr % next
+      end do
+      ! mrp 100121 end
+
    end subroutine setup_sw_test_case
 
 
@@ -114,7 +177,7 @@ module test_cases
       real (kind=RKIND), parameter :: lambda_c = 3.0*pii/2.0
       real (kind=RKIND), parameter :: alpha = pii/4.0
 
-      integer :: iCell, iEdge, iVtx, iLevel !mrp on last one
+      integer :: iCell, iEdge, iVtx
       real (kind=RKIND) :: r, u, v
       real (kind=RKIND), allocatable, dimension(:) :: psiVertex
 
@@ -151,9 +214,6 @@ module test_cases
                                                psiVertex(grid%verticesOnEdge%array(2,iEdge)) - &
                                                psiVertex(grid%verticesOnEdge%array(1,iEdge)) &
                                              ) / grid%dvEdge%array(iEdge)
-#ifdef EXPAND_LEVELS
-         state % u % array(2:EXPAND_LEVELS, iEdge) = state % u % array(1,iEdge)
-#endif
       end do
       deallocate(psiVertex)
 
@@ -167,32 +227,7 @@ module test_cases
          else
             state % h % array(1,iCell) = 0.0
          end if
-#ifdef EXPAND_LEVELS
-         ! mrp 100125:
-         !state % h % array(2:EXPAND_LEVELS, iCell) = state % h % array(1,iCell)
-         ! make the total thickness equal to the single-layer thickness:
-         state % h % array(1:EXPAND_LEVELS, iCell) = state % h % array(1,iCell) & 
-           / grid % nVertLevels
-         ! mrp 100125 end
-#else
-         ! mrp 100125:
-         ! make the total thickness equal to the single-layer thickness:
-         !state % h % array(:, iCell) = state % h % array(1,iCell) / 4.0
-         ! mrp 100125 end
-#endif
       end do
-
-      ! mrp 100121:
-      ! define the density
-      do iLevel = 1,grid % nVertLevels
-        grid % rho % array(iLevel) = (iLevel-1)*10
-      enddo
-      grid % rho % array = grid % rho % array &
-        - sum(grid % rho % array)/grid % nVertLevels + 1000.0
-print *, 'rho',      grid % rho % array, sum(grid % rho % array)/grid % nVertLevels
-      grid % alpha % array = 1/grid % rho % array
-      grid % u_src % array = 0.0
-      ! mrp 100121 end
 
    end subroutine sw_test_case_1
 
@@ -217,7 +252,6 @@ print *, 'rho',      grid % rho % array, sum(grid % rho % array)/grid % nVertLev
       real (kind=RKIND), parameter :: alpha = 0.0
 
       integer :: iCell, iEdge, iVtx
-      integer :: iLevel !mrp
       real (kind=RKIND) :: u, v
       real (kind=RKIND), allocatable, dimension(:) :: psiVertex
 
@@ -256,9 +290,6 @@ print *, 'rho',      grid % rho % array, sum(grid % rho % array)/grid % nVertLev
                                                psiVertex(grid%verticesOnEdge%array(2,iEdge)) - &
                                                psiVertex(grid%verticesOnEdge%array(1,iEdge)) &
                                              ) / grid%dvEdge%array(iEdge)
-#ifdef EXPAND_LEVELS
-         state % u % array(2:EXPAND_LEVELS, iEdge) = state % u % array(1,iEdge)
-#endif
       end do
       deallocate(psiVertex)
 
@@ -288,32 +319,7 @@ print *, 'rho',      grid % rho % array, sum(grid % rho % array)/grid % nVertLev
                                              )**2.0 &
                                       ) / &
                                       gravity
-#ifdef EXPAND_LEVELS
-         ! mrp 100125:
-         !state % h % array(2:EXPAND_LEVELS, iCell) = state % h % array(1,iCell)
-         ! make the total thickness equal to the single-layer thickness:
-         state % h % array(1:EXPAND_LEVELS, iCell) = state % h % array(1,iCell) & 
-           / grid % nVertLevels
-         ! mrp 100125 end
-#else
-         ! mrp 100125:
-         ! make the total thickness equal to the single-layer thickness:
-         !state % h % array(:, iCell) = state % h % array(1,iCell) / 4.0
-         ! mrp 100125 end
-#endif
       end do
-
-      ! mrp 100121:
-      ! define the density
-      do iLevel = 1,grid % nVertLevels
-        grid % rho % array(iLevel) = (iLevel-1)*10
-      enddo
-      grid % rho % array = grid % rho % array &
-        - sum(grid % rho % array)/grid % nVertLevels + 1000.0
-print *, 'rho',      grid % rho % array, sum(grid % rho % array)/grid % nVertLevels
-      grid % alpha % array = 1/grid % rho % array
-      grid % u_src % array = 0.0
-      ! mrp 100121 end
 
    end subroutine sw_test_case_2
 
@@ -341,7 +347,7 @@ print *, 'rho',      grid % rho % array, sum(grid % rho % array)/grid % nVertLev
       real (kind=RKIND), parameter :: rr = pii/9.0
       real (kind=RKIND), parameter :: alpha = 0.0
 
-      integer :: iCell, iEdge, iVtx, iLevel
+      integer :: iCell, iEdge, iVtx
       real (kind=RKIND) :: r, u, v
       real (kind=RKIND), allocatable, dimension(:) :: psiVertex
 
@@ -379,9 +385,6 @@ print *, 'rho',      grid % rho % array, sum(grid % rho % array)/grid % nVertLev
                                                psiVertex(grid%verticesOnEdge%array(2,iEdge)) - &
                                                psiVertex(grid%verticesOnEdge%array(1,iEdge)) &
                                              ) / grid%dvEdge%array(iEdge)
-#ifdef EXPAND_LEVELS
-         state % u % array(2:EXPAND_LEVELS, iEdge) = state % u % array(1,iEdge)
-#endif
       end do
       deallocate(psiVertex)
 
@@ -438,32 +441,7 @@ print *, 'h_s',minval(grid % h_s % array),sum(grid % h_s % array)/grid % nCells,
                                       ) / &
                                       gravity
          state % h % array(1,iCell) = state % h % array(1,iCell) - grid % h_s % array(iCell)
-#ifdef EXPAND_LEVELS
-         ! mrp 100125:
-         !state % h % array(2:EXPAND_LEVELS, iCell) = state % h % array(1,iCell)
-         ! make the total thickness equal to the single-layer thickness:
-         state % h % array(1:EXPAND_LEVELS, iCell) = state % h % array(1,iCell) & 
-           / grid % nVertLevels
-         ! mrp 100125 end
-#else
-         ! mrp 100125:
-         ! make the total thickness equal to the single-layer thickness:
-         !state % h % array(:, iCell) = state % h % array(1,iCell) / 4.0
-         ! mrp 100125 end
-#endif
       end do
-
-      ! mrp 100121:
-      ! define the density
-      do iLevel = 1,grid % nVertLevels
-        grid % rho % array(iLevel) = 0.0 + (iLevel-1)*10
-      enddo
-      grid % rho % array = grid % rho % array &
-        - sum(grid % rho % array)/grid % nVertLevels + 1000.0
-print *, 'rho',      grid % rho % array, sum(grid % rho % array)/grid % nVertLevels
-      grid % alpha % array = 1/grid % rho % array
-      grid % u_src % array = 0.0
-      ! mrp 100121 end
 
    end subroutine sw_test_case_5
 
@@ -487,7 +465,7 @@ print *, 'rho',      grid % rho % array, sum(grid % rho % array)/grid % nVertLev
       real (kind=RKIND), parameter :: K = 7.848e-6
       real (kind=RKIND), parameter :: R = 4.0
 
-      integer :: iCell, iEdge, iVtx, iLevel
+      integer :: iCell, iEdge, iVtx
       real (kind=RKIND) :: u, v
       real (kind=RKIND), allocatable, dimension(:) :: psiVertex
 
@@ -524,9 +502,6 @@ print *, 'rho',      grid % rho % array, sum(grid % rho % array)/grid % nVertLev
                                                psiVertex(grid%verticesOnEdge%array(2,iEdge)) - &
                                                psiVertex(grid%verticesOnEdge%array(1,iEdge)) &
                                              ) / grid%dvEdge%array(iEdge)
-#ifdef EXPAND_LEVELS
-         state % u % array(2:EXPAND_LEVELS, iEdge) = state % u % array(1,iEdge)
-#endif
       end do
       deallocate(psiVertex)
 
@@ -538,32 +513,7 @@ print *, 'rho',      grid % rho % array, sum(grid % rho % array)/grid % nVertLev
                                                       a*a*BB(grid%latCell%array(iCell)) * cos(R*grid%lonCell%array(iCell)) + &
                                                       a*a*CC(grid%latCell%array(iCell)) * cos(2.0*R*grid%lonCell%array(iCell)) &
                                       ) / gravity
-#ifdef EXPAND_LEVELS
-         ! mrp 100125:
-         !state % h % array(2:EXPAND_LEVELS, iCell) = state % h % array(1,iCell)
-         ! make the total thickness equal to the single-layer thickness:
-         state % h % array(1:EXPAND_LEVELS, iCell) = state % h % array(1,iCell) & 
-           / grid % nVertLevels
-         ! mrp 100125 end
-#else
-         ! mrp 100125:
-         ! make the total thickness equal to the single-layer thickness:
-         !state % h % array(:, iCell) = state % h % array(1,iCell) / 4.0
-         ! mrp 100125 end
-#endif
       end do
-
-      ! mrp 100121:
-      ! define the density
-      do iLevel = 1,grid % nVertLevels
-        grid % rho % array(iLevel) = (iLevel-1)*10
-      enddo
-      grid % rho % array = grid % rho % array &
-        - sum(grid % rho % array)/grid % nVertLevels + 1000.0
-print *, 'rho',      grid % rho % array, sum(grid % rho % array)/grid % nVertLevels
-      grid % alpha % array = 1/grid % rho % array
-      grid % u_src % array = 0.0
-      ! mrp 100121 end
 
    end subroutine sw_test_case_6
 

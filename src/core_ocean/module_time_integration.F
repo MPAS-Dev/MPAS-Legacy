@@ -26,6 +26,7 @@ module time_integration
 
       type (domain_type), intent(inout) :: domain
       real (kind=RKIND), intent(in) :: dt
+      integer errorcode,ierr
 
       type (block_type), pointer :: block
 
@@ -40,6 +41,13 @@ module time_integration
       block => domain % blocklist
       do while (associated(block))
          block % time_levs(2) % state % xtime % scalar = block % time_levs(1) % state % xtime % scalar + dt
+         ! mrp 100310  I added this to avoid running with NaNs
+         if (isNaN(sum(block % time_levs(2) % state % u % array))) then
+            print *, 'Stopping: NaN detected'
+            call MPI_abort(MPI_COMM_WORLD,errorcode,ierr)
+         endif
+         ! mrp 100310 end
+
          block => block % next
       end do
 
@@ -125,6 +133,7 @@ module time_integration
 
         block => domain % blocklist
         do while (associated(block))
+
            call compute_tend(block % intermediate_step(TEND), block % intermediate_step(PROVIS), block % mesh)
            call compute_scalar_tend(block % intermediate_step(TEND), block % intermediate_step(PROVIS), block % mesh)
            call enforce_uBC(block % intermediate_step(TEND), block % mesh)
