@@ -13,14 +13,14 @@ module time_integration
 
 
    subroutine timestep(domain, dt)
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! Advance model state forward in time by the specified time step
    !
    ! Input: domain - current model state in time level 1 (e.g., time_levs(1)state%h(:,:)) 
    !                 plus grid meta-data
    ! Output: domain - upon exit, time level 2 (e.g., time_levs(2)%state%h(:,:)) contains 
    !                  model state advanced forward in time by dt seconds
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
       implicit none
 
@@ -55,7 +55,7 @@ module time_integration
 
 
    subroutine rk4(domain, dt)
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! Advance model state forward in time by the specified time step using 
    !   4th order Runge-Kutta
    !
@@ -63,7 +63,7 @@ module time_integration
    !                 plus grid meta-data
    ! Output: domain - upon exit, time level 2 (e.g., time_levs(2)%state%h(:,:)) contains 
    !                  model state advanced forward in time by dt seconds
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
       implicit none
 
@@ -237,14 +237,14 @@ module time_integration
 
 
    subroutine compute_tend(tend, s, grid)
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! Compute height and normal wind tendencies, as well as diagnostic variables
    !
    ! Input: s - current model state
    !        grid - grid metadata
    !
    ! Output: tend - computed tendencies for prognostic variables
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
       implicit none
 
@@ -426,13 +426,13 @@ module time_integration
 
 
    subroutine compute_scalar_tend(tend, s, grid)
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    !
    ! Input: s - current model state
    !        grid - grid metadata
    !
    ! Output: tend - computed scalar tendencies
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
       implicit none
 
@@ -471,13 +471,13 @@ module time_integration
 
 
    subroutine compute_solve_diagnostics(dt, s, grid)
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! Compute diagnostic fields used in the tendency computations
    !
    ! Input: grid - grid metadata
    !
    ! Output: s - computed diagnostics
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
       implicit none
 
@@ -495,8 +495,8 @@ module time_integration
                                                     circulation, vorticity, ke, pv_edge, pv_vertex, pv_cell, gradPVn, gradPVt, divergence
       !mrp 100112:
       real (kind=RKIND), dimension(:,:), pointer :: &
-        zmid, zbot, pmid, pbot, MontPot
-      real (kind=RKIND), dimension(:), pointer :: zSurface, rho, alpha
+        zmid, zbot, pmid, pbot, MontPot, rho
+      real (kind=RKIND), dimension(:), pointer :: zSurface
       real (kind=RKIND) :: delta_p
       character :: c1*6
       !mrp 100112 end
@@ -523,6 +523,7 @@ module time_integration
       gradPVn     => s % gradPVn % array
       gradPVt     => s % gradPVt % array
       !mrp 100112:
+      rho         => s % rho % array
       zmid        => s % zmid % array
       zbot        => s % zbot % array
       pmid        => s % pmid % array
@@ -548,10 +549,6 @@ module time_integration
       h_s               => grid % h_s % array
       fVertex           => grid % fVertex % array
       fEdge             => grid % fEdge % array
-      !mrp 100112:
-      rho               => grid % rho % array
-      alpha             => grid % alpha % array
-      !mrp 100112 end
                   
       nCells      = grid % nCells
       nEdges      = grid % nEdges
@@ -811,17 +808,17 @@ module time_integration
          zSurface(iCell) = zbot(1,iCell) + h(1,iCell)
 
          ! assume pressure at the surface is zero for now.
-         pmid(1,iCell) = 0.5*rho(1)*gravity* h(1,iCell) ! + psurf(iCell)
-         pbot(1,iCell) =     rho(1)*gravity* h(1,iCell) ! + psurf(iCell)
+         pmid(1,iCell) = 0.5*rho(1,iCell)*gravity* h(1,iCell) ! + psurf(iCell)
+         pbot(1,iCell) =     rho(1,iCell)*gravity* h(1,iCell) ! + psurf(iCell)
          MontPot(1,iCell) = gravity * zSurface(iCell) 
          do k=2,nVertLevels
-            delta_p = rho(k)*gravity* h(k,iCell)
+            delta_p = rho(k,iCell)*gravity* h(k,iCell)
             pmid(k,iCell) = pbot(k-1,iCell) + 0.5*delta_p
             pbot(k,iCell) = pbot(k-1,iCell) + delta_p
 
-            ! from delta M = p delta alpha
+            ! from delta M = p delta / rho
             MontPot(k,iCell) = MontPot(k-1,iCell) &
-               + pbot(k-1,iCell)*(alpha(k) - alpha(k-1)) 
+               + pbot(k-1,iCell)*(1.0/rho(k,iCell) - 1.0/rho(k-1,iCell)) 
          end do
       end do
       !mrp 100112 end

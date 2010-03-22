@@ -9,13 +9,13 @@ module test_cases
 
 
    subroutine setup_sw_test_case(domain)
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! Configure grid metadata and model state for the shallow water test case 
    !   specified in the namelist
    !
    ! Output: block - a subset (not necessarily proper) of the model domain to be
    !                 initialized
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
       implicit none
 
@@ -23,8 +23,7 @@ module test_cases
 
       integer :: i, iCell, iEdge, iVtx, iLevel
       type (block_type), pointer :: block_ptr
-      real (kind=RKIND), dimension(:,:), pointer :: h, u, u_src
-      real (kind=RKIND), dimension(:), pointer :: rho, alpha
+      real (kind=RKIND), dimension(:,:), pointer :: h, u, u_src, rho
       real (kind=RKIND) :: delta_rho
       integer :: nCells, nEdges, nVertices, nVertLevels
 
@@ -32,60 +31,42 @@ module test_cases
          write(0,*) 'Using initial conditions supplied in input file'
 
       else if (config_test_case == 1) then
-         write(0,*) 'Setting up shallow water test case 1'
-         write(0,*) ' -- Advection of Cosine Bell over the Pole'
+         write(0,*) ' Setting up shallow water test case 1:'
+         write(0,*) ' Advection of Cosine Bell over the Pole'
 
          block_ptr => domain % blocklist
          do while (associated(block_ptr))
             call sw_test_case_1(block_ptr % mesh, block_ptr % time_levs(1) % state)
-            do i=2,nTimeLevs
-               call copy_state(block_ptr % time_levs(1) % state, block_ptr % time_levs(i) % state)
-            end do
-
             block_ptr => block_ptr % next
          end do
 
       else if (config_test_case == 2) then
-         write(0,*) 'Setting up shallow water test case 2'
-         write(0,*) ' -- Setup shallow water test case 2: '// &
+         write(0,*) ' Setup shallow water test case 2: '// &
            'Global Steady State Nonlinear Zonal Geostrophic Flow'
 
          block_ptr => domain % blocklist
          do while (associated(block_ptr))
             call sw_test_case_2(block_ptr % mesh, block_ptr % time_levs(1) % state)
-            do i=2,nTimeLevs
-               call copy_state(block_ptr % time_levs(1) % state, block_ptr % time_levs(i) % state)
-            end do
-
             block_ptr => block_ptr % next
          end do
 
       else if (config_test_case == 5) then
-         write(0,*) 'Setting up shallow water test case 5'
-         write(0,*) ' -- Setup shallow water test case 5:'// &
+         write(0,*) ' Setup shallow water test case 5:'// &
            ' Zonal Flow over an Isolated Mountain'
 
          block_ptr => domain % blocklist
          do while (associated(block_ptr))
             call sw_test_case_5(block_ptr % mesh, block_ptr % time_levs(1) % state)
-            do i=2,nTimeLevs
-               call copy_state(block_ptr % time_levs(1) % state, block_ptr % time_levs(i) % state)
-            end do
-
             block_ptr => block_ptr % next
          end do
 
       else if (config_test_case == 6) then
-         write(0,*) 'Setting up shallow water test case 6'
-         write(0,*) ' -- Rossby-Haurwitz Wave'
+         write(0,*) ' Set up shallow water test case 6:'
+         write(0,*) ' Rossby-Haurwitz Wave'
 
          block_ptr => domain % blocklist
          do while (associated(block_ptr))
             call sw_test_case_6(block_ptr % mesh, block_ptr % time_levs(1) % state)
-            do i=2,nTimeLevs
-               call copy_state(block_ptr % time_levs(1) % state, block_ptr % time_levs(i) % state)
-            end do
-
             block_ptr => block_ptr % next
          end do
 
@@ -105,10 +86,9 @@ module test_cases
       do while (associated(block_ptr))
          h          => block_ptr % time_levs(1) % state % h % array
          u          => block_ptr % time_levs(1) % state % u % array
+         rho        => block_ptr % time_levs(1) % state % rho % array
 
          u_src      => block_ptr % mesh % u_src % array
-         rho        => block_ptr % mesh % rho % array
-         alpha      => block_ptr % mesh % alpha % array
 
          nCells      = block_ptr % mesh % nCells
          nEdges      = block_ptr % mesh % nEdges
@@ -125,12 +105,14 @@ module test_cases
          end do
 
          ! define the density for multiple layers
-         delta_rho=0.1
+         delta_rho=0.0
          do iLevel = 1,nVertLevels
-           rho(iLevel) = delta_rho*(iLevel-1)
+           rho(iLevel,1) = delta_rho*(iLevel-1)
          enddo
-         rho = rho - sum(rho)/nVertLevels + 1000.0
-         alpha = 1/rho
+         rho(:,1) = rho(:,1) - sum(rho(:,1))/nVertLevels + 1000.0
+         do iLevel = 1,nVertLevels
+           rho(iLevel,:) = rho(iLevel,1)
+         enddo
 
          do i=2,nTimeLevs
             call copy_state(block_ptr % time_levs(1) % state, &
@@ -144,7 +126,7 @@ module test_cases
             '  min h       max h     ',&
             '  min u_src   max u_src '
          do iLevel = 1,nVertLevels
-            print '(i5,20es12.4)', ilevel, rho(ilevel), &
+            print '(i5,20es12.4)', ilevel, rho(ilevel,1), &
               minval(u(iLevel,:)), maxval(u(iLevel,:)), &
               minval(h(iLevel,:)), maxval(h(iLevel,:)), &
               minval(u_src(iLevel,:)), maxval(u_src(iLevel,:))
@@ -158,13 +140,13 @@ module test_cases
 
 
    subroutine sw_test_case_1(grid, state)
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! Setup shallow water test case 1: Advection of Cosine Bell over the Pole
    !
    ! Reference: Williamson, D.L., et al., "A Standard Test Set for Numerical 
    !            Approximations to the Shallow Water Equations in Spherical 
    !            Geometry" J. of Comp. Phys., 102, pp. 211--224
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
       implicit none
 
@@ -233,14 +215,14 @@ module test_cases
 
 
    subroutine sw_test_case_2(grid, state)
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! Setup shallow water test case 2: Global Steady State Nonlinear Zonal 
    !                                  Geostrophic Flow
    !
    ! Reference: Williamson, D.L., et al., "A Standard Test Set for Numerical 
    !            Approximations to the Shallow Water Equations in Spherical 
    !            Geometry" J. of Comp. Phys., 102, pp. 211--224
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
       implicit none
 
@@ -325,13 +307,13 @@ module test_cases
 
 
    subroutine sw_test_case_5(grid, state)
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! Setup shallow water test case 5: Zonal Flow over an Isolated Mountain
    !
    ! Reference: Williamson, D.L., et al., "A Standard Test Set for Numerical 
    !            Approximations to the Shallow Water Equations in Spherical 
    !            Geometry" J. of Comp. Phys., 102, pp. 211--224
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
       implicit none
 
@@ -447,13 +429,13 @@ print *, 'h_s',minval(grid % h_s % array),sum(grid % h_s % array)/grid % nCells,
 
 
    subroutine sw_test_case_6(grid, state)
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! Setup shallow water test case 6: Rossby-Haurwitz Wave
    !
    ! Reference: Williamson, D.L., et al., "A Standard Test Set for Numerical 
    !            Approximations to the Shallow Water Equations in Spherical 
    !            Geometry" J. of Comp. Phys., 102, pp. 211--224
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
       implicit none
 
@@ -519,10 +501,10 @@ print *, 'h_s',minval(grid % h_s % array),sum(grid % h_s % array)/grid % nCells,
 
 
    real function sphere_distance(lat1, lon1, lat2, lon2, radius)
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! Compute the great-circle distance between (lat1, lon1) and (lat2, lon2) on a
    !   sphere with given radius.
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
       implicit none
 
@@ -538,9 +520,9 @@ print *, 'h_s',minval(grid % h_s % array),sum(grid % h_s % array)/grid % nCells,
 
 
    real function AA(theta)
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! A, used in height field computation for Rossby-Haurwitz wave
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
       implicit none
 
@@ -557,9 +539,9 @@ print *, 'h_s',minval(grid % h_s % array),sum(grid % h_s % array)/grid % nCells,
 
    
    real function BB(theta)
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! B, used in height field computation for Rossby-Haurwitz wave
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
       implicit none
 
@@ -575,9 +557,9 @@ print *, 'h_s',minval(grid % h_s % array),sum(grid % h_s % array)/grid % nCells,
 
 
    real function CC(theta)
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! C, used in height field computation for Rossby-Haurwitz wave
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
       implicit none
 
