@@ -30,6 +30,8 @@ dim R3 3
 dim vertexDegree vertexDegree
 dim nVertLevels nVertLevels
 dim nTracers nTracers
+dim iTemperature 1
+dim iSalinity 2
 
 #
 # var  type  name_in_file  ( dims )  iro-  name_in_code super-array array_class
@@ -80,8 +82,7 @@ var real    fEdge ( nEdges ) iro fEdge - -
 var real    fVertex ( nVertices ) iro fVertex - -
 var real    h_s ( nCells ) iro h_s - -
 # mrp 100112:
-var real    rho ( nVertLevels ) iro rho - -
-var real    alpha ( nVertLevels ) iro alpha - -
+var real    rho ( nVertLevels nCells Time ) iro rho - -
 # mrp 100112 end
 
 # Arrays required for reconstruction of velocity field
