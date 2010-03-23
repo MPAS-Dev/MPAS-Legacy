@@ -1,4 +1,4 @@
-module test_cases
+ module test_cases
 
    use grid_types
    use configure
@@ -95,14 +95,16 @@ module test_cases
          nVertices   = block_ptr % mesh % nVertices
          nVertLevels = block_ptr % mesh % nVertLevels
 
-
          ! Momentum forcing u_src
-         ! for shallow water test cases:
-         ! u_src = 0.0
-         ! for rectangular basin:
-         do iEdge=1,nEdges
-            u_src(1:nVertLevels, iEdge) = u_src(1, iEdge) / nVertLevels
-         end do
+         if (config_test_case > 0) then
+           ! for shallow water test cases:
+           u_src = 0.0
+         elseif (config_test_case == 0 ) then
+           ! for rectangular basin:
+           do iEdge=1,nEdges
+              u_src(1:nVertLevels, iEdge) = u_src(1, iEdge) / nVertLevels
+           end do
+         endif
 
          ! define the density for multiple layers
          delta_rho=0.0
@@ -113,6 +115,23 @@ module test_cases
          do iLevel = 1,nVertLevels
            rho(iLevel,:) = rho(iLevel,1)
          enddo
+
+#ifdef EXPAND_LEVELS
+         print '(10a)', 'EXPAND_LEVELS compiler flag is on.', &
+            ' Copying h and u from k=1 to other levels.'
+         print '(a,i5)', 'EXPAND_LEVELS =', EXPAND_LEVELS
+         print '(a,i5)', 'nVertLevels =', nVertLevels
+         do iCell=1,nCells
+            ! make the total thickness equal to the single-layer thickness:
+            h(1:nVertLevels, iCell) = h(1,iCell) / nVertLevels
+         end do
+
+         do iEdge=1,nEdges
+            u(2:nVertLevels, iEdge) = u(1,iEdge)
+         end do
+#else
+         print '(10a)', 'EXPAND_LEVELS compiler flag is off.'
+#endif
 
          do i=2,nTimeLevs
             call copy_state(block_ptr % time_levs(1) % state, &
