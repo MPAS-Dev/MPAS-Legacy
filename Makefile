@@ -85,7 +85,7 @@ gfortran:
 
 CPPINCLUDES = -I../inc -I$(NETCDF)/include
 FCINCLUDES = -I../inc -I$(NETCDF)/include
-LIBS = -L$(NETCDF)/lib -lnetcdf -L$(BLAS)/lib -L$(LAPACK)/lib -lblas -llapack
+LIBS = -L$(NETCDF)/lib -lnetcdf
 
 RM = rm -f
 CPP = cpp -C -P -traditional

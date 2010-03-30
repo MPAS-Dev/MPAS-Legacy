@@ -36,6 +36,7 @@ dim TWO 2
 dim vertexDegree vertexDegree
 dim FIFTEEN 15
 dim TWENTYONE 21
+dim R3 3
 dim nVertLevels nVertLevels
 #dim nTracers nTracers
 dim nVertLevelsP1 nVertLevels+1
@@ -123,6 +124,9 @@ var real    h_edge ( nVertLevels nEdges Time ) o h_edge - -
 var real    ke ( nVertLevels nCells Time ) o ke - -
 var real    pv_vertex ( nVertLevels nVertices Time ) o pv_vertex - -
 var real    pv_cell ( nVertLevels nCells Time ) o pv_cell - -
+var real    uReconstructX ( nVertLevels nCells Time ) o uReconstructX - -
+var real    uReconstructY ( nVertLevels nCells Time ) o uReconstructY - -
+var real    uReconstructZ ( nVertLevels nCells Time ) o uReconstructZ - -
 
 # Other diagnostic variables: neither read nor written to any files
 var real    vh ( nVertLevels nEdges Time ) - vh - -
@@ -151,4 +155,7 @@ var real    qr_old ( nVertLevels nCells ) - qr_old scalars_old moist_old
 # Space needed for advection
 var real    deriv_two ( FIFTEEN TWO nEdges ) o deriv_two - -
 var integer advCells ( TWENTYONE nCells ) - advCells - -
+
+# Arrays required for reconstruction of velocity field
+var real    coeffs_reconstruct ( R3 maxEdges nCells ) - coeffs_reconstruct - -
 

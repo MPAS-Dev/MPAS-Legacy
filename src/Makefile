@@ -2,8 +2,8 @@
 
 all: mpas
 
-mpas: reg_includes externals frame dycore drver
-	$(FC) $(LDFLAGS) -o $(CORE)_model.exe driver/*.o -L. -ldycore -lframework $(LIBS)
+mpas: reg_includes externals frame ops dycore drver
+	$(FC) $(LDFLAGS) -o $(CORE)_model.exe driver/*.o -L. -ldycore -lops -lframework $(LIBS)
 
 reg_includes: 
 	( cd registry; make CC="$(SCC)" )
@@ -16,6 +16,10 @@ frame:
 	( cd framework; make all ) 
 	ln -sf framework/libframework.a libframework.a
 
+ops: 
+	( cd operators; make all ) 
+	ln -sf operators/libops.a libops.a
+
 dycore: 
 	( cd core_$(CORE); make all ) 
 	ln -sf core_$(CORE)/libdycore.a libdycore.a
@@ -24,10 +28,11 @@ drver:
 	( cd driver; make all ) 
 
 clean:
-	$(RM) $(CORE)_model.exe libframework.a libdycore.a
+	$(RM) $(CORE)_model.exe libframework.a libops.a libdycore.a
 	( cd registry; make clean )
 	( cd external; make clean )
 	( cd framework; make clean )
+	( cd operators; make clean )
 	( cd inc; rm -f *.inc )
 	if [ -d core_$(CORE) ] ; then \
 	   ( cd core_$(CORE); make clean ) \

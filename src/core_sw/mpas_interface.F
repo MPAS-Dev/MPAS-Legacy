@@ -26,6 +26,7 @@ subroutine mpas_init(block, mesh, dt)
 
    call compute_solve_diagnostics(dt, block % time_levs(1) % state, mesh)
    call init_reconstruct(mesh)
+   call reconstruct(block % time_levs(1) % state, mesh)
 
 end subroutine mpas_init
 

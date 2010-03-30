@@ -82,9 +82,6 @@ var real    h_s ( nCells ) iro h_s - -
 var real    rho ( nVertLevels nCells Time ) iro rho - -
 
 # Arrays required for reconstruction of velocity field
-var real    matrix_reconstruct ( maxEdges maxEdges nCells ) - matrix_reconstruct - -
-var real    normal ( R3 maxEdges nCells ) - normal - -
-var real    rbf_value ( maxEdges nCells ) - rbf_value - -
 var real    coeffs_reconstruct ( R3 maxEdges nCells ) - coeffs_reconstruct - -
 
 # Boundary conditions: read from input, saved in restart and written to output

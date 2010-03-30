@@ -78,9 +78,7 @@ var real    fVertex ( nVertices ) iro fVertex - -
 var real    h_s ( nCells ) iro h_s - -
 
 # Arrays required for reconstruction of velocity field
-var real    matrix_reconstruct ( maxEdges maxEdges nCells ) - matrix_reconstruct - -
-var real    normal ( R3 maxEdges nCells ) - normal - -
-var real    rbf_value ( maxEdges nCells ) - rbf_value - -
+var real    coeffs_reconstruct ( R3 maxEdges nCells ) - coeffs_reconstruct - -
 
 # Boundary conditions: read from input, saved in restart and written to output
 var integer uBC ( nVertLevels nEdges ) iro uBC - -

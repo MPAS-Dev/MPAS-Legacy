@@ -1,7 +1,6 @@
 .SUFFIXES: .F .o
 
 OBJS = module_test_cases.o \
-       module_vector_reconstruction.o \
        module_time_integration.o \
        mpas_interface.o
 
@@ -12,11 +11,9 @@ core_sw: $(OBJS)
 
 module_test_cases.o: 
 
-module_vector_reconstruction.o:
+module_time_integration.o: 
 
-module_time_integration.o: module_vector_reconstruction.o
-
-mpas_interface.o: module_test_cases.o module_time_integration.o module_vector_reconstruction.o
+mpas_interface.o: module_test_cases.o module_time_integration.o 
 
 clean:
 	$(RM) *.o *.mod libdycore.a
@@ -24,5 +21,5 @@ clean:
 .F.o:
 	$(RM) $@ $*.mod
 	$(CPP) $(CPPFLAGS) $(CPPINCLUDES) $< > $*.f90
-	$(FC) $(FFLAGS) -c $*.f90 $(FCINCLUDES) -I../framework
+	$(FC) $(FFLAGS) -c $*.f90 $(FCINCLUDES) -I../framework -I../operators
 	$(RM) $*.f90
