@@ -993,10 +993,10 @@ module io_input
 
       integer, dimension(:), pointer :: super_int1d
       integer, dimension(:,:), pointer :: super_int2d
-      real :: super_real0d
-      real, dimension(:), pointer :: super_real1d
-      real, dimension(:,:), pointer :: super_real2d
-      real, dimension(:,:,:), pointer :: super_real3d
+      real (kind=RKIND) :: super_real0d
+      real (kind=RKIND), dimension(:), pointer :: super_real1d
+      real (kind=RKIND), dimension(:,:), pointer :: super_real2d
+      real (kind=RKIND), dimension(:,:,:), pointer :: super_real3d
 
       integer :: k
 

@@ -81,6 +81,29 @@ gfortran:
 	"CORE = $(CORE)" \
 	"CPPFLAGS = -DRKIND=8 $(MODEL_FORMULATION) $(EXPAND_LEVELS) -D_MPI -DUNDERSCORE -m64 $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
 
+g95:
+	( make all \
+	"FC = mpif90" \
+	"CC = mpicc" \
+	"SFC = g95" \
+	"SCC = gcc" \
+	"FFLAGS = -O3 -ffree-line-length-huge" \
+	"CFLAGS = -O3" \
+	"LDFLAGS = -O3" \
+	"CORE = $(CORE)" \
+	"CPPFLAGS = -DRKIND=8 $(MODEL_FORMULATION) $(EXPAND_LEVELS) -D_MPI -DUNDERSCORE $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
+
+g95-serial:
+	( make all \
+	"FC = g95" \
+	"CC = gcc" \
+	"SFC = g95" \
+	"SCC = gcc" \
+	"FFLAGS = -O3 -ffree-line-length-huge" \
+	"CFLAGS = -O3" \
+	"LDFLAGS = -O3" \
+	"CORE = $(CORE)" \
+	"CPPFLAGS = -DRKIND=8 $(MODEL_FORMULATION) $(EXPAND_LEVELS) -DUNDERSCORE $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
 
 
 CPPINCLUDES = -I../inc -I$(NETCDF)/include
