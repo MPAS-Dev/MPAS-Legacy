@@ -75,7 +75,7 @@ gfortran:
 	"CC = mpicc" \
 	"SFC = gfortran" \
 	"SCC = gcc" \
-	"FFLAGS = -O3 -m64 -ffree-line-length-none" \
+	"FFLAGS = -O3 -m64 -ffree-line-length-none -fdefault-real-8" \
 	"CFLAGS = -O3 -m64" \
 	"LDFLAGS = -O3 -m64" \
 	"CORE = $(CORE)" \
@@ -87,7 +87,7 @@ g95:
 	"CC = mpicc" \
 	"SFC = g95" \
 	"SCC = gcc" \
-	"FFLAGS = -O3 -ffree-line-length-huge" \
+	"FFLAGS = -O3 -ffree-line-length-huge -r8" \
 	"CFLAGS = -O3" \
 	"LDFLAGS = -O3" \
 	"CORE = $(CORE)" \
@@ -99,7 +99,7 @@ g95-serial:
 	"CC = gcc" \
 	"SFC = g95" \
 	"SCC = gcc" \
-	"FFLAGS = -O3 -ffree-line-length-huge" \
+	"FFLAGS = -O3 -ffree-line-length-huge -r8" \
 	"CFLAGS = -O3" \
 	"LDFLAGS = -O3" \
 	"CORE = $(CORE)" \
