@@ -508,7 +508,7 @@ module test_cases
       real (kind=RKIND), intent(in) :: theta
 
       AA = 0.5 * w * (2.0 * omega + w) * cos(theta)**2.0 + &
-          0.25 * K**2.0 * cos(theta)**(2.0*R) * ((R+1.0)*cos(theta)**2.0 + 2.0*R**2.0 - R - 2.0 - 2.0*R**2.0 * cos(theta)**-2.0)
+          0.25 * K**2.0 * cos(theta)**(2.0*R) * ((R+1.0)*cos(theta)**2.0 + 2.0*R**2.0 - R - 2.0 - 2.0*R**2.0 * cos(theta)**(-2.0))
 
    end function AA
 
