@@ -1031,6 +1031,17 @@ module io_input
 #else
       nferr = nf_open(trim(input_obj % filename), NF_SHARE, input_obj % rd_ncid)
 #endif
+
+      if (nferr /= NF_NOERR) then
+         write(0,*) ' '
+         if (config_do_restart) then
+            write(0,*) 'Error opening restart file ''', trim(input_obj % filename), ''''
+         else
+            write(0,*) 'Error opening input file ''', trim(input_obj % filename), ''''
+         end if
+         write(0,*) ' '
+         call dmpar_abort(dminfo)
+      end if
  
 #include "netcdf_read_ids.inc"
 
