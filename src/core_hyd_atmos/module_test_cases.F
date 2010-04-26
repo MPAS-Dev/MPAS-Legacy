@@ -28,10 +28,11 @@ module test_cases
          write(0,*) ' need hydrostatic test case configuration, error stop '
          stop
 
-      else if ((config_test_case == 1) .or. (config_test_case == 2)) then
+      else if ((config_test_case == 1) .or. (config_test_case == 2) .or. (config_test_case == 3)) then
          write(0,*) ' Jablonowski and Williamson baroclinic wave test case '
          if (config_test_case == 1) write(0,*) ' no initial perturbation '
          if (config_test_case == 2) write(0,*) ' initial perturbation included '
+         if (config_test_case == 3) write(0,*) ' normal-mode perturbation included '
          block_ptr => domain % blocklist
          do while (associated(block_ptr))
             call hyd_test_case_1(block_ptr % mesh, block_ptr % time_levs(1) % state, config_test_case)
@@ -69,6 +70,7 @@ module test_cases
       real (kind=RKIND), parameter :: u_perturbation = 1., pert_radius = 0.1, latitude_pert = 40., longitude_pert = 20.
       real (kind=RKIND), parameter :: theta_c = pii/4.0
       real (kind=RKIND), parameter :: lambda_c = 3.0*pii/2.0
+      real (kind=RKIND), parameter :: k_x = 9.           ! Normal mode wave number
 
       real (kind=RKIND), dimension(:), pointer :: rdnu, rdnw, fnm, fnp, dbn, dnu, dnw
       real (kind=RKIND), dimension(:), pointer :: surface_pressure
@@ -79,6 +81,7 @@ module test_cases
       real (kind=RKIND) :: u, v, flux, fluxk, lat1, lat2, eta_v, r_pert, u_pert, lat_pert, lon_pert, r
 
       real (kind=RKIND) :: ptop, p0, phi
+      real (kind=RKIND) :: lon_Edge
 
 !      real (kind=RKIND), dimension(grid % nVertLevelsP1 ) :: hyai, hybi, znu, znw, znwc, znwv, hyam, hybm
 !      real (kind=RKIND), dimension(grid % nVertLevelsP1 ) :: znuc, znuv, bn, divh, dpn, teta, phi
@@ -247,6 +250,11 @@ module test_cases
             r_pert = sphere_distance( grid % latEdge % array (iEdge), grid % lonEdge % array (iEdge), &
                                       lat_pert, lon_pert, 1.)/(pert_radius)
             u_pert = u_perturbation*exp(-r_pert**2)*(lat2-lat1)*a/grid % dvEdge % array(iEdge)
+
+         else if (config_test_case == 3) then
+            lon_Edge = grid % lonEdge % array(iEdge)
+            u_pert = u_perturbation*cos(k_x*(lon_Edge - lon_pert)) &
+                         *(0.5*(lat2-lat1) - 0.125*(sin(4.*lat2) - sin(4.*lat1)))*a/grid % dvEdge % array(iEdge)
          else
             u_pert = 0.0
          end if
