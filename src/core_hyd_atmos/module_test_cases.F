@@ -70,6 +70,7 @@ module test_cases
       real (kind=RKIND), parameter :: u_perturbation = 1., pert_radius = 0.1, latitude_pert = 40., longitude_pert = 20.
       real (kind=RKIND), parameter :: theta_c = pii/4.0
       real (kind=RKIND), parameter :: lambda_c = 3.0*pii/2.0
+      real (kind=RKIND), parameter :: rh_max = 0.4       ! Maximum relative humidity
       real (kind=RKIND), parameter :: k_x = 9.           ! Normal mode wave number
 
       real (kind=RKIND), dimension(:), pointer :: rdnu, rdnw, fnm, fnp, dbn, dnu, dnw
@@ -82,6 +83,10 @@ module test_cases
 
       real (kind=RKIND) :: ptop, p0, phi
       real (kind=RKIND) :: lon_Edge
+
+      real (kind=RKIND), dimension(grid % nVertLevels, grid % nCells) :: rel_hum, temperature
+      real (kind=RKIND) :: ptmp, es, qvs
+      integer :: iter
 
 !      real (kind=RKIND), dimension(grid % nVertLevelsP1 ) :: hyai, hybi, znu, znw, znwc, znwv, hyam, hybm
 !      real (kind=RKIND), dimension(grid % nVertLevelsP1 ) :: znuc, znuv, bn, divh, dpn, teta, phi
@@ -144,13 +149,14 @@ module test_cases
       h => state % h % array
       scalars => state % scalars % array
 
-      scalars = 0.
+      scalars(:,:,:) = 0.
 
       p0      = 100000.
       bn (1) = 1.
       znw(1) = 1.
       znwc(1) = 1.
-      znwv(1) = (znwc(1)-.252)*pii/2.
+      !znwv(1) = (znwc(1)-.252)*pii/2.
+      znwv(1) = ((znwc(1)-.252)*pii/2.*p0-ptop)/(p0-ptop)
 		
       if (cam26) then
 
@@ -211,8 +217,10 @@ module test_cases
       !
 
       do k=1,nz1
-        znuv(k  ) = (znuc(k  )-.252)*pii/2.
-        znwv(k+1) = (znwc(k+1)-.252)*pii/2.
+        !znuv(k  ) = (znuc(k  )-.252)*pii/2.
+        !znwv(k+1) = (znwc(k+1)-.252)*pii/2.
+        znuv(k  ) = ((znuc(k  )-.252)*pii/2.*p0-ptop)/(p0-ptop)
+        znwv(k+1) = ((znwc(k+1)-.252)*pii/2.*p0-ptop)/(p0-ptop)
         dnw (k) = znw(k+1)-znw(k)
         rdnw(k) = 1./dnw(k)
         dbn (k) = rdnw(k)*(bn(k+1)-bn(k))
@@ -282,14 +290,16 @@ module test_cases
                                          )
       end do
 
-      do k=1,nz1
-         if(znuc(k).ge.eta_t)  then
-            teta(k) = t0*znuc(k)**(rgas*dtdz/gravity)
-         else
-            teta(k) = t0*znuc(k)**(rgas*dtdz/gravity) + delta_t*(eta_t-znuc(k))**5
-         end if
-         write(6,*) ' k, reference t ',k,teta(k)
-      end do
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! To get hydrostatic balance with misture -- soln. 2.
+! original scheme by Jablonowski
+!                            T' = -1./R_d *(p/p_0) * d(phi')/d(eta)
+!                               = -1./R_d * eta * d(phi')/d(eta)
+! soln. 2 -> derive temperature profile from hydrostatic balance with moisture
+! 
+!                           T_v = -1/(1+q_v)*(p/R_d)* d(eta)/d(p_d) * d(phi)/d(eta)
+!                           phi'(k) = phi(k+1) + d(eta)* alpha_pert * d(eta)/d(p_d)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 			
       do iCell=1,grid % nCells
 
@@ -307,8 +317,13 @@ module test_cases
          end do
 
          do k=1,nz1
-
-            theta (k,iCell) = teta(k)+.75*znuc(k)*pii*u0/rgas*sin(znuv(k))    &
+            ptmp = 0.5*(pressure(k,iCell)+pressure(k+1,iCell))
+            if (znuc(k) >= eta_t) then
+               teta(k) = t0*(ptmp/p0)**(rgas*dtdz/gravity)
+            else
+               teta(k) = t0*(ptmp/p0)**(rgas*dtdz/gravity) + delta_t*(eta_t-ptmp/p0)**5
+            end if
+            theta (k,iCell) = teta(k)+.75*ptmp/h(k,iCell)*pii*u0/rgas*sin(znuv(k))    &
                               *sqrt(cos(znuv(k)))*                         &
                                 ((-2.*sin(phi)**6                          &
                                      *(cos(phi)**2+1./3.)+10./63.)         &
@@ -341,9 +356,89 @@ module test_cases
          end do
       end do
 		
+      write(6,*) 'ptop_dry = ',ptop,'  zt_dry = ',geopotential(nz,1)/gravity
+
+      write(6,*) ' full sounding for dry'
+      do k=1,nz1
+         write(6,*) k, geopotential(k,1)/gravity, 0.01*pressure(k,1), theta(k,1), &
+                    theta(k,1)*(pressure(k,1)/p0)**(rgas/cp)
+      end do
+
+!
+!     initialization for moisture 
+!
+      if (config_mp_physics /= 0) then
+
+         do iCell=1,grid % nCells
+            do k=1,nz1
+               ptmp = 0.5*(pressure(k,iCell) + pressure(k+1,iCell))
+               if (ptmp < 50000.) then
+                  rel_hum(k,iCell) = 0.0
+               else
+                  rel_hum(k,iCell) = (1.-((p0-ptmp)/50000.)**1.25)
+               end if
+               rel_hum(k,iCell) = min(rh_max,rel_hum(k,iCell))
+            end do
+         end do
+      else
+         rel_hum(:,:) = 0.
+      end if
+
+
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+      ! iteration 
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+
+      do iter=1,30
+         do iCell=1,grid % nCells 
+   
+            phi = grid % latCell % array (iCell)
+            do k=1,nz1
+               ptmp = 0.5*(pressure(k+1,iCell)+pressure(k,iCell))
+   
+               if(znuc(k) >= eta_t)  then
+                  teta(k) = t0*(ptmp/p0)**(rgas*dtdz/gravity)
+               else
+                  teta(k) = t0*(ptmp/p0)**(rgas*dtdz/gravity) + delta_t*(eta_t-ptmp/p0)**5
+               end if
+   
+               temperature (k,iCell) = teta(k)+.75*ptmp/h(k,iCell)*pii*u0/rgas*sin(znuv(k))    &
+                                 *sqrt(cos(znuv(k)))*                         &
+                                   ((-2.*sin(phi)**6                          &
+                                        *(cos(phi)**2+1./3.)+10./63.)         &
+                                        *2.*u0*cos(znuv(k))**1.5              &
+                                   +(1.6*cos(phi)**3                          &
+                                        *(sin(phi)**2+2./3.)-pii/4.)*a*omega)
+   
+               temperature(k,iCell) = temperature(k,iCell)/(1.+0.61*scalars(index_qv,k,iCell))
+   
+               theta (k,iCell) = temperature(k,iCell)*  &
+                                     (0.5*(pressure(k,iCell)+pressure(k+1,iCell))/p0)**(-rgas/cp)
+               alpha (k,iCell) = (rgas/p0)*theta(k,iCell)*(1.+1.61*scalars(index_qv,k,iCell))* &
+                                     (0.5*(pressure(k,iCell)+pressure(k+1,iCell))/p0)**cvpm
+   
+               if (temperature(k,iCell) > 273.15) then
+                   es  = 1000.*0.6112*exp(17.67*(temperature(k,iCell)-273.15)/(temperature(k,iCell)-29.65))
+               else
+                   es  = 1000.*0.6112*exp(21.8745584*(temperature(k,iCell)-273.16)/(temperature(k,iCell)-7.66))
+               end if
+               qvs = (287.04/461.6)*es/(ptmp-es)
+!               qvs =  380.*exp(17.27*(temperature(k,iCell)-273.)/(temperature(k,iCell)-36.))/ptmp
+   
+               scalars(index_qv,k,iCell) = rel_hum(k,iCell)*qvs
+            end do
+   
+            do k=nz1,1,-1
+               pressure(k,iCell) = pressure(k+1,iCell)-dnw(k)*h(k,iCell)*(1.+scalars(index_qv,k,iCell))
+               geopotential(k,iCell) = geopotential(k+1,iCell)+dnw(k)*h(k,iCell)*alpha(k,iCell)
+            end do
+   
+         end do
+      end do
+
       write(6,*) 'ptop = ',ptop,'  zt = ',geopotential(nz,1)/gravity
 
-      write(6,*) ' full sounding '
+      write(6,*) ' full sounding with moisture'
       do k=1,nz1
          write(6,*) k, geopotential(k,1)/gravity, 0.01*pressure(k,1), theta(k,1), &
                     theta(k,1)*(pressure(k,1)/p0)**(rgas/cp)
