@@ -118,8 +118,8 @@ module time_integration
                                             block % mesh % nVertLevels, block % mesh % nCells, &
                                             block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
            call dmpar_exch_halo_field2dReal(domain % dminfo, block % mesh % cqu % array(:,:), &
-                                            block % mesh % nVertLevels, block % mesh % nCells, &
-                                            block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
+                                            block % mesh % nVertLevels, block % mesh % nEdges, &
+                                            block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
            call dmpar_exch_halo_field2dReal(domain % dminfo, block % time_levs(2) % state % h % array(:,:), &
                                             block % mesh % nVertLevels, block % mesh % nCells, &
                                             block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
