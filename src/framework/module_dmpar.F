@@ -110,6 +110,25 @@ include 'mpif.h'
    end subroutine dmpar_abort
 
 
+   subroutine dmpar_global_abort(mesg)
+
+      implicit none
+
+      character (len=*), intent(in) :: mesg
+
+#ifdef _MPI
+      integer :: mpi_ierr, mpi_errcode
+
+      write(0,*) trim(mesg)
+      call MPI_Abort(MPI_COMM_WORLD, mpi_errcode, mpi_ierr)
+#endif
+
+      write(0,*) trim(mesg)
+      stop
+
+   end subroutine dmpar_global_abort
+
+
    subroutine dmpar_bcast_int(dminfo, i)
 
       implicit none
