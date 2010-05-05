@@ -1,8 +1,9 @@
 module zoltan_interface
    use zoltan
-   use mpi
 
    implicit none
+
+   include 'mpif.h'
 
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    !! Data for reordering cells
