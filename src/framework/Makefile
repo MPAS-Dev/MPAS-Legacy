@@ -35,13 +35,12 @@ module_io_input.o: module_grid_types.o module_dmpar.o module_block_decomp.o modu
 module_io_output.o: module_grid_types.o module_dmpar.o module_sort.o module_configure.o
 
 clean:
-	$(RM) *.o *.mod libframework.a
+	$(RM) *.o *.mod *.f90 libframework.a
 
 .F.o:
 	$(RM) $@ $*.mod
 	$(CPP) $(CPPFLAGS) $(CPPINCLUDES) $< > $*.f90
 	$(FC) $(FFLAGS) -c $*.f90 $(FCINCLUDES)
-	$(RM) $*.f90
 
 .c.o:
 	$(CC) $(CFLAGS) $(CPPFLAGS) $(CPPINCLUDES) -c $<

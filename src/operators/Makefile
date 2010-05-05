@@ -10,10 +10,9 @@ operators: $(OBJS)
 module_vector_reconstruction.o:
 
 clean:
-	$(RM) *.o *.mod libops.a
+	$(RM) *.o *.mod *.f90 libops.a
 
 .F.o:
 	$(RM) $@ $*.mod
 	$(CPP) $(CPPFLAGS) $(CPPINCLUDES) $< > $*.f90
 	$(FC) $(FFLAGS) -c $*.f90 $(FCINCLUDES) -I../framework
-	$(RM) $*.f90

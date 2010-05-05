@@ -19,10 +19,9 @@ module_global_diagnostics.o:
 mpas_interface.o: module_global_diagnostics.o module_test_cases.o module_time_integration.o
 
 clean:
-	$(RM) *.o *.mod libdycore.a
+	$(RM) *.o *.mod *.f90 libdycore.a
 
 .F.o:
 	$(RM) $@ $*.mod
 	$(CPP) $(CPPFLAGS) $(CPPINCLUDES) $< > $*.f90
 	$(FC) $(FFLAGS) -c $*.f90 $(FCINCLUDES) -I../framework -I../operators
-	$(RM) $*.f90
