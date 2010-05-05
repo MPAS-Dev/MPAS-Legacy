@@ -27,6 +27,7 @@ module io_output
 
 
    interface io_output_field
+      module procedure io_output_field0dReal
       module procedure io_output_field1dReal
       module procedure io_output_field2dReal
       module procedure io_output_field3dReal
@@ -334,6 +335,35 @@ module io_output
       end if
  
    end subroutine io_output_init
+
+
+   subroutine io_output_field0dReal(output_obj, field)
+
+      implicit none
+
+      type (io_output_object), intent(in) :: output_obj
+      type (field0dReal), intent(inout) :: field
+
+      include 'netcdf.inc'
+
+      integer :: nferr
+      integer :: varID
+      integer, dimension(1) :: start1, count1
+
+      start1(1) = 1
+      count1(1) = 1
+
+#include "output_field0dreal.inc"
+
+#if (RKIND == 8)
+      nferr = nf_put_vara_double(output_obj % wr_ncid, varID, start1, count1, field % scalar)
+#else
+      nferr = nf_put_vara_real(output_obj % wr_ncid, varID, start1, count1, field % scalar)
+#endif
+ 
+      nferr = nf_sync(output_obj % wr_ncid)
+
+   end subroutine io_output_field0dReal
 
 
    subroutine io_output_field1dReal(output_obj, field)

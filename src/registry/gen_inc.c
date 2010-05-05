@@ -414,16 +414,18 @@ void gen_field_defs(struct variable * vars, struct dimension * dims)
          else {
             fortprintf(fd, "      allocate(g %% %s)\n", var_ptr->name_in_code);
             fortprintf(fd, "      allocate(g %% %s %% ioinfo)\n", var_ptr->name_in_code);
-            fortprintf(fd, "      allocate(g %% %s %% array(", var_ptr->name_in_code);
-            dimlist_ptr = var_ptr->dimlist;
-            fortprintf(fd, "%s", dimlist_ptr->dim->name_in_code);
-            dimlist_ptr = dimlist_ptr->next;
-            while (dimlist_ptr) {
-               fortprintf(fd, ", %s", dimlist_ptr->dim->name_in_code);
+            if (var_ptr->ndims > 0) {
+               fortprintf(fd, "      allocate(g %% %s %% array(", var_ptr->name_in_code);
+               dimlist_ptr = var_ptr->dimlist;
+               fortprintf(fd, "%s", dimlist_ptr->dim->name_in_code);
                dimlist_ptr = dimlist_ptr->next;
+               while (dimlist_ptr) {
+                  fortprintf(fd, ", %s", dimlist_ptr->dim->name_in_code);
+                  dimlist_ptr = dimlist_ptr->next;
+               }
+               fortprintf(fd, "))\n");
+   
             }
-            fortprintf(fd, "))\n");
-
             if (var_ptr->iostreams & INPUT0) 
                fortprintf(fd, "      g %% %s %% ioinfo %% input = .true.\n", var_ptr->name_in_code);
             else
@@ -473,9 +475,15 @@ void gen_field_defs(struct variable * vars, struct dimension * dims)
             fortprintf(fd, "      deallocate(g %% %s)\n\n", var_ptr2->super_array);
          }
          else {
-            fortprintf(fd, "      deallocate(g %% %s %% array)\n", var_ptr->name_in_code);
-            fortprintf(fd, "      deallocate(g %% %s %% ioinfo)\n", var_ptr->name_in_code);
-            fortprintf(fd, "      deallocate(g %% %s)\n\n", var_ptr->name_in_code);
+            if (var_ptr->ndims > 0) {
+               fortprintf(fd, "      deallocate(g %% %s %% array)\n", var_ptr->name_in_code);
+               fortprintf(fd, "      deallocate(g %% %s %% ioinfo)\n", var_ptr->name_in_code);
+               fortprintf(fd, "      deallocate(g %% %s)\n\n", var_ptr->name_in_code);
+            }
+            else {
+               fortprintf(fd, "      deallocate(g %% %s %% ioinfo)\n", var_ptr->name_in_code);
+               fortprintf(fd, "      deallocate(g %% %s)\n\n", var_ptr->name_in_code);
+            }
             var_ptr = var_ptr->next;
          }
       }
@@ -1026,7 +1034,10 @@ void gen_reads(struct variable * vars, struct dimension * dims)
             fortprintf(fd, "      deallocate(super_%s%id)\n", vtype, var_ptr->ndims);
       }
       else {
-         fortprintf(fd, "      block %% time_levs(1) %% state %% %s %% scalar = %s%id %% scalar\n", var_ptr->name_in_code, vtype, var_ptr->ndims);
+         if (var_ptr->timedim) 
+            fortprintf(fd, "      block %% time_levs(1) %% state %% %s %% scalar = %s%id %% scalar\n", var_ptr->name_in_code, vtype, var_ptr->ndims);
+         else
+            fortprintf(fd, "      block %% mesh %% %s %% scalar = %s%id %% scalar\n", var_ptr->name_in_code, vtype, var_ptr->ndims);
       }
      
       fortprintf(fd, "      end if\n\n");
@@ -1086,10 +1097,10 @@ void gen_reads(struct variable * vars, struct dimension * dims)
    
    
    /*
-    *  Generate code to read 1d, 2d, 3d time-invariant fields
+    *  Generate code to read 0d, 1d, 2d, 3d time-invariant fields
     */
    for(j=0; j<2; j++) {
-      for(i=1; i<=3; i++) {
+      for(i=0; i<=3; i++) {
          if (j == 0) {
             sprintf(fname, "input_field%idinteger.inc", i);
             ivtype = INTEGER;
@@ -1497,7 +1508,10 @@ void gen_writes(struct variable * vars, struct dimension * dims, struct namelist
       }
       else {
          fortprintf(fd, "      %s%id %% ioinfo %% fieldName = \'%s\'\n", vtype, var_ptr->ndims, var_ptr->name_in_file);
-         fortprintf(fd, "      %s%id %% scalar = domain %% blocklist %% time_levs(1) %% state %% %s %% scalar\n", vtype, var_ptr->ndims, var_ptr->name_in_code);
+         if (var_ptr->timedim) 
+            fortprintf(fd, "      %s%id %% scalar = domain %% blocklist %% time_levs(1) %% state %% %s %% scalar\n", vtype, var_ptr->ndims, var_ptr->name_in_code);
+         else
+            fortprintf(fd, "      %s%id %% scalar = domain %% blocklist %% mesh %% %s %% scalar\n", vtype, var_ptr->ndims, var_ptr->name_in_code);
       }
 
       if (var_ptr->timedim)
@@ -1518,10 +1532,10 @@ void gen_writes(struct variable * vars, struct dimension * dims, struct namelist
    
    
    /*
-    *  Generate code to write 1d, 2d, 3d time-invariant fields
+    *  Generate code to write 0d, 1d, 2d, 3d time-invariant fields
     */
    for(j=0; j<2; j++) {
-      for(i=1; i<=3; i++) {
+      for(i=0; i<=3; i++) {
          if (j == 0) {
             sprintf(fname, "output_field%idinteger.inc", i);
             ivtype = INTEGER;

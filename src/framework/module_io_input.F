@@ -21,6 +21,7 @@ module io_input
 
 
    interface io_input_field
+      module procedure io_input_field0dReal
       module procedure io_input_field1dReal
       module procedure io_input_field2dReal
       module procedure io_input_field3dReal
@@ -1066,6 +1067,33 @@ module io_input
 #include "get_dimension_by_name.inc"
 
    end subroutine io_input_get_dimension
+
+
+   subroutine io_input_field0dReal(input_obj, field)
+ 
+      implicit none
+
+      type (io_input_object), intent(in) :: input_obj      
+      type (field0dReal), intent(inout) :: field
+ 
+      include 'netcdf.inc'
+ 
+      integer :: nferr
+      integer :: varID
+      integer, dimension(1) :: start1, count1
+ 
+      start1(1) = 1
+      count1(1) = 1
+
+#include "input_field0dreal.inc"
+
+#if (RKIND == 8)
+      nferr = nf_get_vara_double(input_obj % rd_ncid, varID, start1, count1, field % scalar)
+#else
+      nferr = nf_get_vara_real(input_obj % rd_ncid, varID, start1, count1, field % scalar)
+#endif
+ 
+   end subroutine io_input_field0dReal
 
 
    subroutine io_input_field1dReal(input_obj, field)
