@@ -6,9 +6,7 @@ namelist character sw_model config_time_integration  RK4
 namelist real      sw_model config_dt                172.8
 namelist integer   sw_model config_ntimesteps        7500
 namelist integer   sw_model config_output_interval   500
-# mrp 100120:
 namelist integer   sw_model config_stats_interval    100
-# mrp 100120 end
 namelist real      sw_model config_visc              0.0
 namelist character io       config_input_name        grid.nc
 namelist character io       config_output_name       output.nc
@@ -85,7 +83,8 @@ var real    rho ( nVertLevels nCells Time ) iro rho - -
 var real    coeffs_reconstruct ( R3 maxEdges nCells ) - coeffs_reconstruct - -
 
 # Boundary conditions: read from input, saved in restart and written to output
-var integer uBC ( nVertLevels nEdges ) iro uBC - -
+var integer boundaryEdge ( nVertLevels nEdges ) iro boundaryEdge - -
+var integer boundaryVertex ( nVertLevels nVertices ) iro boundaryVertex - -
 var real    u_src ( nVertLevels nEdges ) iro u_src - -
 
 # Prognostic variables: read from input, saved in restart, and written to output
@@ -105,14 +104,15 @@ var real    pv_cell ( nVertLevels nCells Time ) o pv_cell - -
 var real    uReconstructX ( nVertLevels nCells Time ) o uReconstructX - -
 var real    uReconstructY ( nVertLevels nCells Time ) o uReconstructY - -
 var real    uReconstructZ ( nVertLevels nCells Time ) o uReconstructZ - -
-# mrp 100112:
-var real    zmid ( nVertLevels nCells Time ) o zmid - -
-var real    zbot ( nVertLevels nCells Time ) o zbot - -
+var real    zMid ( nVertLevels nCells Time ) o zMid - -
+var real    zBot ( nVertLevels nCells Time ) o zBot - -
 var real    zSurface ( nCells Time ) o zSurface - -
+var real    zMidEdge ( nVertLevels nEdges Time ) o zMidEdge - -
+var real    zBotEdge ( nVertLevels nEdges Time ) o zBotEdge - -
+var real    zSurfaceEdge ( nEdges Time ) o zSurfaceEdge - -
 var real    pmid ( nVertLevels nCells Time ) o pmid - -
 var real    pbot ( nVertLevels nCells Time ) o pbot - -
 var real    MontPot ( nVertLevels nCells Time ) o MontPot - -
-# mrp 100112 end
 
 
 # Other diagnostic variables: neither read nor written to any files

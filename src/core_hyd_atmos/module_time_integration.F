@@ -671,10 +671,10 @@ module time_integration
 
       if ( h_mom_eddy_visc4 > 0.0 ) then
 
-         allocate(delsq_divergence(nVertLevels, nCells))
-         allocate(delsq_u(nVertLevels, nEdges))
-         allocate(delsq_circulation(nVertLevels, nVertices))
-         allocate(delsq_vorticity(nVertLevels, nVertices))
+         allocate(delsq_divergence(nVertLevels, nCells+1))
+         allocate(delsq_u(nVertLevels, nEdges+1))
+         allocate(delsq_circulation(nVertLevels, nVertices+1))
+         allocate(delsq_vorticity(nVertLevels, nVertices+1))
 
          delsq_u(:,:) = 0.0
 
@@ -849,7 +849,7 @@ module time_integration
 
       if ( h_theta_eddy_visc4 > 0.0 ) then
 
-         allocate(delsq_theta(nVertLevels, nCells))
+         allocate(delsq_theta(nVertLevels, nCells+1))
 
          delsq_theta(:,:) = 0.
 
@@ -1519,9 +1519,9 @@ module time_integration
       real (kind=RKIND), dimension(:), pointer :: dvEdge, dcEdge, areaCell
       integer, dimension(:,:), pointer :: cellsOnEdge
 
-      real (kind=RKIND), dimension( num_scalars, grid % nEdges) :: h_flux
-      real (kind=RKIND), dimension( num_scalars, grid % nCells, 2 ) :: v_flux, v_flux_upwind, s_update
-      real (kind=RKIND), dimension( num_scalars, grid % nCells, 2 ) :: scale_out, scale_in
+      real (kind=RKIND), dimension( num_scalars, grid % nEdges+1) :: h_flux
+      real (kind=RKIND), dimension( num_scalars, grid % nCells+1, 2 ) :: v_flux, v_flux_upwind, s_update
+      real (kind=RKIND), dimension( num_scalars, grid % nCells+1, 2 ) :: scale_out, scale_in
       real (kind=RKIND), dimension( num_scalars ) :: s_max, s_min, s_max_update, s_min_update
 
       integer :: nVertLevels, km0, km1, ktmp, kcp1, kcm1

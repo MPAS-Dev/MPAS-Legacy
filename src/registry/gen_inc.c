@@ -387,10 +387,20 @@ void gen_field_defs(struct variable * vars, struct dimension * dims)
             fortprintf(fd, "      allocate(g %% %s %% ioinfo)\n", var_ptr2->super_array);
             fortprintf(fd, "      allocate(g %% %s %% array(%i, ", var_ptr2->super_array, i);
             dimlist_ptr = var_ptr2->dimlist;
-            fortprintf(fd, "%s", dimlist_ptr->dim->name_in_code);
+            if (!strncmp(dimlist_ptr->dim->name_in_file, "nCells", 1024) ||
+                !strncmp(dimlist_ptr->dim->name_in_file, "nEdges", 1024) ||
+                !strncmp(dimlist_ptr->dim->name_in_file, "nVertices", 1024))
+               fortprintf(fd, "%s + 1", dimlist_ptr->dim->name_in_code);
+            else
+               fortprintf(fd, "%s", dimlist_ptr->dim->name_in_code);
             dimlist_ptr = dimlist_ptr->next;
             while (dimlist_ptr) {
-               fortprintf(fd, ", %s", dimlist_ptr->dim->name_in_code);
+               if (!strncmp(dimlist_ptr->dim->name_in_file, "nCells", 1024) ||
+                   !strncmp(dimlist_ptr->dim->name_in_file, "nEdges", 1024) ||
+                   !strncmp(dimlist_ptr->dim->name_in_file, "nVertices", 1024))
+                  fortprintf(fd, ", %s + 1", dimlist_ptr->dim->name_in_code);
+               else
+                  fortprintf(fd, ", %s", dimlist_ptr->dim->name_in_code);
                dimlist_ptr = dimlist_ptr->next;
             }
             fortprintf(fd, "))\n");
@@ -417,10 +427,20 @@ void gen_field_defs(struct variable * vars, struct dimension * dims)
             if (var_ptr->ndims > 0) {
                fortprintf(fd, "      allocate(g %% %s %% array(", var_ptr->name_in_code);
                dimlist_ptr = var_ptr->dimlist;
-               fortprintf(fd, "%s", dimlist_ptr->dim->name_in_code);
+               if (!strncmp(dimlist_ptr->dim->name_in_file, "nCells", 1024) ||
+                   !strncmp(dimlist_ptr->dim->name_in_file, "nEdges", 1024) ||
+                   !strncmp(dimlist_ptr->dim->name_in_file, "nVertices", 1024))
+                  fortprintf(fd, "%s + 1", dimlist_ptr->dim->name_in_code);
+               else
+                  fortprintf(fd, "%s", dimlist_ptr->dim->name_in_code);
                dimlist_ptr = dimlist_ptr->next;
                while (dimlist_ptr) {
-                  fortprintf(fd, ", %s", dimlist_ptr->dim->name_in_code);
+                  if (!strncmp(dimlist_ptr->dim->name_in_file, "nCells", 1024) ||
+                      !strncmp(dimlist_ptr->dim->name_in_file, "nEdges", 1024) ||
+                      !strncmp(dimlist_ptr->dim->name_in_file, "nVertices", 1024))
+                     fortprintf(fd, ", %s + 1", dimlist_ptr->dim->name_in_code);
+                  else
+                     fortprintf(fd, ", %s", dimlist_ptr->dim->name_in_code);
                   dimlist_ptr = dimlist_ptr->next;
                }
                fortprintf(fd, "))\n");
@@ -516,10 +536,20 @@ void gen_field_defs(struct variable * vars, struct dimension * dims)
             fortprintf(fd, "      allocate(s %% %s %% ioinfo)\n", var_ptr2->super_array);
             fortprintf(fd, "      allocate(s %% %s %% array(%i, ", var_ptr2->super_array, i);
             dimlist_ptr = var_ptr2->dimlist;
-            fortprintf(fd, "b %% mesh %% %s", dimlist_ptr->dim->name_in_code);
+            if (!strncmp(dimlist_ptr->dim->name_in_file, "nCells", 1024) ||
+                !strncmp(dimlist_ptr->dim->name_in_file, "nEdges", 1024) ||
+                !strncmp(dimlist_ptr->dim->name_in_file, "nVertices", 1024))
+               fortprintf(fd, "b %% mesh %% %s + 1", dimlist_ptr->dim->name_in_code);
+            else
+               fortprintf(fd, "b %% mesh %% %s", dimlist_ptr->dim->name_in_code);
             dimlist_ptr = dimlist_ptr->next;
             while (dimlist_ptr) {
-               fortprintf(fd, ", b %% mesh %% %s", dimlist_ptr->dim->name_in_code);
+               if (!strncmp(dimlist_ptr->dim->name_in_file, "nCells", 1024) ||
+                   !strncmp(dimlist_ptr->dim->name_in_file, "nEdges", 1024) ||
+                   !strncmp(dimlist_ptr->dim->name_in_file, "nVertices", 1024))
+                  fortprintf(fd, ", b %% mesh %% %s + 1", dimlist_ptr->dim->name_in_code);
+               else
+                  fortprintf(fd, ", b %% mesh %% %s", dimlist_ptr->dim->name_in_code);
                dimlist_ptr = dimlist_ptr->next;
             }
             fortprintf(fd, "))\n");
@@ -546,10 +576,20 @@ void gen_field_defs(struct variable * vars, struct dimension * dims)
             fortprintf(fd, "      allocate(s %% %s %% ioinfo)\n", var_ptr->name_in_code);
             fortprintf(fd, "      allocate(s %% %s %% array(", var_ptr->name_in_code);
             dimlist_ptr = var_ptr->dimlist;
-            fortprintf(fd, "b %% mesh %% %s", dimlist_ptr->dim->name_in_code);
+            if (!strncmp(dimlist_ptr->dim->name_in_file, "nCells", 1024) ||
+                !strncmp(dimlist_ptr->dim->name_in_file, "nEdges", 1024) ||
+                !strncmp(dimlist_ptr->dim->name_in_file, "nVertices", 1024))
+               fortprintf(fd, "b %% mesh %% %s + 1", dimlist_ptr->dim->name_in_code);
+            else
+               fortprintf(fd, "b %% mesh %% %s", dimlist_ptr->dim->name_in_code);
             dimlist_ptr = dimlist_ptr->next;
             while (dimlist_ptr) {
-               fortprintf(fd, ", b %% mesh %% %s", dimlist_ptr->dim->name_in_code);
+               if (!strncmp(dimlist_ptr->dim->name_in_file, "nCells", 1024) ||
+                   !strncmp(dimlist_ptr->dim->name_in_file, "nEdges", 1024) ||
+                   !strncmp(dimlist_ptr->dim->name_in_file, "nVertices", 1024))
+                  fortprintf(fd, ", b %% mesh %% %s + 1", dimlist_ptr->dim->name_in_code);
+               else
+                  fortprintf(fd, ", b %% mesh %% %s", dimlist_ptr->dim->name_in_code);
                dimlist_ptr = dimlist_ptr->next;
             }
             fortprintf(fd, "))\n");

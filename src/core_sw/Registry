@@ -81,7 +81,8 @@ var real    h_s ( nCells ) iro h_s - -
 var real    coeffs_reconstruct ( R3 maxEdges nCells ) - coeffs_reconstruct - -
 
 # Boundary conditions: read from input, saved in restart and written to output
-var integer uBC ( nVertLevels nEdges ) iro uBC - -
+var integer boundaryEdge ( nVertLevels nEdges ) iro boundaryEdge - -
+var integer boundaryVertex ( nVertLevels nVertices ) iro boundaryVertex - -
 
 # Prognostic variables: read from input, saved in restart, and written to output
 var real    u ( nVertLevels nEdges Time ) iro u - -

@@ -707,8 +707,8 @@ include 'mpif.h'
       implicit none
 
       type (dm_info), intent(in) :: dminfo
-      integer, dimension(nOwnedList), intent(in) :: arrayIn
-      integer, dimension(nNeededList), intent(inout) :: arrayOut
+      integer, dimension(*), intent(in) :: arrayIn
+      integer, dimension(*), intent(inout) :: arrayOut
       integer, intent(in) :: nOwnedList, nNeededList
       type (exchange_list), pointer :: sendList, recvList
 
@@ -784,7 +784,7 @@ include 'mpif.h'
          write(0,*) 'Error in dmpar_alltoall_field: For non-dmpar, arrayIn and arrayOut dims must match.'
          call dmpar_abort(dminfo)
       else
-         arrayOut(:) = arrayIn(:)
+         arrayOut(1:nNeededList) = arrayIn(1:nOwnedList)
       end if
 #endif
 
@@ -797,8 +797,8 @@ include 'mpif.h'
 
       type (dm_info), intent(in) :: dminfo
       integer, intent(in) :: dim1, nOwnedList, nNeededList
-      integer, dimension(dim1,nOwnedList), intent(in) :: arrayIn
-      integer, dimension(dim1,nNeededList), intent(inout) :: arrayOut
+      integer, dimension(dim1,*), intent(in) :: arrayIn
+      integer, dimension(dim1,*), intent(inout) :: arrayOut
       type (exchange_list), pointer :: sendList, recvList
 
       type (exchange_list), pointer :: sendListPtr, recvListPtr
@@ -876,7 +876,7 @@ include 'mpif.h'
          write(0,*) 'Error in dmpar_alltoall_field: For non-dmpar, arrayIn and arrayOut dims must match.'
          call dmpar_abort(dminfo)
       else
-         arrayOut(:,:) = arrayIn(:,:)
+         arrayOut(:,1:nNeededList) = arrayIn(:,1:nOwnedList)
       end if
 #endif
 
@@ -888,8 +888,8 @@ include 'mpif.h'
       implicit none
 
       type (dm_info), intent(in) :: dminfo
-      real (kind=RKIND), dimension(nOwnedList), intent(in) :: arrayIn
-      real (kind=RKIND), dimension(nNeededList), intent(inout) :: arrayOut
+      real (kind=RKIND), dimension(*), intent(in) :: arrayIn
+      real (kind=RKIND), dimension(*), intent(inout) :: arrayOut
       integer, intent(in) :: nOwnedList, nNeededList
       type (exchange_list), pointer :: sendList, recvList
 
@@ -965,7 +965,7 @@ include 'mpif.h'
          write(0,*) 'Error in dmpar_alltoall_field: For non-dmpar, arrayIn and arrayOut dims must match.'
          call dmpar_abort(dminfo)
       else
-         arrayOut(:) = arrayIn(:)
+         arrayOut(1:nNeededList) = arrayIn(1:nOwnedList)
       end if
 #endif
 
@@ -978,8 +978,8 @@ include 'mpif.h'
 
       type (dm_info), intent(in) :: dminfo
       integer, intent(in) :: dim1, nOwnedList, nNeededList
-      real (kind=RKIND), dimension(dim1,nOwnedList), intent(in) :: arrayIn
-      real (kind=RKIND), dimension(dim1,nNeededList), intent(inout) :: arrayOut
+      real (kind=RKIND), dimension(dim1,*), intent(in) :: arrayIn
+      real (kind=RKIND), dimension(dim1,*), intent(inout) :: arrayOut
       type (exchange_list), pointer :: sendList, recvList
 
       type (exchange_list), pointer :: sendListPtr, recvListPtr
@@ -1057,7 +1057,7 @@ include 'mpif.h'
          write(0,*) 'Error in dmpar_alltoall_field: For non-dmpar, arrayIn and arrayOut dims must match.'
          call dmpar_abort(dminfo)
       else
-         arrayOut(:,:) = arrayIn(:,:)
+         arrayOut(:,1:nNeededList) = arrayIn(:,1:nOwnedList)
       end if
 #endif
 
@@ -1070,8 +1070,8 @@ include 'mpif.h'
 
       type (dm_info), intent(in) :: dminfo
       integer, intent(in) :: dim1, dim2, nOwnedList, nNeededList
-      real (kind=RKIND), dimension(dim1,dim2,nOwnedList), intent(in) :: arrayIn
-      real (kind=RKIND), dimension(dim1,dim2,nNeededList), intent(inout) :: arrayOut
+      real (kind=RKIND), dimension(dim1,dim2,*), intent(in) :: arrayIn
+      real (kind=RKIND), dimension(dim1,dim2,*), intent(inout) :: arrayOut
       type (exchange_list), pointer :: sendList, recvList
 
       type (exchange_list), pointer :: sendListPtr, recvListPtr
@@ -1149,7 +1149,7 @@ include 'mpif.h'
          write(0,*) 'Error in dmpar_alltoall_field: For non-dmpar, arrayIn and arrayOut dims must match.'
          call dmpar_abort(dminfo)
       else
-         arrayOut(:,:,:) = arrayIn(:,:,:)
+         arrayOut(:,:,1:nNeededList) = arrayIn(:,:,1:nOwnedList)
       end if
 #endif
 
@@ -1161,7 +1161,7 @@ include 'mpif.h'
       implicit none
 
       integer, intent(in) :: nField, nBuffer, startPackIdx
-      integer, dimension(nField), intent(in) :: field
+      integer, dimension(*), intent(in) :: field
       type (exchange_list), intent(in) :: sendList
       integer, dimension(nBuffer), intent(out) :: buffer
       integer, intent(inout) :: nPacked, lastPackedIdx
@@ -1188,7 +1188,7 @@ include 'mpif.h'
       implicit none
 
       integer, intent(in) :: ds, de, nField, nBuffer, startPackIdx
-      integer, dimension(ds:de,1:nField), intent(in) :: field
+      integer, dimension(ds:de,*), intent(in) :: field
       type (exchange_list), intent(in) :: sendList
       integer, dimension(nBuffer), intent(out) :: buffer
       integer, intent(inout) :: nPacked, lastPackedIdx
@@ -1222,7 +1222,7 @@ include 'mpif.h'
       implicit none
 
       integer, intent(in) :: nField, nBuffer, startPackIdx
-      real (kind=RKIND), dimension(nField), intent(in) :: field
+      real (kind=RKIND), dimension(*), intent(in) :: field
       type (exchange_list), intent(in) :: sendList
       real (kind=RKIND), dimension(nBuffer), intent(out) :: buffer
       integer, intent(inout) :: nPacked, lastPackedIdx
@@ -1249,7 +1249,7 @@ include 'mpif.h'
       implicit none
 
       integer, intent(in) :: ds, de, nField, nBuffer, startPackIdx
-      real (kind=RKIND), dimension(ds:de,1:nField), intent(in) :: field
+      real (kind=RKIND), dimension(ds:de,*), intent(in) :: field
       type (exchange_list), intent(in) :: sendList
       real (kind=RKIND), dimension(nBuffer), intent(out) :: buffer
       integer, intent(inout) :: nPacked, lastPackedIdx
@@ -1283,7 +1283,7 @@ include 'mpif.h'
       implicit none
 
       integer, intent(in) :: d1s, d1e, d2s, d2e, nField, nBuffer, startPackIdx
-      real (kind=RKIND), dimension(d1s:d1e,d2s:d2e,1:nField), intent(in) :: field
+      real (kind=RKIND), dimension(d1s:d1e,d2s:d2e,*), intent(in) :: field
       type (exchange_list), intent(in) :: sendList
       real (kind=RKIND), dimension(nBuffer), intent(out) :: buffer
       integer, intent(inout) :: nPacked, lastPackedIdx
@@ -1321,7 +1321,7 @@ include 'mpif.h'
       implicit none
 
       integer, intent(in) :: nField, nBuffer, startUnpackIdx
-      integer, dimension(nField), intent(inout) :: field
+      integer, dimension(*), intent(inout) :: field
       type (exchange_list), intent(in) :: recvList
       integer, dimension(nBuffer), intent(in) :: buffer
       integer, intent(inout) :: nUnpacked, lastUnpackedIdx
@@ -1348,7 +1348,7 @@ include 'mpif.h'
       implicit none
 
       integer, intent(in) :: ds, de, nField, nBuffer, startUnpackIdx
-      integer, dimension(ds:de,1:nField), intent(inout) :: field
+      integer, dimension(ds:de,*), intent(inout) :: field
       type (exchange_list), intent(in) :: recvList
       integer, dimension(nBuffer), intent(in) :: buffer
       integer, intent(inout) :: nUnpacked, lastUnpackedIdx
@@ -1377,7 +1377,7 @@ include 'mpif.h'
       implicit none
 
       integer, intent(in) :: nField, nBuffer, startUnpackIdx
-      real (kind=RKIND), dimension(nField), intent(inout) :: field
+      real (kind=RKIND), dimension(*), intent(inout) :: field
       type (exchange_list), intent(in) :: recvList
       real (kind=RKIND), dimension(nBuffer), intent(in) :: buffer
       integer, intent(inout) :: nUnpacked, lastUnpackedIdx
@@ -1404,7 +1404,7 @@ include 'mpif.h'
       implicit none
 
       integer, intent(in) :: ds, de, nField, nBuffer, startUnpackIdx
-      real (kind=RKIND), dimension(ds:de,1:nField), intent(inout) :: field
+      real (kind=RKIND), dimension(ds:de,*), intent(inout) :: field
       type (exchange_list), intent(in) :: recvList
       real (kind=RKIND), dimension(nBuffer), intent(in) :: buffer
       integer, intent(inout) :: nUnpacked, lastUnpackedIdx
@@ -1434,7 +1434,7 @@ include 'mpif.h'
       implicit none
 
       integer, intent(in) :: d1s, d1e, d2s, d2e, nField, nBuffer, startUnpackIdx
-      real (kind=RKIND), dimension(d1s:d1e,d2s:d2e,1:nField), intent(inout) :: field
+      real (kind=RKIND), dimension(d1s:d1e,d2s:d2e,*), intent(inout) :: field
       type (exchange_list), intent(in) :: recvList
       real (kind=RKIND), dimension(nBuffer), intent(in) :: buffer
       integer, intent(inout) :: nUnpacked, lastUnpackedIdx
@@ -1468,7 +1468,7 @@ include 'mpif.h'
 
       type (dm_info), intent(in) :: dminfo
       integer, intent(in) :: dim1
-      real (kind=RKIND), dimension(dim1), intent(inout) :: array
+      real (kind=RKIND), dimension(*), intent(inout) :: array
       type (exchange_list), pointer :: sendList, recvList
 
       type (exchange_list), pointer :: sendListPtr, recvListPtr
@@ -1528,7 +1528,7 @@ include 'mpif.h'
 
       type (dm_info), intent(in) :: dminfo
       integer, intent(in) :: dim1, dim2
-      real (kind=RKIND), dimension(dim1,dim2), intent(inout) :: array
+      real (kind=RKIND), dimension(dim1,*), intent(inout) :: array
       type (exchange_list), pointer :: sendList, recvList
 
       type (exchange_list), pointer :: sendListPtr, recvListPtr
@@ -1592,7 +1592,7 @@ include 'mpif.h'
 
       type (dm_info), intent(in) :: dminfo
       integer, intent(in) :: dim1, dim2, dim3
-      real (kind=RKIND), dimension(dim1,dim2,dim3), intent(inout) :: array
+      real (kind=RKIND), dimension(dim1,dim2,*), intent(inout) :: array
       type (exchange_list), pointer :: sendList, recvList
 
       type (exchange_list), pointer :: sendListPtr, recvListPtr

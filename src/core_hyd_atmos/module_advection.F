@@ -96,7 +96,7 @@ module advection
 
          do_the_cell = .true.
          do i=1,n
-            if (cell_list(i) <= 0) do_the_cell = .false.
+            if (cell_list(i) > grid % nCells) do_the_cell = .false.
          end do
 
 

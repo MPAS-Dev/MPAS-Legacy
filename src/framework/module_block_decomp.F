@@ -142,7 +142,11 @@ module block_decomp
       edgeIDListLocal(:) = edgeIDList(:)
 
       do i=1,nEdges
-         if (hash_search(h, cellsOnEdge(1,i))) then
+         do j=1,maxCells
+            if (cellsOnEdge(j,i) /= 0) exit
+         end do
+if (j > maxCells) write(0,*) 'Error in block_decomp_partitioned_edge_list: edge/vertex is not adjacent to any valid cells'
+         if (hash_search(h, cellsOnEdge(j,i))) then
             lastEdge = lastEdge + 1
             edgeIDList(lastEdge) = edgeIDListLocal(i)
          else
@@ -231,8 +235,10 @@ end if
 
       do i=1,local_graph_info % nVertices
          do j=1,local_graph_info % nAdjacent(i)
-            if (.not. hash_search(h, local_graph_info % adjacencyList(j,i))) then
-               call hash_insert(h, local_graph_info % adjacencyList(j,i))
+            if (local_graph_info % adjacencyList(j,i) /= 0) then
+               if (.not. hash_search(h, local_graph_info % adjacencyList(j,i))) then
+                  call hash_insert(h, local_graph_info % adjacencyList(j,i))
+               end if
             end if
          end do
       end do 
@@ -264,10 +270,12 @@ if (hash_size(h) /= k-1) &
   write(0,*) 'block_decomp_add_halo: Somehow we don''t have the right number of non-ghost cells.'
       do i=1,local_graph_info % nVertices
          do j=1,local_graph_info % nAdjacent(i)
-            if (.not. hash_search(h, local_graph_info % adjacencyList(j,i))) then
-               call hash_insert(h, local_graph_info % adjacencyList(j,i))
-               local_graph_with_halo % vertexID(k) = local_graph_info % adjacencyList(j,i)
-               k = k + 1
+            if (local_graph_info % adjacencyList(j,i) /= 0) then
+               if (.not. hash_search(h, local_graph_info % adjacencyList(j,i))) then
+                  call hash_insert(h, local_graph_info % adjacencyList(j,i))
+                  local_graph_with_halo % vertexID(k) = local_graph_info % adjacencyList(j,i)
+                  k = k + 1
+               end if
             end if
          end do
       end do 

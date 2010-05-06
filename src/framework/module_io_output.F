@@ -188,8 +188,12 @@ module io_output
                                                                            domain % blocklist % mesh % edgesOnEdge % array(j,i))
          end do
          do j=domain % blocklist % mesh % nEdgesOnEdge % array(i)+1,2*domain % blocklist % mesh % maxEdges
-            edgesOnEdge(j,i) = domain % blocklist % mesh % indexToEdgeID % array( &
+            if(domain % blocklist % mesh % nEdgesOnEdge % array(i) .eq. 0) then
+               edgesOnEdge(j,i) = domain % blocklist % mesh % nEdgesSolve + 1
+            else
+               edgesOnEdge(j,i) = domain % blocklist % mesh % indexToEdgeID % array( &
                                                                            domain % blocklist % mesh % nEdgesOnEdge % array(i))
+            endif
          end do
       end do
       do i=1,domain % blocklist % mesh % nVerticesSolve

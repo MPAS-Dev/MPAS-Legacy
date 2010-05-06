@@ -125,7 +125,7 @@ module time_integration
         do while (associated(block))
            call compute_tend(block % intermediate_step(TEND), block % intermediate_step(PROVIS), block % mesh)
            call compute_scalar_tend(block % intermediate_step(TEND), block % intermediate_step(PROVIS), block % mesh)
-           call enforce_uBC(block % intermediate_step(TEND), block % mesh)
+           call enforce_boundaryEdge(block % intermediate_step(TEND), block % mesh)
            block => block % next
         end do
 
@@ -297,13 +297,13 @@ module time_integration
       do iEdge=1,nEdges
             cell1 = cellsOnEdge(1,iEdge)
             cell2 = cellsOnEdge(2,iEdge)
-            if (cell1 > 0) then
+            if (cell1 <= nCells) then
                do k=1,nVertLevels
                   flux = u(k,iEdge) * dvEdge(iEdge) * h_edge(k,iEdge)
                   tend_h(k,cell1) = tend_h(k,cell1) - flux
                end do 
             end if
-            if (cell2 > 0) then
+            if (cell2 <= nCells) then
                do k=1,nVertLevels
                   flux = u(k,iEdge) * dvEdge(iEdge) * h_edge(k,iEdge)
                   tend_h(k,cell2) = tend_h(k,cell2) + flux
@@ -343,6 +343,7 @@ module time_integration
                workpv = 0.5 * (pv_edge(k,iEdge) + pv_edge(k,eoe))
                q = q + weightsOnEdge(j,iEdge) * u(k,eoe) * workpv * h_edge(k,eoe) 
             end do
+
             tend_u(k,iEdge) =       &
                               q     &
                               + u_diffusion &
@@ -404,7 +405,7 @@ module time_integration
       do iEdge=1,grid % nEdges
             cell1 = grid % cellsOnEdge % array(1,iEdge)
             cell2 = grid % cellsOnEdge % array(2,iEdge)
-            if (cell1 > 0 .and. cell2 > 0) then
+            if (cell1 <= grid%nCells .and. cell2 <= grid%nCells) then
                do k=1,grid % nVertLevels
                   do iTracer=1,grid % nTracers
                      tracer_edge = 0.5 * (s % tracers % array(iTracer,k,cell1) + s % tracers % array(iTracer,k,cell2))
@@ -450,7 +451,7 @@ module time_integration
       real (kind=RKIND), dimension(:), pointer :: h_s, fVertex, fEdge, dvEdge, dcEdge, areaCell, areaTriangle
       real (kind=RKIND), dimension(:,:), pointer :: vh, weightsOnEdge, kiteAreasOnVertex, h_edge, h, u, v, tend_h, tend_u, &
                                                     circulation, vorticity, ke, pv_edge, pv_vertex, pv_cell, gradPVn, gradPVt, divergence
-      integer, dimension(:,:), pointer :: cellsOnEdge, cellsOnVertex, verticesOnEdge, edgesOnCell, edgesOnEdge, edgesOnVertex, uBC
+      integer, dimension(:,:), pointer :: cellsOnEdge, cellsOnVertex, verticesOnEdge, edgesOnCell, edgesOnEdge, edgesOnVertex, boundaryEdge
       integer, dimension(:), pointer :: nEdgesOnCell, nEdgesOnEdge
       real (kind=RKIND) :: r, h1, h2
 
@@ -495,7 +496,7 @@ module time_integration
       nVertices   = grid % nVertices
       nVertLevels = grid % nVertLevels
 
-      uBC => grid % uBC % array
+      boundaryEdge => grid % boundaryEdge % array
 
       !
       ! Compute height on cell edges at velocity locations
@@ -503,7 +504,7 @@ module time_integration
       do iEdge=1,nEdges
          cell1 = cellsOnEdge(1,iEdge)
          cell2 = cellsOnEdge(2,iEdge)
-         if (cell1 > 0 .and. cell2 > 0) then
+         if (cell1 <= nCells .and. cell2 <= nCells) then
             do k=1,nVertLevels
                h_edge(k,iEdge) = 0.5 * (h(k,cell1) + h(k,cell2))
             end do
@@ -511,16 +512,22 @@ module time_integration
       end do
 
       !
+      ! set the velocity in the nEdges+1 slot to zero, this is a dummy address
+      !    used to when reading for edges that do not exist
+      !
+      u(:,nEdges+1) = 0.0
+
+      !
       ! Compute circulation and relative vorticity at each vertex
       !
       circulation(:,:) = 0.0
       do iEdge=1,nEdges
-         if (verticesOnEdge(1,iEdge) > 0) then
+         if (verticesOnEdge(1,iEdge) <= nVertices) then
             do k=1,nVertLevels
                circulation(k,verticesOnEdge(1,iEdge)) = circulation(k,verticesOnEdge(1,iEdge)) - dcEdge(iEdge) * u(k,iEdge)
             end do
          end if
-         if (verticesOnEdge(2,iEdge) > 0) then
+         if (verticesOnEdge(2,iEdge) <= nVertices) then
             do k=1,nVertLevels
                circulation(k,verticesOnEdge(2,iEdge)) = circulation(k,verticesOnEdge(2,iEdge)) + dcEdge(iEdge) * u(k,iEdge)
             end do
@@ -532,6 +539,7 @@ module time_integration
          end do
       end do
 
+
       !
       ! Compute the divergence at each cell center
       !
@@ -539,12 +547,12 @@ module time_integration
       do iEdge=1,nEdges
          cell1 = cellsOnEdge(1,iEdge)
          cell2 = cellsOnEdge(2,iEdge)
-         if (cell1 > 0) then
+         if (cell1 <= nCells) then
             do k=1,nVertLevels
               divergence(k,cell1) = divergence(k,cell1) + u(k,iEdge)*dvEdge(iEdge)
             enddo
          endif
-         if(cell2 > 0) then
+         if(cell2 <= nCells) then
             do k=1,nVertLevels
               divergence(k,cell2) = divergence(k,cell2) - u(k,iEdge)*dvEdge(iEdge)
             enddo
@@ -580,7 +588,7 @@ module time_integration
       do iEdge = 1,nEdges
          do i=1,nEdgesOnEdge(iEdge)
             eoe = edgesOnEdge(i,iEdge)
-            if (eoe > 0) then
+            if (eoe <= nEdges) then
                do k = 1,nVertLevels
                  v(k,iEdge) = v(k,iEdge) + weightsOnEdge(i,iEdge) * u(k, eoe)
               end do
@@ -604,14 +612,13 @@ module time_integration
 #endif
 
 
-      ! tdr
       !
       ! Compute height at vertices, pv at vertices, and average pv to edge locations
       !  ( this computes pv_vertex at all vertices bounding real cells and distance-1 ghost cells )
       !
       VTX_LOOP: do iVertex = 1,nVertices
          do i=1,grid % vertexDegree
-            if (cellsOnVertex(i,iVertex) <= 0) cycle VTX_LOOP
+            if (cellsOnVertex(i,iVertex) > nVertices) cycle VTX_LOOP
          end do
          do k=1,nVertLevels
             h_vertex = 0.0
@@ -623,10 +630,8 @@ module time_integration
             pv_vertex(k,iVertex) = (fVertex(iVertex) + vorticity(k,iVertex)) / h_vertex
          end do
       end do VTX_LOOP
-      ! tdr
 
 
-      ! tdr
       !
       ! Compute gradient of PV in the tangent direction
       !   ( this computes gradPVt at all edges bounding real cells and distance-1 ghost cells )
@@ -638,7 +643,6 @@ module time_integration
          enddo
       enddo
 
-      ! tdr
       !
       ! Compute pv at the edges
       !   ( this computes pv_edge at all edges bounding real cells and distance-1 ghost cells )
@@ -647,16 +651,14 @@ module time_integration
       do iVertex = 1,nVertices
         do i=1,grid % vertexDegree
           iEdge = edgesOnVertex(i,iVertex)
-          if(iEdge > 0) then
+          if(iEdge <= nEdges) then
             do k=1,nVertLevels
               pv_edge(k,iEdge) =  pv_edge(k,iEdge)  + 0.5 * pv_vertex(k,iVertex)
             enddo
           endif
         end do
       end do
-      ! tdr
 
-      ! tdr
       !
       ! Modify PV edge with upstream bias. 
       !
@@ -667,7 +669,6 @@ module time_integration
       enddo
 
 
-      ! tdr
       !
       ! Compute pv at cell centers
       !    ( this computes pv_cell for all real cells and distance-1 ghost cells )
@@ -676,30 +677,28 @@ module time_integration
       do iVertex = 1, nVertices
        do i=1,grid % vertexDegree
          iCell = cellsOnVertex(i,iVertex)
-         if( iCell > 0) then
+         if (iCell <= nCells) then
            do k = 1,nVertLevels
              pv_cell(k,iCell) = pv_cell(k,iCell) + kiteAreasOnVertex(i, iVertex) * pv_vertex(k, iVertex) / areaCell(iCell)
            enddo
          endif
        enddo
       enddo
-      ! tdr
 
-      ! tdr
+
       !
       ! Compute gradient of PV in normal direction
       !   ( this computes gradPVn for all edges bounding real cells )
       !
       gradPVn(:,:) = 0.0
       do iEdge = 1,nEdges
-        if( cellsOnEdge(1,iEdge) > 0 .and. cellsOnEdge(2,iEdge) > 0) then
+        if( cellsOnEdge(1,iEdge) <= nCells .and. cellsOnEdge(2,iEdge) <= nCells) then
           do k = 1,nVertLevels
             gradPVn(k,iEdge) = (pv_cell(k,cellsOnEdge(2,iEdge)) - pv_cell(k,cellsOnEdge(1,iEdge))) / &
                                  dcEdge(iEdge)
           enddo
         endif
       enddo
-      ! tdr
 
       ! Modify PV edge with upstream bias.
       !
@@ -712,32 +711,38 @@ module time_integration
       !
       ! set pv_edge = fEdge / h_edge at boundary points
       !
-      if (maxval(uBC).gt.0) then
-      do iEdge = 1,nEdges
-         cell1 = cellsOnEdge(1,iEdge)
-         cell2 = cellsOnEdge(2,iEdge)
-         do k = 1,nVertLevels
-           if(uBC(k,iEdge).eq.1) then
-             if(cell1.gt.0) h1 = h(k,cell1)
-             if(cell2.gt.0) h2 = h(k,cell2)
-             pv_edge(k,iEdge) = fEdge(iEdge) / ( max(h1,h2) )
-             v(k,iEdge) = 0.0
-           endif
-         enddo
-      enddo
-      endif
+   !  if (maxval(boundaryEdge).ge.0) then
+   !  do iEdge = 1,nEdges
+   !     cell1 = cellsOnEdge(1,iEdge)
+   !     cell2 = cellsOnEdge(2,iEdge)
+   !     do k = 1,nVertLevels
+   !       if(boundaryEdge(k,iEdge).eq.1) then
+   !         v(k,iEdge) = 0.0
+   !         if(cell1.gt.0) then
+   !            h1 = h(k,cell1)
+   !            pv_edge(k,iEdge) = fEdge(iEdge) / h1
+   !            h_edge(k,iEdge) = h1
+   !         else
+   !            h2 = h(k,cell2)
+   !            pv_edge(k,iEdge) = fEdge(iEdge) / h2
+   !            h_edge(k,iEdge) = h2
+   !         endif
+   !       endif
+   !     enddo
+   !  enddo
+   !  endif
 
 
    end subroutine compute_solve_diagnostics
 
 
-   subroutine enforce_uBC(tend, grid)
+   subroutine enforce_boundaryEdge(tend, grid)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! Enforce any boundary conditions on the normal velocity at each edge
    !
    ! Input: grid - grid metadata
    !
-   ! Output: tend_u set to zero at uBC == 1 locations
+   ! Output: tend_u set to zero at boundaryEdge == 1 locations
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
@@ -746,7 +751,7 @@ module time_integration
       type (grid_state), intent(inout) :: tend
       type (grid_meta), intent(in) :: grid
 
-      integer, dimension(:,:), pointer :: uBC
+      integer, dimension(:,:), pointer :: boundaryEdge
       real (kind=RKIND), dimension(:,:), pointer :: tend_u
       integer :: nCells, nEdges, nVertices, nVertLevels
       integer :: iEdge, k
@@ -756,22 +761,22 @@ module time_integration
       nVertices   = grid % nVertices
       nVertLevels = grid % nVertLevels
 
-      uBC         => grid % uBC % array
-      tend_u      => tend % u % array
+      boundaryEdge         => grid % boundaryEdge % array
+      tend_u               => tend % u % array
 
-      if(maxval(uBC).le.0) return
+      if(maxval(boundaryEdge).le.0) return
 
       do iEdge = 1,nEdges
         do k = 1,nVertLevels
 
-          if(uBC(k,iEdge).eq.1) then
+          if(boundaryEdge(k,iEdge).eq.1) then
              tend_u(k,iEdge) = 0.0
           endif
 
         enddo
        enddo
 
-   end subroutine enforce_uBC
+   end subroutine enforce_boundaryEdge
 
 
 end module time_integration

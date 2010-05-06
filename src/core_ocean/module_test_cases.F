@@ -23,9 +23,6 @@
 
       integer :: i, iCell, iEdge, iVtx, iLevel
       type (block_type), pointer :: block_ptr
-      real (kind=RKIND), dimension(:,:), pointer :: h, u, u_src, rho
-      real (kind=RKIND) :: delta_rho
-      integer :: nCells, nEdges, nVertices, nVertLevels
 
       if (config_test_case == 0) then
          write(0,*) 'Using initial conditions supplied in input file'
@@ -76,84 +73,16 @@
          stop
       end if
 
-      ! mrp 100121:
-      !
-      ! Initialize u_src, rho, alpha
-      ! This is a temporary fix until everything is specified correctly 
-      ! in an initial conditions file.
-      !
       block_ptr => domain % blocklist
       do while (associated(block_ptr))
-         h          => block_ptr % time_levs(1) % state % h % array
-         u          => block_ptr % time_levs(1) % state % u % array
-         rho        => block_ptr % time_levs(1) % state % rho % array
 
-         u_src      => block_ptr % mesh % u_src % array
+        do i=2,nTimeLevs
+           call copy_state(block_ptr % time_levs(1) % state, &
+                           block_ptr % time_levs(i) % state)
+        end do
 
-         nCells      = block_ptr % mesh % nCells
-         nEdges      = block_ptr % mesh % nEdges
-         nVertices   = block_ptr % mesh % nVertices
-         nVertLevels = block_ptr % mesh % nVertLevels
-
-         ! Momentum forcing u_src
-         if (config_test_case > 0) then
-           ! for shallow water test cases:
-           u_src = 0.0
-         elseif (config_test_case == 0 ) then
-           ! for rectangular basin:
-           do iEdge=1,nEdges
-              u_src(1:nVertLevels, iEdge) = u_src(1, iEdge) / nVertLevels
-           end do
-         endif
-
-         ! define the density for multiple layers
-         delta_rho=0.0
-         do iLevel = 1,nVertLevels
-           rho(iLevel,1) = delta_rho*(iLevel-1)
-         enddo
-         rho(:,1) = rho(:,1) - sum(rho(:,1))/nVertLevels + 1000.0
-         do iLevel = 1,nVertLevels
-           rho(iLevel,:) = rho(iLevel,1)
-         enddo
-
-#ifdef EXPAND_LEVELS
-         print '(10a)', 'EXPAND_LEVELS compiler flag is on.', &
-            ' Copying h and u from k=1 to other levels.'
-         print '(a,i5)', 'EXPAND_LEVELS =', EXPAND_LEVELS
-         print '(a,i5)', 'nVertLevels =', nVertLevels
-         do iCell=1,nCells
-            ! make the total thickness equal to the single-layer thickness:
-            h(1:nVertLevels, iCell) = h(1,iCell) / nVertLevels
-         end do
-
-         do iEdge=1,nEdges
-            u(2:nVertLevels, iEdge) = u(1,iEdge)
-         end do
-#else
-         print '(10a)', 'EXPAND_LEVELS compiler flag is off.'
-#endif
-
-         do i=2,nTimeLevs
-            call copy_state(block_ptr % time_levs(1) % state, &
-                            block_ptr % time_levs(i) % state)
-         end do
-
-         ! print some diagnostics
-         print '(10a)', 'ilevel',&
-            '  rho      ',&
-            '  min u       max u     ',&
-            '  min h       max h     ',&
-            '  min u_src   max u_src '
-         do iLevel = 1,nVertLevels
-            print '(i5,20es12.4)', ilevel, rho(ilevel,1), &
-              minval(u(iLevel,:)), maxval(u(iLevel,:)), &
-              minval(h(iLevel,:)), maxval(h(iLevel,:)), &
-              minval(u_src(iLevel,:)), maxval(u_src(iLevel,:))
-         enddo
-
-         block_ptr => block_ptr % next
+        block_ptr => block_ptr % next
       end do
-      ! mrp 100121 end
 
    end subroutine setup_sw_test_case
 

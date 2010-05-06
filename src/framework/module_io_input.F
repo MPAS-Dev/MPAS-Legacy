@@ -805,7 +805,8 @@ module io_input
             if (k <= domain % blocklist % mesh % nCells) then
                domain % blocklist % mesh % cellsOnCell % array(j,i) = cellIDSorted(2,k)
             else
-               domain % blocklist % mesh % cellsOnCell % array(j,i) = 0
+               domain % blocklist % mesh % cellsOnCell % array(j,i) = domain % blocklist % mesh % nCells + 1
+!               domain % blocklist % mesh % cellsOnCell % array(j,i) = 0
             end if
 
             k = binary_search(edgeIDSorted, 2, 1, domain % blocklist % mesh % nEdges, &
@@ -813,7 +814,8 @@ module io_input
             if (k <= domain % blocklist % mesh % nEdges) then
                domain % blocklist % mesh % edgesOnCell % array(j,i) = edgeIDSorted(2,k)
             else
-               domain % blocklist % mesh % edgesOnCell % array(j,i) = 0
+               domain % blocklist % mesh % edgesOnCell % array(j,i) = domain % blocklist % mesh % nEdges + 1
+!               domain % blocklist % mesh % edgesOnCell % array(j,i) = 0
             end if
 
             k = binary_search(vertexIDSorted, 2, 1, domain % blocklist % mesh % nVertices, &
@@ -821,7 +823,8 @@ module io_input
             if (k <= domain % blocklist % mesh % nVertices) then
                domain % blocklist % mesh % verticesOnCell % array(j,i) = vertexIDSorted(2,k)
             else
-               domain % blocklist % mesh % verticesOnCell % array(j,i) = 0
+               domain % blocklist % mesh % verticesOnCell % array(j,i) = domain % blocklist % mesh % nVertices + 1
+!               domain % blocklist % mesh % verticesOnCell % array(j,i) = 0
             end if
 
          end do
@@ -835,7 +838,8 @@ module io_input
             if (k <= domain % blocklist % mesh % nCells) then
                domain % blocklist % mesh % cellsOnEdge % array(j,i) = cellIDSorted(2,k)
             else
-               domain % blocklist % mesh % cellsOnEdge % array(j,i) = 0
+               domain % blocklist % mesh % cellsOnEdge % array(j,i) = domain % blocklist % mesh % nCells + 1
+!               domain % blocklist % mesh % cellsOnEdge % array(j,i) = 0
             end if
 
             k = binary_search(vertexIDSorted, 2, 1, domain % blocklist % mesh % nVertices, &
@@ -843,7 +847,8 @@ module io_input
             if (k <= domain % blocklist % mesh % nVertices) then
                domain % blocklist % mesh % verticesOnEdge % array(j,i) = vertexIDSorted(2,k)
             else
-               domain % blocklist % mesh % verticesOnEdge % array(j,i) = 0
+               domain % blocklist % mesh % verticesOnEdge % array(j,i) = domain % blocklist % mesh % nVertices + 1
+!               domain % blocklist % mesh % verticesOnEdge % array(j,i) = 0
             end if
 
          end do
@@ -855,7 +860,8 @@ module io_input
             if (k <= domain % blocklist % mesh % nEdges) then
                domain % blocklist % mesh % edgesOnEdge % array(j,i) = edgeIDSorted(2,k)
             else
-               domain % blocklist % mesh % edgesOnEdge % array(j,i) = 0
+               domain % blocklist % mesh % edgesOnEdge % array(j,i) = domain % blocklist % mesh % nEdges + 1
+!               domain % blocklist % mesh % edgesOnEdge % array(j,i) = 0
             end if
 
          end do
@@ -869,7 +875,8 @@ module io_input
             if (k <= domain % blocklist % mesh % nCells) then
                domain % blocklist % mesh % cellsOnVertex % array(j,i) = cellIDSorted(2,k)
             else
-               domain % blocklist % mesh % cellsOnVertex % array(j,i) = 0
+               domain % blocklist % mesh % cellsOnVertex % array(j,i) = domain % blocklist % mesh % nCells + 1
+!               domain % blocklist % mesh % cellsOnVertex % array(j,i) = 0
             end if
 
             k = binary_search(edgeIDSorted, 2, 1, domain % blocklist % mesh % nEdges, &
@@ -877,7 +884,8 @@ module io_input
             if (k <= domain % blocklist % mesh % nEdges) then
                domain % blocklist % mesh % edgesOnVertex % array(j,i) = edgeIDSorted(2,k)
             else
-               domain % blocklist % mesh % edgesOnVertex % array(j,i) = 0
+               domain % blocklist % mesh % edgesOnVertex % array(j,i) = domain % blocklist % mesh % nEdges + 1
+!               domain % blocklist % mesh % edgesOnVertex % array(j,i) = 0
             end if
 
          end do
