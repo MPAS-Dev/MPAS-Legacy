@@ -103,6 +103,7 @@ module io_input
       type (exchange_list), pointer :: sendEdgeList, recvEdgeList
       type (exchange_list), pointer :: sendVertexList, recvVertexList
       type (exchange_list), pointer :: sendVertLevelList, recvVertLevelList
+      type (exchange_list), pointer :: sendVertLevelP1List, recvVertLevelP1List
       type (exchange_list), pointer :: send1Halo, recv1Halo
       type (exchange_list), pointer :: send2Halo, recv2Halo
       type (graph) :: partial_global_graph_info
@@ -693,6 +694,27 @@ module io_input
       deallocate(local_vertlevel_list)
       deallocate(needed_vertlevel_list)
 
+      if (domain % dminfo % my_proc_id == 0) then
+         allocate(local_vertlevel_list(nVertLevels+1))
+         do i=1,nVertLevels+1
+            local_vertlevel_list(i) = i
+         end do
+      else
+         allocate(local_vertlevel_list(0))
+      end if
+      allocate(needed_vertlevel_list(nVertLevels+1))
+      do i=1,nVertLevels+1
+         needed_vertlevel_list(i) = i
+      end do
+
+      call dmpar_get_owner_list(domain % dminfo, &
+                                size(local_vertlevel_list), size(needed_vertlevel_list), &
+                                local_vertlevel_list, needed_vertlevel_list, &
+                                sendVertLevelP1List, recvVertLevelP1List)
+
+      deallocate(local_vertlevel_list)
+      deallocate(needed_vertlevel_list)
+
 
       !
       ! Read and distribute all fields given ownership lists and exchange lists (maybe already in block?)
@@ -765,7 +787,7 @@ module io_input
                                       readCellStart, nReadCells, readEdgeStart, nReadEdges, readVertexStart, nReadVertices, &
                                       readVertLevelStart, nReadVertLevels, &
                                       sendCellList, recvCellList, sendEdgeList, recvEdgeList, sendVertexList, recvVertexList, &
-                                      sendVertLevelList, recvVertLevelList) 
+                                      sendVertLevelList, recvVertLevelList, sendVertLevelP1List, recvVertLevelP1List) 
 
 
       call io_input_finalize(input_obj, domain % dminfo)
@@ -977,7 +999,8 @@ module io_input
                                      sendCellsList, recvCellsList, &
                                      sendEdgesList, recvEdgesList, &
                                      sendVerticesList, recvVerticesList, &
-                                     sendVertLevelsList, recvVertLevelsList) 
+                                     sendVertLevelsList, recvVertLevelsList, & 
+                                     sendVertLevelsP1List, recvVertLevelsP1List) 
       
       implicit none
 
@@ -990,6 +1013,7 @@ module io_input
       type (exchange_list), pointer :: sendEdgesList, recvEdgesList
       type (exchange_list), pointer :: sendVerticesList, recvVerticesList
       type (exchange_list), pointer :: sendVertLevelsList, recvVertLevelsList
+      type (exchange_list), pointer :: sendVertLevelsP1List, recvVertLevelsP1List
 
       type (field1dInteger) :: int1d
       type (field2dInteger) :: int2d

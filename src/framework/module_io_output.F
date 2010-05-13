@@ -23,6 +23,7 @@ module io_output
       type (exchange_list), pointer :: sendEdgesList, recvEdgesList
       type (exchange_list), pointer :: sendVerticesList, recvVerticesList
       type (exchange_list), pointer :: sendVertLevelsList, recvVertLevelsList
+      type (exchange_list), pointer :: sendVertLevelsP1List, recvVertLevelsP1List
    end type io_output_object
 
 
@@ -66,6 +67,8 @@ module io_output
       nullify(output_obj % recvVerticesList)
       nullify(output_obj % sendVertLevelsList)
       nullify(output_obj % recvVertLevelsList)
+      nullify(output_obj % sendVertLevelsP1List)
+      nullify(output_obj % recvVertLevelsP1List)
       output_obj % validExchangeLists = .false.
 
 #include "output_dim_inits.inc"
@@ -110,6 +113,7 @@ module io_output
       integer, dimension(:), pointer :: neededEdgeList
       integer, dimension(:), pointer :: neededVertexList
       integer, dimension(:), pointer :: neededVertLevelList
+      integer, dimension(:), pointer :: neededVertLevelP1List
       integer, dimension(:,:), pointer :: cellsOnCell, edgesOnCell, verticesOnCell, &
                                           cellsOnEdge, verticesOnEdge, edgesOnEdge, cellsOnVertex, edgesOnVertex
       integer, dimension(:,:), pointer :: cellsOnCell_save, edgesOnCell_save, verticesOnCell_save, &
@@ -210,6 +214,7 @@ module io_output
          allocate(neededEdgeList(nEdgesGlobal))
          allocate(neededVertexList(nVerticesGlobal))
          allocate(neededVertLevelList(nVertLevelsGlobal))
+         allocate(neededVertLevelP1List(nVertLevelsGlobal+1))
          do i=1,nCellsGlobal
             neededCellList(i) = i
          end do
@@ -222,11 +227,15 @@ module io_output
          do i=1,nVertLevelsGlobal
             neededVertLevelList(i) = i
          end do
+         do i=1,nVertLevelsGlobal+1
+            neededVertLevelP1List(i) = i
+         end do
       else
          allocate(neededCellList(0))
          allocate(neededEdgeList(0))
          allocate(neededVertexList(0))
          allocate(neededVertLevelList(0))
+         allocate(neededVertLevelP1List(0))
       end if
 
       if (.not. output_obj % validExchangeLists) then
@@ -249,6 +258,11 @@ module io_output
                                    size(neededVertLevelList), size(neededVertLevelList), &
                                    neededVertLevelList, neededVertLevelList, &
                                    output_obj % sendVertLevelsList, output_obj % recvVertLevelsList)
+
+         call dmpar_get_owner_list(domain % dminfo, &
+                                   size(neededVertLevelP1List), size(neededVertLevelP1List), &
+                                   neededVertLevelP1List, neededVertLevelP1List, &
+                                   output_obj % sendVertLevelsP1List, output_obj % recvVertLevelsP1List)
 
          output_obj % validExchangeLists = .true.
       end if

@@ -1024,10 +1024,7 @@ void gen_reads(struct variable * vars, struct dimension * dims)
          fortprintf(fd, ", block %% mesh %% %s, &\n", lastdim->dim->name_in_code);
    
          if (is_derived_dim(lastdim->dim->name_in_code)) {
-            split_derived_dim_string(lastdim->dim->name_in_code, &cp1, &cp2);
-            fortprintf(fd, "                                send%sList, recv%sList)\n", cp1, cp1);
-            free(cp1);
-            free(cp2);
+            fortprintf(fd, "                                send%sList, recv%sList)\n", lastdim->dim->name_in_file+1, lastdim->dim->name_in_file+1);
          }
          else
             fortprintf(fd, "                                send%sList, recv%sList)\n", lastdim->dim->name_in_code+1, lastdim->dim->name_in_code+1);
@@ -1537,7 +1534,7 @@ void gen_writes(struct variable * vars, struct dimension * dims, struct namelist
          if (is_derived_dim(lastdim->dim->name_in_code)) {
             split_derived_dim_string(lastdim->dim->name_in_code, &cp1, &cp2);
             fortprintf(fd, ", n%sGlobal%s, &\n", cp1, cp2);
-            fortprintf(fd, "                                output_obj %% send%sList, output_obj %% recv%sList)\n", cp1, cp1);
+            fortprintf(fd, "                                output_obj %% send%sList, output_obj %% recv%sList)\n", lastdim->dim->name_in_file+1, lastdim->dim->name_in_file+1);
             free(cp1);
             free(cp2);
          }
