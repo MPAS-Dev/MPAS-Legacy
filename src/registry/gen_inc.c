@@ -576,20 +576,30 @@ void gen_field_defs(struct variable * vars, struct dimension * dims)
             fortprintf(fd, "      allocate(s %% %s %% ioinfo)\n", var_ptr->name_in_code);
             fortprintf(fd, "      allocate(s %% %s %% array(", var_ptr->name_in_code);
             dimlist_ptr = var_ptr->dimlist;
-            if (!strncmp(dimlist_ptr->dim->name_in_file, "nCells", 1024) ||
-                !strncmp(dimlist_ptr->dim->name_in_file, "nEdges", 1024) ||
-                !strncmp(dimlist_ptr->dim->name_in_file, "nVertices", 1024))
-               fortprintf(fd, "b %% mesh %% %s + 1", dimlist_ptr->dim->name_in_code);
-            else
-               fortprintf(fd, "b %% mesh %% %s", dimlist_ptr->dim->name_in_code);
-            dimlist_ptr = dimlist_ptr->next;
-            while (dimlist_ptr) {
+            if (dimlist_ptr->dim->constant_value < 0) {
                if (!strncmp(dimlist_ptr->dim->name_in_file, "nCells", 1024) ||
                    !strncmp(dimlist_ptr->dim->name_in_file, "nEdges", 1024) ||
                    !strncmp(dimlist_ptr->dim->name_in_file, "nVertices", 1024))
-                  fortprintf(fd, ", b %% mesh %% %s + 1", dimlist_ptr->dim->name_in_code);
+                  fortprintf(fd, "b %% mesh %% %s + 1", dimlist_ptr->dim->name_in_code);
                else
-                  fortprintf(fd, ", b %% mesh %% %s", dimlist_ptr->dim->name_in_code);
+                  fortprintf(fd, "b %% mesh %% %s", dimlist_ptr->dim->name_in_code);
+            }
+            else {
+               fortprintf(fd, "%i", dimlist_ptr->dim->constant_value);
+            }
+            dimlist_ptr = dimlist_ptr->next;
+            while (dimlist_ptr) {
+               if (dimlist_ptr->dim->constant_value < 0) {
+                  if (!strncmp(dimlist_ptr->dim->name_in_file, "nCells", 1024) ||
+                      !strncmp(dimlist_ptr->dim->name_in_file, "nEdges", 1024) ||
+                      !strncmp(dimlist_ptr->dim->name_in_file, "nVertices", 1024))
+                     fortprintf(fd, ", b %% mesh %% %s + 1", dimlist_ptr->dim->name_in_code);
+                  else
+                     fortprintf(fd, ", b %% mesh %% %s", dimlist_ptr->dim->name_in_code);
+               }
+               else {
+                  fortprintf(fd, ", %i", dimlist_ptr->dim->constant_value);
+               }
                dimlist_ptr = dimlist_ptr->next;
             }
             fortprintf(fd, "))\n");
