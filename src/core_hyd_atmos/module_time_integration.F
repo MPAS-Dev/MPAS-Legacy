@@ -395,9 +395,7 @@ module time_integration
           do k = 1, nVertLevels
             cell1 = grid % cellsOnEdge % array(1,iEdge)
             cell2 = grid % cellsOnEdge % array(2,iEdge)
-            if (cell1 > 0 .and. cell2 > 0) then
-               grid % cqu % array(k,iEdge) = 1./( 1. + 0.5*(grid % qtot % array(k,cell1)+grid % qtot % array(k,cell2)) )
-            end if
+            grid % cqu % array(k,iEdge) = 1./( 1. + 0.5*(grid % qtot % array(k,cell1)+grid % qtot % array(k,cell2)) )
           end do
         end do
 
@@ -684,33 +682,25 @@ module time_integration
             vertex1 = verticesOnEdge(1,iEdge)
             vertex2 = verticesOnEdge(2,iEdge)
 
-            if (cell1 > 0 .and. cell2 > 0) then
-               do k=1,nVertLevels
+            do k=1,nVertLevels
    
-                  !
-                  ! Compute diffusion, computed as \nabla divergence - k \times \nabla vorticity
-                  !                    only valid for h_mom_eddy_visc4 == constant
-                  !
-                  u_diffusion =   ( divergence(k,cell2)  - divergence(k,cell1) ) / dcEdge(iEdge)  &
-                                 -( vorticity(k,vertex2) - vorticity(k,vertex1) ) / dvEdge(iEdge)
-    
-                  delsq_u(k,iEdge) = delsq_u(k,iEdge) + u_diffusion
-               end do
-            end if
+               !
+               ! Compute diffusion, computed as \nabla divergence - k \times \nabla vorticity
+               !                    only valid for h_mom_eddy_visc4 == constant
+               !
+               u_diffusion =   ( divergence(k,cell2)  - divergence(k,cell1) ) / dcEdge(iEdge)  &
+                              -( vorticity(k,vertex2) - vorticity(k,vertex1) ) / dvEdge(iEdge)
+ 
+               delsq_u(k,iEdge) = delsq_u(k,iEdge) + u_diffusion
+            end do
          end do
 
          delsq_circulation(:,:) = 0.0
          do iEdge=1,nEdges
-            if (verticesOnEdge(1,iEdge) > 0) then
-               do k=1,nVertLevels
-                  delsq_circulation(k,verticesOnEdge(1,iEdge)) = delsq_circulation(k,verticesOnEdge(1,iEdge)) - dcEdge(iEdge) * delsq_u(k,iEdge)
-               end do
-            end if
-            if (verticesOnEdge(2,iEdge) > 0) then
-               do k=1,nVertLevels
-                  delsq_circulation(k,verticesOnEdge(2,iEdge)) = delsq_circulation(k,verticesOnEdge(2,iEdge)) + dcEdge(iEdge) * delsq_u(k,iEdge)
-               end do
-            end if
+            do k=1,nVertLevels
+               delsq_circulation(k,verticesOnEdge(1,iEdge)) = delsq_circulation(k,verticesOnEdge(1,iEdge)) - dcEdge(iEdge) * delsq_u(k,iEdge)
+               delsq_circulation(k,verticesOnEdge(2,iEdge)) = delsq_circulation(k,verticesOnEdge(2,iEdge)) + dcEdge(iEdge) * delsq_u(k,iEdge)
+            end do
          end do
          do iVertex=1,nVertices
             r = 1.0 / areaTriangle(iVertex)
@@ -723,16 +713,10 @@ module time_integration
          do iEdge=1,nEdges
             cell1 = cellsOnEdge(1,iEdge)
             cell2 = cellsOnEdge(2,iEdge)
-            if (cell1 > 0) then
-               do k=1,nVertLevels
-                 delsq_divergence(k,cell1) = delsq_divergence(k,cell1) + delsq_u(k,iEdge)*dvEdge(iEdge)
-               end do
-            end if
-            if(cell2 > 0) then
-               do k=1,nVertLevels
-                 delsq_divergence(k,cell2) = delsq_divergence(k,cell2) - delsq_u(k,iEdge)*dvEdge(iEdge)
-               end do
-            end if
+            do k=1,nVertLevels
+              delsq_divergence(k,cell1) = delsq_divergence(k,cell1) + delsq_u(k,iEdge)*dvEdge(iEdge)
+              delsq_divergence(k,cell2) = delsq_divergence(k,cell2) - delsq_u(k,iEdge)*dvEdge(iEdge)
+            end do
          end do
          do iCell = 1,nCells
             r = 1.0 / areaCell(iCell)
@@ -833,16 +817,14 @@ module time_integration
          do iEdge=1,grid % nEdges
             cell1 = grid % cellsOnEdge % array(1,iEdge)
             cell2 = grid % cellsOnEdge % array(2,iEdge)
-            if (cell1 > 0 .and. cell2 > 0) then
 
-               do k=1,grid % nVertLevels
-                  theta_turb_flux = h_theta_eddy_visc2*prandtl*(theta(k,cell2) - theta(k,cell1))/dcEdge(iEdge)
-                  flux = dvEdge (iEdge) * h_edge(k,iEdge) * theta_turb_flux
-                  tend_theta(k,cell1) = tend_theta(k,cell1) + flux
-                  tend_theta(k,cell2) = tend_theta(k,cell2) - flux
-               end do 
+            do k=1,grid % nVertLevels
+               theta_turb_flux = h_theta_eddy_visc2*prandtl*(theta(k,cell2) - theta(k,cell1))/dcEdge(iEdge)
+               flux = dvEdge (iEdge) * h_edge(k,iEdge) * theta_turb_flux
+               tend_theta(k,cell1) = tend_theta(k,cell1) + flux
+               tend_theta(k,cell2) = tend_theta(k,cell2) - flux
+            end do 
 
-            end if 
          end do 
 
       end if 
@@ -856,14 +838,12 @@ module time_integration
          do iEdge=1,grid % nEdges
             cell1 = grid % cellsOnEdge % array(1,iEdge)
             cell2 = grid % cellsOnEdge % array(2,iEdge)
-            if (cell1 > 0 .and. cell2 > 0) then
 
-               do k=1,grid % nVertLevels
-                  delsq_theta(k,cell1) = delsq_theta(k,cell1) + dvEdge(iEdge)*h_edge(k,iEdge)*(theta(k,cell2) - theta(k,cell1))/dcEdge(iEdge)
-                  delsq_theta(k,cell2) = delsq_theta(k,cell2) - dvEdge(iEdge)*h_edge(k,iEdge)*(theta(k,cell2) - theta(k,cell1))/dcEdge(iEdge)
-               end do 
+            do k=1,grid % nVertLevels
+               delsq_theta(k,cell1) = delsq_theta(k,cell1) + dvEdge(iEdge)*h_edge(k,iEdge)*(theta(k,cell2) - theta(k,cell1))/dcEdge(iEdge)
+               delsq_theta(k,cell2) = delsq_theta(k,cell2) - dvEdge(iEdge)*h_edge(k,iEdge)*(theta(k,cell2) - theta(k,cell1))/dcEdge(iEdge)
+            end do 
 
-            end if 
          end do 
 
          do iCell = 1, nCells
@@ -876,17 +856,15 @@ module time_integration
          do iEdge=1,grid % nEdges
             cell1 = grid % cellsOnEdge % array(1,iEdge)
             cell2 = grid % cellsOnEdge % array(2,iEdge)
-            if (cell1 > 0 .and. cell2 > 0) then
 
-               do k=1,grid % nVertLevels
-                  theta_turb_flux = h_theta_eddy_visc4*prandtl*(delsq_theta(k,cell2) - delsq_theta(k,cell1))/dcEdge(iEdge)
-                  flux = dvEdge (iEdge) * theta_turb_flux
+            do k=1,grid % nVertLevels
+               theta_turb_flux = h_theta_eddy_visc4*prandtl*(delsq_theta(k,cell2) - delsq_theta(k,cell1))/dcEdge(iEdge)
+               flux = dvEdge (iEdge) * theta_turb_flux
 
-                  tend_theta(k,cell1) = tend_theta(k,cell1) - flux
-                  tend_theta(k,cell2) = tend_theta(k,cell2) + flux
-               end do 
+               tend_theta(k,cell1) = tend_theta(k,cell1) - flux
+               tend_theta(k,cell2) = tend_theta(k,cell2) + flux
+            end do 
 
-            end if 
          end do 
 
          deallocate(delsq_theta)
@@ -903,14 +881,12 @@ module time_integration
          do iEdge=1,nEdges
             cell1 = cellsOnEdge(1,iEdge)
             cell2 = cellsOnEdge(2,iEdge)
-            if (cell1 > 0 .and. cell2 > 0) then
-               do k=1,grid % nVertLevels
-                  flux = dvEdge(iEdge) *  h_edge(k,iEdge) * u(k,iEdge) * (      &
-                                         0.5*(theta(k,cell1) + theta(k,cell2)) )
-                  tend_theta(k,cell1) = tend_theta(k,cell1) - flux
-                  tend_theta(k,cell2) = tend_theta(k,cell2) + flux
-               end do 
-            end if
+            do k=1,grid % nVertLevels
+               flux = dvEdge(iEdge) *  h_edge(k,iEdge) * u(k,iEdge) * (      &
+                                      0.5*(theta(k,cell1) + theta(k,cell2)) )
+               tend_theta(k,cell1) = tend_theta(k,cell1) - flux
+               tend_theta(k,cell2) = tend_theta(k,cell2) + flux
+            end do 
          end do 
 
       else if (config_theta_adv_order == 3) then
@@ -918,37 +894,33 @@ module time_integration
          do iEdge=1,nEdges
             cell1 = cellsOnEdge(1,iEdge)
             cell2 = cellsOnEdge(2,iEdge)
-            if (cell1 > 0 .and. cell2 > 0) then
   
-               do k=1,grid % nVertLevels
+            do k=1,grid % nVertLevels
    
-                  d2fdx2_cell1 = deriv_two(1,1,iEdge) * theta(k,cell1)
-                  d2fdx2_cell2 = deriv_two(1,2,iEdge) * theta(k,cell2)
-                  do i=1, grid % nEdgesOnCell % array (cell1)
-                     if ( grid % CellsOnCell % array (i,cell1) > 0) &
-                     d2fdx2_cell1 = d2fdx2_cell1 + deriv_two(i+1,1,iEdge) * theta(k,grid % CellsOnCell % array (i,cell1))
-                  end do
-                  do i=1, grid % nEdgesOnCell % array (cell2)
-                     if ( grid % CellsOnCell % array (i,cell2) > 0) &
-                     d2fdx2_cell2 = d2fdx2_cell2 + deriv_two(i+1,2,iEdge) * theta(k,grid % CellsOnCell % array (i,cell2))
-                  end do
+               d2fdx2_cell1 = deriv_two(1,1,iEdge) * theta(k,cell1)
+               d2fdx2_cell2 = deriv_two(1,2,iEdge) * theta(k,cell2)
+               do i=1, grid % nEdgesOnCell % array (cell1)
+                  d2fdx2_cell1 = d2fdx2_cell1 + deriv_two(i+1,1,iEdge) * theta(k,grid % CellsOnCell % array (i,cell1))
+               end do
+               do i=1, grid % nEdgesOnCell % array (cell2)
+                  d2fdx2_cell2 = d2fdx2_cell2 + deriv_two(i+1,2,iEdge) * theta(k,grid % CellsOnCell % array (i,cell2))
+               end do
  
 !  3rd order stencil
-                  if( u(k,iEdge) > 0) then
-                     flux = dvEdge(iEdge) *  h_edge(k,iEdge) * u(k,iEdge) * (          &
-                                            0.5*(theta(k,cell1) + theta(k,cell2))      &
-                                            -(dcEdge(iEdge) **2) * (d2fdx2_cell1) / 6. )
-                  else
-                     flux = dvEdge(iEdge) *  h_edge(k,iEdge) * u(k,iEdge) * (          &
-                                            0.5*(theta(k,cell1) + theta(k,cell2))      &
-                                            -(dcEdge(iEdge) **2) * (d2fdx2_cell2) / 6. )
-                  end if
-    
-                  tend_theta(k,cell1) = tend_theta(k,cell1) - flux
-                  tend_theta(k,cell2) = tend_theta(k,cell2) + flux
-  
-               end do 
-            end if
+               if( u(k,iEdge) > 0) then
+                  flux = dvEdge(iEdge) *  h_edge(k,iEdge) * u(k,iEdge) * (          &
+                                         0.5*(theta(k,cell1) + theta(k,cell2))      &
+                                         -(dcEdge(iEdge) **2) * (d2fdx2_cell1) / 6. )
+               else
+                  flux = dvEdge(iEdge) *  h_edge(k,iEdge) * u(k,iEdge) * (          &
+                                         0.5*(theta(k,cell1) + theta(k,cell2))      &
+                                         -(dcEdge(iEdge) **2) * (d2fdx2_cell2) / 6. )
+               end if
+   
+               tend_theta(k,cell1) = tend_theta(k,cell1) - flux
+               tend_theta(k,cell2) = tend_theta(k,cell2) + flux
+ 
+            end do 
          end do 
 
       else  if (config_theta_adv_order == 4) then
@@ -956,30 +928,25 @@ module time_integration
          do iEdge=1,nEdges
             cell1 = cellsOnEdge(1,iEdge)
             cell2 = cellsOnEdge(2,iEdge)
-            if (cell1 > 0 .and. cell2 > 0) then
 
-               do k=1,grid % nVertLevels
+            do k=1,grid % nVertLevels
    
-                  d2fdx2_cell1 = deriv_two(1,1,iEdge) * theta(k,cell1)
-                  d2fdx2_cell2 = deriv_two(1,2,iEdge) * theta(k,cell2)
-                  do i=1, grid % nEdgesOnCell % array (cell1)
-                     if ( grid % CellsOnCell % array (i,cell1) > 0) &
-                     d2fdx2_cell1 = d2fdx2_cell1 + deriv_two(i+1,1,iEdge) * theta(k,grid % CellsOnCell % array (i,cell1))
-                  end do
-                  do i=1, grid % nEdgesOnCell % array (cell2)
-                     if ( grid % CellsOnCell % array (i,cell2) > 0) &
-                     d2fdx2_cell2 = d2fdx2_cell2 + deriv_two(i+1,2,iEdge) * theta(k,grid % CellsOnCell % array (i,cell2))
-                  end do
-    
-                  flux = dvEdge(iEdge) *  h_edge(k,iEdge) * u(k,iEdge) * (          &
-                                         0.5*(theta(k,cell1) + theta(k,cell2))      &
-                                          -(dcEdge(iEdge) **2) * (d2fdx2_cell1 + d2fdx2_cell2) / 12. )
-    
-                  tend_theta(k,cell1) = tend_theta(k,cell1) - flux
-                  tend_theta(k,cell2) = tend_theta(k,cell2) + flux
-               end do 
-
-            end if
+               d2fdx2_cell1 = deriv_two(1,1,iEdge) * theta(k,cell1)
+               d2fdx2_cell2 = deriv_two(1,2,iEdge) * theta(k,cell2)
+               do i=1, grid % nEdgesOnCell % array (cell1)
+                  d2fdx2_cell1 = d2fdx2_cell1 + deriv_two(i+1,1,iEdge) * theta(k,grid % CellsOnCell % array (i,cell1))
+               end do
+               do i=1, grid % nEdgesOnCell % array (cell2)
+                  d2fdx2_cell2 = d2fdx2_cell2 + deriv_two(i+1,2,iEdge) * theta(k,grid % CellsOnCell % array (i,cell2))
+               end do
+   
+               flux = dvEdge(iEdge) *  h_edge(k,iEdge) * u(k,iEdge) * (          &
+                                      0.5*(theta(k,cell1) + theta(k,cell2))      &
+                                       -(dcEdge(iEdge) **2) * (d2fdx2_cell1 + d2fdx2_cell2) / 12. )
+  
+               tend_theta(k,cell1) = tend_theta(k,cell1) - flux
+               tend_theta(k,cell2) = tend_theta(k,cell2) + flux
+            end do 
  
          end do
       end if
@@ -1162,18 +1129,16 @@ module time_integration
       do iEdge=1,grid % nEdges
          cell1 = cellsOnEdge(1,iEdge)
          cell2 = cellsOnEdge(2,iEdge)
-         if (cell1 > 0 .and. cell2 > 0) then
-            do k=1,nVertLevels
-               u(k,iEdge) = u(k,iEdge) + dt*tend_u(k,iEdge)                 &
-                                  -(0.5*dt/dcEdge(iEdge))*(                 &
-                    (geopotential(k+1,cell2)-geopotential(k+1,cell1))       &
-                   +(geopotential(k  ,cell2)-geopotential(k  ,cell1))       &
-                   +cqu(k,iEdge)*(alpha(k,cell2)+alpha(k,cell1))*           &
-                          0.5*(pressure(k+1,cell2)-pressure(k+1,cell1)      &
-                              +pressure(k  ,cell2)-pressure(k  ,cell1)))    &
-                         -smext*dcEdge(iEdge)*(dpsdt(cell2)-dpsdt(cell1))/h_edge(k,iEdge)
-            end do
-         end if
+         do k=1,nVertLevels
+            u(k,iEdge) = u(k,iEdge) + dt*tend_u(k,iEdge)                 &
+                               -(0.5*dt/dcEdge(iEdge))*(                 &
+                 (geopotential(k+1,cell2)-geopotential(k+1,cell1))       &
+                +(geopotential(k  ,cell2)-geopotential(k  ,cell1))       &
+                +cqu(k,iEdge)*(alpha(k,cell2)+alpha(k,cell1))*           &
+                       0.5*(pressure(k+1,cell2)-pressure(k+1,cell1)      &
+                           +pressure(k  ,cell2)-pressure(k  ,cell1)))    &
+                      -smext*dcEdge(iEdge)*(dpsdt(cell2)-dpsdt(cell1))/h_edge(k,iEdge)
+         end do
       end do
 
       !
@@ -1184,13 +1149,11 @@ module time_integration
       do iEdge=1,nEdges
             cell1 = cellsOnEdge(1,iEdge)
             cell2 = cellsOnEdge(2,iEdge)
-            if (cell1 > 0 .and. cell2 > 0) then
-               do k=1,nVertLevels
-                  flux = u(k,iEdge) * dvEdge(iEdge) * h_edge(k,iEdge)
-                  tend_h(k,cell1) = tend_h(k,cell1) + flux
-                  tend_h(k,cell2) = tend_h(k,cell2) - flux
-               end do 
-            end if
+            do k=1,nVertLevels
+               flux = u(k,iEdge) * dvEdge(iEdge) * h_edge(k,iEdge)
+               tend_h(k,cell1) = tend_h(k,cell1) + flux
+               tend_h(k,cell2) = tend_h(k,cell2) - flux
+            end do 
             do k=1,nVertLevels
                uhAvg(k,iEdge) = uhAvg(k,iEdge) + u(k,iEdge) * h_edge(k,iEdge)
             end do 
@@ -1237,18 +1200,16 @@ module time_integration
       !
 
       do iEdge=1,nEdges
-            cell1 = cellsOnEdge(1,iEdge)
-            cell2 = cellsOnEdge(2,iEdge)
-            if (cell1 > 0 .and. cell2 > 0) then
-               do k=1,nVertLevels
-                  h_edge(k,iEdge) = 0.5*(h(k,cell1)+h(k,cell2))  !  here is update of h_edge
-                  he_old = 0.5*(h_old(k,cell1)+h_old(k,cell2))
-                  flux = 0.5*(u(k,iEdge) * h_edge(k,iEdge) - u_old(k,iEdge) * he_old)* &
-                              (theta_old(k,cell1)+theta_old(k,cell2))*dvEdge(iEdge)
-                  theta(k,cell1) = theta(k,cell1) - dt*flux/areaCell(cell1)
-                  theta(k,cell2) = theta(k,cell2) + dt*flux/areaCell(cell2)
-               end do
-            end if
+         cell1 = cellsOnEdge(1,iEdge)
+         cell2 = cellsOnEdge(2,iEdge)
+         do k=1,nVertLevels
+            h_edge(k,iEdge) = 0.5*(h(k,cell1)+h(k,cell2))  !  here is update of h_edge
+            he_old = 0.5*(h_old(k,cell1)+h_old(k,cell2))
+            flux = 0.5*(u(k,iEdge) * h_edge(k,iEdge) - u_old(k,iEdge) * he_old)* &
+                        (theta_old(k,cell1)+theta_old(k,cell2))*dvEdge(iEdge)
+            theta(k,cell1) = theta(k,cell1) - dt*flux/areaCell(cell1)
+            theta(k,cell2) = theta(k,cell2) + dt*flux/areaCell(cell2)
+         end do
       end do
 
 
@@ -1360,16 +1321,14 @@ module time_integration
          do iEdge=1,grid%nEdges
             cell1 = cellsOnEdge(1,iEdge)
             cell2 = cellsOnEdge(2,iEdge)
-            if (cell1 > 0 .and. cell2 > 0) then
-               do k=1,grid % nVertLevels
-                  do iScalar=1,num_scalars
-                     scalar_edge = 0.5 * (scalar_new(iScalar,k,cell1) + scalar_new(iScalar,k,cell2))
-                     flux = uhAvg(k,iEdge) * dvEdge(iEdge)  * scalar_edge
-                     scalar_tend(iScalar,k,cell1) = scalar_tend(iScalar,k,cell1) - flux/areaCell(cell1)
-                     scalar_tend(iScalar,k,cell2) = scalar_tend(iScalar,k,cell2) + flux/areaCell(cell2)
-                  end do 
+            do k=1,grid % nVertLevels
+               do iScalar=1,num_scalars
+                  scalar_edge = 0.5 * (scalar_new(iScalar,k,cell1) + scalar_new(iScalar,k,cell2))
+                  flux = uhAvg(k,iEdge) * dvEdge(iEdge)  * scalar_edge
+                  scalar_tend(iScalar,k,cell1) = scalar_tend(iScalar,k,cell1) - flux/areaCell(cell1)
+                  scalar_tend(iScalar,k,cell2) = scalar_tend(iScalar,k,cell2) + flux/areaCell(cell2)
                end do 
-            end if
+            end do 
          end do 
 
       else if (config_scalar_adv_order == 3) then
@@ -1377,53 +1336,49 @@ module time_integration
          do iEdge=1,grid%nEdges
             cell1 = cellsOnEdge(1,iEdge)
             cell2 = cellsOnEdge(2,iEdge)
-            if (cell1 > 0 .and. cell2 > 0) then
   
-               do k=1,grid % nVertLevels
+            do k=1,grid % nVertLevels
    
-                  do iScalar=1,num_scalars
-                     d2fdx2_cell1 = deriv_two(1,1,iEdge) * scalar_new(iScalar,k,cell1)
-                     d2fdx2_cell2 = deriv_two(1,2,iEdge) * scalar_new(iScalar,k,cell2)
-                     do i=1, grid % nEdgesOnCell % array (cell1)
-                        if ( grid % CellsOnCell % array (i,cell1) > 0) &
-                        d2fdx2_cell1 = d2fdx2_cell1 + &
-                                       deriv_two(i+1,1,iEdge) * scalar_new(iScalar,k,grid % CellsOnCell % array (i,cell1))
-                     end do
-                     do i=1, grid % nEdgesOnCell % array (cell2)
-                        if ( grid % CellsOnCell % array (i,cell2) > 0) &
-                        d2fdx2_cell2 = d2fdx2_cell2 + &
-                                       deriv_two(i+1,2,iEdge) * scalar_new(iScalar,k,grid % CellsOnCell % array (i,cell2))
-                     end do
- 
-                     if (uhAvg(k,iEdge) > 0) then
-                        flux = dvEdge(iEdge) * uhAvg(k,iEdge) * (          &
-                                               0.5*(scalar_new(iScalar,k,cell1) + scalar_new(iScalar,k,cell2))      &
-                                                -(dcEdge(iEdge) **2) * (d2fdx2_cell1 + d2fdx2_cell2) / 12.          &
-                                                -(dcEdge(iEdge) **2) * coef_3rd_order*(d2fdx2_cell1 - d2fdx2_cell2) / 12. )
-                     else
-                        flux = dvEdge(iEdge) *  uhAvg(k,iEdge) * (          &
-                                               0.5*(scalar_new(iScalar,k,cell1) + scalar_new(iScalar,k,cell2))      &
-                                                -(dcEdge(iEdge) **2) * (d2fdx2_cell1 + d2fdx2_cell2) / 12.          &
-                                                +(dcEdge(iEdge) **2) * coef_3rd_order*(d2fdx2_cell1 - d2fdx2_cell2) / 12. )
-                     end if
+               do iScalar=1,num_scalars
+                  d2fdx2_cell1 = deriv_two(1,1,iEdge) * scalar_new(iScalar,k,cell1)
+                  d2fdx2_cell2 = deriv_two(1,2,iEdge) * scalar_new(iScalar,k,cell2)
+                  do i=1, grid % nEdgesOnCell % array (cell1)
+                     d2fdx2_cell1 = d2fdx2_cell1 + &
+                                    deriv_two(i+1,1,iEdge) * scalar_new(iScalar,k,grid % CellsOnCell % array (i,cell1))
+                  end do
+                  do i=1, grid % nEdgesOnCell % array (cell2)
+                     d2fdx2_cell2 = d2fdx2_cell2 + &
+                                    deriv_two(i+1,2,iEdge) * scalar_new(iScalar,k,grid % CellsOnCell % array (i,cell2))
+                  end do
+
+                  if (uhAvg(k,iEdge) > 0) then
+                     flux = dvEdge(iEdge) * uhAvg(k,iEdge) * (          &
+                                            0.5*(scalar_new(iScalar,k,cell1) + scalar_new(iScalar,k,cell2))      &
+                                             -(dcEdge(iEdge) **2) * (d2fdx2_cell1 + d2fdx2_cell2) / 12.          &
+                                             -(dcEdge(iEdge) **2) * coef_3rd_order*(d2fdx2_cell1 - d2fdx2_cell2) / 12. )
+                  else
+                     flux = dvEdge(iEdge) *  uhAvg(k,iEdge) * (          &
+                                            0.5*(scalar_new(iScalar,k,cell1) + scalar_new(iScalar,k,cell2))      &
+                                             -(dcEdge(iEdge) **2) * (d2fdx2_cell1 + d2fdx2_cell2) / 12.          &
+                                             +(dcEdge(iEdge) **2) * coef_3rd_order*(d2fdx2_cell1 - d2fdx2_cell2) / 12. )
+                  end if
 
 ! old version of the above code, with coef_3rd_order assumed to be 1.0
-!                     if (uhAvg(k,iEdge) > 0) then
-!                        flux = dvEdge(iEdge) * uhAvg(k,iEdge) * (          &
-!                                               0.5*(scalar_new(iScalar,k,cell1) + scalar_new(iScalar,k,cell2))      &
-!                                               -(dcEdge(iEdge) **2) * (d2fdx2_cell1) / 6. )
-!                     else
-!                        flux = dvEdge(iEdge) *  uhAvg(k,iEdge) * (          &
-!                                               0.5*(scalar_new(iScalar,k,cell1) + scalar_new(iScalar,k,cell2))      &
-!                                               -(dcEdge(iEdge) **2) * (d2fdx2_cell2) / 6. )
-!                     end if
-    
-                     scalar_tend(iScalar,k,cell1) = scalar_tend(iScalar,k,cell1) - flux/areaCell(cell1)
-                     scalar_tend(iScalar,k,cell2) = scalar_tend(iScalar,k,cell2) + flux/areaCell(cell2)
-  
-                  end do 
+!                  if (uhAvg(k,iEdge) > 0) then
+!                     flux = dvEdge(iEdge) * uhAvg(k,iEdge) * (          &
+!                                            0.5*(scalar_new(iScalar,k,cell1) + scalar_new(iScalar,k,cell2))      &
+!                                            -(dcEdge(iEdge) **2) * (d2fdx2_cell1) / 6. )
+!                  else
+!                     flux = dvEdge(iEdge) *  uhAvg(k,iEdge) * (          &
+!                                            0.5*(scalar_new(iScalar,k,cell1) + scalar_new(iScalar,k,cell2))      &
+!                                            -(dcEdge(iEdge) **2) * (d2fdx2_cell2) / 6. )
+!                  end if
+   
+                  scalar_tend(iScalar,k,cell1) = scalar_tend(iScalar,k,cell1) - flux/areaCell(cell1)
+                  scalar_tend(iScalar,k,cell2) = scalar_tend(iScalar,k,cell2) + flux/areaCell(cell2)
+ 
                end do 
-            end if
+            end do 
          end do 
 
       else  if (config_scalar_adv_order == 4) then
@@ -1431,33 +1386,29 @@ module time_integration
          do iEdge=1,grid%nEdges
             cell1 = cellsOnEdge(1,iEdge)
             cell2 = cellsOnEdge(2,iEdge)
-            if (cell1 > 0 .and. cell2 > 0) then
 
-               do k=1,grid % nVertLevels
+            do k=1,grid % nVertLevels
    
-                  do iScalar=1,num_scalars
-                     d2fdx2_cell1 = deriv_two(1,1,iEdge) * scalar_new(iScalar,k,cell1)
-                     d2fdx2_cell2 = deriv_two(1,2,iEdge) * scalar_new(iScalar,k,cell2)
-                     do i=1, grid % nEdgesOnCell % array (cell1)
-                        if ( grid % CellsOnCell % array (i,cell1) > 0) &
-                           d2fdx2_cell1 = d2fdx2_cell1 + &
-                                          deriv_two(i+1,1,iEdge) * scalar_new(iScalar,k,grid % CellsOnCell % array (i,cell1))
-                     end do
-                     do i=1, grid % nEdgesOnCell % array (cell2)
-                        if ( grid % CellsOnCell % array (i,cell2) > 0) &
-                        d2fdx2_cell2 = d2fdx2_cell2 + &
-                                       deriv_two(i+1,2,iEdge) * scalar_new(iScalar,k,grid % CellsOnCell % array (i,cell2))
-                     end do
-       
-                     flux = dvEdge(iEdge) *  uhAvg(k,iEdge) * (          &
-                                            0.5*(scalar_new(iScalar,k,cell1) + scalar_new(iScalar,k,cell2))      &
-                                             -(dcEdge(iEdge) **2) * (d2fdx2_cell1 + d2fdx2_cell2) / 12. )
-       
-                     scalar_tend(iScalar,k,cell1) = scalar_tend(iScalar,k,cell1) - flux/areaCell(cell1)
-                     scalar_tend(iScalar,k,cell2) = scalar_tend(iScalar,k,cell2) + flux/areaCell(cell2)
-                  end do 
+               do iScalar=1,num_scalars
+                  d2fdx2_cell1 = deriv_two(1,1,iEdge) * scalar_new(iScalar,k,cell1)
+                  d2fdx2_cell2 = deriv_two(1,2,iEdge) * scalar_new(iScalar,k,cell2)
+                  do i=1, grid % nEdgesOnCell % array (cell1)
+                        d2fdx2_cell1 = d2fdx2_cell1 + &
+                                       deriv_two(i+1,1,iEdge) * scalar_new(iScalar,k,grid % CellsOnCell % array (i,cell1))
+                  end do
+                  do i=1, grid % nEdgesOnCell % array (cell2)
+                     d2fdx2_cell2 = d2fdx2_cell2 + &
+                                    deriv_two(i+1,2,iEdge) * scalar_new(iScalar,k,grid % CellsOnCell % array (i,cell2))
+                  end do
+      
+                  flux = dvEdge(iEdge) *  uhAvg(k,iEdge) * (          &
+                                         0.5*(scalar_new(iScalar,k,cell1) + scalar_new(iScalar,k,cell2))      &
+                                          -(dcEdge(iEdge) **2) * (d2fdx2_cell1 + d2fdx2_cell2) / 12. )
+     
+                  scalar_tend(iScalar,k,cell1) = scalar_tend(iScalar,k,cell1) - flux/areaCell(cell1)
+                  scalar_tend(iScalar,k,cell2) = scalar_tend(iScalar,k,cell2) + flux/areaCell(cell2)
                end do 
-            end if
+            end do 
  
          end do
       end if
@@ -1604,19 +1555,17 @@ module time_integration
             do iEdge=1,grid%nEdges
                cell1 = cellsOnEdge(1,iEdge)
                cell2 = cellsOnEdge(2,iEdge)
-               if (cell1 > 0 .and. cell2 > 0) then
-                  cell_upwind = cell2
-                  if (uhAvg(k,iEdge) >= 0) cell_upwind = cell1
-                  do iScalar=1,num_scalars
-                     scalar_edge = 0.5 * (scalar_new(iScalar,k,cell1) + scalar_new(iScalar,k,cell2))
-                     h_flux(iScalar,iEdge) = dt * uhAvg(k,iEdge) * dvEdge(iEdge) * scalar_edge
-                     h_flux_upwind = dt * uhAvg(k,iEdge) * dvEdge(iEdge) * scalar_old(iScalar,k,cell_upwind)
-                     h_flux(iScalar,iEdge) = h_flux(iScalar,iEdge) - h_flux_upwind
-!                     h_flux(iScalar,iEdge) = 0.  ! use only upwind - for testing
-                     s_update(iScalar,cell1,km0) = s_update(iScalar,cell1,km0) - h_flux_upwind / grid % areaCell % array(cell1)
-                     s_update(iScalar,cell2,km0) = s_update(iScalar,cell2,km0) + h_flux_upwind / grid % areaCell % array(cell2)
-                  end do 
-               end if
+               cell_upwind = cell2
+               if (uhAvg(k,iEdge) >= 0) cell_upwind = cell1
+               do iScalar=1,num_scalars
+                  scalar_edge = 0.5 * (scalar_new(iScalar,k,cell1) + scalar_new(iScalar,k,cell2))
+                  h_flux(iScalar,iEdge) = dt * uhAvg(k,iEdge) * dvEdge(iEdge) * scalar_edge
+                  h_flux_upwind = dt * uhAvg(k,iEdge) * dvEdge(iEdge) * scalar_old(iScalar,k,cell_upwind)
+                  h_flux(iScalar,iEdge) = h_flux(iScalar,iEdge) - h_flux_upwind
+!                  h_flux(iScalar,iEdge) = 0.  ! use only upwind - for testing
+                  s_update(iScalar,cell1,km0) = s_update(iScalar,cell1,km0) - h_flux_upwind / grid % areaCell % array(cell1)
+                  s_update(iScalar,cell2,km0) = s_update(iScalar,cell2,km0) + h_flux_upwind / grid % areaCell % array(cell2)
+               end do 
             end do 
 
          else if (config_scalar_adv_order >= 3) then
@@ -1624,44 +1573,40 @@ module time_integration
             do iEdge=1,grid%nEdges
                cell1 = cellsOnEdge(1,iEdge)
                cell2 = cellsOnEdge(2,iEdge)
-               if (cell1 > 0 .and. cell2 > 0) then
-                  cell_upwind = cell2
-                  if (uhAvg(k,iEdge) >= 0) cell_upwind = cell1
-                  do iScalar=1,num_scalars
-  
-                     d2fdx2_cell1 = deriv_two(1,1,iEdge) * scalar_new(iScalar,k,cell1)
-                     d2fdx2_cell2 = deriv_two(1,2,iEdge) * scalar_new(iScalar,k,cell2)
-                     do i=1, grid % nEdgesOnCell % array (cell1)
-                        if ( grid % CellsOnCell % array (i,cell1) > 0) &
-                        d2fdx2_cell1 = d2fdx2_cell1 + &
-                                       deriv_two(i+1,1,iEdge) * scalar_new(iScalar,k,grid % CellsOnCell % array (i,cell1))
-                     end do
-                     do i=1, grid % nEdgesOnCell % array (cell2)
-                        if ( grid % CellsOnCell % array (i,cell2) > 0) &
-                        d2fdx2_cell2 = d2fdx2_cell2 + &
-                                       deriv_two(i+1,2,iEdge) * scalar_new(iScalar,k,grid % CellsOnCell % array (i,cell2))
-                     end do
-    
-                     if (uhAvg(k,iEdge) > 0) then
-                        flux = dvEdge(iEdge) * uhAvg(k,iEdge) * (          &
-                                               0.5*(scalar_new(iScalar,k,cell1) + scalar_new(iScalar,k,cell2))      &
-                                                -(dcEdge(iEdge) **2) * (d2fdx2_cell1 + d2fdx2_cell2) / 12.          &
-                                                -(dcEdge(iEdge) **2) * coef_3rd_order*(d2fdx2_cell1 - d2fdx2_cell2) / 12. )
-                     else
-                        flux = dvEdge(iEdge) *  uhAvg(k,iEdge) * (          &
-                                               0.5*(scalar_new(iScalar,k,cell1) + scalar_new(iScalar,k,cell2))      &
-                                                -(dcEdge(iEdge) **2) * (d2fdx2_cell1 + d2fdx2_cell2) / 12.          &
-                                                +(dcEdge(iEdge) **2) * coef_3rd_order*(d2fdx2_cell1 - d2fdx2_cell2) / 12. )
-                     end if
+               cell_upwind = cell2
+               if (uhAvg(k,iEdge) >= 0) cell_upwind = cell1
+               do iScalar=1,num_scalars
+
+                  d2fdx2_cell1 = deriv_two(1,1,iEdge) * scalar_new(iScalar,k,cell1)
+                  d2fdx2_cell2 = deriv_two(1,2,iEdge) * scalar_new(iScalar,k,cell2)
+                  do i=1, grid % nEdgesOnCell % array (cell1)
+                     d2fdx2_cell1 = d2fdx2_cell1 + &
+                                    deriv_two(i+1,1,iEdge) * scalar_new(iScalar,k,grid % CellsOnCell % array (i,cell1))
+                  end do
+                  do i=1, grid % nEdgesOnCell % array (cell2)
+                     d2fdx2_cell2 = d2fdx2_cell2 + &
+                                    deriv_two(i+1,2,iEdge) * scalar_new(iScalar,k,grid % CellsOnCell % array (i,cell2))
+                  end do
    
-                     h_flux(iScalar,iEdge) = dt * flux
-                     h_flux_upwind = dt * uhAvg(k,iEdge) * dvEdge(iEdge) * scalar_old(iScalar,k,cell_upwind)
-                     h_flux(iScalar,iEdge) = h_flux(iScalar,iEdge) - h_flux_upwind
-!                     h_flux(iScalar,iEdge) = 0.  ! use only upwind - for testing
-                     s_update(iScalar,cell1,km0) = s_update(iScalar,cell1,km0) - h_flux_upwind / grid % areaCell % array(cell1)
-                     s_update(iScalar,cell2,km0) = s_update(iScalar,cell2,km0) + h_flux_upwind / grid % areaCell % array(cell2)
-                  end do 
-               end if
+                  if (uhAvg(k,iEdge) > 0) then
+                     flux = dvEdge(iEdge) * uhAvg(k,iEdge) * (          &
+                                            0.5*(scalar_new(iScalar,k,cell1) + scalar_new(iScalar,k,cell2))      &
+                                             -(dcEdge(iEdge) **2) * (d2fdx2_cell1 + d2fdx2_cell2) / 12.          &
+                                             -(dcEdge(iEdge) **2) * coef_3rd_order*(d2fdx2_cell1 - d2fdx2_cell2) / 12. )
+                  else
+                     flux = dvEdge(iEdge) *  uhAvg(k,iEdge) * (          &
+                                            0.5*(scalar_new(iScalar,k,cell1) + scalar_new(iScalar,k,cell2))      &
+                                             -(dcEdge(iEdge) **2) * (d2fdx2_cell1 + d2fdx2_cell2) / 12.          &
+                                             +(dcEdge(iEdge) **2) * coef_3rd_order*(d2fdx2_cell1 - d2fdx2_cell2) / 12. )
+                  end if
+  
+                  h_flux(iScalar,iEdge) = dt * flux
+                  h_flux_upwind = dt * uhAvg(k,iEdge) * dvEdge(iEdge) * scalar_old(iScalar,k,cell_upwind)
+                  h_flux(iScalar,iEdge) = h_flux(iScalar,iEdge) - h_flux_upwind
+!                  h_flux(iScalar,iEdge) = 0.  ! use only upwind - for testing
+                  s_update(iScalar,cell1,km0) = s_update(iScalar,cell1,km0) - h_flux_upwind / grid % areaCell % array(cell1)
+                  s_update(iScalar,cell2,km0) = s_update(iScalar,cell2,km0) + h_flux_upwind / grid % areaCell % array(cell2)
+               end do 
             end do 
 
          end if
@@ -1691,24 +1636,22 @@ module time_integration
                end do
    
                do i = 1, grid % nEdgesOnCell % array(iCell)  ! go around the edges of each cell
-                  if (grid % cellsOnCell % array(i,iCell) > 0) then
-                     do iScalar=1,num_scalars
+                  do iScalar=1,num_scalars
     
-                        s_max(iScalar)  = max(scalar_old(iScalar,k,grid % cellsOnCell % array(i,iCell)), s_max(iScalar))
-                        s_min(iScalar)  = min(scalar_old(iScalar,k,grid % cellsOnCell % array(i,iCell)), s_min(iScalar))
+                     s_max(iScalar)  = max(scalar_old(iScalar,k,grid % cellsOnCell % array(i,iCell)), s_max(iScalar))
+                     s_min(iScalar)  = min(scalar_old(iScalar,k,grid % cellsOnCell % array(i,iCell)), s_min(iScalar))
      
-                        iEdge = grid % EdgesOnCell % array (i,iCell)
-                        if (iCell == cellsOnEdge(1,iEdge)) then
-                           fdir = 1.0
-                        else
-                           fdir = -1.0
-                        end if
-                        flux = -fdir * h_flux(iScalar,iEdge)/grid % areaCell % array(iCell)
-                        s_max_update(iScalar) = s_max_update(iScalar) + max(0.,flux)
-                        s_min_update(iScalar) = s_min_update(iScalar) + min(0.,flux)
-    
-                     end do
-                  end if
+                     iEdge = grid % EdgesOnCell % array (i,iCell)
+                     if (iCell == cellsOnEdge(1,iEdge)) then
+                        fdir = 1.0
+                     else
+                        fdir = -1.0
+                     end if
+                     flux = -fdir * h_flux(iScalar,iEdge)/grid % areaCell % array(iCell)
+                     s_max_update(iScalar) = s_max_update(iScalar) + max(0.,flux)
+                     s_min_update(iScalar) = s_min_update(iScalar) + min(0.,flux)
+  
+                  end do
    
                end do
    
@@ -1747,17 +1690,15 @@ module time_integration
             do iEdge = 1, grid % nEdges
                cell1 = grid % cellsOnEdge % array(1,iEdge)
                cell2 = grid % cellsOnEdge % array(2,iEdge)
-               if (cell1 > 0 .and. cell2 > 0) then
-                  do iScalar=1,num_scalars
-                     flux = h_flux(iScalar,iEdge)
-                     if (flux > 0) then
-                        flux = flux * min(scale_out(iScalar,cell1,km0), scale_in(iScalar,cell2,km0))
-                     else
-                        flux = flux * min(scale_in(iScalar,cell1,km0), scale_out(iScalar,cell2,km0))
-                     end if
-                     h_flux(iScalar,iEdge) = flux
-                  end do
-               end if
+               do iScalar=1,num_scalars
+                  flux = h_flux(iScalar,iEdge)
+                  if (flux > 0) then
+                     flux = flux * min(scale_out(iScalar,cell1,km0), scale_in(iScalar,cell2,km0))
+                  else
+                     flux = flux * min(scale_in(iScalar,cell1,km0), scale_out(iScalar,cell2,km0))
+                  end if
+                  h_flux(iScalar,iEdge) = flux
+               end do
             end do
  
        ! rescale the vertical flux
@@ -1792,14 +1733,12 @@ module time_integration
          do iEdge=1,grid%nEdges
             cell1 = cellsOnEdge(1,iEdge)
             cell2 = cellsOnEdge(2,iEdge)
-            if (cell1 > 0 .and. cell2 > 0) then
-               do iScalar=1,num_scalars
-                  s_update(iScalar,cell1,km0) = s_update(iScalar,cell1,km0) - &
-                      h_flux(iScalar,iEdge) / grid % areaCell % array(cell1)
-                  s_update(iScalar,cell2,km0) = s_update(iScalar,cell2,km0) + &
-                      h_flux(iScalar,iEdge) / grid % areaCell % array(cell2)
-               end do 
-            end if
+            do iScalar=1,num_scalars
+               s_update(iScalar,cell1,km0) = s_update(iScalar,cell1,km0) - &
+                   h_flux(iScalar,iEdge) / grid % areaCell % array(cell1)
+               s_update(iScalar,cell2,km0) = s_update(iScalar,cell2,km0) + &
+                   h_flux(iScalar,iEdge) / grid % areaCell % array(cell2)
+            end do 
          end do 
  
          ! decouple from mass
@@ -1906,11 +1845,9 @@ module time_integration
       do iEdge=1,nEdges
          cell1 = cellsOnEdge(1,iEdge)
          cell2 = cellsOnEdge(2,iEdge)
-         if (cell1 > 0 .and. cell2 > 0) then
-            do k=1,nVertLevels
-               h_edge(k,iEdge) = 0.5 * (h(k,cell1) + h(k,cell2))
-            end do
-         end if
+         do k=1,nVertLevels
+            h_edge(k,iEdge) = 0.5 * (h(k,cell1) + h(k,cell2))
+         end do
       end do
 
       !
@@ -1918,16 +1855,10 @@ module time_integration
       !
       circulation(:,:) = 0.0
       do iEdge=1,nEdges
-         if (verticesOnEdge(1,iEdge) > 0) then
-            do k=1,nVertLevels
-               circulation(k,verticesOnEdge(1,iEdge)) = circulation(k,verticesOnEdge(1,iEdge)) - dcEdge(iEdge) * u(k,iEdge)
-            end do
-         end if
-         if (verticesOnEdge(2,iEdge) > 0) then
-            do k=1,nVertLevels
-               circulation(k,verticesOnEdge(2,iEdge)) = circulation(k,verticesOnEdge(2,iEdge)) + dcEdge(iEdge) * u(k,iEdge)
-            end do
-         end if
+         do k=1,nVertLevels
+            circulation(k,verticesOnEdge(1,iEdge)) = circulation(k,verticesOnEdge(1,iEdge)) - dcEdge(iEdge) * u(k,iEdge)
+            circulation(k,verticesOnEdge(2,iEdge)) = circulation(k,verticesOnEdge(2,iEdge)) + dcEdge(iEdge) * u(k,iEdge)
+         end do
       end do
       do iVertex=1,nVertices
          do k=1,nVertLevels
@@ -1943,16 +1874,10 @@ module time_integration
       do iEdge=1,nEdges
          cell1 = cellsOnEdge(1,iEdge)
          cell2 = cellsOnEdge(2,iEdge)
-         if (cell1 > 0) then
-            do k=1,nVertLevels
-              divergence(k,cell1) = divergence(k,cell1) + u(k,iEdge)*dvEdge(iEdge)
-            end do
-         end if
-         if(cell2 > 0) then
-            do k=1,nVertLevels
-              divergence(k,cell2) = divergence(k,cell2) - u(k,iEdge)*dvEdge(iEdge)
-            end do
-         end if
+         do k=1,nVertLevels
+           divergence(k,cell1) = divergence(k,cell1) + u(k,iEdge)*dvEdge(iEdge)
+           divergence(k,cell2) = divergence(k,cell2) - u(k,iEdge)*dvEdge(iEdge)
+         end do
       end do
       do iCell = 1,nCells
         r = 1.0 / areaCell(iCell)
@@ -1985,11 +1910,9 @@ module time_integration
       do iEdge = 1,nEdges
          do i=1,nEdgesOnEdge(iEdge)
             eoe = edgesOnEdge(i,iEdge)
-            if (eoe > 0) then
-               do k = 1,nVertLevels
-                 v(k,iEdge) = v(k,iEdge) + weightsOnEdge(i,iEdge) * u(k, eoe)
-              end do
-            end if
+            do k = 1,nVertLevels
+               v(k,iEdge) = v(k,iEdge) + weightsOnEdge(i,iEdge) * u(k, eoe)
+            end do
          end do
       end do
 
@@ -2001,7 +1924,7 @@ module time_integration
       !
       VTX_LOOP: do iVertex = 1,nVertices
          do i=1,grid % vertexDegree
-            if (cellsOnVertex(i,iVertex) <= 0) cycle VTX_LOOP
+            if (cellsOnVertex(i,iVertex) > nCells) cycle VTX_LOOP
          end do
          do k=1,nVertLevels
             h_vertex = 0.0
@@ -2036,12 +1959,10 @@ module time_integration
       pv_edge(:,:) = 0.0
       do iVertex = 1,nVertices
         do i=1,grid % vertexDegree
-          iEdge = edgesOnVertex(i,iVertex)
-          if(iEdge > 0) then
-            do k=1,nVertLevels
+           iEdge = edgesOnVertex(i,iVertex)
+           do k=1,nVertLevels
               pv_edge(k,iEdge) =  pv_edge(k,iEdge)  + 0.5 * pv_vertex(k,iVertex)
-            end do
-          end if
+           end do
         end do
       end do
       ! tdr
@@ -2065,12 +1986,10 @@ module time_integration
       pv_cell(:,:) = 0.0
       do iVertex = 1, nVertices
        do i=1,grid % vertexDegree
-         iCell = cellsOnVertex(i,iVertex)
-         if( iCell > 0) then
-           do k = 1,nVertLevels
+          iCell = cellsOnVertex(i,iVertex)
+          do k = 1,nVertLevels
              pv_cell(k,iCell) = pv_cell(k,iCell) + kiteAreasOnVertex(i, iVertex) * pv_vertex(k, iVertex) / areaCell(iCell)
-           end do
-         end if
+          end do
        end do
       end do
       ! tdr
@@ -2082,12 +2001,10 @@ module time_integration
       !
       gradPVn(:,:) = 0.0
       do iEdge = 1,nEdges
-        if( cellsOnEdge(1,iEdge) > 0 .and. cellsOnEdge(2,iEdge) > 0) then
-          do k = 1,nVertLevels
+         do k = 1,nVertLevels
             gradPVn(k,iEdge) = (pv_cell(k,cellsOnEdge(2,iEdge)) - pv_cell(k,cellsOnEdge(1,iEdge))) / &
                                  dcEdge(iEdge)
-          end do
-        end if
+         end do
       end do
       ! tdr
 
