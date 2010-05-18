@@ -112,6 +112,7 @@ var real    qr ( nVertLevels nCells Time ) iro qr scalars moist
 # state variables diagnosed from prognostic state
 var real    h ( nVertLevels nCells Time ) ro h - -
 var real    ww ( nVertLevelsP1 nCells Time ) ro ww - -
+var real    w ( nVertLevelsP1 nCells Time ) ro w - -
 var real    pressure ( nVertLevelsP1 nCells Time ) ro pressure - -
 var real    geopotential ( nVertLevelsP1 nCells Time ) ro geopotential - -
 var real    alpha ( nVertLevels nCells Time ) iro alpha - -

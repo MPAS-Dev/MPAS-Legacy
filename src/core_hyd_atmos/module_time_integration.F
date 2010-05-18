@@ -314,6 +314,14 @@ module time_integration
       ! END RK loop 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
 
+      !  compute vertical velocity diagnostic
+
+      block => domain % blocklist
+      do while (associated(block))
+         call compute_w( block % time_levs(2) % state,  block % time_levs(1) % state, block % mesh, dt )
+         block => block % next
+      end do
+
       if(debug) write(0,*) ' rk step complete - mass diagnostics '
 
       if(debug .or. debug_mass_conservation) then
@@ -2018,5 +2026,85 @@ module time_integration
 
 
    end subroutine compute_solve_diagnostics
+
+
+   subroutine compute_w (s_new, s_old, grid, dt )
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+   ! Compute (diagnose) vertical velocity (used by physics)
+   !
+   ! Input: s_new - current model state
+   !        s_old - previous model state
+   !        grid - grid metadata
+   !        dt - timestep between new and old
+   !
+   ! Output: w  (m/s)
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+
+      implicit none
+
+      type (grid_state), intent(inout) :: s_new
+      type (grid_state), intent(in) :: s_old
+      type (grid_meta), intent(inout) :: grid
+
+      real (kind=RKIND), intent(in) :: dt
+
+      real (kind=RKIND), dimension(:,:), pointer :: geo_new, geo_old, u, ww, h, w
+      real (kind=RKIND), dimension(:), pointer :: dvEdge, rdnw, fnm, fnp
+
+      integer :: iEdge, iCell, k, cell1, cell2
+      real (kind=RKIND), dimension( grid % nVertlevels + 1 ) :: wdwn
+      real (kind=RKIND) :: flux
+
+      geo_new => s_new % geopotential % array      
+      geo_old => s_old % geopotential % array      
+      u => s_new % u % array 
+      ww => s_new % ww % array
+      h => s_new % h % array
+      w => s_new % w % array
+      dvEdge => grid % dvEdge % array
+      rdnw => grid % rdnw % array
+      fnm => grid % fnm % array
+      fnp => grid % fnp % array
+
+      w = 0.
+
+      do iCell=1, grid % nCellsSolve
+        wdwn(1) = 0.
+        do k=2,grid % nVertlevels + 1
+          wdwn(k) = (0.5*(ww(k,iCell)+ww(k-1,iCell))/h(k-1,iCell))   &
+                     *rdnw(k-1)*(geo_new(k,iCell)-geo_new(k-1,iCell))
+        enddo
+        w(1,iCell) = 0.
+        do k=2, grid % nVertLevels
+          w(k,iCell) = (((geo_new(k,iCell)-geo_old(k,iCell))/dt)+ &
+                          fnm(k)*wdwn(k+1)+fnp(k)*wdwn(k))/gravity
+        enddo
+        k = grid % nVertLevels + 1
+        w(k,iCell) = ((geo_new(k,iCell)-geo_old(k,iCell))/dt)/gravity
+      enddo
+
+      do iEdge=1, grid % nEdges
+        cell1 = grid % cellsOnEdge % array (1,iEdge)
+        cell2 = grid % cellsOnEdge % array (2,iEdge)
+        if (cell1 <= grid % nCellsSolve .or. cell2 <= grid % nCellsSolve ) then
+          do k=2, grid % nVertLevels
+            flux = 0.25*(u(k,iEdge)+u(k-1,iEdge)*(geo_new(k,cell2)-geo_new(k,cell1))) * dvEdge(iEdge) / gravity
+            w(k,cell1) = w(k,cell1) + flux/ grid % AreaCell % array (cell1)
+            w(k,cell2) = w(k,cell2) + flux/ grid % AreaCell % array (cell2)
+          enddo
+          k = 1
+          flux = 0.5*(1.5*u(1,iEdge)-0.5*u(2,iEdge)*(geo_new(k,cell2)-geo_new(k,cell1))) * dvEdge(iEdge) / gravity
+          w(k,cell1) = w(k,cell1) + flux/ grid % AreaCell % array (cell1)
+          w(k,cell2) = w(k,cell2) + flux/ grid % AreaCell % array (cell2)
+
+          k = grid % nVertLevels + 1
+          flux = 0.5*(1.5*u(k-1,iEdge)-0.5*u(k-2,iEdge)*(geo_new(k,cell2)-geo_new(k,cell1))) * dvEdge(iEdge) / gravity
+          w(k,cell1) = w(k,cell1) + flux/ grid % AreaCell % array (cell1)
+          w(k,cell2) = w(k,cell2) + flux/ grid % AreaCell % array (cell2)
+
+        end if
+      end do
+
+   end subroutine compute_w
 
 end module time_integration
