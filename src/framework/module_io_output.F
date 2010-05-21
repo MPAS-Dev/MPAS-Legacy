@@ -90,6 +90,7 @@ module io_output
       !   although in future, work needs to be done to write model state
       !   from many distributed blocks
       call io_output_init(output_obj, domain % dminfo, &
+                          block_ptr % mesh, &
 #include "output_dim_actual_args.inc"
                          )
    
@@ -326,6 +327,7 @@ module io_output
 
    subroutine io_output_init( output_obj, &
                               dminfo, &
+                              mesh, &
 #include "dim_dummy_args.inc"
                             )
  
@@ -335,6 +337,7 @@ module io_output
  
       type (io_output_object), intent(inout) :: output_obj
       type (dm_info), intent(in) :: dminfo
+      type (grid_meta), intent(in) :: mesh
 #include "dim_dummy_decls.inc"
  
       integer :: nferr
@@ -348,6 +351,17 @@ module io_output
 #endif
  
 #include "netcdf_def_dims_vars.inc"
+
+      if (mesh % on_a_sphere) then
+         nferr = nf_put_att_text(output_obj % wr_ncid, NF_GLOBAL, 'on_a_sphere', 16, 'YES             ')
+      else
+         nferr = nf_put_att_text(output_obj % wr_ncid, NF_GLOBAL, 'on_a_sphere', 16, 'NO              ')
+      end if
+      if (RKIND == 8) then
+         nferr = nf_put_att_double(output_obj % wr_ncid, NF_GLOBAL, 'sphere_radius', NF_DOUBLE, 1, mesh % sphere_radius)
+      else
+         nferr = nf_put_att_real(output_obj % wr_ncid, NF_GLOBAL, 'sphere_radius', NF_FLOAT, 1, mesh % sphere_radius)
+      end if
  
       nferr = nf_enddef(output_obj % wr_ncid)
       end if

@@ -49,6 +49,9 @@ module io_input
       integer :: i, j, k
       type (io_input_object) :: input_obj
 #include "dim_decls.inc"
+
+      character (len=16) :: c_on_a_sphere
+      real (kind=RKIND) :: r_sphere_radius
    
       integer :: readCellStart, readCellEnd, nReadCells
       integer :: readEdgeStart, readEdgeEnd, nReadEdges
@@ -729,6 +732,18 @@ module io_input
 #include "dim_dummy_args.inc"
                          )
 
+      !
+      ! Read attributes
+      !
+      call io_input_get_att_text(input_obj, 'on_a_sphere', c_on_a_sphere)
+      call io_input_get_att_real(input_obj, 'sphere_radius', r_sphere_radius)
+      if (index(c_on_a_sphere, 'YES') /= 0) then
+         domain % blocklist % mesh % on_a_sphere = .true.
+      else
+         domain % blocklist % mesh % on_a_sphere = .false.
+      end if
+      domain % blocklist % mesh % sphere_radius = r_sphere_radius
+
       if (.not. config_do_restart) then
          input_obj % time = 1
       else
@@ -1099,6 +1114,58 @@ module io_input
 #include "get_dimension_by_name.inc"
 
    end subroutine io_input_get_dimension
+
+   
+   subroutine io_input_get_att_real(input_obj, attname, attvalue)
+      
+      implicit none
+
+      type (io_input_object), intent(in) :: input_obj
+      character (len=*), intent(in) :: attname
+      real (kind=RKIND), intent(out) :: attvalue
+
+      include 'netcdf.inc'
+
+      integer :: nferr
+
+      if (RKIND == 8) then
+         nferr = nf_get_att_double(input_obj % rd_ncid, NF_GLOBAL, attname, attvalue)
+      else
+         nferr = nf_get_att_real(input_obj % rd_ncid, NF_GLOBAL, attname, attvalue)
+      end if
+      if (nferr /= NF_NOERR) then
+         write(0,*) 'Warning: Attribute '//trim(attname)//' not found in '//trim(input_obj % filename)
+         if (index(attname, 'sphere_radius') /= 0) then
+            write(0,*) '   Setting '//trim(attname)//' to 1.0'
+            attvalue = 1.0
+         end if
+      end if
+
+   end subroutine io_input_get_att_real
+
+   
+   subroutine io_input_get_att_text(input_obj, attname, attvalue)
+      
+      implicit none
+
+      type (io_input_object), intent(in) :: input_obj
+      character (len=*), intent(in) :: attname
+      character (len=*), intent(out) :: attvalue
+
+      include 'netcdf.inc'
+
+      integer :: nferr
+
+      nferr = nf_get_att_text(input_obj % rd_ncid, NF_GLOBAL, attname, attvalue)
+      if (nferr /= NF_NOERR) then
+         write(0,*) 'Warning: Attribute '//trim(attname)//' not found in '//trim(input_obj % filename)
+         if (index(attname, 'on_a_sphere') /= 0) then
+            write(0,*) '   Setting '//trim(attname)//' to ''YES'''
+            attvalue = 'YES'
+         end if
+      end if
+
+   end subroutine io_input_get_att_text
 
 
    subroutine io_input_field0dReal(input_obj, field)

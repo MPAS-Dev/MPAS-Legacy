@@ -70,6 +70,9 @@ module grid_types
 
 #include "field_dimensions.inc"
 
+      logical :: on_a_sphere
+      real (kind=RKIND) :: sphere_radius
+
 #include "time_invariant_fields.inc"
 
    end type grid_meta
