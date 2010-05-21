@@ -25,6 +25,7 @@ module advection
 !  local variables
 
       real (kind=RKIND), dimension(2, grid % nEdges) :: thetae
+      real (kind=RKIND), dimension(grid % nEdges) :: xe, ye
       real (kind=RKIND), dimension(grid % nCells) :: theta_abs
 
       real (kind=RKIND), dimension(25) :: xc, yc, zc ! cell center coordinates
@@ -102,49 +103,61 @@ module advection
 
          if ( .not. do_the_cell ) cycle
 
+
 !  compute poynomial fit for this cell if all needed neighbors exist
+         if ( grid % on_a_sphere ) then
 
-         do i=1,n
-            advCells(i+1,iCell) = cell_list(i)
-            xc(i) = grid % xCell % array(advCells(i+1,iCell))/a
-            yc(i) = grid % yCell % array(advCells(i+1,iCell))/a
-            zc(i) = grid % zCell % array(advCells(i+1,iCell))/a
-         end do
+            do i=1,n
+               advCells(i+1,iCell) = cell_list(i)
+               xc(i) = grid % xCell % array(advCells(i+1,iCell))/a
+               yc(i) = grid % yCell % array(advCells(i+1,iCell))/a
+               zc(i) = grid % zCell % array(advCells(i+1,iCell))/a
+            end do
 
-         theta_abs(iCell) =  pii/2. - sphere_angle( xc(1), yc(1), zc(1),  &
-                                                    xc(2), yc(2), zc(2),  &
-                                                    0.,    0.,    1.      ) 
+            theta_abs(iCell) =  pii/2. - sphere_angle( xc(1), yc(1), zc(1),  &
+                                                       xc(2), yc(2), zc(2),  &
+                                                       0.,    0.,    1.      ) 
 
 ! angles from cell center to neighbor centers (thetav)
 
-         do i=1,n-1
+            do i=1,n-1
+   
+               ip2 = i+2
+               if (ip2 > n) ip2 = 2
+    
+               thetav(i) = sphere_angle( xc(1),   yc(1),   zc(1),    &
+                                         xc(i+1), yc(i+1), zc(i+1),  &
+                                         xc(ip2), yc(ip2), zc(ip2)   )
 
-            ip2 = i+2
-            if (ip2 > n) ip2 = 2
- 
-            thetav(i) = sphere_angle( xc(1),   yc(1),   zc(1),    &
-                                      xc(i+1), yc(i+1), zc(i+1),  &
-                                      xc(ip2), yc(ip2), zc(ip2)   )
+               dl_sphere(i) = a*arc_length( xc(1),   yc(1),   zc(1),  &
+                                            xc(i+1), yc(i+1), zc(i+1) )
+            end do
 
-            dl_sphere(i) = a*arc_length( xc(1),   yc(1),   zc(1),  &
-                                         xc(i+1), yc(i+1), zc(i+1) )
-         end do
+            length_scale = 1.
+            do i=1,n-1
+               dl_sphere(i) = dl_sphere(i)/length_scale
+            end do
 
-         length_scale = 1.
-         do i=1,n-1
-            dl_sphere(i) = dl_sphere(i)/length_scale
-         end do
+!            thetat(1) = 0.  !  this defines the x direction, cell center 1 -> 
+            thetat(1) = theta_abs(iCell)  !  this defines the x direction, longitude line
+            do i=2,n-1
+               thetat(i) = thetat(i-1) + thetav(i-1)
+            end do
+   
+            do i=1,n-1
+               xp(i) = cos(thetat(i)) * dl_sphere(i)
+               yp(i) = sin(thetat(i)) * dl_sphere(i)
+            end do
 
-!         thetat(1) = 0.  !  this defines the x direction, cell center 1 -> 
-         thetat(1) = theta_abs(iCell)  !  this defines the x direction, longitude line
-         do i=2,n-1
-            thetat(i) = thetat(i-1) + thetav(i-1)
-         end do
+         else     ! On an x-y plane
 
-         do i=1,n-1
-            xp(i) = cos(thetat(i)) * dl_sphere(i)
-            yp(i) = sin(thetat(i)) * dl_sphere(i)
-         end do
+            do i=1,n-1
+               xp(i) = grid % xCell % array(cell_list(i)) - grid % xCell % array(iCell)
+               yp(i) = grid % yCell % array(cell_list(i)) - grid % yCell % array(iCell)
+            end do
+
+         end if
+
 
          ma = n-1
          mw = grid % nEdgesOnCell % array (iCell)
@@ -244,20 +257,25 @@ module advection
             yv2 = grid % yVertex % array(grid % verticesOnEdge % array (2,iedge))/a
             zv2 = grid % zVertex % array(grid % verticesOnEdge % array (2,iedge))/a
   
-            call arc_bisect( xv1, yv1, zv1,  &
-                             xv2, yv2, zv2,  &
-                             xec, yec, zec   )
+            if ( grid % on_a_sphere ) then
+               call arc_bisect( xv1, yv1, zv1,  &
+                                xv2, yv2, zv2,  &
+                                xec, yec, zec   )
   
-            thetae_tmp = sphere_angle( xc(1),   yc(1),   zc(1),    &
-                                       xc(i+1), yc(i+1), zc(i+1),  &
-                                       xec,     yec,     zec       )
-            thetae_tmp = thetae_tmp + thetat(i)
-  
-            if (iCell == grid % cellsOnEdge % array(1,iEdge)) then
-               thetae(1,grid % EdgesOnCell % array (i,iCell)) = thetae_tmp
+               thetae_tmp = sphere_angle( xc(1),   yc(1),   zc(1),    &
+                                          xc(i+1), yc(i+1), zc(i+1),  &
+                                          xec,     yec,     zec       )
+               thetae_tmp = thetae_tmp + thetat(i)
+               if (iCell == grid % cellsOnEdge % array(1,iEdge)) then
+                  thetae(1,grid % EdgesOnCell % array (i,iCell)) = thetae_tmp
+               else
+                  thetae(2,grid % EdgesOnCell % array (i,iCell)) = thetae_tmp
+               end if
             else
-               thetae(2,grid % EdgesOnCell % array (i,iCell)) = thetae_tmp
+               xe(grid % EdgesOnCell % array (i,iCell)) = 0.5 * (xv1 + xv2)
+               ye(grid % EdgesOnCell % array (i,iCell)) = 0.5 * (yv1 + yv2)
             end if
+  
          end do
 
 !  fill second derivative stencil for rk advection 
@@ -266,31 +284,40 @@ module advection
             iEdge = grid % EdgesOnCell % array (i,iCell)
   
   
-            if (iCell == grid % cellsOnEdge % array(1,iEdge)) then
+            if ( grid % on_a_sphere ) then
+               if (iCell == grid % cellsOnEdge % array(1,iEdge)) then
   
-               cos2t = cos(thetae(1,grid % EdgesOnCell % array (i,iCell)))
-               sin2t = sin(thetae(1,grid % EdgesOnCell % array (i,iCell)))
-               costsint = cos2t*sin2t
-               cos2t = cos2t**2
-               sin2t = sin2t**2
+                  cos2t = cos(thetae(1,grid % EdgesOnCell % array (i,iCell)))
+                  sin2t = sin(thetae(1,grid % EdgesOnCell % array (i,iCell)))
+                  costsint = cos2t*sin2t
+                  cos2t = cos2t**2
+                  sin2t = sin2t**2
    
-               do j=1,n
-                  deriv_two(j,1,iEdge) =   2.*cos2t*bmatrix(4,j)  &
-                                         + 2.*costsint*bmatrix(5,j)  &
-                                         + 2.*sin2t*bmatrix(6,j)
-               end do
+                  do j=1,n
+                     deriv_two(j,1,iEdge) =   2.*cos2t*bmatrix(4,j)  &
+                                            + 2.*costsint*bmatrix(5,j)  &
+                                            + 2.*sin2t*bmatrix(6,j)
+                  end do
+               else
+     
+                  cos2t = cos(thetae(2,grid % EdgesOnCell % array (i,iCell)))
+                  sin2t = sin(thetae(2,grid % EdgesOnCell % array (i,iCell)))
+                  costsint = cos2t*sin2t
+                  cos2t = cos2t**2
+                  sin2t = sin2t**2
+      
+                  do j=1,n
+                     deriv_two(j,2,iEdge) =   2.*cos2t*bmatrix(4,j)  &
+                                            + 2.*costsint*bmatrix(5,j)  &
+                                            + 2.*sin2t*bmatrix(6,j)
+                  end do
+               end if
             else
-  
-               cos2t = cos(thetae(2,grid % EdgesOnCell % array (i,iCell)))
-               sin2t = sin(thetae(2,grid % EdgesOnCell % array (i,iCell)))
-               costsint = cos2t*sin2t
-               cos2t = cos2t**2
-               sin2t = sin2t**2
-   
                do j=1,n
-                  deriv_two(j,2,iEdge) =   2.*cos2t*bmatrix(4,j)  &
-                                         + 2.*costsint*bmatrix(5,j)  &
-                                         + 2.*sin2t*bmatrix(6,j)
+                  deriv_two(j,1,iEdge) =   2.*xe(iEdge)*xe(iEdge)*bmatrix(4,j)  &
+                                         + 2.*xe(iEdge)*ye(iEdge)*bmatrix(5,j)  &
+                                         + 2.*ye(iEdge)*ye(iEdge)*bmatrix(6,j)
+                  deriv_two(j,2,iEdge) = deriv_two(j,1,iEdge)
                end do
             end if
          end do
