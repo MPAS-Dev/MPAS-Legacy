@@ -31,6 +31,7 @@ struct dimension {
    char name_in_file[1024];
    char name_in_code[1024];
    int constant_value;
+   int namelist_defined;
    struct dimension * next;
 };
 

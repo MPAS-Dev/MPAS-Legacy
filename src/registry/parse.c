@@ -49,6 +49,7 @@ int parse_reg(FILE * regfile, struct namelist ** nls, struct dimension ** dims, 
 {
    char word[1024];
    struct namelist * nls_ptr;
+   struct namelist * nls_chk_ptr;
    struct dimension * dim_ptr;
    struct variable * var_ptr;
    struct dimension_list * dimlist_ptr;
@@ -96,9 +97,31 @@ int parse_reg(FILE * regfile, struct namelist ** nls, struct dimension ** dims, 
       else if (strncmp(word, "dim", 1024) == 0) {
          NEW_DIMENSION(dim_ptr->next)
          dim_ptr = dim_ptr->next;
+         dim_ptr->namelist_defined = 0;
          getword(regfile, dim_ptr->name_in_file); 
          getword(regfile, dim_ptr->name_in_code); 
          dim_ptr->constant_value = is_integer_constant(dim_ptr->name_in_code);
+         if (strncmp(dim_ptr->name_in_code, "namelist:", 9) == 0) {
+            dim_ptr->namelist_defined = 1;
+            sprintf(dim_ptr->name_in_code, "%s", (dim_ptr->name_in_code)+9);
+            
+            /* Check that the referenced namelist variable is defined as an integer variable */
+            nls_chk_ptr = (*nls)->next;
+            while (nls_chk_ptr) {
+               if (strncmp(nls_chk_ptr->name, dim_ptr->name_in_code, 1024) == 0) {
+                  if (nls_chk_ptr->vtype != INTEGER) {
+                     printf("\nRegistry error: Namelist variable %s must be an integer for namelist-derived dimension %s\n\n", nls_chk_ptr->name, dim_ptr->name_in_file);
+                     return 1;
+                  }
+                  break;
+               } 
+               nls_chk_ptr = nls_chk_ptr->next;
+            }
+            if (!nls_chk_ptr) {
+               printf("\nRegistry error: Namelist variable %s not defined for namelist-derived dimension %s\n\n", dim_ptr->name_in_code, dim_ptr->name_in_file);
+               return 1;
+            }
+         }
       }
       else if (strncmp(word, "var", 1024) == 0) {
          NEW_VARIABLE(var_ptr->next)
