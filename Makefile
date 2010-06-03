@@ -33,6 +33,18 @@ xlf:
 	"CORE = $(CORE)" \
 	"CPPFLAGS = -DRKIND=8 $(MODEL_FORMULATION) $(EXPAND_LEVELS) -D_MPI $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
  
+ftn:
+	( make all \
+	"FC = ftn" \
+	"CC = cc" \
+	"SFC = ftn" \
+	"SCC = cc" \
+	"FFLAGS = -i4 -r8 -gopt -O2 -Mvect=nosse -Kieee" \
+	"CFLAGS = -fast" \
+	"LDFLAGS = " \
+	"CORE = $(CORE)" \
+	"CPPFLAGS = -DRKIND=8 $(MODEL_FORMULATION) $(EXPAND_LEVELS) -D_MPI -DUNDERSCORE $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
+
 pgi:
 	( make all \
 	"FC = mpif90" \
@@ -42,6 +54,18 @@ pgi:
 	"FFLAGS = -r8 -O3" \
 	"CFLAGS = -O3" \
 	"LDFLAGS = -O3" \
+	"CORE = $(CORE)" \
+	"CPPFLAGS = -DRKIND=8 $(MODEL_FORMULATION) $(EXPAND_LEVELS) -D_MPI -DUNDERSCORE $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
+
+pgi-llnl:
+	( make all \
+	"FC = mpipgf90" \
+	"CC = pgcc" \
+	"SFC = pgf90" \
+	"SCC = pgcc" \
+	"FFLAGS = -i4 -r8 -g -O2" \
+	"CFLAGS = -fast" \
+	"LDFLAGS = " \
 	"CORE = $(CORE)" \
 	"CPPFLAGS = -DRKIND=8 $(MODEL_FORMULATION) $(EXPAND_LEVELS) -D_MPI -DUNDERSCORE $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
 
