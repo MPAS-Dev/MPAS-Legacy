@@ -81,6 +81,10 @@ var real    angleEdge ( nEdges ) iro angleEdge - -
 var real    areaCell ( nCells ) iro areaCell - -
 var real    areaTriangle ( nVertices ) iro areaTriangle - -
 
+var real    edgeNormalVectors ( R3 nEdges ) o edgeNormalVectors - -
+var real    localVerticalUnitVectors ( R3 nCells ) o localVerticalUnitVectors - -
+var real    cellTangentPlane ( R3 TWO nEdges ) o cellTangentPlane - -
+
 var integer cellsOnCell ( maxEdges nCells ) iro cellsOnCell - -
 var integer verticesOnCell ( maxEdges nCells ) iro verticesOnCell - -
 var integer verticesOnEdge ( TWO nEdges ) iro verticesOnEdge - -
@@ -129,6 +133,8 @@ var real    pv_cell ( nVertLevels nCells Time ) o pv_cell - -
 var real    uReconstructX ( nVertLevels nCells Time ) o uReconstructX - -
 var real    uReconstructY ( nVertLevels nCells Time ) o uReconstructY - -
 var real    uReconstructZ ( nVertLevels nCells Time ) o uReconstructZ - -
+var real    uReconstructZonal ( nVertLevels nCells Time ) o uReconstructZonal - -
+var real    uReconstructMeridional ( nVertLevels nCells Time ) o uReconstructMeridional - -
 
 # Other diagnostic variables: neither read nor written to any files
 var real    vh ( nVertLevels nEdges Time ) - vh - -

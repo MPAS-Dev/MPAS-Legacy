@@ -68,6 +68,10 @@ var real    angleEdge ( nEdges ) iro angleEdge - -
 var real    areaCell ( nCells ) iro areaCell - -
 var real    areaTriangle ( nVertices ) iro areaTriangle - -
 
+var real    edgeNormalVectors ( R3 nEdges ) o edgeNormalVectors - -
+var real    localVerticalUnitVectors ( R3 nCells ) o localVerticalUnitVectors - -
+var real    cellTangentPlane ( R3 TWO nEdges ) o cellTangentPlane - -
+
 var integer cellsOnCell ( maxEdges nCells ) iro cellsOnCell - -
 var integer verticesOnCell ( maxEdges nCells ) iro verticesOnCell - -
 var integer verticesOnEdge ( TWO nEdges ) iro verticesOnEdge - -
@@ -104,6 +108,8 @@ var real    pv_cell ( nVertLevels nCells Time ) o pv_cell - -
 var real    uReconstructX ( nVertLevels nCells Time ) o uReconstructX - -
 var real    uReconstructY ( nVertLevels nCells Time ) o uReconstructY - -
 var real    uReconstructZ ( nVertLevels nCells Time ) o uReconstructZ - -
+var real    uReconstructZonal ( nVertLevels nCells Time ) o uReconstructZonal - -
+var real    uReconstructMeridional ( nVertLevels nCells Time ) o uReconstructMeridional - -
 var real    zMid ( nVertLevels nCells Time ) o zMid - -
 var real    zBot ( nVertLevels nCells Time ) o zBot - -
 var real    zSurface ( nCells Time ) o zSurface - -
@@ -114,14 +120,12 @@ var real    pmid ( nVertLevels nCells Time ) o pmid - -
 var real    pbot ( nVertLevels nCells Time ) o pbot - -
 var real    MontPot ( nVertLevels nCells Time ) o MontPot - -
 
-
 # Other diagnostic variables: neither read nor written to any files
 var real    vh ( nVertLevels nEdges Time ) - vh - -
 var real    circulation ( nVertLevels nVertices Time ) - circulation - -
 var real    gradPVt ( nVertLevels nEdges Time ) - gradPVt - -
 var real    gradPVn ( nVertLevels nEdges Time ) - gradPVn - -
 
-# xsad 10-02-05:
 # Globally reduced diagnostic variables: only written to output
 var real    areaCellGlobal ( Time ) o areaCellGlobal - -
 var real    areaEdgeGlobal ( Time ) o areaEdgeGlobal - -
@@ -130,5 +134,4 @@ var real    areaTriangleGlobal ( Time ) o areaTriangleGlobal - -
 var real    volumeCellGlobal ( Time ) o volumeCellGlobal - -
 var real    volumeEdgeGlobal ( Time ) o volumeEdgeGlobal - -
 var real    CFLNumberGlobal ( Time ) o CFLNumberGlobal - -
-# xsad 10-02-05 end
 

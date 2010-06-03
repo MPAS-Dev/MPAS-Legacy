@@ -2,7 +2,6 @@ subroutine mpas_setup_test_case(domain)
 
    use grid_types
    use test_cases
-   use vector_reconstruction
 
    implicit none
 
@@ -17,6 +16,8 @@ subroutine mpas_init(block, mesh, dt)
 
    use grid_types
    use time_integration
+   use RBF_interpolation
+   use vector_reconstruction
 
    implicit none
 
@@ -25,6 +26,8 @@ subroutine mpas_init(block, mesh, dt)
    real (kind=RKIND), intent(in) :: dt
 
    call compute_solve_diagnostics(dt, block % time_levs(1) % state, mesh)
+
+   call rbfInterp_initialize(mesh)
    call init_reconstruct(mesh)
    call reconstruct(block % time_levs(1) % state, mesh)
 

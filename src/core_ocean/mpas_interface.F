@@ -16,6 +16,8 @@ subroutine mpas_init(block, mesh, dt)
 
    use grid_types
    use time_integration
+   use RBF_interpolation
+   use vector_reconstruction
 
    implicit none
 
@@ -25,10 +27,9 @@ subroutine mpas_init(block, mesh, dt)
 
    call compute_solve_diagnostics(dt, block % time_levs(1) % state, mesh)
 
-   ! xsad 10-02-09:
-   ! commenting this out until we incorporate the necessary lapack routines into mpas
-   ! call init_reconstruct(block_ptr % mesh)
-   ! xsad 10-02-09 end
+   call rbfInterp_initialize(mesh)
+   call init_reconstruct(mesh)
+   call reconstruct(block % time_levs(1) % state, mesh)
 
 ! mrp 100316 In order for this to work, we need to pass domain % dminfo as an 
 ! input arguement into mpas_init.  Ask about that later.  For now, there will be
@@ -37,7 +38,6 @@ subroutine mpas_init(block, mesh, dt)
 !   call timer_start("global diagnostics")
 !   call computeGlobalDiagnostics(domain % dminfo, block % time_levs(1) % state, mesh, 0, dt)
 !   call timer_stop("global diagnostics")
-!   ! xsad 10-02-08 end
 !   call output_state_init(output_obj, domain, "OUTPUT")
 !   call write_output_frame(output_obj, domain)
 
@@ -74,10 +74,7 @@ subroutine mpas_timestep(domain, itimestep, dt)
 
    call timestep(domain, dt)
 
-   ! mrp 100120:
    if (mod(itimestep, config_stats_interval) == 0) then
-      ! xsad 10-02-08:
-      !call write_stats(domain, itimestep, dt)
       block_ptr => domain % blocklist
       if(associated(block_ptr % next)) then
          write(0,*) 'Error: computeGlobalDiagnostics assumes ',&
@@ -89,9 +86,7 @@ subroutine mpas_timestep(domain, itimestep, dt)
          block_ptr % time_levs(2) % state, block_ptr % mesh, &
          itimestep, dt)
       call timer_stop("global diagnostics")
-      ! xsad 10-02-08 end
    end if
-   ! mrp 100120 end
 
 end subroutine mpas_timestep
 

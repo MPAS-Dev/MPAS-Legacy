@@ -224,10 +224,7 @@ module time_integration
 
          call compute_solve_diagnostics(dt, block % time_levs(2) % state, block % mesh)
 
-         ! xsad 10-02-09:
-         ! commenting this out until we incorporate the necessary lapack routines into mpas
-         !call reconstruct(block % time_levs(2) % state, block % mesh)
-         ! xsad 10-02-09 end
+         call reconstruct(block % time_levs(2) % state, block % mesh)
 
          block => block % next
       end do
