@@ -32,15 +32,18 @@ module global_diagnostics
       integer, intent(in) :: timeIndex
       real (kind=RKIND), intent(in) :: dt
 
-      integer :: nVertLevels, nCellsSolve, nEdgesSolve, nVerticesSolve, nCellsGlobal, nEdgesGlobal, nVerticesGlobal
+      integer :: nVertLevels, nCellsSolve, nEdgesSolve, nVerticesSolve, nCellsGlobal, nEdgesGlobal, nVerticesGlobal, iTracer
+
       real (kind=RKIND) ::  areaCellGlobal, areaEdgeGlobal, areaTriangleGlobal
       real (kind=RKIND), dimension(:), pointer ::  areaCell, dcEdge, dvEdge, areaTriangle, areaEdge
       real (kind=RKIND), dimension(:,:), pointer :: h, u, v, h_edge, circulation, vorticity, ke, pv_edge, pv_vertex, &
-         pv_cell, gradPVn, gradPVt, zmid, zbot, pmid, pbot, MontPot
+         pv_cell, gradPVn, gradPVt, zMid, zTop, p, pTop, MontPot, wTop, rho, tracerTemp
+      real (kind=RKIND), dimension(:,:,:), pointer :: tracers
+
       real (kind=RKIND) :: volumeCellGlobal, volumeEdgeGlobal, CFLNumberGlobal
       real (kind=RKIND) ::  localCFL, localSum
       integer :: elementIndex, variableIndex, nVariables, nSums, nMaxes, nMins
-      integer :: timeLevel
+      integer :: timeLevel,k,i
 
       integer, parameter :: kMaxVariables = 1024 ! this must be a little more than double the number of variables to be reduced
 
@@ -62,7 +65,10 @@ module global_diagnostics
 
       h => state % h % array
       u => state % u % array
+      rho => state % rho % array
+      tracers => state % tracers % array
       v => state % v % array
+      wTop => state % wTop % array
       h_edge => state % h_edge % array
       circulation => state % circulation % array
       vorticity => state % vorticity % array
@@ -72,10 +78,10 @@ module global_diagnostics
       pv_cell => state % pv_cell % array
       gradPVn => state % gradPVn % array
       gradPVt => state % gradPVt % array
-      zmid => state % zmid % array
-      zbot => state % zbot % array
-      pmid => state % pmid % array
-      pbot => state % pbot % array
+      zMid => state % zMid % array
+      zTop => state % zTop % array
+      p => state % p % array
+      pTop => state % pTop % array
       MontPot => state % MontPot % array
 
       variableIndex = 0
@@ -148,28 +154,28 @@ module global_diagnostics
         gradPVt(:,1:nEdgesSolve), sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), &
         verticalSumMaxes(variableIndex))
 
-      ! zmid
+      ! zMid
       variableIndex = variableIndex + 1
       call computeFieldAreaWeightedLocalStats(dminfo, nVertLevels, nCellsSolve, areaCell(1:nCellsSolve), &
-        zmid(:,1:nCellsSolve), sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), &
+        zMid(:,1:nCellsSolve), sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), &
         verticalSumMaxes(variableIndex))
 
-      ! zbot
+      ! zTop
       variableIndex = variableIndex + 1
       call computeFieldAreaWeightedLocalStats(dminfo, nVertLevels, nCellsSolve, areaCell(1:nCellsSolve), &
-        zbot(:,1:nCellsSolve), sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), &
+        zTop(:,1:nCellsSolve), sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), &
         verticalSumMaxes(variableIndex))
 
-      ! pmid
+      ! p
       variableIndex = variableIndex + 1
       call computeFieldVolumeWeightedLocalStats(dminfo, nVertLevels, nCellsSolve, areaCell(1:nCellsSolve), h(:,1:nCellsSolve), &
-        pmid(:,1:nCellsSolve), sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), &
+        p(:,1:nCellsSolve), sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), &
         verticalSumMaxes(variableIndex))
 
-      ! pbot
+      ! pTop
       variableIndex = variableIndex + 1
       call computeFieldVolumeWeightedLocalStats(dminfo, nVertLevels, nCellsSolve, areaCell(1:nCellsSolve), h(:,1:nCellsSolve), &
-        pbot(:,1:nCellsSolve), sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), &
+        pTop(:,1:nCellsSolve), sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), &
         verticalSumMaxes(variableIndex))
 
       ! MontPot
@@ -177,6 +183,23 @@ module global_diagnostics
       call computeFieldVolumeWeightedLocalStats(dminfo, nVertLevels, nCellsSolve, areaCell(1:nCellsSolve), h(:,1:nCellsSolve), &
         MontPot(:,1:nCellsSolve), sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), &
         verticalSumMaxes(variableIndex))
+
+      ! wTop vertical velocity
+      variableIndex = variableIndex + 1
+      call computeFieldVolumeWeightedLocalStats(dminfo, nVertLevels+1, nCellsSolve, areaCell(1:nCellsSolve), h(:,1:nCellsSolve), &
+        wTop(:,1:nCellsSolve), sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), &
+        verticalSumMaxes(variableIndex))
+
+      ! Tracers
+      allocate(tracerTemp(nVertLevels,nCellsSolve))
+      do iTracer=1,num_tracers
+        variableIndex = variableIndex + 1
+        tracerTemp = Tracers(iTracer,:,1:nCellsSolve)
+        call computeFieldVolumeWeightedLocalStats(dminfo, nVertLevels, nCellsSolve, areaCell(1:nCellsSolve), h(:,1:nCellsSolve), &
+          tracerTemp, sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), &
+          verticalSumMaxes(variableIndex))
+      enddo
+      deallocate(tracerTemp)
 
       nVariables = variableIndex
       nSums = nVariables
@@ -284,25 +307,35 @@ module global_diagnostics
       variableIndex = variableIndex + 1
       averages(variableIndex) = sums(variableIndex)/volumeEdgeGlobal
 
-      ! zmid
+      ! zMid
       variableIndex = variableIndex + 1
       averages(variableIndex) = sums(variableIndex)/(areaCellGlobal*nVertLevels)
 
-      ! zbot
+      ! zTop
       variableIndex = variableIndex + 1
       averages(variableIndex) = sums(variableIndex)/(areaCellGlobal*nVertLevels)
 
-      ! pmid
+      ! p
       variableIndex = variableIndex + 1
       averages(variableIndex) = sums(variableIndex)/volumeCellGlobal
 
-      ! pbot
+      ! pTop
       variableIndex = variableIndex + 1
       averages(variableIndex) = sums(variableIndex)/volumeCellGlobal
 
       ! MontPot
       variableIndex = variableIndex + 1
       averages(variableIndex) = sums(variableIndex)/volumeCellGlobal
+
+      ! wTop vertical velocity
+      variableIndex = variableIndex + 1
+      averages(variableIndex) = sums(variableIndex)/volumeCellGlobal
+
+      ! Tracers
+      do iTracer=1,num_tracers
+        variableIndex = variableIndex + 1
+        averages(variableIndex) = sums(variableIndex)/volumeCellGlobal
+      enddo
 
       ! write out the data to files
       if (dminfo % my_proc_id == IO_NODE) then

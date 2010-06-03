@@ -1,21 +1,45 @@
 &sw_model
    config_test_case = 0
    config_time_integration = 'RK4'
-   config_dt = 120.0
-   config_ntimesteps = 30
-   config_output_interval = 30
-   config_stats_interval = 10
-   config_visc  = 100.0
+   config_dt = 60.0
+   config_ntimesteps = 1440000 
+   config_output_interval = 14400 
+   config_stats_interval = 1440 
+   config_visc  = 1.0e5
 /
 
 &io
-   config_input_name = 'grid.quad.20km.nc'
-   config_output_name = 'output.quad.20km.nc'
-   config_restart_name = 'restart.nc'
+   config_input_name = grid.nc
+   config_output_name = output.nc
+   config_restart_name = restart.nc
 /
 
 &restart
-   config_restart_interval = 3000
+   config_restart_interval = 115200
    config_do_restart = .false.
    config_restart_time = 1036800.0
+/
+
+&grid
+   config_vert_grid_type = 'zlevel'
+   config_rho0 = 1028
+/
+&hmix
+   config_hor_diffusion  = 1.0e4
+/
+&vmix
+   config_vert_visc_type  = 'tanh'
+   config_vert_diff_type  = 'tanh'
+   config_vmixTanhViscMax = 2.5e-1
+   config_vmixTanhViscMin = 1.0e-4
+   config_vmixTanhDiffMax = 2.5e-2
+   config_vmixTanhDiffMin = 1.0e-5
+   config_vmixTanhZMid    = -100
+   config_vmixTanhZWidth  = 100
+   config_vert_viscosity  = 2.5e-4
+   config_vert_diffusion  = 2.5e-5 
+/
+&advection
+   config_hor_tracer_adv = 'upwind'
+   config_vert_tracer_adv = 'upwind'
 /

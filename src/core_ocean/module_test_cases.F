@@ -23,6 +23,17 @@
 
       integer :: i, iCell, iEdge, iVtx, iLevel
       type (block_type), pointer :: block_ptr
+      type (dm_info) :: dminfo
+
+      ! mrp 100507: for diagnostic output
+      integer :: iTracer
+      real (kind=RKIND), dimension(:), pointer :: xCell,yCell, &
+         hZLevel, zMidZLevel, zTopZLevel 
+      real (kind=RKIND), dimension(:,:), pointer :: h, u, u_src, rho
+      real (kind=RKIND), dimension(:,:,:), pointer :: tracers
+      real (kind=RKIND) :: delta_rho
+      integer :: nCells, nEdges, nVertices, nVertLevels
+      ! mrp 100507 end: for diagnostic output
 
       if (config_test_case == 0) then
          write(0,*) 'Using initial conditions supplied in input file'
@@ -68,9 +79,10 @@
          end do
 
       else
-         write(0,*) &
-           'Only test case 1, 2, 5, and 6 are currently supported.'
-         stop
+         write(0,*) 'Abort: config_test_case=',config_test_case
+         write(0,*) 'Only test case 1, 2, 5, and 6 ', &
+           'are currently supported.  '
+           call dmpar_abort(dminfo)
       end if
 
       block_ptr => domain % blocklist
@@ -83,6 +95,98 @@
 
         block_ptr => block_ptr % next
       end do
+
+      ! Initialize z-level grid variables from h, read in from input file.
+      block_ptr => domain % blocklist
+      do while (associated(block_ptr))
+         h          => block_ptr % time_levs(1) % state % h % array
+         u          => block_ptr % time_levs(1) % state % u % array
+         rho        => block_ptr % time_levs(1) % state % rho % array
+         tracers    => block_ptr % time_levs(1) % state % tracers % array
+         u_src      => block_ptr % mesh % u_src % array
+         xCell      => block_ptr % mesh % xCell % array
+         yCell      => block_ptr % mesh % yCell % array
+
+         hZLevel    => block_ptr % mesh % hZLevel % array
+         zMidZLevel => block_ptr % mesh % zMidZLevel % array
+         zTopZLevel => block_ptr % mesh % zTopZLevel % array
+
+         nCells      = block_ptr % mesh % nCells
+         nEdges      = block_ptr % mesh % nEdges
+         nVertices   = block_ptr % mesh % nVertices
+         nVertLevels = block_ptr % mesh % nVertLevels
+
+         if (config_vert_grid_type.eq.'zlevel') then
+           ! These should eventually be in an input file.  For now
+           ! I just read them in from h(:,1).
+           hZLevel = h(:,1)
+           zTopZLevel(1) = 0.0
+           do iLevel = 1,nVertLevels
+             zMidZLevel(iLevel) = zTopZLevel(iLevel)-0.5*hZLevel(iLevel)
+             zTopZLevel(iLevel+1) = zTopZLevel(iLevel)-  hZLevel(iLevel)
+           enddo
+           if (config_vert_grid_type.eq.'isopycnal') then
+             print *, ' Using isopycnal coordinates'
+           elseif (config_vert_grid_type.eq.'zlevel') then
+             print *, ' Using z-level coordinates'
+           else 
+             print *, ' Incorrect choice of config_vert_grid_type:',&
+               config_vert_grid_type
+               call dmpar_abort(dminfo)
+           endif
+
+           ! Set tracers, if not done in grid.nc file
+           !tracers = 0.0
+           do iCell = 1,nCells
+             do iLevel = 1,nVertLevels
+              ! for 20 layer test
+              ! tracers(index_temperature,iLevel,iCell) = 5.0  ! temperature
+              ! tracers(index_salinity,iLevel,iCell) = 1.4 + iLevel*0.6  ! salinity
+
+              ! for x3, 25 layer test
+              tracers(index_temperature,iLevel,iCell) = 10.0  ! temperature
+              tracers(index_salinity,iLevel,iCell) = 1.4 + iLevel*0.6  ! salinity
+
+               tracers(index_tracer1,iLevel,iCell) = 1.0
+               tracers(index_tracer2,iLevel,iCell) = &
+                 (yCell(iCell)/4000.e3 + xCell(iCell)/2500.e3 )/2.0
+
+              rho(iLevel,iCell) = 1000.0*(  1.0 &
+                 - 2.5e-4*tracers(index_temperature,iLevel,iCell) &
+                 + 7.6e-4*tracers(index_salinity,iLevel,iCell))
+
+             enddo
+           enddo
+
+        endif
+
+         ! print some diagnostics
+         print '(10a)', 'ilevel',&
+            '  rho      ',&
+            '  min u       max u     ',&
+            '  min u_src   max u_src ', &
+            '  min h       max h     ',&
+            '  hZLevel     zMidZlevel', &
+            '  zTopZlevel'
+         do iLevel = 1,nVertLevels
+            print '(i5,20es12.4)', ilevel, rho(ilevel,1), &
+              minval(u(iLevel,1:nEdges)), maxval(u(iLevel,1:nEdges)), &
+              minval(u_src(iLevel,1:nEdges)), maxval(u_src(iLevel,1:nEdges)), &
+              minval(h(iLevel,1:nCells)), maxval(h(iLevel,1:nCells)), &
+              hZLevel(iLevel),zMidZlevel(iLevel),zTopZlevel(iLevel)
+         enddo
+
+         print '(10a)', 'itracer ilevel  min tracer  max tracer'
+         do iTracer=1,num_tracers
+         do iLevel = 1,nVertLevels
+            print '(2i5,20es12.4)', iTracer,ilevel, &
+              minval(tracers(itracer,iLevel,1:nCells)), maxval(tracers(itracer,iLevel,1:nCells))
+         enddo
+         enddo
+
+         block_ptr => block_ptr % next
+      end do
+
 
    end subroutine setup_sw_test_case
 
@@ -481,7 +585,7 @@ print *, 'h_s',minval(grid % h_s % array),sum(grid % h_s % array)/grid % nCells,
       real (kind=RKIND), intent(in) :: theta
 
       AA = 0.5 * w * (2.0 * omega + w) * cos(theta)**2.0 + &
-          0.25 * K**2.0 * cos(theta)**(2.0*R) * ((R+1.0)*cos(theta)**2.0 + 2.0*R**2.0 - R - 2.0 - 2.0*R**2*cos(theta)**(-2.0))
+          0.25 * K**2.0 * cos(theta)**(2.0*R) * ((R+1.0)*cos(theta)**2.0 + 2.0*R**2.0 - R - 2.0 - 2.0*R**2*cos(theta)**-2.0)
 
    end function AA
 

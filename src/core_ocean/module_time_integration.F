@@ -4,13 +4,9 @@ module time_integration
    use configure
    use constants
    use dmpar
-   ! xsad 10-02-05:
    use vector_reconstruction
-   ! xsad 10-02-05 end
-
 
    contains
-
 
    subroutine timestep(domain, dt)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -26,29 +22,31 @@ module time_integration
 
       type (domain_type), intent(inout) :: domain
       real (kind=RKIND), intent(in) :: dt
-      integer errorcode,ierr
 
+      type (dm_info) :: dminfo
       type (block_type), pointer :: block
 
       if (trim(config_time_integration) == 'RK4') then
          call rk4(domain, dt)
       else
-         write(0,*) 'Unknown time integration option '//trim(config_time_integration)
+         write(0,*) 'Abort: Unknown time integration option '&
+           //trim(config_time_integration)
          write(0,*) 'Currently, only ''RK4'' is supported.'
-         stop
+         call dmpar_abort(dminfo)
       end if
 
-     block => domain % blocklist
-     do while (associated(block))
-        block % time_levs(2) % state % xtime % scalar = block % time_levs(1) % state % xtime % scalar + dt
-   !     ! mrp 100310  I added this to avoid running with NaNs
-   !     if (isNaN(sum(block % time_levs(2) % state % u % array))) then
-   !        print *, 'Stopping: NaN detected'
-   !        call MPI_abort(MPI_COMM_WORLD,errorcode,ierr)
-   !     endif
-   !     ! mrp 100310 end
-        block => block % next
-     end do
+      block => domain % blocklist
+      do while (associated(block))
+         block % time_levs(2) % state % xtime % scalar &
+           = block % time_levs(1) % state % xtime % scalar + dt
+
+         if (isNaN(sum(block % time_levs(2) % state % u % array))) then
+            write(0,*) 'Abort: NaN detected'
+            call dmpar_abort(dminfo)
+         endif
+
+         block => block % next
+      end do
 
    end subroutine timestep
 
@@ -69,7 +67,7 @@ module time_integration
       type (domain_type), intent(inout) :: domain
       real (kind=RKIND), intent(in) :: dt
 
-      integer :: iCell, k
+      integer :: iCell, k, i
       type (block_type), pointer :: block
 
       integer, parameter :: PROVIS = 1
@@ -113,11 +111,10 @@ module time_integration
       rk_substep_weights(4) = 0.
 
 
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       ! BEGIN RK loop 
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       do rk_step = 1, 4
-
 ! ---  update halos for diagnostic variables
 
         block => domain % blocklist
@@ -132,7 +129,6 @@ module time_integration
 
         block => domain % blocklist
         do while (associated(block))
-
            call compute_tend(block % intermediate_step(TEND), block % intermediate_step(PROVIS), block % mesh)
            call compute_scalar_tend(block % intermediate_step(TEND), block % intermediate_step(PROVIS), block % mesh)
            call enforce_boundaryEdge(block % intermediate_step(TEND), block % mesh)
@@ -150,7 +146,7 @@ module time_integration
                                             block % mesh % nVertLevels, block % mesh % nCells, &
                                             block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
            call dmpar_exch_halo_field3dReal(domain % dminfo, block % intermediate_step(TEND) % tracers % array(:,:,:), &
-                                            block % mesh % nTracers, block % mesh % nVertLevels, block % mesh % nCells, &
+                                            num_tracers, block % mesh % nVertLevels, block % mesh % nCells, &
                                             block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
            block => block % next
         end do
@@ -160,6 +156,7 @@ module time_integration
         if (rk_step < 4) then
            block => domain % blocklist
            do while (associated(block))
+
               block % intermediate_step(PROVIS) % u % array(:,:)       = block % time_levs(1) % state % u % array(:,:)  &
                                          + rk_substep_weights(rk_step) * block % intermediate_step(TEND) % u % array(:,:)
               block % intermediate_step(PROVIS) % h % array(:,:)       = block % time_levs(1) % state % h % array(:,:)  &
@@ -172,6 +169,7 @@ module time_integration
                                       + rk_substep_weights(rk_step) * block % intermediate_step(TEND) % tracers % array(:,k,iCell) &
                                                                      ) / block % intermediate_step(PROVIS) % h % array(k,iCell)
                  end do
+
               end do
               if (config_test_case == 1) then    ! For case 1, wind field should be fixed
                  block % intermediate_step(PROVIS) % u % array(:,:) = block % time_levs(1) % state % u % array(:,:)
@@ -181,6 +179,8 @@ module time_integration
            end do
         end if
 
+
+
 !--- accumulate update (for RK4)
 
         block => domain % blocklist
@@ -189,6 +189,7 @@ module time_integration
                                    + rk_weights(rk_step) * block % intermediate_step(TEND) % u % array(:,:) 
            block % time_levs(2) % state % h % array(:,:) = block % time_levs(2) % state % h % array(:,:) &
                                    + rk_weights(rk_step) * block % intermediate_step(TEND) % h % array(:,:) 
+
            do iCell=1,block % mesh % nCells
               do k=1,block % mesh % nVertLevels
                  block % time_levs(2) % state % tracers % array(:,k,iCell) =  &
@@ -196,14 +197,14 @@ module time_integration
                                                + rk_weights(rk_step) * block % intermediate_step(TEND) % tracers % array(:,k,iCell)
               end do
            end do
+
            block => block % next
         end do
 
       end do
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       ! END RK loop 
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
       !
       !  A little clean up at the end: decouple new scalar fields and compute diagnostics for new state
@@ -249,39 +250,43 @@ module time_integration
       type (grid_meta), intent(in) :: grid
 
       integer :: iEdge, iCell, iVertex, k, cell1, cell2, vertex1, vertex2, eoe, i, j
-      real (kind=RKIND) :: flux, vorticity_abs, h_vertex, workpv, q, upstream_bias, dist
-      real (kind=RKIND), allocatable, dimension(:) :: fluxVert
 
       integer :: nCells, nEdges, nVertices, nVertLevels
-      real (kind=RKIND), dimension(:), pointer :: h_s, fVertex, fEdge, dvEdge, dcEdge, areaCell, areaTriangle, zSurfaceEdge
-      real (kind=RKIND), dimension(:,:), pointer :: vh, weightsOnEdge, kiteAreasOnVertex, h_edge, h, u, v, tend_h, tend_u, &
-                                                    circulation, vorticity, ke, pv_edge, divergence, zBotEdge, zMidEdge
-      integer, dimension(:,:), pointer :: cellsOnEdge, cellsOnVertex, verticesOnEdge, edgesOnCell, edgesOnEdge, edgesOnVertex
-      integer, dimension(:), pointer :: nEdgesOnCell, nEdgesOnEdge
-      real (kind=RKIND) :: u_diffusion, visc
+      real (kind=RKIND) :: flux, vorticity_abs, h_vertex, workpv, q, &
+        upstream_bias, wTopEdge, rho0Inv
+      real (kind=RKIND), dimension(:), pointer :: &
+        h_s, fVertex, fEdge, dvEdge, dcEdge, areaCell, areaTriangle, &
+        zMidZLevel, zTopZLevel 
+      real (kind=RKIND), dimension(:,:), pointer :: &
+        weightsOnEdge, kiteAreasOnVertex, h_edge, h, u, v, wTop, &
+        tend_h, tend_u, circulation, vorticity, ke, ke_edge, pv_edge, &
+        divergence, MontPot, pZLevel, zMidEdge, zTopEdge
+      type (dm_info) :: dminfo
 
-      !mrp 100112:
-      real (kind=RKIND), dimension(:,:), pointer :: MontPot
-      !mrp 100112 end
+      integer, dimension(:), pointer :: nEdgesOnCell, nEdgesOnEdge
+      integer, dimension(:,:), pointer :: &
+        cellsOnEdge, cellsOnVertex, verticesOnEdge, edgesOnCell, &
+        edgesOnEdge, edgesOnVertex
+      real (kind=RKIND) :: u_diffusion
+      real (kind=RKIND), dimension(:), allocatable:: fluxVertTop,w_dudzTopEdge, vertViscTop
 
       real (kind=RKIND), dimension(:,:), pointer :: u_src
       real (kind=RKIND), parameter :: rho_ref = 1000.0
 
-      visc = config_visc
-
       h           => s % h % array
       u           => s % u % array
       v           => s % v % array
+      wTop        => s % wTop % array
       h_edge      => s % h_edge % array
       circulation => s % circulation % array
       vorticity   => s % vorticity % array
       divergence  => s % divergence % array
       ke          => s % ke % array
+      ke_edge          => s % ke_edge % array
       pv_edge     => s % pv_edge % array
-      vh          => s % vh % array
       MontPot     => s % MontPot % array
-      zBotEdge    => s % zBotEdge % array
-      zSurfaceEdge=> s % zSurfaceEdge % array
+      pZLevel     => s % pZLevel % array
+      zTopEdge    => s % zTopEdge % array
       zMidEdge    => s % zMidEdge % array
 
       weightsOnEdge     => grid % weightsOnEdge % array
@@ -301,6 +306,8 @@ module time_integration
       h_s               => grid % h_s % array
       fVertex           => grid % fVertex % array
       fEdge             => grid % fEdge % array
+      zMidZLevel        => grid % zMidZLevel % array
+      zTopZLevel        => grid % zTopZLevel % array
 
       tend_h      => tend % h % array
       tend_u      => tend % u % array
@@ -312,10 +319,11 @@ module time_integration
 
       u_src => grid % u_src % array
 
-
       !
-      ! Compute height tendency for each cell
+      ! height tendency: horizontal advection term -\nabla\cdot ( hu)
       !
+      ! See Ringler et al. (2010) jcp paper, eqn 19, 21, and fig. 3. 
+      ! for explanation of divergence operator.
       tend_h(:,:) = 0.0
       do iEdge=1,nEdges
             cell1 = cellsOnEdge(1,iEdge)
@@ -333,32 +341,105 @@ module time_integration
                end do 
             end if
       end do 
-      do iCell=1,grid % nCellsSolve
+      do iCell=1,nCells
          do k=1,nVertLevels
             tend_h(k,iCell) = tend_h(k,iCell) / areaCell(iCell)
          end do
       end do
 
-#ifdef LANL_FORMULATION
       !
-      ! Compute u (normal) velocity tendency for each edge (cell face)
+      ! height tendency: vertical advection term -d/dz(hw)
       !
+      if (config_vert_grid_type.eq.'zlevel') then
+
+        do iCell=1,nCells
+
+           tend_h(1,iCell) =   tend_h(1,iCell) + wTop(2,iCell)
+
+           ! This next loop is to verify that h for levels below the first
+           ! remain constant.  At a later time this could be replaced
+           ! by just tend_h(2:nVertLevels,:) = 0.0, and then there is 
+           ! no need to compute the horizontal tend_h term for k=2:nVertLevels
+           ! on a zlevel grid, above.
+           do k=2,nVertLevels
+              tend_h(k,iCell) =   tend_h(k,iCell) &
+               - (wTop(k,iCell) - wTop(k+1,iCell))
+            end do
+
+        end do
+      endif ! coordinate type
+
+      !
+      ! velocity tendency: vertical advection term -w du/dz
+      !
+      allocate(w_dudzTopEdge(nVertLevels+1))
+      w_dudzTopEdge(1) = 0.0
+      w_dudzTopEdge(nVertLevels+1) = 0.0
       tend_u(:,:) = 0.0
-      do iEdge=1,grid % nEdgesSolve
+      if (config_vert_grid_type.eq.'zlevel') then
+       do iEdge=1,grid % nEdgesSolve
+         cell1 = cellsOnEdge(1,iEdge)
+         cell2 = cellsOnEdge(2,iEdge)
+
+         do k=2,nVertLevels
+           ! Average w from cell center to edge
+           wTopEdge = 0.5*(wTop(k,cell1)+wTop(k,cell2))
+
+           ! compute dudz at vertical interface with first order derivative.
+           w_dudzTopEdge(k) = wTopEdge * (u(k-1,iEdge)-u(k,iEdge)) &
+                        / (zMidZLevel(k-1) - zMidZLevel(k))
+         end do
+
+         ! Average w*du/dz from vertical interface to vertical middle of cell
+         do k=1,nVertLevels
+            tend_u(k,iEdge) = - 0.5 * (w_dudzTopEdge(k) + w_dudzTopEdge(k+1))
+         enddo
+       enddo
+      endif
+      deallocate(w_dudzTopEdge)
+
+      !
+      ! velocity tendency: pressure gradient
+      !
+      rho0Inv = 1.0/config_rho0
+      if (config_vert_grid_type.eq.'isopycnal') then
+        do iEdge=1,grid % nEdgesSolve
+          cell1 = cellsOnEdge(1,iEdge)
+          cell2 = cellsOnEdge(2,iEdge)
+          do k=1,nVertLevels
+             tend_u(k,iEdge) = tend_u(k,iEdge)     &
+               - (MontPot(k,cell2) - MontPot(k,cell1))/dcEdge(iEdge)
+           end do
+        enddo
+      elseif (config_vert_grid_type.eq.'zlevel') then
+        do iEdge=1,grid % nEdgesSolve
+          cell1 = cellsOnEdge(1,iEdge)
+          cell2 = cellsOnEdge(2,iEdge)
+          do k=1,nVertLevels
+             tend_u(k,iEdge) = tend_u(k,iEdge)     &
+               - rho0Inv*(  pZLevel(k,cell2) &
+                          - pZLevel(k,cell1) )/dcEdge(iEdge)
+          end do
+        enddo
+      endif
+
+      !
+      ! velocity tendency: -q(h u^\perp) - \nabla K 
+      !                +\nu_h(\nabla \delta + {\bf k}\times \nabla \xi)
+      !
+      ! Compute diffusion, computed as \nabla divergence - k \times \nabla vorticity
+      !                    only valid for visc == constant
+       do iEdge=1,grid % nEdgesSolve
          cell1 = cellsOnEdge(1,iEdge)
          cell2 = cellsOnEdge(2,iEdge)
          vertex1 = verticesOnEdge(1,iEdge)
          vertex2 = verticesOnEdge(2,iEdge)
-         
+
          do k=1,nVertLevels
 
-         !
-         ! Compute diffusion, computed as \nabla divergence - k \times \nabla vorticity
-         !                    only valid for visc == constant
-         !
             u_diffusion =   ( divergence(k,cell2)  -  divergence(k,cell1) ) / dcEdge(iEdge) &
                            -(vorticity(k,vertex2)  - vorticity(k,vertex1) ) / dvEdge(iEdge)
-            u_diffusion = visc * u_diffusion
+            u_diffusion = config_visc * u_diffusion
 
             q = 0.0
             do j = 1,nEdgesOnEdge(iEdge)
@@ -366,72 +447,84 @@ module time_integration
                workpv = 0.5 * (pv_edge(k,iEdge) + pv_edge(k,eoe))
                q = q + weightsOnEdge(j,iEdge) * u(k,eoe) * workpv * h_edge(k,eoe) 
             end do
-
-            tend_u(k,iEdge) =       &
-                    q     &
+            tend_u(k,iEdge) = tend_u(k,iEdge)     &
+                   + q     &
                    + u_diffusion &
-                   - (   ke(k,cell2) - ke(k,cell1)  &
-                       + MontPot(k,cell2) - MontPot(k,cell1) &
-                         ) / dcEdge(iEdge)
+                   - (   ke(k,cell2) - ke(k,cell1) ) / dcEdge(iEdge)
+
          end do
       end do
 
-     do iEdge=1,grid % nEdgesSolve
-      ! surface forcing
-        tend_u(1,iEdge) =  tend_u(1,iEdge) + u_src(1,iEdge)/rho_ref/h_edge(1,iEdge)
-
-      ! bottom drag
-        tend_u(nVertLevels,iEdge) = tend_u(nVertLevels,iEdge) - u(nVertLevels,iEdge)/(100.0*86400.0)
-
-     enddo
-
-! vertical mixing
-      allocate(fluxVert(0:nVertLevels))
-      do iEdge=1,grid % nEdgesSolve
-        fluxVert(0) = 0.0
-        fluxVert(nVertLevels) = 0.0
-        do k=nVertLevels-1,1,-1
-          fluxVert(k) = ( u(k,iEdge) - u(k+1,iEdge) ) / (zMidEdge(k,iEdge) - zMidEdge(k+1,iEdge))
-        enddo
-        fluxVert = 1.0e-4 * fluxVert
-        do k=1,nVertLevels
-          if(k.eq.1) then
-             dist = zSurfaceEdge(iEdge) - zBotEdge(k,iEdge)
-          else
-             dist = zBotEdge(k-1,iEdge) - zBotEdge(k,iEdge)
-          endif
-          tend_u(k,iEdge) = tend_u(k,iEdge) + (fluxVert(k-1) - fluxVert(k))/dist
-        enddo
-     enddo
-     deallocate(fluxVert)
-
-#endif
-
-#ifdef NCAR_FORMULATION
       !
-      ! Compute u (normal) velocity tendency for each edge (cell face)
+      ! velocity tendency: forcing and bottom drag
       !
-      tend_u(:,:) = 0.0
       do iEdge=1,grid % nEdgesSolve
-         vertex1 = verticesOnEdge(1,iEdge)
-         vertex2 = verticesOnEdge(2,iEdge)
-         cell1 = cellsOnEdge(1,iEdge)
-         cell2 = cellsOnEdge(2,iEdge)
 
+         ! forcing in top layer only
+         tend_u(1,iEdge) =  tend_u(1,iEdge) &
+           + u_src(1,iEdge)/rho_ref/h_edge(1,iEdge)
+
+         ! bottom drag is the same as POP:
+         ! -c |u| u  where c is unitless and 1.0e-3.
+         ! see POP Reference guide, section 3.4.4.
+         tend_u(nVertLevels,iEdge) = tend_u(nVertLevels,iEdge)  &
+           - 1.0e-3*u(nVertLevels,iEdge) &
+             *sqrt(2.0*ke_edge(nVertLevels,iEdge))
+
+         ! mrp 100603 The following method is more straight forward, 
+         ! that the above method of computing ke_edge, but I have
+         ! not verified that v is working correctly yet.
+         !tend_u(nVertLevels,iEdge) = tend_u(nVertLevels,iEdge)  &
+         !  - 1.0e-3*u(nVertLevels,iEdge) &
+         !    *sqrt(u(nVertLevels,iEdge)**2 + v(nVertLevels,iEdge)**2)
+
+         ! old bottom drag, just linear friction
+         ! du/dt = u/tau where tau=100 days.
+         !tend_u(nVertLevels,iEdge) = tend_u(nVertLevels,iEdge)  &
+         !  - u(nVertLevels,iEdge)/(100.0*86400.0)
+
+      enddo
+
+      !
+      ! velocity tendency: vertical mixing d/dz( nu_v du/dz))
+      !
+      allocate(vertViscTop(nVertLevels+1))
+      if (config_vert_visc_type.eq.'const') then
+        vertViscTop = config_vert_viscosity
+      elseif (config_vert_visc_type.eq.'tanh') then
+        if (config_vert_grid_type.ne.'zlevel') then
+          write(0,*) 'Abort: config_vert_visc_type.eq.tanh may only', &
+            ' use config_vert_grid_type of zlevel at this time'
+          call dmpar_abort(dminfo)
+        endif
+  
+        do k=1,nVertLevels+1
+          vertViscTop(k) = -(config_vmixTanhViscMax-config_vmixTanhViscMin)/2.0 &
+            *tanh(-(zTopZLevel(k)-config_vmixTanhZMid) &
+                  /config_vmixTanhZWidth) &
+            + (config_vmixTanhViscMax+config_vmixTanhViscMin)/2
+        enddo
+      else
+        write(0,*) 'Abort: unrecognized config_vert_visc_type'
+        call dmpar_abort(dminfo)
+      endif
+
+      allocate(fluxVertTop(1:nVertLevels+1))
+      fluxVertTop(1) = 0.0
+      fluxVertTop(nVertLevels+1) = 0.0
+      do iEdge=1,grid % nEdgesSolve
+         do k=2,nVertLevels
+           fluxVertTop(k) = vertViscTop(k) &
+              * ( u(k-1,iEdge) - u(k,iEdge) ) &
+              / (zMidEdge(k-1,iEdge) - zMidEdge(k,iEdge))
+         enddo
          do k=1,nVertLevels
-            vorticity_abs = fEdge(iEdge) + (circulation(k,vertex1) + circulation(k,vertex2)) / &
-                                           (areaTriangle(vertex1) + areaTriangle(vertex2))
-
-            workpv = 2.0 * vorticity_abs / (h(k,cell1) + h(k,cell2))
-
-            tend_u(k,iEdge) = workpv * vh(k,iEdge) - &
-                              (ke(k,cell2) - ke(k,cell1) + &
-                                 gravity * (h(k,cell2) + h_s(cell2) - h(k,cell1) - h_s(cell1)) &
-                              ) / &
-                              dcEdge(iEdge)
-         end do
+           tend_u(k,iEdge) = tend_u(k,iEdge) &
+             + (fluxVertTop(k) - fluxVertTop(k+1)) &
+              /(zTopEdge(k,iEdge) - zTopEdge(k+1,iEdge))
+         enddo
       end do
-#endif
+      deallocate(fluxVertTop, vertViscTop)
 
    end subroutine compute_tend
 
@@ -451,32 +544,257 @@ module time_integration
       type (grid_state), intent(in) :: s
       type (grid_meta), intent(in) :: grid
 
-      integer :: iCell, iEdge, k, iTracer, cell1, cell2
-      real (kind=RKIND) :: flux, tracer_edge
+      integer :: iCell, iEdge, k, iTracer, cell1, cell2, upwindCell,&
+        nEdges, nCells, nVertLevels
+      real (kind=RKIND) :: flux, tracer_edge, r
+      real (kind=RKIND) :: dist
+      real (kind=RKIND), dimension(:), pointer :: &
+        h_s, fVertex, fEdge, dvEdge, dcEdge, areaCell, areaTriangle
+      real (kind=RKIND), dimension(:,:), pointer :: &
+        u,h,wTop, h_edge, zMid, zTop
+      real (kind=RKIND), dimension(:,:,:), pointer :: &
+        tracers, tend_tr
+      type (dm_info) :: dminfo
 
-      tend % tracers % array(:,:,:) = 0.0
-      do iEdge=1,grid % nEdges
-            cell1 = grid % cellsOnEdge % array(1,iEdge)
-            cell2 = grid % cellsOnEdge % array(2,iEdge)
-            if (cell1 <= grid%nCells .and. cell2 <= grid%nCells) then
-               do k=1,grid % nVertLevels
-                  do iTracer=1,grid % nTracers
-                     tracer_edge = 0.5 * (s % tracers % array(iTracer,k,cell1) + s % tracers % array(iTracer,k,cell2))
-                     flux = s % u % array(k,iEdge) * grid % dvEdge % array(iEdge) * s % h_edge % array(k,iEdge) * tracer_edge
-                     tend % tracers % array(iTracer,k,cell1) = tend % tracers % array(iTracer,k,cell1) - flux
-                     tend % tracers % array(iTracer,k,cell2) = tend % tracers % array(iTracer,k,cell2) + flux
-                  end do 
+      integer, dimension(:), pointer :: nEdgesOnCell, nEdgesOnEdge
+      integer, dimension(:,:), pointer :: cellsOnEdge
+      real (kind=RKIND), dimension(:), pointer :: &
+        zTopZLevel 
+      real (kind=RKIND), dimension(:,:), allocatable:: fluxVertTop, tracerTop
+      real (kind=RKIND), dimension(:,:,:), allocatable::tr_flux, tr_div
+
+      real (kind=RKIND), dimension(:), allocatable:: vertDiffTop
+
+      u           => s % u % array
+      h           => s % h % array
+      wTop        => s % wTop % array
+      tracers     => s % tracers % array
+      h_edge      => s % h_edge % array
+      zMid        => s % zMid % array
+      zTop        => s % zTop % array
+
+      tend_tr     => tend % tracers % array
+                  
+      areaCell          => grid % areaCell % array
+      cellsOnEdge       => grid % cellsOnEdge % array
+      dvEdge            => grid % dvEdge % array
+      dcEdge            => grid % dcEdge % array
+      zTopZLevel        => grid % zTopZLevel % array
+
+      nEdges      = grid % nEdges
+      nCells      = grid % nCells
+      nVertLevels = grid % nVertLevels
+
+      !
+      ! tracer tendency: horizontal advection term -div( h \phi u)
+      !
+      tend_tr(:,:,:) = 0.0
+      if (config_hor_tracer_adv.eq.'centered') then
+
+       do iEdge=1,nEdges
+         cell1 = cellsOnEdge(1,iEdge)
+         cell2 = cellsOnEdge(2,iEdge)
+         if (cell1 <= nCells .and. cell2 <= nCells) then
+            do k=1,nVertLevels
+               do iTracer=1,num_tracers
+                  tracer_edge = 0.5 * (  tracers(iTracer,k,cell1) &
+                                       + tracers(iTracer,k,cell2))
+                  flux = u(k,iEdge) * dvEdge(iEdge) * h_edge(k,iEdge) &
+                         * tracer_edge
+                  tend_tr(iTracer,k,cell1) = tend_tr(iTracer,k,cell1) - flux
+                  tend_tr(iTracer,k,cell2) = tend_tr(iTracer,k,cell2) + flux
                end do 
-            end if
-      end do 
+            end do 
+         end if
+       end do 
 
+      elseif (config_hor_tracer_adv.eq.'upwind') then
+
+       do iEdge=1,nEdges
+         cell1 = cellsOnEdge(1,iEdge)
+         cell2 = cellsOnEdge(2,iEdge)
+         if (cell1 <= nCells .and. cell2 <= nCells) then
+            do k=1,nVertLevels
+               if (u(k,iEdge)>0.0) then
+                 upwindCell = cell1
+               else
+                 upwindCell = cell2
+               endif
+               do iTracer=1,num_tracers
+                  flux = u(k,iEdge) * dvEdge(iEdge) * h_edge(k,iEdge) &
+                         * tracers(iTracer,k,upwindCell)
+                  tend_tr(iTracer,k,cell1) = tend_tr(iTracer,k,cell1) - flux
+                  tend_tr(iTracer,k,cell2) = tend_tr(iTracer,k,cell2) + flux
+               end do 
+            end do 
+         end if
+       end do 
+
+      endif
       do iCell=1,grid % nCellsSolve
          do k=1,grid % nVertLevelsSolve
-            do iTracer=1,grid % nTracers
-               tend % tracers % array(iTracer,k,iCell) = tend % tracers % array(iTracer,k,iCell) / grid % areaCell % array(iCell)
+            do iTracer=1,num_tracers
+               tend_tr(iTracer,k,iCell) = tend_tr(iTracer,k,iCell) / areaCell(iCell)
             end do
          end do
       end do
+
+      !
+      ! tracer tendency: vertical advection term -d/dz( h \phi w)
+      !
+      allocate(tracerTop(num_tracers,nVertLevels+1))
+      tracerTop(:,1)=0.0
+      tracerTop(:,nVertLevels+1)=0.0
+      do iCell=1,grid % nCellsSolve 
+
+         if (config_vert_tracer_adv.eq.'centered') then
+           do k=2,nVertLevels
+             do iTracer=1,num_tracers
+               tracerTop(iTracer,k) = ( tracers(iTracer,k-1,iCell) &
+                                       +tracers(iTracer,k  ,iCell))/2.0
+             end do
+           end do
+         
+         elseif (config_vert_tracer_adv.eq.'upwind') then
+           do k=2,nVertLevels
+             if (wTop(k,iCell)>0.0) then
+               upwindCell = k
+             else
+               upwindCell = k-1
+             endif
+             do iTracer=1,num_tracers
+               tracerTop(iTracer,k) = tracers(iTracer,upwindCell,iCell)
+             end do
+           end do
+
+         endif
+
+         do k=1,nVertLevels  
+            do iTracer=1,num_tracers
+               tend_tr(iTracer,k,iCell) = tend_tr(iTracer,k,iCell) &
+                  - (   wTop(k  ,iCell)*tracerTop(iTracer,k  ) &
+                      - wTop(k+1,iCell)*tracerTop(iTracer,k+1))
+            end do
+         end do
+
+      enddo ! iCell
+      deallocate(tracerTop)
+
+      !
+      ! tracer tendency: horizontal tracer diffusion 
+      !   div(h \kappa_h \nabla\phi )
+      !
+      ! first compute \kappa_h \nabla\phi at horizontal edges.
+      allocate(tr_flux(num_tracers,nVertLevels,nEdges))
+      tr_flux(:,:,:) = 0.0
+      do iEdge=1,nEdges
+        cell1 = cellsOnEdge(1,iEdge)
+        cell2 = cellsOnEdge(2,iEdge)
+        if (cell1 <= nCells .and. cell2 <= nCells) then
+          do k=1,nVertLevels
+            do iTracer=1,num_tracers
+              tr_flux(iTracer,k,iEdge) =  h_edge(k,iEdge)*config_hor_diffusion *    &
+                 (Tracers(iTracer,k,cell2) - Tracers(iTracer,k,cell1))/dcEdge(iEdge)
+            enddo
+          enddo
+        endif
+      enddo
+
+      ! Compute the divergence, div(h \kappa_h \nabla\phi) at cell centers
+      allocate(tr_div(num_tracers,nVertLevels,nCells))
+      tr_div(:,:,:) = 0.0
+      do iEdge=1,nEdges
+         cell1 = cellsOnEdge(1,iEdge)
+         cell2 = cellsOnEdge(2,iEdge)
+         if (cell1 <= nCells) then
+           do k=1,nVertLevels
+             do iTracer=1,num_tracers
+               tr_div(iTracer,k,cell1) = tr_div(iTracer,k,cell1) &
+                + tr_flux(iTracer,k,iEdge)*dvEdge(iEdge)
+             enddo
+           enddo
+         endif
+         if (cell2 <= nCells) then
+           do k=1,nVertLevels
+             do iTracer=1,num_tracers
+               tr_div(iTracer,k,cell2) = tr_div(iTracer,k,cell2) &
+                 - tr_flux(iTracer,k,iEdge)*dvEdge(iEdge)
+             enddo
+           enddo
+         end if
+      end do
+
+      ! add div(h \kappa_h \nabla\phi ) to tracer tendency
+      do iCell = 1,nCells
+        r = 1.0 / areaCell(iCell)
+        do k = 1,nVertLevels
+           do iTracer=1,num_tracers
+              tend_tr(iTracer,k,iCell) = tend_tr(iTracer,k,iCell) &
+                + tr_div(iTracer,k,iCell)*r
+           enddo
+        enddo
+      enddo
+      deallocate(tr_flux, tr_div)
+
+      !
+      ! tracer tendency: vertical diffusion h d/dz( \kappa_v d\phi/dz)
+      !
+      allocate(vertDiffTop(nVertLevels+1))
+      if (config_vert_diff_type.eq.'const') then
+        vertDiffTop = config_vert_diffusion
+      elseif (config_vert_diff_type.eq.'tanh') then
+        if (config_vert_grid_type.ne.'zlevel') then
+          write(0,*) 'Abort: config_vert_diff_type.eq.tanh may only', &
+            ' use config_vert_grid_type of zlevel at this time'
+          call dmpar_abort(dminfo)
+        endif
+  
+        do k=1,nVertLevels+1
+          vertDiffTop(k) = -(config_vmixTanhDiffMax-config_vmixTanhDiffMin)/2.0 &
+            *tanh(-(zTopZLevel(k)-config_vmixTanhZMid) &
+                  /config_vmixTanhZWidth) &
+            + (config_vmixTanhDiffMax+config_vmixTanhDiffMin)/2
+        enddo
+      else
+        write(0,*) 'Abort: unrecognized config_vert_diff_type'
+        call dmpar_abort(dminfo)
+      endif
+
+      allocate(fluxVertTop(num_tracers,nVertLevels+1))
+      fluxVertTop(:,1) = 0.0
+      fluxVertTop(:,nVertLevels+1) = 0.0
+      do iCell=1,grid % nCellsSolve 
+         do k=2,nVertLevels
+           do iTracer=1,num_tracers
+             ! compute \kappa_v d\phi/dz
+             fluxVertTop(iTracer,k) = vertDiffTop(k) &
+                * (tracers(iTracer,k-1,iCell) - tracers(iTracer,k,iCell) )&
+                / (zMid(k-1,iCell) -zMid(k,iCell))
+           enddo
+         enddo
+
+         do k=1,nVertLevels
+           dist = zTop(k,iCell) - zTop(k+1,iCell)
+           do iTracer=1,num_tracers
+             tend_tr(iTracer,k,iCell) = tend_tr(iTracer,k,iCell) &
+               + h(k,iCell)*(fluxVertTop(iTracer,k) - fluxVertTop(iTracer,k+1))/dist
+           enddo
+         enddo
+
+      enddo ! iCell loop
+      deallocate(fluxVertTop, vertDiffTop)
+
+
+          ! print some diagnostics - for debugging
+!         print *, 'after vertical mixing',&
+! 'iTracer,k, minval(tend_tr(itracer,k,:)), maxval(tend_tr(itracer,k,:))'
+!         do iTracer=1,num_tracers
+!         do k = 1,nVertLevels
+!            print '(2i5,20es12.4)', iTracer,k, &
+!              minval(tend_tr(itracer,k,:)), maxval(tend_tr(itracer,k,:))
+!         enddo
+!         enddo
+
 
    end subroutine compute_scalar_tend
 
@@ -498,16 +816,21 @@ module time_integration
 
 
       integer :: iEdge, iCell, iVertex, k, cell1, cell2, vertex1, vertex2, eoe, i, j, cov
-      real (kind=RKIND) :: flux, vorticity_abs, h_vertex, workpv
+      real (kind=RKIND) :: flux, vorticity_abs, h_vertex, workpv, delta_p
 
       integer :: nCells, nEdges, nVertices, nVertLevels
-      real (kind=RKIND), dimension(:), pointer :: h_s, fVertex, fEdge, dvEdge, dcEdge, areaCell, areaTriangle
-      real (kind=RKIND), dimension(:,:), pointer :: vh, weightsOnEdge, kiteAreasOnVertex, h_edge, h, u, v, tend_h, tend_u, &
-                                                    circulation, vorticity, ke, pv_edge, pv_vertex, pv_cell, gradPVn, gradPVt, divergence
+
+
+      real (kind=RKIND), dimension(:), pointer :: &
+        h_s, fVertex, fEdge, dvEdge, dcEdge, areaCell, areaTriangle, &
+        hZLevel, ssh
       real (kind=RKIND), dimension(:,:), pointer :: &
-        zMid, zBot, pmid, pbot, MontPot, rho, zBotEdge, zMidEdge
-      real (kind=RKIND), dimension(:), pointer :: zSurface, zSurfaceEdge
-      real (kind=RKIND) :: delta_p
+        weightsOnEdge, kiteAreasOnVertex, h_edge, h, u, v, w, wTop, &
+        circulation, vorticity, ke, ke_edge, &
+        pv_edge, pv_vertex, pv_cell, gradPVn, gradPVt, divergence, &
+        zMid, zTop, zMidEdge, zTopEdge, p, pTop, MontPot, rho, temperature, salinity, pZLevel
+      real (kind=RKIND), dimension(:,:,:), pointer :: tracers
+      real (kind=RKIND), dimension(:,:), allocatable:: div_u
       character :: c1*6
 
       integer, dimension(:,:), pointer :: cellsOnEdge, cellsOnVertex, verticesOnEdge, edgesOnCell, edgesOnEdge, edgesOnVertex, boundaryEdge
@@ -518,30 +841,29 @@ module time_integration
       h           => s % h % array
       u           => s % u % array
       v           => s % v % array
-      vh          => s % vh % array
+      wTop        => s % wTop % array
       h_edge      => s % h_edge % array
-      tend_h      => s % h % array
-      tend_u      => s % u % array
       circulation => s % circulation % array
       vorticity   => s % vorticity % array
       divergence  => s % divergence % array
       ke          => s % ke % array
+      ke_edge     => s % ke_edge % array
       pv_edge     => s % pv_edge % array
       pv_vertex   => s % pv_vertex % array
       pv_cell     => s % pv_cell % array
       gradPVn     => s % gradPVn % array
       gradPVt     => s % gradPVt % array
-      !mrp 100112:
       rho         => s % rho % array
+      tracers     => s % tracers % array
       zMid        => s % zMid % array
-      zBot        => s % zBot % array
+      zTop        => s % zTop % array
       zMidEdge    => s % zMidEdge % array
-      zBotEdge    => s % zBotEdge % array
-      zSurfaceEdge=> s % zSurfaceEdge % array
-      pmid        => s % pmid % array
-      pbot        => s % pbot % array
+      zTopEdge    => s % zTopEdge % array
+      p           => s % p % array
+      pZLevel     => s % pZLevel % array
+      pTop        => s % pTop % array
       MontPot     => s % MontPot % array
-      zSurface    => s % zSurface % array
+      ssh         => s % ssh  % array
 
       weightsOnEdge     => grid % weightsOnEdge % array
       kiteAreasOnVertex => grid % kiteAreasOnVertex % array
@@ -560,6 +882,7 @@ module time_integration
       h_s               => grid % h_s % array
       fVertex           => grid % fVertex % array
       fEdge             => grid % fEdge % array
+      hZLevel           => grid % hZLevel % array
                   
       nCells      = grid % nCells
       nEdges      = grid % nEdges
@@ -661,6 +984,7 @@ module time_integration
       end do
 
       !
+      !
       ! Compute v (tangential) velocities
       !
       v(:,:) = 0.0
@@ -675,21 +999,22 @@ module time_integration
          end do
       end do
 
-#ifdef NCAR_FORMULATION
       !
-      ! Compute mass fluxes tangential to each edge (i.e., through the faces of dual grid cells)
+      ! Compute ke on cell edges at velocity locations for quadratic bottom drag. 
       !
-      vh(:,:) = 0.0
-      do iEdge=1,grid % nEdgesSolve
-         do j=1,nEdgesOnEdge(iEdge)
-            eoe = edgesOnEdge(j,iEdge)
+      do iEdge=1,nEdges
+         cell1 = cellsOnEdge(1,iEdge)
+         cell2 = cellsOnEdge(2,iEdge)
+         if (cell1 <= nCells .and. cell2 <= nCells) then
             do k=1,nVertLevels
-               vh(k,iEdge) = vh(k,iEdge) + weightsOnEdge(j,iEdge) * u(k,eoe) * h_edge(k,eoe)
+               ke_edge(k,iEdge) = 0.5 * (ke(k,cell1) + ke(k,cell2))
             end do
-         end do
+         else
+            do k=1,nVertLevels
+               ke_edge(k,iEdge) = 0.0
+            end do
+         end if
       end do
-#endif
-
 
       !
       ! Compute height at vertices, pv at vertices, and average pv to edge locations
@@ -788,6 +1113,29 @@ module time_integration
       enddo
 
       !
+      ! Compute sea surface height
+      !
+      do iCell=1,nCells
+        ssh(iCell) = h(1,iCell) - hZLevel(1)
+      enddo
+
+      !
+      ! equation of state
+      !
+      ! For a isopycnal model, density should remain constant.
+      if (config_vert_grid_type.eq.'zlevel') then
+        do iCell=1,nCells
+          do k=1,nVertLevels
+            ! Linear equation of state, for the time being
+            rho(k,iCell) = 1000.0*(  1.0 &
+               - 2.5e-4*tracers(index_temperature,k,iCell) &
+               + 7.6e-4*tracers(index_salinity,k,iCell))
+          end do
+        end do
+      endif
+
+
+      ! For Isopycnal model.
       ! Compute mid- and bottom-depth of each layer, from bottom up.
       ! Then compute mid- and bottom-pressure of each layer, and 
       ! Montgomery Potential, from top down
@@ -797,41 +1145,107 @@ module time_integration
          ! h_s is ocean topography: elevation above lowest point, 
          ! and is positive. z coordinates are pos upward, and z=0
          ! is at lowest ocean point.
-         zBot(nVertLevels,iCell) = h_s(iCell) 
-         zMid(nVertLevels,iCell) = zBot(nVertLevels,iCell) + 0.5*h(nVertLevels,iCell)
-         do k=nVertLevels-1,1,-1
-            zBot(k,iCell) = zBot(k+1,iCell) + h(k+1,iCell)
-            zMid(k,iCell) = zBot(k,iCell) + 0.5*h(k,iCell)
+         zTop(nVertLevels+1,iCell) = h_s(iCell) 
+         do k=nVertLevels,1,-1
+            zMid(k,iCell) = zTop(k+1,iCell) + 0.5*h(k,iCell)
+            zTop(k,iCell) = zTop(k+1,iCell) +     h(k,iCell)
          end do
-         ! rather than using zBot(0,iCell), I am adding another 2D variable.
-         zSurface(iCell) = zBot(1,iCell) + h(1,iCell)
 
-         ! assume pressure at the surface is zero for now.
-         pmid(1,iCell) = 0.5*rho(1,iCell)*gravity* h(1,iCell) ! + psurf(iCell)
-         pbot(1,iCell) =     rho(1,iCell)*gravity* h(1,iCell) ! + psurf(iCell)
-         MontPot(1,iCell) = gravity * zSurface(iCell) 
-         do k=2,nVertLevels
+         ! assume atmospheric pressure at the surface is zero for now.
+         pTop(1,iCell) = 0.0
+         do k=1,nVertLevels
             delta_p = rho(k,iCell)*gravity* h(k,iCell)
-            pmid(k,iCell) = pbot(k-1,iCell) + 0.5*delta_p
-            pbot(k,iCell) = pbot(k-1,iCell) + delta_p
+            p(k  ,iCell) = pTop(k,iCell) + 0.5*delta_p
+            pTop(k+1,iCell) = pTop(k,iCell) + delta_p
+         end do
 
+         MontPot(1,iCell) = gravity * zTop(1,iCell) 
+         do k=2,nVertLevels
             ! from delta M = p delta / rho
             MontPot(k,iCell) = MontPot(k-1,iCell) &
-               + pbot(k-1,iCell)*(1.0/rho(k,iCell) - 1.0/rho(k-1,iCell)) 
+               + pTop(k,iCell)*(1.0/rho(k,iCell) - 1.0/rho(k-1,iCell)) 
          end do
+
       end do
 
       do iEdge=1,nEdges
        cell1 = cellsOnEdge(1,iEdge)
        cell2 = cellsOnEdge(2,iEdge)
        if(cell1<=nCells .and. cell2<=nCells) then
-        do k=1,nVertLevels
-          zBotEdge(k,iEdge) = (zBot(k,cell1)+zBot(k,cell2))/2.0
-          zMidEdge(k,iEdge) = (zMid(k,cell1)+zMid(k,cell2))/2.0
-        enddo
-        zSurfaceEdge(iEdge) = (zSurface(cell1) + zSurface(cell2))/2.0
+         do k=1,nVertLevels
+           zTopEdge(k,iEdge) = (zTop(k,cell1)+zTop(k,cell2))/2.0
+           zMidEdge(k,iEdge) = (zMid(k,cell1)+zMid(k,cell2))/2.0
+         enddo
+         zTopEdge(nVertLevels+1,iEdge) = ( zTop(nVertLevels+1,cell1) &
+                                         + zTop(nVertLevels+1,cell2))/2.0
         endif
       enddo
+
+
+      ! For z-level model.
+      ! Compute pressure at middle of each level.  
+      ! pZLevel and p should only differ at k=1, where p is 
+      ! pressure at middle of layer including SSH, and pZLevel is
+      ! pressure at a depth of hZLevel(1)/2.
+      !
+      do iCell=1,nCells
+         ! compute pressure for z-level coordinates
+         ! assume atmospheric pressure at the surface is zero for now.
+         pZLevel(1,iCell) = rho(1,iCell)*gravity &
+            * (h(1,iCell)-0.5*hZLevel(1)) 
+         do k=2,nVertLevels
+            delta_p = rho(k,iCell)*gravity*hZLevel(k)
+            pZLevel(k,iCell) = pZLevel(k-1,iCell) + 0.5*delta_p
+         end do
+
+      end do
+
+      ! compute vertical velocity
+      if (config_vert_grid_type.eq.'isopycnal') then
+        ! set vertical velocity to zero in isopycnal case
+        wTop=0.0  
+
+      elseif (config_vert_grid_type.eq.'zlevel') then
+
+        !
+        ! Compute div(u) for each cell
+        ! See Ringler et al. (2010) jcp paper, eqn 19, 21, and fig. 3.
+        !
+        allocate(div_u(nVertLevels,nCells))
+        div_u(:,:) = 0.0
+        do iEdge=1,nEdges
+            cell1 = cellsOnEdge(1,iEdge)
+            cell2 = cellsOnEdge(2,iEdge)
+            if (cell1 <= nCells) then
+               do k=1,nVertLevels
+                  flux = u(k,iEdge) * dvEdge(iEdge) 
+                  div_u(k,cell1) = div_u(k,cell1) + flux
+               end do 
+            end if
+            if (cell2 <= nCells) then
+               do k=1,nVertLevels
+                  flux = u(k,iEdge) * dvEdge(iEdge) 
+                  div_u(k,cell2) = div_u(k,cell2) - flux
+               end do 
+            end if
+        end do 
+
+        do iCell=1,nCells
+           do k=1,nVertLevels
+              div_u(k,iCell) = div_u(k,iCell) / areaCell(iCell)
+           end do
+
+           ! Vertical velocity at bottom is zero.
+           ! this next line can be set permanently somewhere upon startup.
+           wTop(nVertLevels+1,iCell) = 0.0
+           do k=nVertLevels,1,-1
+              wTop(k,iCell) = wTop(k+1,iCell) - div_u(k,iCell)*h(k,iCell)
+           end do
+
+        end do
+        deallocate(div_u)
+
+      endif
 
 
    end subroutine compute_solve_diagnostics
