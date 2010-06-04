@@ -17,6 +17,8 @@ subroutine mpas_init(block, mesh, dt)
    use grid_types
    use advection
    use time_integration
+   use RBF_interpolation
+   use vector_reconstruction
 
    implicit none
 
@@ -28,6 +30,9 @@ subroutine mpas_init(block, mesh, dt)
    call compute_state_diagnostics(block % time_levs(1) % state, mesh)
    call compute_solve_diagnostics(dt, block % time_levs(1) % state, mesh)
    call initialize_advection_rk(mesh)
+   call rbfInterp_initialize(mesh)
+   call init_reconstruct(mesh)
+   call reconstruct(block % time_levs(1) % state, mesh)
 
 end subroutine mpas_init
 

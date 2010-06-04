@@ -4,6 +4,7 @@ module time_integration
    use configure
    use constants
    use dmpar
+   use vector_reconstruction
 
 
    contains
@@ -314,11 +315,13 @@ module time_integration
       ! END RK loop 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
 
-      !  compute vertical velocity diagnostic
-
+      !
+      ! Compute full velocity vectors at cell centers, and compute vertical velocity diagnostic
+      !
       block => domain % blocklist
       do while (associated(block))
-         call compute_w( block % time_levs(2) % state,  block % time_levs(1) % state, block % mesh, dt )
+         call reconstruct(block % time_levs(2) % state, block % mesh)
+         call compute_w(block % time_levs(2) % state, block % time_levs(1) % state, block % mesh, dt)
          block => block % next
       end do
 
