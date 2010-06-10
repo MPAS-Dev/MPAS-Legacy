@@ -1022,7 +1022,7 @@ module time_integration
       !
       VTX_LOOP: do iVertex = 1,nVertices
          do i=1,grid % vertexDegree
-            if (cellsOnVertex(i,iVertex) > nVertices) cycle VTX_LOOP
+            if (cellsOnVertex(i,iVertex) > nCells) cycle VTX_LOOP
          end do
          do k=1,nVertLevels
             h_vertex = 0.0
