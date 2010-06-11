@@ -1,6 +1,0 @@
-<ParaViewReaders>
-  <Reader name="NewPopReader"
-          extensions="nc"
-          file_description="New POP Netcdf Files">
-  </Reader>
-</ParaViewReaders>
