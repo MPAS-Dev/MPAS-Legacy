@@ -6,18 +6,18 @@
 clear all
 
 % begin periodic parameters
-doPeriodic = 1
-dc = 1000.0
-nx = 200
-ny = 200
+doPeriodic = 0;
+dc = 1000.0;
+nx = 200;
+ny = 200;
 % end periodic parameters
 
 doWrite = 1
-doVor = 0
-doTri = 0
-doEdge = 1
+doVor = 1
+doTri = 1
+doVector = 1
 
-ncid = netcdf.open('../grid.nc','nc_nowrite');
+ncid = netcdf.open('grid.nc','nc_nowrite');
 
 if (doVor == 1)
     
@@ -47,19 +47,19 @@ if (doVor == 1)
     nCells=work(1)
 
     if (doWrite == 1)
-    system('rm -f ../dx/vor.position.data');
-    system('rm -f ../dx/vor.edge.data');
-    system('rm -f ../dx/vor.loop.data');
-    system('rm -f ../dx/vor.face.data');
-    system('rm -f ../dx/vor.area.data');
+    system('rm -f ./dx/vor.position.data');
+    system('rm -f ./dx/vor.edge.data');
+    system('rm -f ./dx/vor.loop.data');
+    system('rm -f ./dx/vor.face.data');
+    system('rm -f ./dx/vor.area.data');
 
     iloop=0;
     iedge=0;
     for i=1:nCells
-     dlmwrite('../dx/vor.face.data', i-1, '-append');
-     dlmwrite('../dx/vor.area.data', areaCell(i), ...
+     dlmwrite('./dx/vor.face.data', i-1, '-append');
+     dlmwrite('./dx/vor.area.data', areaCell(i), ...
         'precision', '%18.10e', '-append');
-       dlmwrite('../dx/vor.loop.data', iloop, ...
+       dlmwrite('./dx/vor.loop.data', iloop, ...
         'precision', '%10i', '-append');
        edge(1:nEdgesOnCell(i)) = iedge;
      
@@ -85,11 +85,11 @@ if (doVor == 1)
      end;
      
      for j=1:nEdgesOnCell(i)
-         dlmwrite('../dx/vor.position.data', x(:,j), 'delimiter', '\t', ...
+         dlmwrite('./dx/vor.position.data', x(:,j), 'delimiter', '\t', ...
              'precision', '%18.10e', '-append');
          edge(j) = iedge + j - 1;
        end;
-       dlmwrite('../dx/vor.edge.data', edge(1:nEdgesOnCell(i)), ...
+       dlmwrite('./dx/vor.edge.data', edge(1:nEdgesOnCell(i)), ...
         'delimiter', '\t', 'precision', '%10i', '-append')
        iloop = iloop + nEdgesOnCell(i);
       iedge = iedge + nEdgesOnCell(i);
@@ -126,19 +126,19 @@ if (doTri == 1)
     nVertices = work(:,2)
 
     if (doWrite == 1)
-    system('rm -f ../dx/tri.position.data');
-    system('rm -f ../dx/tri.edge.data');
-    system('rm -f ../dx/tri.loop.data');
-    system('rm -f ../dx/tri.face.data');
-    system('rm -f ../dx/tri.area.data');
+    system('rm -f ./dx/tri.position.data');
+    system('rm -f ./dx/tri.edge.data');
+    system('rm -f ./dx/tri.loop.data');
+    system('rm -f ./dx/tri.face.data');
+    system('rm -f ./dx/tri.area.data');
     
     iloop=0;
     iedge=0;
     for i=1:nVertices
-     dlmwrite('../dx/tri.face.data', i-1, '-append');
-     dlmwrite('../dx/tri.area.data', areaTriangle(i), ...
+     dlmwrite('./dx/tri.face.data', i-1, '-append');
+     dlmwrite('./dx/tri.area.data', areaTriangle(i), ...
         'precision', '%18.10e', '-append');
-     dlmwrite('../dx/tri.loop.data', iloop, ...
+     dlmwrite('./dx/tri.loop.data', iloop, ...
         'precision', '%10i', '-append');
      edge(1:3) = iedge;
      for j=1:nCellsOnVertex
@@ -163,11 +163,11 @@ if (doTri == 1)
      end;
      
      for j=1:nCellsOnVertex;
-         dlmwrite('../dx/tri.position.data', x(:,j), 'delimiter', '\t', ...
+         dlmwrite('./dx/tri.position.data', x(:,j), 'delimiter', '\t', ...
              'precision', '%18.10e', '-append')
          edge(j) = iedge + j - 1;
      end;
-     dlmwrite('../dx/tri.edge.data', edge(1:3), ...
+     dlmwrite('./dx/tri.edge.data', edge(1:3), ...
          'delimiter', '\t', 'precision', '%10i', '-append')
      iloop = iloop + 3;
      iedge = iedge + 3;
@@ -177,26 +177,17 @@ if (doTri == 1)
 
 end;
 
-if (doEdge == 1)
+if (doVector == 1)
     
     if (doWrite == 1)
-        system('rm -f ../dx/edge.position.data');
-        system('rm -f ../dx/normal.data');
-        system('rm -f ../dx/tangent.data');
+        system('rm -f ./dx/vector.position.data');
+        system('rm -f ./dx/vector.data');
     end;
     
-    [nEdgesName, nEdgesLength] = netcdf.inqDim(ncid,1);
-    xE_id = netcdf.inqVarID(ncid,'xEdge');
-    yE_id = netcdf.inqVarID(ncid,'yEdge');
-    zE_id = netcdf.inqVarID(ncid,'zEdge');
-    nCellsOnEdge = 2;
-    nEdges = nEdgesLength;
-    cellsOnEdge_id = netcdf.inqVarID(ncid, 'cellsOnEdge');
-
-    xE=netcdf.getVar(ncid, xE_id);
-    yE=netcdf.getVar(ncid, yE_id);
-    zE=netcdf.getVar(ncid, zE_id);
-    cellsOnEdge=netcdf.getVar(ncid, cellsOnEdge_id);
+    nEdgesOnCell_id = netcdf.inqVarID(ncid,'nEdgesOnCell');
+    nEdgesOnCell=netcdf.getVar(ncid, nEdgesOnCell_id);
+    work=size(nEdgesOnCell(:,1));
+    nCells=work(1)
     
     xC_id = netcdf.inqVarID(ncid,'xCell');
     yC_id = netcdf.inqVarID(ncid,'yCell');
@@ -206,53 +197,45 @@ if (doEdge == 1)
     yC=netcdf.getVar(ncid, yC_id);
     zC=netcdf.getVar(ncid, zC_id);
     
-    for i=1:nEdges
-      
-        j1 = cellsOnEdge(1,i);
-        j2 = cellsOnEdge(2,i);
-        iCell1 = min(j1,j2);
-        iCell2 = max(j1,j2);
-        
-        x(1) = xC(iCell2)-xC(iCell1);
-        x(2) = yC(iCell2)-yC(iCell1);
-        x(3) = zC(iCell2)-zC(iCell1);
-        
-        normal = x ./ sqrt(x(1)^2 + x(2)^2 + x(3)^2);
-        
-        x(1) = xE(i); x(2) = yE(i); x(3) = zE(i);
-        tangent(1) = x(2).*normal(3) - x(3).*normal(2);
-        tangent(2) = x(3).*normal(1) - x(1).*normal(3);
-        tangent(3) = x(1).*normal(2) - x(2).*normal(1);
+    xP = 0.0;
+    yP = 0.0;
+    zP = 1.0;
     
+    for i=1:nCells
+        
+        a(1) = xC(i); 
+        a(2) = yC(i);
+        a(3) = zC(i);
+        
+        b(1) = xP;
+        b(2) = yP;
+        b(3) = zP;
+        
+        c(1) = a(2)*b(3) - a(3)*b(2);
+        c(2) = a(3)*b(1) - a(1)*b(3);
+        c(3) = a(1)*b(2) - a(2)*b(1);
+
     
         if (doWrite == 1)
         
-            dlmwrite('../dx/edge.position.data', xE(i), ...
+            dlmwrite('./dx/vector.position.data', xC(i), ...
              'precision', '%18.10e', '-append')
        
-            dlmwrite('../dx/edge.position.data', yE(i), ...
+            dlmwrite('./dx/vector.position.data', yC(i), ...
              'precision', '%18.10e', '-append')
        
-            dlmwrite('../dx/edge.position.data', zE(i), ...
+            dlmwrite('./dx/vector.position.data', zC(i), ...
+             'precision', '%18.10e', '-append')
+         
+            dlmwrite('./dx/vector.data', c(1), ...
              'precision', '%18.10e', '-append')
        
-            dlmwrite('../dx/normal.data', normal(1), ...
+            dlmwrite('./dx/vector.data', c(2), ...
              'precision', '%18.10e', '-append')
        
-            dlmwrite('../dx/normal.data', normal(2), ...
+            dlmwrite('./dx/vector.data', c(3), ...
              'precision', '%18.10e', '-append')
        
-            dlmwrite('../dx/normal.data', normal(3), ...
-             'precision', '%18.10e', '-append')
-       
-            dlmwrite('../dx/tangent.data', tangent(1), ...
-             'precision', '%18.10e', '-append')
-       
-            dlmwrite('../dx/tangent.data', tangent(2), ...
-             'precision', '%18.10e', '-append')
-       
-            dlmwrite('../dx/tangent.data', tangent(3), ...
-             'precision', '%18.10e', '-append')
     
     end;
     
