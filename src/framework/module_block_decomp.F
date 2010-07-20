@@ -109,7 +109,9 @@ module block_decomp
          deallocate(global_cell_list)
       else
          allocate(local_cell_list(partial_global_graph_info % nVerticesTotal))
-         local_cell_list(:) = dminfo % my_proc_id
+         do i=1,size(local_cell_list)
+            local_cell_list(i) = i
+         end do
       endif
 
    end subroutine block_decomp_cells_for_proc
