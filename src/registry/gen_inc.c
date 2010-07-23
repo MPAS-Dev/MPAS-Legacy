@@ -421,6 +421,7 @@ void gen_field_defs(struct variable * vars, struct dimension * dims)
                dimlist_ptr = dimlist_ptr->next;
             }
             fortprintf(fd, "))\n");
+            fortprintf(fd, "      g %% %s %% array = 0\n", var_ptr2->super_array ); /* initialize field to zero */
 
             if (var_ptr2->iostreams & INPUT0) 
                fortprintf(fd, "      g %% %s %% ioinfo %% input = .true.\n", var_ptr2->super_array);
@@ -463,7 +464,8 @@ void gen_field_defs(struct variable * vars, struct dimension * dims)
                   dimlist_ptr = dimlist_ptr->next;
                }
                fortprintf(fd, "))\n");
-   
+               fortprintf(fd, "      g %% %s %% array = 0\n", var_ptr->name_in_code ); /* initialize field to zero */
+
             }
             if (var_ptr->iostreams & INPUT0) 
                fortprintf(fd, "      g %% %s %% ioinfo %% input = .true.\n", var_ptr->name_in_code);
