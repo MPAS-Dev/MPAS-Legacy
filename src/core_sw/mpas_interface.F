@@ -52,14 +52,31 @@ subroutine mpas_timestep(domain, itimestep, dt)
 
    use grid_types
    use time_integration
+   use timer
+   use global_diagnostics
 
    implicit none
 
    type (domain_type), intent(inout) :: domain 
    integer, intent(in) :: itimestep
    real (kind=RKIND), intent(in) :: dt
+   type (block_type), pointer :: block_ptr
 
    call timestep(domain, dt)
+
+   if (mod(itimestep, config_stats_interval) == 0) then
+       block_ptr => domain % blocklist
+       if(associated(block_ptr % next)) then
+           write(0,*) 'Error: computeGlobalDiagnostics assumes ',&
+                      'that there is only one block per processor.'
+       end if
+
+       call timer_start("global_diagnostics")
+       call computeGlobalDiagnostics(domain % dminfo, &
+                block_ptr % time_levs(2) % state, block_ptr % mesh, &
+                itimestep, dt)
+       call timer_stop("global_diagnostics")
+   end if
 
 end subroutine mpas_timestep
 

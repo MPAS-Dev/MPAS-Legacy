@@ -6,6 +6,7 @@ namelist character sw_model config_time_integration  RK4
 namelist real      sw_model config_dt                172.8
 namelist integer   sw_model config_ntimesteps        7500
 namelist integer   sw_model config_output_interval   500
+namelist integer   sw_model config_stats_interval    100
 namelist real      sw_model config_visc              0.0
 namelist character io       config_input_name        grid.nc
 namelist character io       config_output_name       output.nc
@@ -79,6 +80,7 @@ var integer cellsOnVertex ( vertexDegree nVertices ) iro cellsOnVertex - -
 var real    kiteAreasOnVertex ( vertexDegree nVertices ) iro kiteAreasOnVertex - -
 var real    fEdge ( nEdges ) iro fEdge - -
 var real    fVertex ( nVertices ) iro fVertex - -
+var real    fCell ( nCells ) iro fCell - -
 var real    h_s ( nCells ) iro h_s - -
 
 # Arrays required for reconstruction of velocity field
@@ -97,6 +99,7 @@ var real    tracers ( nTracers nVertLevels nCells Time ) iro tracers - -
 var real    v ( nVertLevels nEdges Time ) o v - -
 var real    divergence ( nVertLevels nCells Time ) o divergence - -
 var real    vorticity ( nVertLevels nVertices Time ) o vorticity - -
+var real    vorticity_cell ( nVertLevels nCells Time ) o vorticity_cell - -
 var real    pv_edge ( nVertLevels nEdges Time ) o pv_edge - -
 var real    h_edge ( nVertLevels nEdges Time ) o h_edge - -
 var real    ke ( nVertLevels nCells Time ) o ke - -
@@ -113,3 +116,4 @@ var real    vh ( nVertLevels nEdges Time ) - vh - -
 var real    circulation ( nVertLevels nVertices Time ) - circulation - -
 var real    gradPVt ( nVertLevels nEdges Time ) - gradPVt - -
 var real    gradPVn ( nVertLevels nEdges Time ) - gradPVn - -
+var real	h_vertex ( nVertLevels nVertices Time ) - h_vertex - -

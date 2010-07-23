@@ -239,12 +239,12 @@ module time_integration
       type (grid_meta), intent(in) :: grid
 
       integer :: iEdge, iCell, iVertex, k, cell1, cell2, vertex1, vertex2, eoe, i, j
-      real (kind=RKIND) :: flux, vorticity_abs, h_vertex, workpv, q, upstream_bias
+      real (kind=RKIND) :: flux, vorticity_abs, workpv, q, upstream_bias
 
       integer :: nCells, nEdges, nVertices, nVertLevels
       real (kind=RKIND), dimension(:), pointer :: h_s, fVertex, fEdge, dvEdge, dcEdge, areaCell, areaTriangle
       real (kind=RKIND), dimension(:,:), pointer :: vh, weightsOnEdge, kiteAreasOnVertex, h_edge, h, u, v, tend_h, tend_u, &
-                                                    circulation, vorticity, ke, pv_edge, divergence
+                                                    circulation, vorticity, ke, pv_edge, divergence, h_vertex
       integer, dimension(:,:), pointer :: cellsOnEdge, cellsOnVertex, verticesOnEdge, edgesOnCell, edgesOnEdge, edgesOnVertex
       integer, dimension(:), pointer :: nEdgesOnCell, nEdgesOnEdge
       real (kind=RKIND) :: u_diffusion, visc
@@ -445,12 +445,13 @@ module time_integration
 
 
       integer :: iEdge, iCell, iVertex, k, cell1, cell2, vertex1, vertex2, eoe, i, j, cov
-      real (kind=RKIND) :: flux, vorticity_abs, h_vertex, workpv
+      real (kind=RKIND) :: flux, vorticity_abs, workpv
 
       integer :: nCells, nEdges, nVertices, nVertLevels
       real (kind=RKIND), dimension(:), pointer :: h_s, fVertex, fEdge, dvEdge, dcEdge, areaCell, areaTriangle
       real (kind=RKIND), dimension(:,:), pointer :: vh, weightsOnEdge, kiteAreasOnVertex, h_edge, h, u, v, tend_h, tend_u, &
-                                                    circulation, vorticity, ke, pv_edge, pv_vertex, pv_cell, gradPVn, gradPVt, divergence
+                                                    circulation, vorticity, ke, pv_edge, pv_vertex, pv_cell, gradPVn, gradPVt, divergence, &
+                                                    h_vertex, vorticity_cell
       integer, dimension(:,:), pointer :: cellsOnEdge, cellsOnVertex, verticesOnEdge, edgesOnCell, edgesOnEdge, edgesOnVertex, boundaryEdge
       integer, dimension(:), pointer :: nEdgesOnCell, nEdgesOnEdge
       real (kind=RKIND) :: r, h1, h2
@@ -461,6 +462,7 @@ module time_integration
       v           => s % v % array
       vh          => s % vh % array
       h_edge      => s % h_edge % array
+      h_vertex    => s % h_vertex % array
       tend_h      => s % h % array
       tend_u      => s % u % array
       circulation => s % circulation % array
@@ -470,6 +472,7 @@ module time_integration
       pv_edge     => s % pv_edge % array
       pv_vertex   => s % pv_vertex % array
       pv_cell     => s % pv_cell % array
+      vorticity_cell => s % vorticity_cell % array
       gradPVn     => s % gradPVn % array
       gradPVt     => s % gradPVt % array
 
@@ -621,13 +624,13 @@ module time_integration
             if (cellsOnVertex(i,iVertex) > nCells) cycle VTX_LOOP
          end do
          do k=1,nVertLevels
-            h_vertex = 0.0
+            h_vertex(k,iVertex) = 0.0
             do i=1,grid % vertexDegree
-               h_vertex = h_vertex + h(k,cellsOnVertex(i,iVertex)) * kiteAreasOnVertex(i,iVertex)
+               h_vertex(k,iVertex) = h_vertex(k,iVertex) + h(k,cellsOnVertex(i,iVertex)) * kiteAreasOnVertex(i,iVertex)
             end do
-            h_vertex = h_vertex / areaTriangle(iVertex)
+            h_vertex(k,iVertex) = h_vertex(k,iVertex) / areaTriangle(iVertex)
 
-            pv_vertex(k,iVertex) = (fVertex(iVertex) + vorticity(k,iVertex)) / h_vertex
+            pv_vertex(k,iVertex) = (fVertex(iVertex) + vorticity(k,iVertex)) / h_vertex(k,iVertex)
          end do
       end do VTX_LOOP
 
@@ -674,12 +677,14 @@ module time_integration
       !    ( this computes pv_cell for all real cells and distance-1 ghost cells )
       !
       pv_cell(:,:) = 0.0
+      vorticity_cell(:,:) = 0.0
       do iVertex = 1, nVertices
        do i=1,grid % vertexDegree
          iCell = cellsOnVertex(i,iVertex)
          if (iCell <= nCells) then
            do k = 1,nVertLevels
              pv_cell(k,iCell) = pv_cell(k,iCell) + kiteAreasOnVertex(i, iVertex) * pv_vertex(k, iVertex) / areaCell(iCell)
+             vorticity_cell(k,iCell) = vorticity_cell(k,iCell) + kiteAreasOnVertex(i, iVertex) * vorticity(k, iVertex) / areaCell(iCell)
            enddo
          endif
        enddo

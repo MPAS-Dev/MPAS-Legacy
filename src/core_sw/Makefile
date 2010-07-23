@@ -2,7 +2,8 @@
 
 OBJS = module_test_cases.o \
        module_time_integration.o \
-       mpas_interface.o
+	   module_global_diagnostics.o \
+       mpas_interface.o 
 
 all: core_sw
 
@@ -13,7 +14,7 @@ module_test_cases.o:
 
 module_time_integration.o: 
 
-mpas_interface.o: module_test_cases.o module_time_integration.o 
+mpas_interface.o: module_global_diagnostics.o module_test_cases.o module_time_integration.o 
 
 clean:
 	$(RM) *.o *.mod *.f90 libdycore.a
