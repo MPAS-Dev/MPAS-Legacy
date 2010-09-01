@@ -28,10 +28,10 @@
       ! mrp 100507: for diagnostic output
       integer :: iTracer
       real (kind=RKIND), dimension(:), pointer :: xCell,yCell, &
-         hZLevel, zMidZLevel, zTopZLevel 
+         hZLevel, zMidZLevel, zTopZLevel, latCell,LonCell
       real (kind=RKIND), dimension(:,:), pointer :: h, u, u_src, rho
       real (kind=RKIND), dimension(:,:,:), pointer :: tracers
-      real (kind=RKIND) :: delta_rho
+      real (kind=RKIND) :: delta_rho, pi, latCenter, lonCenter, dist
       integer :: nCells, nEdges, nVertices, nVertLevels
       ! mrp 100507 end: for diagnostic output
 
@@ -106,6 +106,8 @@
          u_src      => block_ptr % mesh % u_src % array
          xCell      => block_ptr % mesh % xCell % array
          yCell      => block_ptr % mesh % yCell % array
+         latCell      => block_ptr % mesh % latCell % array
+         lonCell      => block_ptr % mesh % lonCell % array
 
          hZLevel    => block_ptr % mesh % hZLevel % array
          zMidZLevel => block_ptr % mesh % zMidZLevel % array
@@ -115,6 +117,13 @@
          nEdges      = block_ptr % mesh % nEdges
          nVertices   = block_ptr % mesh % nVertices
          nVertLevels = block_ptr % mesh % nVertLevels
+
+         pi=3.1415
+         ! Tracer blob in Central Pacific, away from boundaries:
+         !latCenter=pi/16;  lonCenter=9./8.*pi
+
+         ! Tracer blob in Central Pacific, near boundaries:
+         latCenter=pi*2./16;  lonCenter=13./16.*pi
 
          if (config_vert_grid_type.eq.'zlevel') then
            ! These should eventually be in an input file.  For now
@@ -138,18 +147,26 @@
            ! Set tracers, if not done in grid.nc file
            !tracers = 0.0
            do iCell = 1,nCells
+             dist = sqrt( (latCell(iCell)-latCenter)**2 + (lonCell(iCell)-lonCenter)**2)
              do iLevel = 1,nVertLevels
               ! for 20 layer test
               ! tracers(index_temperature,iLevel,iCell) = 5.0  ! temperature
               ! tracers(index_salinity,iLevel,iCell) = 1.4 + iLevel*0.6  ! salinity
 
               ! for x3, 25 layer test
-              tracers(index_temperature,iLevel,iCell) = 10.0  ! temperature
-              tracers(index_salinity,iLevel,iCell) = 1.4 + iLevel*0.6  ! salinity
+              !tracers(index_temperature,iLevel,iCell) = 10.0  ! temperature
+              !tracers(index_salinity,iLevel,iCell) = 1.4 + iLevel*0.6  ! salinity
 
-               tracers(index_tracer1,iLevel,iCell) = 1.0
-               tracers(index_tracer2,iLevel,iCell) = &
-                 (yCell(iCell)/4000.e3 + xCell(iCell)/2500.e3 )/2.0
+              ! tracers(index_tracer1,iLevel,iCell) = 1.0
+              ! tracers(index_tracer2,iLevel,iCell) = &
+              !    (yCell(iCell)/4000.e3 + xCell(iCell)/2500.e3 )/2.0
+
+              ! Tracer blob 
+              !if (dist.lt.pi/16) then
+              !  tracers(index_tracer1,iLevel,iCell) = 1.0
+              !!else  
+              !  tracers(index_tracer1,iLevel,iCell) = 0.0
+              !endif
 
               rho(iLevel,iCell) = 1000.0*(  1.0 &
                  - 2.5e-4*tracers(index_temperature,iLevel,iCell) &

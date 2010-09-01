@@ -122,6 +122,16 @@ module time_integration
            call dmpar_exch_halo_field2dReal(domain % dminfo, block % intermediate_step(PROVIS) % pv_edge % array(:,:), &
                                             block % mesh % nVertLevels, block % mesh % nEdges, &
                                             block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
+
+           if (config_h_mom_eddy_visc4 > 0.0) then
+              call dmpar_exch_halo_field2dReal(domain % dminfo, block % time_levs(2) % state % divergence % array(:,:), &
+                                               block % mesh % nVertLevels, block % mesh % nCells, &
+                                               block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
+              call dmpar_exch_halo_field2dReal(domain % dminfo, block % time_levs(2) % state % vorticity % array(:,:), &
+                                               block % mesh % nVertLevels, block % mesh % nVertices, &
+                                               block % parinfo % verticesToSend, block % parinfo % verticesToRecv)
+           end if
+
            block => block % next
         end do
 
@@ -252,8 +262,9 @@ module time_integration
       integer :: iEdge, iCell, iVertex, k, cell1, cell2, vertex1, vertex2, eoe, i, j
 
       integer :: nCells, nEdges, nVertices, nVertLevels
+      real (kind=RKIND) :: h_mom_eddy_visc2, h_mom_eddy_visc4
       real (kind=RKIND) :: flux, vorticity_abs, h_vertex, workpv, q, &
-        upstream_bias, wTopEdge, rho0Inv
+        upstream_bias, wTopEdge, rho0Inv, r
       real (kind=RKIND), dimension(:), pointer :: &
         h_s, fVertex, fEdge, dvEdge, dcEdge, areaCell, areaTriangle, &
         zMidZLevel, zTopZLevel 
@@ -269,6 +280,11 @@ module time_integration
         edgesOnEdge, edgesOnVertex
       real (kind=RKIND) :: u_diffusion
       real (kind=RKIND), dimension(:), allocatable:: fluxVertTop,w_dudzTopEdge, vertViscTop
+
+      real (kind=RKIND), allocatable, dimension(:,:) :: delsq_divergence
+      real (kind=RKIND), allocatable, dimension(:,:) :: delsq_u
+      real (kind=RKIND), allocatable, dimension(:,:) :: delsq_circulation, delsq_vorticity
+
 
       real (kind=RKIND), dimension(:,:), pointer :: u_src
       real (kind=RKIND), parameter :: rho_ref = 1000.0
@@ -318,6 +334,9 @@ module time_integration
       nVertLevels = grid % nVertLevels
 
       u_src => grid % u_src % array
+
+      h_mom_eddy_visc2 = config_h_mom_eddy_visc2
+      h_mom_eddy_visc4 = config_h_mom_eddy_visc4
 
       !
       ! height tendency: horizontal advection term -\nabla\cdot ( hu)
@@ -370,12 +389,16 @@ module time_integration
       endif ! coordinate type
 
       !
+      ! velocity tendency: start accumulating tendency terms
+      !
+      tend_u(:,:) = 0.0
+
+      !
       ! velocity tendency: vertical advection term -w du/dz
       !
       allocate(w_dudzTopEdge(nVertLevels+1))
       w_dudzTopEdge(1) = 0.0
       w_dudzTopEdge(nVertLevels+1) = 0.0
-      tend_u(:,:) = 0.0
       if (config_vert_grid_type.eq.'zlevel') then
        do iEdge=1,grid % nEdgesSolve
          cell1 = cellsOnEdge(1,iEdge)
@@ -424,22 +447,137 @@ module time_integration
       endif
 
       !
-      ! velocity tendency: -q(h u^\perp) - \nabla K 
-      !                +\nu_h(\nabla \delta + {\bf k}\times \nabla \xi)
+      ! velocity tendency: del2 dissipation, \nu_2 \nabla^2 u
+      !   computed as \nu( \nabla divergence + k \times \nabla vorticity )
+      !   strictly only valid for h_mom_eddy_visc2 == constant
       !
-      ! Compute diffusion, computed as \nabla divergence - k \times \nabla vorticity
-      !                    only valid for visc == constant
-       do iEdge=1,grid % nEdgesSolve
+      if ( h_mom_eddy_visc2 > 0.0 ) then
+         do iEdge=1,grid % nEdgesSolve
+            cell1 = cellsOnEdge(1,iEdge)
+            cell2 = cellsOnEdge(2,iEdge)
+            vertex1 = verticesOnEdge(1,iEdge)
+            vertex2 = verticesOnEdge(2,iEdge)
+
+            do k=1,nVertLevels
+
+               ! Here -( vorticity(k,vertex2) - vorticity(k,vertex1) ) / dvEdge(iEdge)
+               ! is - \nabla vorticity pointing from vertex 2 to vertex 1, or equivalently 
+               !    + k \times \nabla vorticity pointing from cell1 to cell2.
+
+               u_diffusion = ( divergence(k,cell2)  - divergence(k,cell1) ) / dcEdge(iEdge)  &
+                            -( vorticity(k,vertex2) - vorticity(k,vertex1) ) / dvEdge(iEdge)
+               u_diffusion = h_mom_eddy_visc2 * u_diffusion
+
+               tend_u(k,iEdge) = tend_u(k,iEdge) + u_diffusion
+
+            end do
+         end do
+      end if
+
+      !
+      ! velocity tendency: del4 dissipation, -\nu_4 \nabla^4 u
+      !   computed as \nabla^2 u = \nabla divergence + k \times \nabla vorticity
+      !   applied recursively.
+      !   strictly only valid for h_mom_eddy_visc4 == constant
+      !
+      if ( h_mom_eddy_visc4 > 0.0 ) then
+
+         allocate(delsq_divergence(nVertLevels, nCells+1))
+         allocate(delsq_u(nVertLevels, nEdges+1))
+         allocate(delsq_circulation(nVertLevels, nVertices+1))
+         allocate(delsq_vorticity(nVertLevels, nVertices+1))
+
+         delsq_u(:,:) = 0.0
+
+         ! Compute \nabla^2 u = \nabla divergence + k \times \nabla vorticity
+         do iEdge=1,grid % nEdges
+            cell1 = cellsOnEdge(1,iEdge)
+            cell2 = cellsOnEdge(2,iEdge)
+            vertex1 = verticesOnEdge(1,iEdge)
+            vertex2 = verticesOnEdge(2,iEdge)
+
+            do k=1,nVertLevels
+
+               u_diffusion = ( divergence(k,cell2)  - divergence(k,cell1) ) / dcEdge(iEdge)  &
+                            -( vorticity(k,vertex2) - vorticity(k,vertex1)) / dvEdge(iEdge)
+ 
+               delsq_u(k,iEdge) = delsq_u(k,iEdge) + u_diffusion
+
+            end do
+         end do
+
+         ! vorticity using \nabla^2 u
+         delsq_circulation(:,:) = 0.0
+         do iEdge=1,nEdges
+            vertex1 = verticesOnEdge(1,iEdge)
+            vertex2 = verticesOnEdge(2,iEdge)
+            do k=1,nVertLevels
+               delsq_circulation(k,vertex1) = delsq_circulation(k,vertex1) &
+                  - dcEdge(iEdge) * delsq_u(k,iEdge)
+               delsq_circulation(k,vertex2) = delsq_circulation(k,vertex2) &
+                  + dcEdge(iEdge) * delsq_u(k,iEdge)
+            end do
+         end do
+         do iVertex=1,nVertices
+            r = 1.0 / areaTriangle(iVertex)
+            do k=1,nVertLevels
+               delsq_vorticity(k,iVertex) = delsq_circulation(k,iVertex) * r
+            end do
+         end do
+
+         ! Divergence using \nabla^2 u
+         delsq_divergence(:,:) = 0.0
+         do iEdge=1,nEdges
+            cell1 = cellsOnEdge(1,iEdge)
+            cell2 = cellsOnEdge(2,iEdge)
+            do k=1,nVertLevels
+              delsq_divergence(k,cell1) = delsq_divergence(k,cell1) &
+                + delsq_u(k,iEdge)*dvEdge(iEdge)
+              delsq_divergence(k,cell2) = delsq_divergence(k,cell2) &
+                - delsq_u(k,iEdge)*dvEdge(iEdge)
+            end do
+         end do
+         do iCell = 1,nCells
+            r = 1.0 / areaCell(iCell)
+            do k = 1,nVertLevels
+               delsq_divergence(k,iCell) = delsq_divergence(k,iCell) * r
+            end do
+         end do
+
+         ! Compute - \kappa \nabla^4 u 
+         ! as  \nabla div(\nabla^2 u) + k \times \nabla ( k \cross curl(\nabla^2 u) )
+         do iEdge=1,grid % nEdgesSolve
+            cell1 = cellsOnEdge(1,iEdge)
+            cell2 = cellsOnEdge(2,iEdge)
+            vertex1 = verticesOnEdge(1,iEdge)
+            vertex2 = verticesOnEdge(2,iEdge)
+
+            do k=1,nVertLevels
+
+               u_diffusion = (  delsq_divergence(k,cell2) &
+                              - delsq_divergence(k,cell1) ) / dcEdge(iEdge)  &
+                            -(  delsq_vorticity(k,vertex2) &
+                              - delsq_vorticity(k,vertex1) ) / dvEdge(iEdge)
+ 
+               tend_u(k,iEdge) = tend_u(k,iEdge) - h_mom_eddy_visc4 * u_diffusion
+            end do
+         end do
+
+         deallocate(delsq_divergence)
+         deallocate(delsq_u)
+         deallocate(delsq_circulation)
+         deallocate(delsq_vorticity)
+
+      end if
+
+      !
+      ! velocity tendency: nonlinear Coriolis term and grad of kinetic energy
+      !
+      do iEdge=1,grid % nEdgesSolve
          cell1 = cellsOnEdge(1,iEdge)
          cell2 = cellsOnEdge(2,iEdge)
-         vertex1 = verticesOnEdge(1,iEdge)
-         vertex2 = verticesOnEdge(2,iEdge)
 
          do k=1,nVertLevels
-
-            u_diffusion =   ( divergence(k,cell2)  -  divergence(k,cell1) ) / dcEdge(iEdge) &
-                           -(vorticity(k,vertex2)  - vorticity(k,vertex1) ) / dvEdge(iEdge)
-            u_diffusion = config_visc * u_diffusion
 
             q = 0.0
             do j = 1,nEdgesOnEdge(iEdge)
@@ -449,7 +587,6 @@ module time_integration
             end do
             tend_u(k,iEdge) = tend_u(k,iEdge)     &
                    + q     &
-                   + u_diffusion &
                    - (   ke(k,cell2) - ke(k,cell1) ) / dcEdge(iEdge)
 
          end do
@@ -470,13 +607,6 @@ module time_integration
          tend_u(nVertLevels,iEdge) = tend_u(nVertLevels,iEdge)  &
            - 1.0e-3*u(nVertLevels,iEdge) &
              *sqrt(2.0*ke_edge(nVertLevels,iEdge))
-
-         ! mrp 100603 The following method is more straight forward, 
-         ! that the above method of computing ke_edge, but I have
-         ! not verified that v is working correctly yet.
-         !tend_u(nVertLevels,iEdge) = tend_u(nVertLevels,iEdge)  &
-         !  - 1.0e-3*u(nVertLevels,iEdge) &
-         !    *sqrt(u(nVertLevels,iEdge)**2 + v(nVertLevels,iEdge)**2)
 
          ! old bottom drag, just linear friction
          ! du/dt = u/tau where tau=100 days.
@@ -546,6 +676,7 @@ module time_integration
 
       integer :: iCell, iEdge, k, iTracer, cell1, cell2, upwindCell,&
         nEdges, nCells, nVertLevels
+      real (kind=RKIND) :: h_tracer_eddy_diff2, h_tracer_eddy_diff4, invAreaCell1, invAreaCell2, tracer_turb_flux
       real (kind=RKIND) :: flux, tracer_edge, r
       real (kind=RKIND) :: dist
       real (kind=RKIND), dimension(:), pointer :: &
@@ -554,14 +685,15 @@ module time_integration
         u,h,wTop, h_edge, zMid, zTop
       real (kind=RKIND), dimension(:,:,:), pointer :: &
         tracers, tend_tr
+      integer, dimension(:,:), pointer :: boundaryEdge
       type (dm_info) :: dminfo
 
       integer, dimension(:), pointer :: nEdgesOnCell, nEdgesOnEdge
       integer, dimension(:,:), pointer :: cellsOnEdge
       real (kind=RKIND), dimension(:), pointer :: &
         zTopZLevel 
-      real (kind=RKIND), dimension(:,:), allocatable:: fluxVertTop, tracerTop
-      real (kind=RKIND), dimension(:,:,:), allocatable::tr_flux, tr_div
+      real (kind=RKIND), dimension(:,:), allocatable:: fluxVertTop, tracerTop, boundaryMask
+      real (kind=RKIND), dimension(:,:,:), allocatable::tr_flux, tr_div, delsq_tracer
 
       real (kind=RKIND), dimension(:), allocatable:: vertDiffTop
 
@@ -580,10 +712,15 @@ module time_integration
       dvEdge            => grid % dvEdge % array
       dcEdge            => grid % dcEdge % array
       zTopZLevel        => grid % zTopZLevel % array
+      boundaryEdge      => grid % boundaryEdge % array
 
       nEdges      = grid % nEdges
       nCells      = grid % nCells
       nVertLevels = grid % nVertLevels
+
+
+      h_tracer_eddy_diff2 = config_h_tracer_eddy_diff2
+      h_tracer_eddy_diff4 = config_h_tracer_eddy_diff4
 
       !
       ! tracer tendency: horizontal advection term -div( h \phi u)
@@ -681,60 +818,117 @@ module time_integration
       deallocate(tracerTop)
 
       !
-      ! tracer tendency: horizontal tracer diffusion 
-      !   div(h \kappa_h \nabla\phi )
+      ! tracer tendency: del2 horizontal tracer diffusion, div(h \kappa_2 \nabla \phi)
       !
-      ! first compute \kappa_h \nabla\phi at horizontal edges.
-      allocate(tr_flux(num_tracers,nVertLevels,nEdges))
-      tr_flux(:,:,:) = 0.0
-      do iEdge=1,nEdges
-        cell1 = cellsOnEdge(1,iEdge)
-        cell2 = cellsOnEdge(2,iEdge)
-        if (cell1 <= nCells .and. cell2 <= nCells) then
-          do k=1,nVertLevels
+      if ( h_tracer_eddy_diff2 > 0.0 ) then
+
+         !
+         ! compute a boundary mask to enforce insulating boundary conditions in the horizontal
+         !
+         allocate(boundaryMask(nVertLevels, nEdges+1))
+         boundaryMask = 1.0
+         where(boundaryEdge.eq.1) boundaryMask=0.0
+
+         do iEdge=1,grid % nEdges
+            cell1 = grid % cellsOnEdge % array(1,iEdge)
+            cell2 = grid % cellsOnEdge % array(2,iEdge)
+            invAreaCell1 = 1.0/areaCell(cell1)
+            invAreaCell2 = 1.0/areaCell(cell2)
+
+            do k=1,grid % nVertLevels
+              do iTracer=1,num_tracers
+                 ! \kappa_2 \nabla \phi on edge
+                 tracer_turb_flux = h_tracer_eddy_diff2 &
+                    *(  tracers(iTracer,k,cell2) &
+                      - tracers(iTracer,k,cell1))/dcEdge(iEdge)
+
+                 ! div(h \kappa_2 \nabla \phi) at cell center
+                 flux = dvEdge (iEdge) * h_edge(k,iEdge) &
+                    * tracer_turb_flux * boundaryMask(k, iEdge)
+                 tend_tr(iTracer,k,cell1) = tend_tr(iTracer,k,cell1) + flux * invAreaCell1
+                 tend_tr(iTracer,k,cell2) = tend_tr(iTracer,k,cell2) - flux * invAreaCell2
+              end do
+            end do
+
+         end do
+
+        deallocate(boundaryMask)
+
+      end if
+
+      !
+      ! tracer tendency: del4 horizontal tracer diffusion, &
+      !    div(h \kappa_4 \nabla [div(h \nabla \phi)])
+      !
+      if ( h_tracer_eddy_diff4 > 0.0 ) then
+
+         !
+         ! compute a boundary mask to enforce insulating boundary conditions in the horizontal
+         !
+         allocate(boundaryMask(nVertLevels, nEdges+1))
+         boundaryMask = 1.0
+         where(boundaryEdge.eq.1) boundaryMask=0.0
+
+         allocate(delsq_tracer(num_tracers,nVertLevels, nCells+1))
+
+         delsq_tracer(:,:,:) = 0.
+
+         ! first del2: div(h \nabla \phi) at cell center
+         do iEdge=1,grid % nEdges
+            cell1 = grid % cellsOnEdge % array(1,iEdge)
+            cell2 = grid % cellsOnEdge % array(2,iEdge)
+
+            do k=1,grid % nVertLevels
+              do iTracer=1,num_tracers
+                 delsq_tracer(iTracer,k,cell1) = delsq_tracer(iTracer,k,cell1) &
+                    + dvEdge(iEdge)*h_edge(k,iEdge) &
+                      *(tracers(iTracer,k,cell2) - tracers(iTracer,k,cell1)) &
+                      /dcEdge(iEdge) * boundaryMask(k,iEdge)
+                 delsq_tracer(iTracer,k,cell2) = delsq_tracer(iTracer,k,cell2) &
+                    - dvEdge(iEdge)*h_edge(k,iEdge) &
+                    *(tracers(iTracer,k,cell2) - tracers(iTracer,k,cell1)) &
+                    /dcEdge(iEdge) * boundaryMask(k,iEdge)
+              end do
+            end do
+
+         end do
+
+         do iCell = 1, nCells
+            r = 1.0 / areaCell(iCell)
+            do k=1,nVertLevels
             do iTracer=1,num_tracers
-              tr_flux(iTracer,k,iEdge) =  h_edge(k,iEdge)*config_hor_diffusion *    &
-                 (Tracers(iTracer,k,cell2) - Tracers(iTracer,k,cell1))/dcEdge(iEdge)
+               delsq_tracer(iTracer,k,iCell) = delsq_tracer(iTracer,k,iCell) * r
+            end do
+            end do
+         end do
+
+         ! second del2: div(h \nabla [delsq_tracer]) at cell center
+         do iEdge=1,grid % nEdges
+            cell1 = grid % cellsOnEdge % array(1,iEdge)
+            cell2 = grid % cellsOnEdge % array(2,iEdge)
+            invAreaCell1 = 1.0 / areaCell(cell1)
+            invAreaCell2 = 1.0 / areaCell(cell2)
+
+            do k=1,grid % nVertLevels
+            do iTracer=1,num_tracers
+               tracer_turb_flux = h_tracer_eddy_diff4 &
+                  *(  delsq_tracer(iTracer,k,cell2)  &
+                    - delsq_tracer(iTracer,k,cell1))/dcEdge(iEdge)
+               flux = dvEdge (iEdge) * tracer_turb_flux
+
+               tend_tr(iTracer,k,cell1) = tend_tr(iTracer,k,cell1) & 
+                  - flux * invAreaCell1 * boundaryMask(k,iEdge)
+               tend_tr(iTracer,k,cell2) = tend_tr(iTracer,k,cell2) &
+                  + flux * invAreaCell2 * boundaryMask(k,iEdge)
+
+            end do
             enddo
-          enddo
-        endif
-      enddo
 
-      ! Compute the divergence, div(h \kappa_h \nabla\phi) at cell centers
-      allocate(tr_div(num_tracers,nVertLevels,nCells))
-      tr_div(:,:,:) = 0.0
-      do iEdge=1,nEdges
-         cell1 = cellsOnEdge(1,iEdge)
-         cell2 = cellsOnEdge(2,iEdge)
-         if (cell1 <= nCells) then
-           do k=1,nVertLevels
-             do iTracer=1,num_tracers
-               tr_div(iTracer,k,cell1) = tr_div(iTracer,k,cell1) &
-                + tr_flux(iTracer,k,iEdge)*dvEdge(iEdge)
-             enddo
-           enddo
-         endif
-         if (cell2 <= nCells) then
-           do k=1,nVertLevels
-             do iTracer=1,num_tracers
-               tr_div(iTracer,k,cell2) = tr_div(iTracer,k,cell2) &
-                 - tr_flux(iTracer,k,iEdge)*dvEdge(iEdge)
-             enddo
-           enddo
-         end if
-      end do
+         end do
 
-      ! add div(h \kappa_h \nabla\phi ) to tracer tendency
-      do iCell = 1,nCells
-        r = 1.0 / areaCell(iCell)
-        do k = 1,nVertLevels
-           do iTracer=1,num_tracers
-              tend_tr(iTracer,k,iCell) = tend_tr(iTracer,k,iCell) &
-                + tr_div(iTracer,k,iCell)*r
-           enddo
-        enddo
-      enddo
-      deallocate(tr_flux, tr_div)
+         deallocate(delsq_tracer)
+
+      end if
 
       !
       ! tracer tendency: vertical diffusion h d/dz( \kappa_v d\phi/dz)
