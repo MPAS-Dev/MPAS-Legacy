@@ -4,6 +4,7 @@
    config_dt = 172.8
    config_ntimesteps = 7500
    config_output_interval = 500
+   config_stats_interval = 0
    config_visc  = 0.0
 /
 

@@ -64,18 +64,20 @@ subroutine mpas_timestep(domain, itimestep, dt)
 
    call timestep(domain, dt)
 
-   if (mod(itimestep, config_stats_interval) == 0) then
-       block_ptr => domain % blocklist
-       if(associated(block_ptr % next)) then
-           write(0,*) 'Error: computeGlobalDiagnostics assumes ',&
-                      'that there is only one block per processor.'
-       end if
+   if(config_stats_interval .gt. 0) then
+       if(mod(itimestep, config_stats_interval) == 0) then
+           block_ptr => domain % blocklist
+           if(associated(block_ptr % next)) then
+               write(0,*) 'Error: computeGlobalDiagnostics assumes ',&
+                          'that there is only one block per processor.'
+           end if
 
-       call timer_start("global_diagnostics")
-       call computeGlobalDiagnostics(domain % dminfo, &
-                block_ptr % time_levs(2) % state, block_ptr % mesh, &
-                itimestep, dt)
-       call timer_stop("global_diagnostics")
+           call timer_start("global_diagnostics")
+           call computeGlobalDiagnostics(domain % dminfo, &
+                    block_ptr % time_levs(2) % state, block_ptr % mesh, &
+                    itimestep, dt)
+           call timer_stop("global_diagnostics")
+       end if
    end if
 
 end subroutine mpas_timestep
