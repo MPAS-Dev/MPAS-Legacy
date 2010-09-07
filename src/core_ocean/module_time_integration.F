@@ -1388,8 +1388,9 @@ module time_integration
          pZLevel(1,iCell) = rho(1,iCell)*gravity &
             * (h(1,iCell)-0.5*hZLevel(1)) 
          do k=2,nVertLevels
-            delta_p = rho(k,iCell)*gravity*hZLevel(k)
-            pZLevel(k,iCell) = pZLevel(k-1,iCell) + 0.5*delta_p
+            pZLevel(k,iCell) = pZLevel(k-1,iCell)  &
+              + 0.5*gravity*(  rho(k-1,iCell)*hZLevel(k-1) &
+                             + rho(k  ,iCell)*hZLevel(k  ))
          end do
 
       end do
