@@ -27,8 +27,8 @@ module global_diagnostics
       implicit none
 
       type (dm_info), intent(in) :: dminfo
-      type (grid_state), intent(inout) :: state
-      type (grid_meta), intent(in) :: grid
+      type (state_type), intent(inout) :: state
+      type (mesh_type), intent(in) :: grid
       integer, intent(in) :: timeIndex
       real (kind=RKIND), intent(in) :: dt
 
@@ -43,13 +43,15 @@ module global_diagnostics
       real (kind=RKIND) :: volumeCellGlobal, volumeEdgeGlobal, CFLNumberGlobal
       real (kind=RKIND) ::  localCFL, localSum
       integer :: elementIndex, variableIndex, nVariables, nSums, nMaxes, nMins
-      integer :: timeLevel,k,i
+      integer :: timeLevel,k,i, num_tracers
 
       integer, parameter :: kMaxVariables = 1024 ! this must be a little more than double the number of variables to be reduced
 
       real (kind=RKIND), dimension(kMaxVariables) :: sums, mins, maxes, averages, verticalSumMins, verticalSumMaxes, reductions
 
       integer :: fileID
+
+      num_tracers = state % num_tracers
 
       nVertLevels = grid % nVertLevels
       nCellsSolve = grid % nCellsSolve

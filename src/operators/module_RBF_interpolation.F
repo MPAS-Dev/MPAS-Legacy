@@ -112,7 +112,7 @@ module RBF_interpolation
 
     implicit none
 
-    type (grid_meta), intent(inout) :: grid 
+    type (mesh_type), intent(inout) :: grid 
 
     integer :: nCells, nEdges
     integer, dimension(:,:), pointer :: cellsOnEdge, edgesOnCell

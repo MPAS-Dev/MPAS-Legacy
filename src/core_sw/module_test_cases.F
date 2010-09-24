@@ -33,9 +33,9 @@ module test_cases
 
          block_ptr => domain % blocklist
          do while (associated(block_ptr))
-            call sw_test_case_1(block_ptr % mesh, block_ptr % time_levs(1) % state)
+            call sw_test_case_1(block_ptr % mesh, block_ptr % state % time_levs(1) % state)
             do i=2,nTimeLevs
-               call copy_state(block_ptr % time_levs(1) % state, block_ptr % time_levs(i) % state)
+               call copy_state(block_ptr % state % time_levs(i) % state, block_ptr % state % time_levs(1) % state)
             end do
 
             block_ptr => block_ptr % next
@@ -47,9 +47,9 @@ module test_cases
 
          block_ptr => domain % blocklist
          do while (associated(block_ptr))
-            call sw_test_case_2(block_ptr % mesh, block_ptr % time_levs(1) % state)
+            call sw_test_case_2(block_ptr % mesh, block_ptr % state % time_levs(1) % state)
             do i=2,nTimeLevs
-               call copy_state(block_ptr % time_levs(1) % state, block_ptr % time_levs(i) % state)
+               call copy_state(block_ptr % state % time_levs(i) % state, block_ptr % state % time_levs(1) % state)
             end do
 
             block_ptr => block_ptr % next
@@ -61,9 +61,9 @@ module test_cases
 
          block_ptr => domain % blocklist
          do while (associated(block_ptr))
-            call sw_test_case_5(block_ptr % mesh, block_ptr % time_levs(1) % state)
+            call sw_test_case_5(block_ptr % mesh, block_ptr % state % time_levs(1) % state)
             do i=2,nTimeLevs
-               call copy_state(block_ptr % time_levs(1) % state, block_ptr % time_levs(i) % state)
+               call copy_state(block_ptr % state % time_levs(i) % state, block_ptr % state % time_levs(1) % state)
             end do
 
             block_ptr => block_ptr % next
@@ -75,9 +75,9 @@ module test_cases
 
          block_ptr => domain % blocklist
          do while (associated(block_ptr))
-            call sw_test_case_6(block_ptr % mesh, block_ptr % time_levs(1) % state)
+            call sw_test_case_6(block_ptr % mesh, block_ptr % state % time_levs(1) % state)
             do i=2,nTimeLevs
-               call copy_state(block_ptr % time_levs(1) % state, block_ptr % time_levs(i) % state)
+               call copy_state(block_ptr % state % time_levs(i) % state, block_ptr % state % time_levs(1) % state)
             end do
 
             block_ptr => block_ptr % next
@@ -102,8 +102,8 @@ module test_cases
 
       implicit none
 
-      type (grid_meta), intent(inout) :: grid
-      type (grid_state), intent(inout) :: state
+      type (mesh_type), intent(inout) :: grid
+      type (state_type), intent(inout) :: state
 
       real (kind=RKIND), parameter :: u0 = 2.0 * pii * a / (12.0 * 86400.0)
       real (kind=RKIND), parameter :: h0 = 1000.0
@@ -184,8 +184,8 @@ module test_cases
 
       implicit none
 
-      type (grid_meta), intent(inout) :: grid
-      type (grid_state), intent(inout) :: state
+      type (mesh_type), intent(inout) :: grid
+      type (state_type), intent(inout) :: state
 
       real (kind=RKIND), parameter :: u0 = 2.0 * pii * a / (12.0 * 86400.0)
       real (kind=RKIND), parameter :: gh0 = 29400.0
@@ -281,8 +281,8 @@ module test_cases
 
       implicit none
 
-      type (grid_meta), intent(inout) :: grid
-      type (grid_state), intent(inout) :: state
+      type (mesh_type), intent(inout) :: grid
+      type (state_type), intent(inout) :: state
 
       real (kind=RKIND), parameter :: u0 = 20.
       real (kind=RKIND), parameter :: gh0 = 5960.0*gravity
@@ -408,8 +408,8 @@ module test_cases
 
       implicit none
 
-      type (grid_meta), intent(inout) :: grid
-      type (grid_state), intent(inout) :: state
+      type (mesh_type), intent(inout) :: grid
+      type (state_type), intent(inout) :: state
 
       real (kind=RKIND), parameter :: h0 = 8000.0
       real (kind=RKIND), parameter :: w = 7.848e-6

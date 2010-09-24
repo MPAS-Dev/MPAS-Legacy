@@ -44,7 +44,7 @@
 
          block_ptr => domain % blocklist
          do while (associated(block_ptr))
-            call sw_test_case_1(block_ptr % mesh, block_ptr % time_levs(1) % state)
+            call sw_test_case_1(block_ptr % mesh, block_ptr % state % time_levs(1) % state)
             block_ptr => block_ptr % next
          end do
 
@@ -54,7 +54,7 @@
 
          block_ptr => domain % blocklist
          do while (associated(block_ptr))
-            call sw_test_case_2(block_ptr % mesh, block_ptr % time_levs(1) % state)
+            call sw_test_case_2(block_ptr % mesh, block_ptr % state % time_levs(1) % state)
             block_ptr => block_ptr % next
          end do
 
@@ -64,7 +64,7 @@
 
          block_ptr => domain % blocklist
          do while (associated(block_ptr))
-            call sw_test_case_5(block_ptr % mesh, block_ptr % time_levs(1) % state)
+            call sw_test_case_5(block_ptr % mesh, block_ptr % state % time_levs(1) % state)
             block_ptr => block_ptr % next
          end do
 
@@ -74,7 +74,7 @@
 
          block_ptr => domain % blocklist
          do while (associated(block_ptr))
-            call sw_test_case_6(block_ptr % mesh, block_ptr % time_levs(1) % state)
+            call sw_test_case_6(block_ptr % mesh, block_ptr % state % time_levs(1) % state)
             block_ptr => block_ptr % next
          end do
 
@@ -89,8 +89,8 @@
       do while (associated(block_ptr))
 
         do i=2,nTimeLevs
-           call copy_state(block_ptr % time_levs(1) % state, &
-                           block_ptr % time_levs(i) % state)
+           call copy_state(block_ptr % state % time_levs(i) % state, &
+                           block_ptr % state % time_levs(1) % state)
         end do
 
         block_ptr => block_ptr % next
@@ -99,10 +99,10 @@
       ! Initialize z-level grid variables from h, read in from input file.
       block_ptr => domain % blocklist
       do while (associated(block_ptr))
-         h          => block_ptr % time_levs(1) % state % h % array
-         u          => block_ptr % time_levs(1) % state % u % array
-         rho        => block_ptr % time_levs(1) % state % rho % array
-         tracers    => block_ptr % time_levs(1) % state % tracers % array
+         h          => block_ptr % state % time_levs(1) % state % h % array
+         u          => block_ptr % state % time_levs(1) % state % u % array
+         rho        => block_ptr % state % time_levs(1) % state % rho % array
+         tracers    => block_ptr % state % time_levs(1) % state % tracers % array
          u_src      => block_ptr % mesh % u_src % array
          xCell      => block_ptr % mesh % xCell % array
          yCell      => block_ptr % mesh % yCell % array
@@ -150,27 +150,27 @@
              dist = sqrt( (latCell(iCell)-latCenter)**2 + (lonCell(iCell)-lonCenter)**2)
              do iLevel = 1,nVertLevels
               ! for 20 layer test
-              ! tracers(index_temperature,iLevel,iCell) = 5.0  ! temperature
-              ! tracers(index_salinity,iLevel,iCell) = 1.4 + iLevel*0.6  ! salinity
+              ! tracers(block_ptr % state % time_levs(1) % state % index_temperature,iLevel,iCell) = 5.0  ! temperature
+              ! tracers(block_ptr % state % time_levs(1) % state % index_salinity,iLevel,iCell) = 1.4 + iLevel*0.6  ! salinity
 
               ! for x3, 25 layer test
-              !tracers(index_temperature,iLevel,iCell) = 10.0  ! temperature
-              !tracers(index_salinity,iLevel,iCell) = 1.4 + iLevel*0.6  ! salinity
+              !tracers(block_ptr % state % time_levs(1) % state % index_temperature,iLevel,iCell) = 10.0  ! temperature
+              !tracers(block_ptr % state % time_levs(1) % state % index_salinity,iLevel,iCell) = 1.4 + iLevel*0.6  ! salinity
 
-              ! tracers(index_tracer1,iLevel,iCell) = 1.0
-              ! tracers(index_tracer2,iLevel,iCell) = &
+              ! tracers(block_ptr % state % time_levs(1) % state % index_tracer1,iLevel,iCell) = 1.0
+              ! tracers(block_ptr % state % time_levs(1) % state % index_tracer2,iLevel,iCell) = &
               !    (yCell(iCell)/4000.e3 + xCell(iCell)/2500.e3 )/2.0
 
               ! Tracer blob 
               !if (dist.lt.pi/16) then
-              !  tracers(index_tracer1,iLevel,iCell) = 1.0
+              !  tracers(block_ptr % state % time_levs(1) % state % index_tracer1,iLevel,iCell) = 1.0
               !!else  
-              !  tracers(index_tracer1,iLevel,iCell) = 0.0
+              !  tracers(block_ptr % state % time_levs(1) % state % index_tracer1,iLevel,iCell) = 0.0
               !endif
 
               rho(iLevel,iCell) = 1000.0*(  1.0 &
-                 - 2.5e-4*tracers(index_temperature,iLevel,iCell) &
-                 + 7.6e-4*tracers(index_salinity,iLevel,iCell))
+                 - 2.5e-4*tracers(block_ptr % state % time_levs(1) % state % index_temperature,iLevel,iCell) &
+                 + 7.6e-4*tracers(block_ptr % state % time_levs(1) % state % index_salinity,iLevel,iCell))
 
              enddo
            enddo
@@ -194,7 +194,7 @@
          enddo
 
          print '(10a)', 'itracer ilevel  min tracer  max tracer'
-         do iTracer=1,num_tracers
+         do iTracer=1,block_ptr % state % time_levs(1) % state % num_tracers
          do iLevel = 1,nVertLevels
             print '(2i5,20es12.4)', iTracer,ilevel, &
               minval(tracers(itracer,iLevel,1:nCells)), maxval(tracers(itracer,iLevel,1:nCells))
@@ -219,8 +219,8 @@
 
       implicit none
 
-      type (grid_meta), intent(inout) :: grid
-      type (grid_state), intent(inout) :: state
+      type (mesh_type), intent(inout) :: grid
+      type (state_type), intent(inout) :: state
 
       real (kind=RKIND), parameter :: u0 = 2.0 * pii * a / (12.0 * 86400.0)
       real (kind=RKIND), parameter :: h0 = 1000.0
@@ -295,8 +295,8 @@
 
       implicit none
 
-      type (grid_meta), intent(inout) :: grid
-      type (grid_state), intent(inout) :: state
+      type (mesh_type), intent(inout) :: grid
+      type (state_type), intent(inout) :: state
 
       real (kind=RKIND), parameter :: u0 = 2.0 * pii * a / (12.0 * 86400.0)
       real (kind=RKIND), parameter :: gh0 = 29400.0
@@ -386,8 +386,8 @@
 
       implicit none
 
-      type (grid_meta), intent(inout) :: grid
-      type (grid_state), intent(inout) :: state
+      type (mesh_type), intent(inout) :: grid
+      type (state_type), intent(inout) :: state
 
       real (kind=RKIND), parameter :: u0 = 20.
       real (kind=RKIND), parameter :: gh0 = 5960.0*gravity
@@ -508,8 +508,8 @@ print *, 'h_s',minval(grid % h_s % array),sum(grid % h_s % array)/grid % nCells,
 
       implicit none
 
-      type (grid_meta), intent(inout) :: grid
-      type (grid_state), intent(inout) :: state
+      type (mesh_type), intent(inout) :: grid
+      type (state_type), intent(inout) :: state
 
       real (kind=RKIND), parameter :: h0 = 8000.0
       real (kind=RKIND), parameter :: w = 7.848e-6

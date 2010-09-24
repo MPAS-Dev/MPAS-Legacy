@@ -1,4 +1,4 @@
 void gen_namelists(struct namelist *);
-void gen_field_defs(struct variable *, struct dimension *);
-void gen_reads(struct variable *, struct dimension *);
-void gen_writes(struct variable *, struct dimension *, struct namelist *);
+void gen_field_defs(struct group_list * groups, struct variable *, struct dimension *);
+void gen_reads(struct group_list * groups, struct variable *, struct dimension *);
+void gen_writes(struct group_list * groups, struct variable *, struct dimension *, struct namelist *);

@@ -37,8 +37,8 @@ module global_diagnostics
       implicit none
 
       type (dm_info), intent(in) :: dminfo
-      type (grid_state), intent(inout) :: state
-      type (grid_meta), intent(in) :: grid
+      type (state_type), intent(inout) :: state
+      type (mesh_type), intent(in) :: grid
       integer, intent(in) :: timeIndex
       real (kind=RKIND), intent(in) :: dt
 

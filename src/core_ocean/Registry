@@ -47,123 +47,131 @@ dim nVertLevels nVertLevels
 dim nVertLevelsP1 nVertLevels+1
 
 #
-# var  type  name_in_file  ( dims )  iro-  name_in_code super-array array_class
+# var persistence type  name_in_file  ( dims )  time_levs iro-  name_in_code struct super-array array_class
 #
-var real    xtime ( Time ) ro xtime - -
+var persistent real    xtime ( Time ) 2 ro xtime state - -
 
-var real    latCell ( nCells ) iro latCell - -
-var real    lonCell ( nCells ) iro lonCell - -
-var real    xCell ( nCells ) iro xCell - -
-var real    yCell ( nCells ) iro yCell - -
-var real    zCell ( nCells ) iro zCell - -
-var integer indexToCellID ( nCells ) iro indexToCellID - -
+var persistent real    latCell ( nCells ) 0 iro latCell mesh - -
+var persistent real    lonCell ( nCells ) 0 iro lonCell mesh - -
+var persistent real    xCell ( nCells ) 0 iro xCell mesh - -
+var persistent real    yCell ( nCells ) 0 iro yCell mesh - -
+var persistent real    zCell ( nCells ) 0 iro zCell mesh - -
+var persistent integer indexToCellID ( nCells ) 0 iro indexToCellID mesh - -
 
-var real    latEdge ( nEdges ) iro latEdge - -
-var real    lonEdge ( nEdges ) iro lonEdge - -
-var real    xEdge ( nEdges ) iro xEdge - -
-var real    yEdge ( nEdges ) iro yEdge - -
-var real    zEdge ( nEdges ) iro zEdge - -
-var integer indexToEdgeID ( nEdges ) iro indexToEdgeID - -
+var persistent real    latEdge ( nEdges ) 0 iro latEdge mesh - -
+var persistent real    lonEdge ( nEdges ) 0 iro lonEdge mesh - -
+var persistent real    xEdge ( nEdges ) 0 iro xEdge mesh - -
+var persistent real    yEdge ( nEdges ) 0 iro yEdge mesh - -
+var persistent real    zEdge ( nEdges ) 0 iro zEdge mesh - -
+var persistent integer indexToEdgeID ( nEdges ) 0 iro indexToEdgeID mesh - -
 
-var real    latVertex ( nVertices ) iro latVertex - -
-var real    lonVertex ( nVertices ) iro lonVertex - -
-var real    xVertex ( nVertices ) iro xVertex - -
-var real    yVertex ( nVertices ) iro yVertex - -
-var real    zVertex ( nVertices ) iro zVertex - -
-var integer indexToVertexID ( nVertices ) iro indexToVertexID - -
+var persistent real    latVertex ( nVertices ) 0 iro latVertex mesh - -
+var persistent real    lonVertex ( nVertices ) 0 iro lonVertex mesh - -
+var persistent real    xVertex ( nVertices ) 0 iro xVertex mesh - -
+var persistent real    yVertex ( nVertices ) 0 iro yVertex mesh - -
+var persistent real    zVertex ( nVertices ) 0 iro zVertex mesh - -
+var persistent integer indexToVertexID ( nVertices ) 0 iro indexToVertexID mesh - -
 
-var integer cellsOnEdge ( TWO nEdges ) iro cellsOnEdge - -
-var integer nEdgesOnCell ( nCells ) iro nEdgesOnCell - -
-var integer nEdgesOnEdge ( nEdges ) iro nEdgesOnEdge - -
-var integer edgesOnCell ( maxEdges nCells ) iro edgesOnCell - -
-var integer edgesOnEdge ( maxEdges2 nEdges ) iro edgesOnEdge - -
+var persistent integer cellsOnEdge ( TWO nEdges ) 0 iro cellsOnEdge mesh - -
+var persistent integer nEdgesOnCell ( nCells ) 0 iro nEdgesOnCell mesh - -
+var persistent integer nEdgesOnEdge ( nEdges ) 0 iro nEdgesOnEdge mesh - -
+var persistent integer edgesOnCell ( maxEdges nCells ) 0 iro edgesOnCell mesh - -
+var persistent integer edgesOnEdge ( maxEdges2 nEdges ) 0 iro edgesOnEdge mesh - -
 
-var real    weightsOnEdge ( maxEdges2 nEdges ) iro weightsOnEdge - -
-var real    dvEdge ( nEdges ) iro dvEdge - -
-var real    dcEdge ( nEdges ) iro dcEdge - -
-var real    angleEdge ( nEdges ) iro angleEdge - -
-var real    areaCell ( nCells ) iro areaCell - -
-var real    areaTriangle ( nVertices ) iro areaTriangle - -
+var persistent real    weightsOnEdge ( maxEdges2 nEdges ) 0 iro weightsOnEdge mesh - -
+var persistent real    dvEdge ( nEdges ) 0 iro dvEdge mesh - -
+var persistent real    dcEdge ( nEdges ) 0 iro dcEdge mesh - -
+var persistent real    angleEdge ( nEdges ) 0 iro angleEdge mesh - -
+var persistent real    areaCell ( nCells ) 0 iro areaCell mesh - -
+var persistent real    areaTriangle ( nVertices ) 0 iro areaTriangle mesh - -
 
-var real    edgeNormalVectors ( R3 nEdges ) o edgeNormalVectors - -
-var real    localVerticalUnitVectors ( R3 nCells ) o localVerticalUnitVectors - -
-var real    cellTangentPlane ( R3 TWO nEdges ) o cellTangentPlane - -
+var persistent real    edgeNormalVectors ( R3 nEdges ) 0 o edgeNormalVectors mesh - -
+var persistent real    localVerticalUnitVectors ( R3 nCells ) 0 o localVerticalUnitVectors mesh - -
+var persistent real    cellTangentPlane ( R3 TWO nEdges ) 0 o cellTangentPlane mesh - -
 
-var integer cellsOnCell ( maxEdges nCells ) iro cellsOnCell - -
-var integer verticesOnCell ( maxEdges nCells ) iro verticesOnCell - -
-var integer verticesOnEdge ( TWO nEdges ) iro verticesOnEdge - -
-var integer edgesOnVertex ( vertexDegree nVertices ) iro edgesOnVertex - -
-var integer cellsOnVertex ( vertexDegree nVertices ) iro cellsOnVertex - -
-var real    kiteAreasOnVertex ( vertexDegree nVertices ) iro kiteAreasOnVertex - -
-var real    fEdge ( nEdges ) iro fEdge - -
-var real    fVertex ( nVertices ) iro fVertex - -
-var real    h_s ( nCells ) iro h_s - -
+var persistent integer cellsOnCell ( maxEdges nCells ) 0 iro cellsOnCell mesh - -
+var persistent integer verticesOnCell ( maxEdges nCells ) 0 iro verticesOnCell mesh - -
+var persistent integer verticesOnEdge ( TWO nEdges ) 0 iro verticesOnEdge mesh - -
+var persistent integer edgesOnVertex ( vertexDegree nVertices ) 0 iro edgesOnVertex mesh - -
+var persistent integer cellsOnVertex ( vertexDegree nVertices ) 0 iro cellsOnVertex mesh - -
+var persistent real    kiteAreasOnVertex ( vertexDegree nVertices ) 0 iro kiteAreasOnVertex mesh - -
+var persistent real    fEdge ( nEdges ) 0 iro fEdge mesh - -
+var persistent real    fVertex ( nVertices ) 0 iro fVertex mesh - -
+var persistent real    h_s ( nCells ) 0 iro h_s mesh - -
 
 # Arrays required for reconstruction of velocity field
-var real    coeffs_reconstruct ( R3 maxEdges nCells ) - coeffs_reconstruct - -
+var persistent real    coeffs_reconstruct ( R3 maxEdges nCells ) 0 - coeffs_reconstruct mesh - -
 
 # Arrays for z-level version of mpas-ocean
-var integer maxLevelsCell ( nCells ) iro kmaxCell - -
-var integer maxLevelsEdge ( nEdges ) iro kmaxEdge - -
-var real hZLevel ( nVertLevels ) iro hZLevel - -
-var real zMidZLevel ( nVertLevels ) iro zMidZLevel - -
-var real zTopZLevel ( nVertLevelsP1 ) iro zTopZLevel - -
+var persistent integer maxLevelsCell ( nCells ) 0 iro kmaxCell mesh - -
+var persistent integer maxLevelsEdge ( nEdges ) 0 iro kmaxEdge mesh - -
+var persistent real hZLevel ( nVertLevels ) 0 iro hZLevel mesh - -
+var persistent real zMidZLevel ( nVertLevels ) 0 iro zMidZLevel mesh - -
+var persistent real zTopZLevel ( nVertLevelsP1 ) 0 iro zTopZLevel mesh - -
 
 # Boundary conditions: read from input, saved in restart and written to output
-var integer boundaryEdge ( nVertLevels nEdges ) iro boundaryEdge - -
-var integer boundaryVertex ( nVertLevels nVertices ) iro boundaryVertex - -
-var real    u_src ( nVertLevels nEdges ) iro u_src - -
+var persistent integer boundaryEdge ( nVertLevels nEdges ) 0 iro boundaryEdge mesh - -
+var persistent integer boundaryVertex ( nVertLevels nVertices ) 0 iro boundaryVertex mesh - -
+var persistent real    u_src ( nVertLevels nEdges ) 0 iro u_src mesh - -
 
 # Prognostic variables: read from input, saved in restart, and written to output
-var real    u ( nVertLevels nEdges Time ) iro u - -
-var real    h ( nVertLevels nCells Time ) iro h - -
-var real    rho ( nVertLevels nCells Time ) iro rho - -
-var real    temperature ( nVertLevels nCells Time ) iro temperature tracers dynamics
-var real    salinity ( nVertLevels nCells Time ) iro salinity tracers dynamics
-var real    tracer1 ( nVertLevels nCells Time ) iro tracer1 tracers testing
-var real    tracer2 ( nVertLevels nCells Time ) iro tracer2 tracers testing
+var persistent real    u ( nVertLevels nEdges Time ) 2 iro u state - -
+var persistent real    h ( nVertLevels nCells Time ) 2 iro h state - -
+var persistent real    rho ( nVertLevels nCells Time ) 2 iro rho state - -
+var persistent real    temperature ( nVertLevels nCells Time ) 2 iro temperature state tracers dynamics
+var persistent real    salinity ( nVertLevels nCells Time ) 2 iro salinity state tracers dynamics
+var persistent real    tracer1 ( nVertLevels nCells Time ) 2 iro tracer1 state tracers testing
+var persistent real    tracer2 ( nVertLevels nCells Time ) 2 iro tracer2 state tracers testing
+
+# Tendency variables: neither read nor written to any files
+var persistent real    tend_u ( nVertLevels nEdges Time ) 1 - u tend - -
+var persistent real    tend_h ( nVertLevels nCells Time ) 1 - h tend - -
+var persistent real    tend_temperature ( nVertLevels nCells Time ) 1 - temperature tend tracers dynamics
+var persistent real    tend_salinity ( nVertLevels nCells Time ) 1 - salinity tend tracers dynamics
+var persistent real    tend_tracer1 ( nVertLevels nCells Time ) 1 - tracer1 tend tracers testing
+var persistent real    tend_tracer2 ( nVertLevels nCells Time ) 1 - tracer2 tend tracers testing
 
 # Diagnostic fields: only written to output
-var real    v ( nVertLevels nEdges Time ) o v - -
-var real    divergence ( nVertLevels nCells Time ) o divergence - -
-var real    vorticity ( nVertLevels nVertices Time ) o vorticity - -
-var real    pv_edge ( nVertLevels nEdges Time ) o pv_edge - -
-var real    h_edge ( nVertLevels nEdges Time ) o h_edge - -
-var real    h_vertex ( nVertLevels nVertices Time ) o h_vertex - -
-var real    ke ( nVertLevels nCells Time ) o ke - -
-var real    ke_edge ( nVertLevels nEdges Time ) o ke_edge - -
-var real    pv_vertex ( nVertLevels nVertices Time ) o pv_vertex - -
-var real    pv_cell ( nVertLevels nCells Time ) o pv_cell - -
-var real    uReconstructX ( nVertLevels nCells Time ) o uReconstructX - -
-var real    uReconstructY ( nVertLevels nCells Time ) o uReconstructY - -
-var real    uReconstructZ ( nVertLevels nCells Time ) o uReconstructZ - -
-var real    uReconstructZonal ( nVertLevels nCells Time ) o uReconstructZonal - -
-var real    uReconstructMeridional ( nVertLevels nCells Time ) o uReconstructMeridional - -
-var real    zMid ( nVertLevels nCells Time ) o zMid - -
-var real    zTop ( nVertLevelsP1 nCells Time ) o zTop - -
-var real    zMidEdge ( nVertLevels nEdges Time ) o zMidEdge - -
-var real    zTopEdge ( nVertLevelsP1 nEdges Time ) o zTopEdge - -
-var real    p ( nVertLevels nCells Time ) o p - -
-var real    pTop ( nVertLevelsP1 nCells Time ) o pTop - -
-var real    pZLevel ( nVertLevels nCells Time ) o pZLevel - -
-var real    MontPot ( nVertLevels nCells Time ) o MontPot - -
-var real    wTop ( nVertLevelsP1 nCells Time ) o wTop - -
-var real    ssh ( nCells Time ) o ssh - -
+var persistent real    v ( nVertLevels nEdges Time ) 2 o v state - -
+var persistent real    divergence ( nVertLevels nCells Time ) 2 o divergence state - -
+var persistent real    vorticity ( nVertLevels nVertices Time ) 2 o vorticity state - -
+var persistent real    pv_edge ( nVertLevels nEdges Time ) 2 o pv_edge state - -
+var persistent real    h_edge ( nVertLevels nEdges Time ) 2 o h_edge state - -
+var persistent real    h_vertex ( nVertLevels nVertices Time ) 2 o h_vertex state - -
+var persistent real    ke ( nVertLevels nCells Time ) 2 o ke state - -
+var persistent real    ke_edge ( nVertLevels nEdges Time ) 2 o ke_edge state - -
+var persistent real    pv_vertex ( nVertLevels nVertices Time ) 2 o pv_vertex state - -
+var persistent real    pv_cell ( nVertLevels nCells Time ) 2 o pv_cell state - -
+var persistent real    uReconstructX ( nVertLevels nCells Time ) 2 o uReconstructX state - -
+var persistent real    uReconstructY ( nVertLevels nCells Time ) 2 o uReconstructY state - -
+var persistent real    uReconstructZ ( nVertLevels nCells Time ) 2 o uReconstructZ state - -
+var persistent real    uReconstructZonal ( nVertLevels nCells Time ) 2 o uReconstructZonal state - -
+var persistent real    uReconstructMeridional ( nVertLevels nCells Time ) 2 o uReconstructMeridional state - -
+var persistent real    zMid ( nVertLevels nCells Time ) 2 o zMid state - -
+var persistent real    zTop ( nVertLevelsP1 nCells Time ) 2 o zTop state - -
+var persistent real    zMidEdge ( nVertLevels nEdges Time ) 2 o zMidEdge state - -
+var persistent real    zTopEdge ( nVertLevelsP1 nEdges Time ) 2 o zTopEdge state - -
+var persistent real    p ( nVertLevels nCells Time ) 2 o p state - -
+var persistent real    pTop ( nVertLevelsP1 nCells Time ) 2 o pTop state - -
+var persistent real    pZLevel ( nVertLevels nCells Time ) 2 o pZLevel state - -
+var persistent real    MontPot ( nVertLevels nCells Time ) 2 o MontPot state - -
+var persistent real    wTop ( nVertLevelsP1 nCells Time ) 2 o wTop state - -
+var persistent real    ssh ( nCells Time ) 2 o ssh state - -
 
 # Other diagnostic variables: neither read nor written to any files
-var real    vh ( nVertLevels nEdges Time ) - vh - -
-var real    circulation ( nVertLevels nVertices Time ) - circulation - -
-var real    gradPVt ( nVertLevels nEdges Time ) - gradPVt - -
-var real    gradPVn ( nVertLevels nEdges Time ) - gradPVn - -
+var persistent real    vh ( nVertLevels nEdges Time ) 2 - vh state - -
+var persistent real    circulation ( nVertLevels nVertices Time ) 2 - circulation state - -
+var persistent real    gradPVt ( nVertLevels nEdges Time ) 2 - gradPVt state - -
+var persistent real    gradPVn ( nVertLevels nEdges Time ) 2 - gradPVn state - -
 
 # xsad 10-02-05:
 # Globally reduced diagnostic variables: only written to output
-var real    areaCellGlobal ( Time ) o areaCellGlobal - -
-var real    areaEdgeGlobal ( Time ) o areaEdgeGlobal - -
-var real    areaTriangleGlobal ( Time ) o areaTriangleGlobal - -
+var persistent real    areaCellGlobal ( Time ) 2 o areaCellGlobal state - -
+var persistent real    areaEdgeGlobal ( Time ) 2 o areaEdgeGlobal state - -
+var persistent real    areaTriangleGlobal ( Time ) 2 o areaTriangleGlobal state - -
 
-var real    volumeCellGlobal ( Time ) o volumeCellGlobal - -
-var real    volumeEdgeGlobal ( Time ) o volumeEdgeGlobal - -
-var real    CFLNumberGlobal ( Time ) o CFLNumberGlobal - -
+var persistent real    volumeCellGlobal ( Time ) 2 o volumeCellGlobal state - -
+var persistent real    volumeEdgeGlobal ( Time ) 2 o volumeEdgeGlobal state - -
+var persistent real    CFLNumberGlobal ( Time ) 2 o CFLNumberGlobal state - -
 # xsad 10-02-05 end
 

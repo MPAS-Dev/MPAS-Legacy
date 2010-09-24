@@ -4,7 +4,7 @@
 #include "registry_types.h"
 #include "gen_inc.h"
 
-int parse_reg(FILE *, struct namelist **, struct dimension **, struct variable **);
+int parse_reg(FILE *, struct namelist **, struct dimension **, struct variable **, struct group_list **);
 int getword(FILE *, char *);
 int is_integer_constant(char *);
 void sort_vars(struct variable *);
@@ -15,6 +15,7 @@ int main(int argc, char ** argv)
    struct namelist * nls;
    struct dimension * dims;
    struct variable * vars;
+   struct group_list * groups;
 
    if (argc != 2) {
       fprintf(stderr,"\nUsage: %s filename\n\n", argv[0]);
@@ -25,7 +26,7 @@ int main(int argc, char ** argv)
       nls = NULL;
       dims = NULL;
       vars = NULL;
-      if (parse_reg(regfile, &nls, &dims, &vars)) {
+      if (parse_reg(regfile, &nls, &dims, &vars, &groups)) {
          return 1;
       }
    }   
@@ -37,15 +38,15 @@ int main(int argc, char ** argv)
    sort_vars(vars);
 
    gen_namelists(nls);
-   gen_field_defs(vars, dims);
-   gen_reads(vars, dims);
-   gen_writes(vars, dims, nls);
+   gen_field_defs(groups, vars, dims);
+   gen_reads(groups, vars, dims);
+   gen_writes(groups, vars, dims, nls);
 
    return 0;
 }
 
 
-int parse_reg(FILE * regfile, struct namelist ** nls, struct dimension ** dims, struct variable ** vars)
+int parse_reg(FILE * regfile, struct namelist ** nls, struct dimension ** dims, struct variable ** vars, struct group_list ** groups)
 {
    char word[1024];
    struct namelist * nls_ptr;
@@ -54,13 +55,17 @@ int parse_reg(FILE * regfile, struct namelist ** nls, struct dimension ** dims, 
    struct variable * var_ptr;
    struct dimension_list * dimlist_ptr;
    struct dimension * dimlist_cursor;
+   struct group_list * grouplist_ptr;
+   struct variable_list * vlist_cursor;
 
    NEW_NAMELIST(nls_ptr)
    NEW_DIMENSION(dim_ptr)
    NEW_VARIABLE(var_ptr)
+   NEW_GROUP_LIST(grouplist_ptr);
    *nls = nls_ptr;
    *dims = dim_ptr;
    *vars = var_ptr;
+   *groups = grouplist_ptr;
 
    while(getword(regfile, word) != EOF) {
       if (strncmp(word, "namelist", 1024) == 0) {
@@ -130,6 +135,15 @@ int parse_reg(FILE * regfile, struct namelist ** nls, struct dimension ** dims, 
          var_ptr->timedim = 0;
          var_ptr->iostreams = 0;
 
+         /* 
+          * persistence 
+          */
+         getword(regfile, word); 
+         if (strncmp(word, "persistent", 1024) == 0) 
+            var_ptr->persistence = PERSISTENT;
+         else if (strncmp(word, "scratch", 1024) == 0) 
+            var_ptr->persistence = SCRATCH;
+
          getword(regfile, word); 
          if (strncmp(word, "real", 1024) == 0) 
             var_ptr->vtype = REAL;
@@ -168,13 +182,49 @@ int parse_reg(FILE * regfile, struct namelist ** nls, struct dimension ** dims, 
             getword(regfile, word); 
          }
 
-         /* Read I/O info */
+         /* 
+          * time_dim 
+          */
+         getword(regfile, word);
+         var_ptr->ntime_levs = atoi(word);
+
+         /* 
+          * I/O info 
+          */
          getword(regfile, word);
          if (strchr(word, (int)'i')) var_ptr->iostreams |= INPUT0;
          if (strchr(word, (int)'r')) var_ptr->iostreams |= RESTART0;
          if (strchr(word, (int)'o')) var_ptr->iostreams |= OUTPUT0;
 
          getword(regfile, var_ptr->name_in_code); 
+
+         /* 
+          * struct 
+          */
+         getword(regfile, var_ptr->struct_group); 
+         grouplist_ptr = *groups;
+         grouplist_ptr = grouplist_ptr->next;
+         while (grouplist_ptr && strncmp(var_ptr->struct_group, grouplist_ptr->name, 1024)) {
+            grouplist_ptr = grouplist_ptr->next;
+         }
+         if (!grouplist_ptr) {
+            grouplist_ptr = *groups;
+            while(grouplist_ptr->next) grouplist_ptr = grouplist_ptr->next;
+            NEW_GROUP_LIST(grouplist_ptr->next);
+            grouplist_ptr = grouplist_ptr->next;
+            memcpy(grouplist_ptr->name, var_ptr->struct_group, (size_t)1024);
+            NEW_VARIABLE_LIST(grouplist_ptr->vlist);
+            grouplist_ptr->vlist->var = var_ptr;
+         }
+         else {
+            vlist_cursor = grouplist_ptr->vlist;
+            while (vlist_cursor->next) vlist_cursor = vlist_cursor->next;
+            NEW_VARIABLE_LIST(vlist_cursor->next);
+            vlist_cursor->next->prev = vlist_cursor;
+            vlist_cursor = vlist_cursor->next;
+            vlist_cursor->var = var_ptr;
+         }
+
 
          getword(regfile, var_ptr->super_array);
          getword(regfile, var_ptr->array_class);
@@ -202,6 +252,10 @@ int parse_reg(FILE * regfile, struct namelist ** nls, struct dimension ** dims, 
    var_ptr = *vars;
    if ((*vars)->next) *vars = (*vars)->next;
    if (var_ptr) free(var_ptr);
+
+   grouplist_ptr = *groups;
+   if ((*groups)->next) *groups = (*groups)->next;
+   if (grouplist_ptr) free(grouplist_ptr);
 
    return 0;
 }

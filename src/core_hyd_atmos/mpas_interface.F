@@ -23,16 +23,16 @@ subroutine mpas_init(block, mesh, dt)
    implicit none
 
    type (block_type), intent(inout) :: block
-   type (grid_meta), intent(inout) :: mesh
+   type (mesh_type), intent(inout) :: mesh
    real (kind=RKIND), intent(in) :: dt
 
-   call compute_solver_constants(block % time_levs(1) % state, mesh)
-   call compute_state_diagnostics(block % time_levs(1) % state, mesh)
-   call compute_solve_diagnostics(dt, block % time_levs(1) % state, mesh)
+   call compute_solver_constants(block % state % time_levs(1) % state, mesh)
+   call compute_state_diagnostics(block % state % time_levs(1) % state, mesh)
+   call compute_solve_diagnostics(dt, block % state % time_levs(1) % state, mesh)
    call initialize_advection_rk(mesh)
    call rbfInterp_initialize(mesh)
    call init_reconstruct(mesh)
-   call reconstruct(block % time_levs(1) % state, mesh)
+   call reconstruct(block % state % time_levs(1) % state, mesh)
 
 end subroutine mpas_init
 

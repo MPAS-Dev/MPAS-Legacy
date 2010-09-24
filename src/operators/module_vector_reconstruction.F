@@ -23,7 +23,7 @@ module vector_reconstruction
 
     implicit none
 
-    type (grid_meta), intent(inout) :: grid 
+    type (mesh_type), intent(inout) :: grid 
 
     ! temporary arrays needed in the (to be constructed) init procedure
     integer :: nCellsSolve
@@ -123,8 +123,8 @@ module vector_reconstruction
 
     implicit none
 
-    type (grid_state), intent(inout) :: state 
-    type (grid_meta), intent(in) :: grid
+    type (state_type), intent(inout) :: state 
+    type (mesh_type), intent(in) :: grid
 
     !   temporary arrays needed in the compute procedure
     integer :: nCellsSolve

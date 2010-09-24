@@ -37,7 +37,7 @@ module time_integration
 
       block => domain % blocklist
       do while (associated(block))
-         block % time_levs(2) % state % xtime % scalar = block % time_levs(1) % state % xtime % scalar + dt
+         block % state % time_levs(2) % state % xtime % scalar = block % state % time_levs(1) % state % xtime % scalar + dt
          block => block % next
       end do
 
@@ -100,7 +100,7 @@ module time_integration
 
       block => domain % blocklist
       do while (associated(block))
-         call copy_state( block % time_levs(1) % state, block % time_levs(2) % state )
+         call copy_state( block % state % time_levs(2) % state, block % state % time_levs(1) % state )
          block => block % next
       end do
 
@@ -121,26 +121,26 @@ module time_integration
            call dmpar_exch_halo_field2dReal(domain % dminfo, block % mesh % cqu % array(:,:), &
                                             block % mesh % nVertLevels, block % mesh % nEdges, &
                                             block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
-           call dmpar_exch_halo_field2dReal(domain % dminfo, block % time_levs(2) % state % h % array(:,:), &
+           call dmpar_exch_halo_field2dReal(domain % dminfo, block % state % time_levs(2) % state % h % array(:,:), &
                                             block % mesh % nVertLevels, block % mesh % nCells, &
                                             block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-           call dmpar_exch_halo_field2dReal(domain % dminfo, block % time_levs(2) % state % pressure % array(:,:), &
+           call dmpar_exch_halo_field2dReal(domain % dminfo, block % state % time_levs(2) % state % pressure % array(:,:), &
                                             block % mesh % nVertLevels+1, block % mesh % nCells, &
                                             block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-           call dmpar_exch_halo_field2dReal(domain % dminfo, block % time_levs(2) % state % geopotential % array(:,:), &
+           call dmpar_exch_halo_field2dReal(domain % dminfo, block % state % time_levs(2) % state % geopotential % array(:,:), &
                                             block % mesh % nVertLevels+1, block % mesh % nCells, &
                                             block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-           call dmpar_exch_halo_field2dReal(domain % dminfo, block % time_levs(2) % state % alpha % array(:,:), &
+           call dmpar_exch_halo_field2dReal(domain % dminfo, block % state % time_levs(2) % state % alpha % array(:,:), &
                                             block % mesh % nVertLevels, block % mesh % nCells, &
                                             block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-           call dmpar_exch_halo_field2dReal(domain % dminfo, block % time_levs(2) % state % pv_edge % array(:,:), &
+           call dmpar_exch_halo_field2dReal(domain % dminfo, block % state % time_levs(2) % state % pv_edge % array(:,:), &
                                             block % mesh % nVertLevels, block % mesh % nEdges, &
                                             block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
            if (config_h_mom_eddy_visc4 > 0.0) then
-              call dmpar_exch_halo_field2dReal(domain % dminfo, block % time_levs(2) % state % divergence % array(:,:), &
+              call dmpar_exch_halo_field2dReal(domain % dminfo, block % state % time_levs(2) % state % divergence % array(:,:), &
                                                block % mesh % nVertLevels, block % mesh % nCells, &
                                                block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-              call dmpar_exch_halo_field2dReal(domain % dminfo, block % time_levs(2) % state % vorticity % array(:,:), &
+              call dmpar_exch_halo_field2dReal(domain % dminfo, block % state % time_levs(2) % state % vorticity % array(:,:), &
                                                block % mesh % nVertLevels, block % mesh % nVertices, &
                                                block % parinfo % verticesToSend, block % parinfo % verticesToRecv)
            end if
@@ -151,7 +151,7 @@ module time_integration
 
         block => domain % blocklist
         do while (associated(block))
-           call compute_dyn_tend( block % intermediate_step(TEND), block % time_levs(2) % state, block % mesh )
+           call compute_dyn_tend( block % tend, block % state % time_levs(2) % state, block % mesh )
            block => block % next
         end do
 
@@ -162,10 +162,10 @@ module time_integration
         !
         block => domain % blocklist
         do while (associated(block))
-           call dmpar_exch_halo_field2dReal(domain % dminfo, block % intermediate_step(TEND) % u % array(:,:), &
+           call dmpar_exch_halo_field2dReal(domain % dminfo, block % tend % u % array(:,:), &
                                             block % mesh % nVertLevels, block % mesh % nEdges, &
                                             block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
-           call dmpar_exch_halo_field2dReal(domain % dminfo, block % intermediate_step(TEND) % theta % array(:,:), &
+           call dmpar_exch_halo_field2dReal(domain % dminfo, block % tend % theta % array(:,:), &
                                             block % mesh % nVertLevels, block % mesh % nCells, &
                                             block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
            block => block % next
@@ -181,9 +181,9 @@ module time_integration
            !    from the previous RK step are needed to compute new scalar tendencies in advance_scalars. 
            !    A cleaner way of preserving scalars should be added in future.
            !
-           block % mesh % scalars_old % array(:,:,:) = block % time_levs(2) % state % scalars % array(:,:,:)
-           call copy_state( block % time_levs(1) % state, block % time_levs(2) % state )
-           block % time_levs(2) % state % scalars % array(:,:,:) = block % mesh % scalars_old % array(:,:,:)
+           block % mesh % scalars_old % array(:,:,:) = block % state % time_levs(2) % state % scalars % array(:,:,:)
+           call copy_state( block % state % time_levs(2) % state, block % state % time_levs(1) % state )
+           block % state % time_levs(2) % state % scalars % array(:,:,:) = block % mesh % scalars_old % array(:,:,:)
            block => block % next
         end do
 
@@ -195,8 +195,8 @@ module time_integration
       
            block => domain % blocklist
            do while (associated(block))
-              call advance_dynamics( block % intermediate_step(TEND), block % time_levs(2) % state,  &
-                                     block % mesh,                                                   &
+              call advance_dynamics( block % tend, block % state % time_levs(2) % state,  &
+                                     block % mesh,                                                           &
                                      small_step, number_sub_steps(rk_step), rk_sub_timestep(rk_step) )
               block => block % next
            end do
@@ -209,10 +209,10 @@ module time_integration
            !
            block => domain % blocklist
            do while (associated(block))
-!!              call dmpar_exch_halo_field2dReal(domain % dminfo, block % time_levs(2) % state % u % array(:,:), &
+!!              call dmpar_exch_halo_field2dReal(domain % dminfo, block % state % time_levs(2) % state % u % array(:,:), &
 !!                                               block % mesh % nVertLevels, block % mesh % nEdges, &
 !!                                               block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
-              call dmpar_exch_halo_field2dReal(domain % dminfo, block % time_levs(2) % state % h_edge % array(:,:), &
+              call dmpar_exch_halo_field2dReal(domain % dminfo, block % state % time_levs(2) % state % h_edge % array(:,:), &
                                                block % mesh % nVertLevels, block % mesh % nEdges, &
                                                block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
 !!              call dmpar_exch_halo_field2dReal(domain % dminfo, block % mesh % uhAvg % array(:,:), &
@@ -221,34 +221,34 @@ module time_integration
 !!              call dmpar_exch_halo_field2dReal(domain % dminfo, block % mesh % wwAvg % array(:,:), &
 !!                                               block % mesh % nVertLevels+1, block % mesh % nCells, &
 !!                                               block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-              call dmpar_exch_halo_field2dReal(domain % dminfo, block % time_levs(2) % state % theta % array(:,:), &
+              call dmpar_exch_halo_field2dReal(domain % dminfo, block % state % time_levs(2) % state % theta % array(:,:), &
                                                block % mesh % nVertLevels, block % mesh % nCells, &
                                                block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-!!              call dmpar_exch_halo_field2dReal(domain % dminfo, block % time_levs(2) % state % h % array(:,:), &
+!!              call dmpar_exch_halo_field2dReal(domain % dminfo, block % state % time_levs(2) % state % h % array(:,:), &
 !!                                               block % mesh % nVertLevels, block % mesh % nCells, &
 !!                                               block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-!!              call dmpar_exch_halo_field2dReal(domain % dminfo, block % intermediate_step(TEND) % h % array(:,:), &
+!!              call dmpar_exch_halo_field2dReal(domain % dminfo, block % tend % h % array(:,:), &
 !!                                               block % mesh % nVertLevels, block % mesh % nCells, &
 !!                                               block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
               call dmpar_exch_halo_field1dReal(domain % dminfo, block % mesh % dpsdt % array(:), &
                                                block % mesh % nCells, &
                                                block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-              call dmpar_exch_halo_field1dReal(domain % dminfo, block % time_levs(2) % state % surface_pressure % array(:), &
+              call dmpar_exch_halo_field1dReal(domain % dminfo, block % state % time_levs(2) % state % surface_pressure % array(:), &
                                                block % mesh % nCells, &
                                                block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-              call dmpar_exch_halo_field2dReal(domain % dminfo, block % time_levs(2) % state % alpha % array(:,:), &
+              call dmpar_exch_halo_field2dReal(domain % dminfo, block % state % time_levs(2) % state % alpha % array(:,:), &
                                                block % mesh % nVertLevels, block % mesh % nCells, &
                                                block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-              call dmpar_exch_halo_field2dReal(domain % dminfo, block % time_levs(2) % state % ww % array(:,:), &
+              call dmpar_exch_halo_field2dReal(domain % dminfo, block % state % time_levs(2) % state % ww % array(:,:), &
                                                block % mesh % nVertLevels+1, block % mesh % nCells, &
                                                block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-              call dmpar_exch_halo_field2dReal(domain % dminfo, block % time_levs(2) % state % pressure % array(:,:), &
+              call dmpar_exch_halo_field2dReal(domain % dminfo, block % state % time_levs(2) % state % pressure % array(:,:), &
                                                block % mesh % nVertLevels+1, block % mesh % nCells, &
                                                block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
 !!              call dmpar_exch_halo_field2dReal(domain % dminfo, block % mesh % pressure_old % array(:,:), &
 !!                                               block % mesh % nVertLevels+1, block % mesh % nCells, &
 !!                                               block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-              call dmpar_exch_halo_field2dReal(domain % dminfo, block % time_levs(2) % state % geopotential % array(:,:), &
+              call dmpar_exch_halo_field2dReal(domain % dminfo, block % state % time_levs(2) % state % geopotential % array(:,:), &
                                                block % mesh % nVertLevels+1, block % mesh % nCells, &
                                                block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
               block => block % next
@@ -269,13 +269,13 @@ module time_integration
            !       so we keep the advance_scalars routine as well
            !
            if (rk_step < 3 .or. (.not. config_monotonic .and. .not. config_positive_definite)) then
-              call advance_scalars( block % intermediate_step(TEND),                            &
-                                    block % time_levs(1) % state, block % time_levs(2) % state, &
+              call advance_scalars( block % tend,                                                               &
+                                    block % state % time_levs(1) % state, block % state % time_levs(2) % state, &
                                     block % mesh, rk_timestep(rk_step) )
            else
-              call advance_scalars_mono( block % intermediate_step(TEND),                            &
-                                         block % time_levs(1) % state, block % time_levs(2) % state, &
-                                         block % mesh, rk_timestep(rk_step), rk_step, 3, &
+              call advance_scalars_mono( block % tend,                                                               &
+                                         block % state % time_levs(1) % state, block % state % time_levs(2) % state, &
+                                         block % mesh, rk_timestep(rk_step), rk_step, 3,                             &
                                          domain % dminfo, block % parinfo % cellsToSend, block % parinfo % cellsToRecv )
            end if
            block => block % next
@@ -283,11 +283,11 @@ module time_integration
 
         block => domain % blocklist
         do while (associated(block))
-           call dmpar_exch_halo_field3dReal(domain % dminfo, block % intermediate_step(TEND) % scalars % array(:,:,:), &
-                                            num_scalars, block % mesh % nVertLevels, block % mesh % nCells, &
+           call dmpar_exch_halo_field3dReal(domain % dminfo, block % tend % scalars % array(:,:,:), &
+                                            block % tend % num_scalars, block % mesh % nVertLevels, block % mesh % nCells, &
                                             block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-           call dmpar_exch_halo_field3dReal(domain % dminfo, block % time_levs(2) % state % scalars % array(:,:,:), &
-                                            num_scalars, block % mesh % nVertLevels, block % mesh % nCells, &
+           call dmpar_exch_halo_field3dReal(domain % dminfo, block % state % time_levs(2) % state % scalars % array(:,:,:), &
+                                            block % tend % num_scalars, block % mesh % nVertLevels, block % mesh % nCells, &
                                             block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
            block => block % next
         end do
@@ -299,9 +299,9 @@ module time_integration
 
         block => domain % blocklist
         do while (associated(block))
-           call compute_solver_constants( block % time_levs(2) % state, block % mesh )
-           call compute_state_diagnostics( block % time_levs(2) % state, block % mesh )
-           call compute_solve_diagnostics( dt, block % time_levs(2) % state, block % mesh )
+           call compute_solver_constants( block % state % time_levs(2) % state, block % mesh )
+           call compute_state_diagnostics( block % state % time_levs(2) % state, block % mesh )
+           call compute_solve_diagnostics( dt, block % state % time_levs(2) % state, block % mesh )
            block => block % next
         end do
 
@@ -320,8 +320,8 @@ module time_integration
       !
       block => domain % blocklist
       do while (associated(block))
-         call reconstruct(block % time_levs(2) % state, block % mesh)
-         call compute_w(block % time_levs(2) % state, block % time_levs(1) % state, block % mesh, dt)
+         call reconstruct(block % state % time_levs(2) % state, block % mesh)
+         call compute_w(block % state % time_levs(2) % state, block % state % time_levs(1) % state, block % mesh, dt)
          block => block % next
       end do
 
@@ -331,21 +331,21 @@ module time_integration
          domain_mass = 0.
          scalar_mass = 0.
          block => domain % blocklist
-         scalar_min = block % time_levs(2) % state % scalars % array (2,1,1)
-         scalar_max = block % time_levs(2) % state % scalars % array (2,1,1)
+         scalar_min = block % state % time_levs(2) % state % scalars % array (2,1,1)
+         scalar_max = block % state % time_levs(2) % state % scalars % array (2,1,1)
          do while(associated(block))
            do iCell = 1, block % mesh % nCellsSolve
-             domain_mass = domain_mass + block % time_levs(2) % state % surface_pressure % array (iCell) * &
+             domain_mass = domain_mass + block % state % time_levs(2) % state % surface_pressure % array (iCell) * &
                                          block % mesh % areaCell % array (iCell) &
-                                       - block % time_levs(2) % state % pressure % array (block % mesh % nVertLevels + 1, 1) * &
+                                       - block % state % time_levs(2) % state % pressure % array (block % mesh % nVertLevels + 1, 1) * &
                                          block % mesh % areaCell % array (iCell)
              do k=1, block % mesh % nVertLevelsSolve
-               scalar_mass = scalar_mass - block % time_levs(2) % state % scalars % array (2,k,iCell) * &
-                                           block % time_levs(2) % state % h % array (k,iCell) * &
+               scalar_mass = scalar_mass - block % state % time_levs(2) % state % scalars % array (2,k,iCell) * &
+                                           block % state % time_levs(2) % state % h % array (k,iCell) * &
                                            block % mesh % dnw % array (k) * &
                                            block % mesh % areaCell % array (iCell)
-               scalar_min = min(scalar_min,block % time_levs(2) % state % scalars % array (2,k,iCell))
-               scalar_max = max(scalar_max,block % time_levs(2) % state % scalars % array (2,k,iCell))
+               scalar_min = min(scalar_min,block % state % time_levs(2) % state % scalars % array (2,k,iCell))
+               scalar_max = max(scalar_max,block % state % time_levs(2) % state % scalars % array (2,k,iCell))
              end do
            end do
            block => block % next
@@ -378,8 +378,8 @@ module time_integration
 
       implicit none
 
-      type (grid_state), intent(in) :: s
-      type (grid_meta), intent(inout) :: grid
+      type (state_type), intent(in) :: s
+      type (mesh_type), intent(inout) :: grid
 
       integer :: iEdge, iCell, k, cell1, cell2, iq
 
@@ -392,11 +392,11 @@ module time_integration
       grid % qtot % array = 0.
       grid % cqu % array = 1.
 
-      if (num_scalars > 0) then
+      if (s % num_scalars > 0) then
 
         do iCell = 1, nCells
           do k = 1, nVertLevels
-            do iq = moist_start, moist_end
+            do iq = s % moist_start, s % moist_end
               grid % qtot % array(k,iCell) = grid % qtot % array(k,iCell) + s % scalars % array (iq, k, iCell)
             end do
           end do
@@ -430,8 +430,8 @@ module time_integration
 
       implicit none
 
-      type (grid_state), intent(inout) :: s
-      type (grid_meta), intent(inout) :: grid
+      type (state_type), intent(inout) :: s
+      type (mesh_type), intent(inout) :: grid
 
       real (kind=RKIND), dimension(:,:,:), pointer :: scalar
       real (kind=RKIND), dimension(:,:), pointer :: h, pressure, qtot, alpha, geopotential, theta
@@ -521,9 +521,9 @@ module time_integration
 
       implicit none
 
-      type (grid_state), intent(inout) :: tend
-      type (grid_state), intent(in) :: s
-      type (grid_meta), intent(in) :: grid
+      type (tend_type), intent(inout) :: tend
+      type (state_type), intent(in) :: s
+      type (mesh_type), intent(in) :: grid
 
       integer :: iEdge, iCell, iVertex, k, cell1, cell2, vertex1, vertex2, eoe, i, j
       real (kind=RKIND) :: flux, vorticity_abs, h_vertex, workpv, q, upstream_bias
@@ -1022,9 +1022,9 @@ module time_integration
 
       implicit none
 
-      type (grid_state), intent(in) :: tend
-      type (grid_state), intent(inout) :: s
-      type (grid_meta), intent(in) :: grid
+      type (tend_type), intent(in) :: tend
+      type (state_type), intent(inout) :: s
+      type (mesh_type), intent(in) :: grid
       real (kind=RKIND), intent(in) :: dt
       integer, intent(in) :: small_step, number_small_steps
 
@@ -1275,13 +1275,13 @@ module time_integration
 
       implicit none
 
-      type (grid_state), intent(in) :: tend
-      type (grid_state), intent(in) :: s_old
-      type (grid_state), intent(out) :: s_new
-      type (grid_meta), intent(in) :: grid
+      type (tend_type), intent(in) :: tend
+      type (state_type), intent(in) :: s_old
+      type (state_type), intent(inout) :: s_new
+      type (mesh_type), intent(in) :: grid
       real (kind=RKIND) :: dt
 
-      integer :: i, iCell, iEdge, k, iScalar, cell1, cell2
+      integer :: i, iCell, iEdge, k, iScalar, cell1, cell2, num_scalars
       real (kind=RKIND) :: flux, scalar_edge, d2fdx2_cell1, d2fdx2_cell2
 
       real (kind=RKIND), dimension(:,:,:), pointer :: scalar_old, scalar_new, scalar_tend
@@ -1290,11 +1290,13 @@ module time_integration
       real (kind=RKIND), dimension(:), pointer :: dvEdge, dcEdge, areaCell
       integer, dimension(:,:), pointer :: cellsOnEdge
 
-      real (kind=RKIND), dimension( num_scalars, grid % nVertLevels + 1 ) :: wdtn
+      real (kind=RKIND), dimension( s_old % num_scalars, grid % nVertLevels + 1 ) :: wdtn
       integer :: nVertLevels
 
       real (kind=RKIND), dimension(:), pointer :: fnm, fnp, rdnw
       real (kind=RKIND) :: coef_3rd_order
+
+      num_scalars = s_old % num_scalars
 
       coef_3rd_order = 0.
       if (config_scalar_adv_order == 3) coef_3rd_order = 1.0
@@ -1462,16 +1464,16 @@ module time_integration
 
       implicit none
 
-      type (grid_state), intent(in) :: tend
-      type (grid_state), intent(in) :: s_old
-      type (grid_state), intent(out) :: s_new
-      type (grid_meta), intent(in) :: grid
+      type (tend_type), intent(in) :: tend
+      type (state_type), intent(in) :: s_old
+      type (state_type), intent(inout) :: s_new
+      type (mesh_type), intent(in) :: grid
       integer, intent(in) :: rk_step, rk_order
       real (kind=RKIND), intent(in) :: dt
       type (dm_info), intent(in) :: dminfo
       type (exchange_list), pointer :: cellsToSend, cellsToRecv
 
-      integer :: i, iCell, iEdge, k, iScalar, cell_upwind, cell1, cell2
+      integer :: i, iCell, iEdge, k, iScalar, cell_upwind, cell1, cell2, num_scalars
       real (kind=RKIND) :: flux, scalar_edge, d2fdx2_cell1, d2fdx2_cell2
       real (kind=RKIND) :: fdir, flux_upwind, h_flux_upwind, s_upwind
 
@@ -1481,16 +1483,18 @@ module time_integration
       real (kind=RKIND), dimension(:), pointer :: dvEdge, dcEdge, areaCell
       integer, dimension(:,:), pointer :: cellsOnEdge
 
-      real (kind=RKIND), dimension( num_scalars, grid % nEdges+1) :: h_flux
-      real (kind=RKIND), dimension( num_scalars, grid % nCells+1, 2 ) :: v_flux, v_flux_upwind, s_update
-      real (kind=RKIND), dimension( num_scalars, grid % nCells+1, 2 ) :: scale_out, scale_in
-      real (kind=RKIND), dimension( num_scalars ) :: s_max, s_min, s_max_update, s_min_update
+      real (kind=RKIND), dimension( s_old % num_scalars, grid % nEdges+1) :: h_flux
+      real (kind=RKIND), dimension( s_old % num_scalars, grid % nCells+1, 2 ) :: v_flux, v_flux_upwind, s_update
+      real (kind=RKIND), dimension( s_old % num_scalars, grid % nCells+1, 2 ) :: scale_out, scale_in
+      real (kind=RKIND), dimension( s_old % num_scalars ) :: s_max, s_min, s_max_update, s_min_update
 
       integer :: nVertLevels, km0, km1, ktmp, kcp1, kcm1
 
       real (kind=RKIND), dimension(:), pointer :: fnm, fnp, rdnw
       real (kind=RKIND), parameter :: eps=1.e-20
       real (kind=RKIND) :: coef_3rd_order
+
+      num_scalars = s_old % num_scalars
 
       scalar_old  => s_old % scalars % array
       scalar_new  => s_new % scalars % array
@@ -1794,8 +1798,8 @@ module time_integration
       implicit none
 
       real (kind=RKIND), intent(in) :: dt
-      type (grid_state), intent(inout) :: s
-      type (grid_meta), intent(in) :: grid
+      type (state_type), intent(inout) :: s
+      type (mesh_type), intent(in) :: grid
 
 
       integer :: iEdge, iCell, iVertex, k, cell1, cell2, vertex1, vertex2, eoe, i, j, cov
@@ -2045,9 +2049,9 @@ module time_integration
 
       implicit none
 
-      type (grid_state), intent(inout) :: s_new
-      type (grid_state), intent(in) :: s_old
-      type (grid_meta), intent(inout) :: grid
+      type (state_type), intent(inout) :: s_new
+      type (state_type), intent(in) :: s_old
+      type (mesh_type), intent(inout) :: grid
 
       real (kind=RKIND), intent(in) :: dt
 

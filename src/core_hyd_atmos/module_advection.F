@@ -17,7 +17,7 @@ module advection
 !
       implicit none
 
-      type (grid_meta), intent(in) :: grid
+      type (mesh_type), intent(in) :: grid
 
       real (kind=RKIND), dimension(:,:,:), pointer :: deriv_two
       integer, dimension(:,:), pointer :: advCells

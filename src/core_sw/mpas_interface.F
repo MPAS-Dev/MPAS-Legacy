@@ -22,14 +22,14 @@ subroutine mpas_init(block, mesh, dt)
    implicit none
 
    type (block_type), intent(inout) :: block
-   type (grid_meta), intent(inout) :: mesh
+   type (mesh_type), intent(inout) :: mesh
    real (kind=RKIND), intent(in) :: dt
 
-   call compute_solve_diagnostics(dt, block % time_levs(1) % state, mesh)
+   call compute_solve_diagnostics(dt, block % state % time_levs(1) % state, mesh)
 
    call rbfInterp_initialize(mesh)
    call init_reconstruct(mesh)
-   call reconstruct(block % time_levs(1) % state, mesh)
+   call reconstruct(block % state % time_levs(1) % state, mesh)
 
 end subroutine mpas_init
 
@@ -74,7 +74,7 @@ subroutine mpas_timestep(domain, itimestep, dt)
 
            call timer_start("global_diagnostics")
            call computeGlobalDiagnostics(domain % dminfo, &
-                    block_ptr % time_levs(2) % state, block_ptr % mesh, &
+                    block_ptr % state % time_levs(2) % state, block_ptr % mesh, &
                     itimestep, dt)
            call timer_stop("global_diagnostics")
        end if

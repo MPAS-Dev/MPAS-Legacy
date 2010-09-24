@@ -37,7 +37,7 @@ module time_integration
 
       block => domain % blocklist
       do while (associated(block))
-         block % time_levs(2) % state % xtime % scalar = block % time_levs(1) % state % xtime % scalar + dt
+         block % state % time_levs(2) % state % xtime % scalar = block % state % time_levs(1) % state % xtime % scalar + dt
          block => block % next
       end do
 
@@ -62,13 +62,17 @@ module time_integration
 
       integer :: iCell, k
       type (block_type), pointer :: block
+      type (state_type) :: provis
 
-      integer, parameter :: PROVIS = 1
-      integer, parameter :: TEND   = 2
       integer :: rk_step
 
       real (kind=RKIND), dimension(4) :: rk_weights, rk_substep_weights
 
+      block => domain % blocklist
+      call allocate_state(provis, &
+                          block % mesh % nCells, block % mesh % nEdges, block % mesh % maxEdges, block % mesh % maxEdges2, &
+                          block % mesh % nVertices, block % mesh % vertexDegree, block % mesh % nVertLevels, &
+                          block % mesh % nTracers)
 
       !
       ! Initialize time_levs(2) with state at current time
@@ -79,16 +83,16 @@ module time_integration
       block => domain % blocklist
       do while (associated(block))
 
-         block % time_levs(2) % state % u % array(:,:) = block % time_levs(1) % state % u % array(:,:)
-         block % time_levs(2) % state % h % array(:,:) = block % time_levs(1) % state % h % array(:,:)
+         block % state % time_levs(2) % state % u % array(:,:) = block % state % time_levs(1) % state % u % array(:,:)
+         block % state % time_levs(2) % state % h % array(:,:) = block % state % time_levs(1) % state % h % array(:,:)
          do iCell=1,block % mesh % nCells  ! couple tracers to h
            do k=1,block % mesh % nVertLevels
-             block % time_levs(2) % state % tracers % array(:,k,iCell) = block % time_levs(1) % state % tracers % array(:,k,iCell) &
-                                                                       * block % time_levs(1) % state % h % array(k,iCell)
+             block % state % time_levs(2) % state % tracers % array(:,k,iCell) = block % state % time_levs(1) % state % tracers % array(:,k,iCell) &
+                                                                       * block % state % time_levs(1) % state % h % array(k,iCell)
             end do
          end do
 
-         call copy_state(block % time_levs(1) % state, block % intermediate_step(PROVIS))
+         call copy_state(provis, block % state % time_levs(1) % state)
 
          block => block % next
       end do
@@ -113,7 +117,7 @@ module time_integration
 
         block => domain % blocklist
         do while (associated(block))
-           call dmpar_exch_halo_field2dReal(domain % dminfo, block % intermediate_step(PROVIS) % pv_edge % array(:,:), &
+           call dmpar_exch_halo_field2dReal(domain % dminfo, provis % pv_edge % array(:,:), &
                                             block % mesh % nVertLevels, block % mesh % nEdges, &
                                             block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
            block => block % next
@@ -123,9 +127,9 @@ module time_integration
 
         block => domain % blocklist
         do while (associated(block))
-           call compute_tend(block % intermediate_step(TEND), block % intermediate_step(PROVIS), block % mesh)
-           call compute_scalar_tend(block % intermediate_step(TEND), block % intermediate_step(PROVIS), block % mesh)
-           call enforce_boundaryEdge(block % intermediate_step(TEND), block % mesh)
+           call compute_tend(block % tend, provis, block % mesh)
+           call compute_scalar_tend(block % tend, provis, block % mesh)
+           call enforce_boundaryEdge(block % tend, block % mesh)
            block => block % next
         end do
 
@@ -133,13 +137,13 @@ module time_integration
 
         block => domain % blocklist
         do while (associated(block))
-           call dmpar_exch_halo_field2dReal(domain % dminfo, block % intermediate_step(TEND) % u % array(:,:), &
+           call dmpar_exch_halo_field2dReal(domain % dminfo, block % tend % u % array(:,:), &
                                             block % mesh % nVertLevels, block % mesh % nEdges, &
                                             block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
-           call dmpar_exch_halo_field2dReal(domain % dminfo, block % intermediate_step(TEND) % h % array(:,:), &
+           call dmpar_exch_halo_field2dReal(domain % dminfo, block % tend % h % array(:,:), &
                                             block % mesh % nVertLevels, block % mesh % nCells, &
                                             block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-           call dmpar_exch_halo_field3dReal(domain % dminfo, block % intermediate_step(TEND) % tracers % array(:,:,:), &
+           call dmpar_exch_halo_field3dReal(domain % dminfo, block % tend % tracers % array(:,:,:), &
                                             block % mesh % nTracers, block % mesh % nVertLevels, block % mesh % nCells, &
                                             block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
            block => block % next
@@ -150,23 +154,23 @@ module time_integration
         if (rk_step < 4) then
            block => domain % blocklist
            do while (associated(block))
-              block % intermediate_step(PROVIS) % u % array(:,:)       = block % time_levs(1) % state % u % array(:,:)  &
-                                         + rk_substep_weights(rk_step) * block % intermediate_step(TEND) % u % array(:,:)
-              block % intermediate_step(PROVIS) % h % array(:,:)       = block % time_levs(1) % state % h % array(:,:)  &
-                                         + rk_substep_weights(rk_step) * block % intermediate_step(TEND) % h % array(:,:)
+              provis % u % array(:,:)       = block % state % time_levs(1) % state % u % array(:,:)  &
+                                            + rk_substep_weights(rk_step) * block % tend % u % array(:,:)
+              provis % h % array(:,:)       = block % state % time_levs(1) % state % h % array(:,:)  &
+                                            + rk_substep_weights(rk_step) * block % tend % h % array(:,:)
               do iCell=1,block % mesh % nCells
                  do k=1,block % mesh % nVertLevels
-                    block % intermediate_step(PROVIS) % tracers % array(:,k,iCell) = ( &
-                                                                      block % time_levs(1) % state % h % array(k,iCell) * &
-                                                                      block % time_levs(1) % state % tracers % array(:,k,iCell)  &
-                                      + rk_substep_weights(rk_step) * block % intermediate_step(TEND) % tracers % array(:,k,iCell) &
-                                                                     ) / block % intermediate_step(PROVIS) % h % array(k,iCell)
+                    provis % tracers % array(:,k,iCell) = ( &
+                                                           block % state % time_levs(1) % state % h % array(k,iCell) * &
+                                                           block % state % time_levs(1) % state % tracers % array(:,k,iCell)  &
+                                      + rk_substep_weights(rk_step) * block % tend % tracers % array(:,k,iCell) &
+                                                          ) / provis % h % array(k,iCell)
                  end do
               end do
               if (config_test_case == 1) then    ! For case 1, wind field should be fixed
-                 block % intermediate_step(PROVIS) % u % array(:,:) = block % time_levs(1) % state % u % array(:,:)
+                 provis % u % array(:,:) = block % state % time_levs(1) % state % u % array(:,:)
               end if
-              call compute_solve_diagnostics(dt, block % intermediate_step(PROVIS), block % mesh)
+              call compute_solve_diagnostics(dt, provis, block % mesh)
               block => block % next
            end do
         end if
@@ -175,15 +179,15 @@ module time_integration
 
         block => domain % blocklist
         do while (associated(block))
-           block % time_levs(2) % state % u % array(:,:) = block % time_levs(2) % state % u % array(:,:) &
-                                   + rk_weights(rk_step) * block % intermediate_step(TEND) % u % array(:,:) 
-           block % time_levs(2) % state % h % array(:,:) = block % time_levs(2) % state % h % array(:,:) &
-                                   + rk_weights(rk_step) * block % intermediate_step(TEND) % h % array(:,:) 
+           block % state % time_levs(2) % state % u % array(:,:) = block % state % time_levs(2) % state % u % array(:,:) &
+                                   + rk_weights(rk_step) * block % tend % u % array(:,:) 
+           block % state % time_levs(2) % state % h % array(:,:) = block % state % time_levs(2) % state % h % array(:,:) &
+                                   + rk_weights(rk_step) * block % tend % h % array(:,:) 
            do iCell=1,block % mesh % nCells
               do k=1,block % mesh % nVertLevels
-                 block % time_levs(2) % state % tracers % array(:,k,iCell) =  &
-                                                                       block % time_levs(2) % state % tracers % array(:,k,iCell) &
-                                               + rk_weights(rk_step) * block % intermediate_step(TEND) % tracers % array(:,k,iCell)
+                 block % state % time_levs(2) % state % tracers % array(:,k,iCell) =  &
+                                                                       block % state % time_levs(2) % state % tracers % array(:,k,iCell) &
+                                               + rk_weights(rk_step) * block % tend % tracers % array(:,k,iCell)
               end do
            end do
            block => block % next
@@ -202,22 +206,24 @@ module time_integration
       do while (associated(block))
          do iCell=1,block % mesh % nCells
             do k=1,block % mesh % nVertLevels
-               block % time_levs(2) % state % tracers % array(:,k,iCell) = &
-                                                                     block % time_levs(2) % state % tracers % array(:,k,iCell)  &
-                                                                   / block % time_levs(2) % state % h % array(k,iCell)
+               block % state % time_levs(2) % state % tracers % array(:,k,iCell) = &
+                                                                     block % state % time_levs(2) % state % tracers % array(:,k,iCell)  &
+                                                                   / block % state % time_levs(2) % state % h % array(k,iCell)
             end do
          end do
 
          if (config_test_case == 1) then    ! For case 1, wind field should be fixed
-            block % time_levs(2) % state % u % array(:,:) = block % time_levs(1) % state % u % array(:,:)
+            block % state % time_levs(2) % state % u % array(:,:) = block % state % time_levs(1) % state % u % array(:,:)
          end if
 
-         call compute_solve_diagnostics(dt, block % time_levs(2) % state, block % mesh)
+         call compute_solve_diagnostics(dt, block % state % time_levs(2) % state, block % mesh)
 
-         call reconstruct(block % time_levs(2) % state, block % mesh)
+         call reconstruct(block % state % time_levs(2) % state, block % mesh)
 
          block => block % next
       end do
+
+      call deallocate_state(provis)
 
    end subroutine rk4
 
@@ -234,9 +240,9 @@ module time_integration
 
       implicit none
 
-      type (grid_state), intent(inout) :: tend
-      type (grid_state), intent(in) :: s
-      type (grid_meta), intent(in) :: grid
+      type (tend_type), intent(inout) :: tend
+      type (state_type), intent(in) :: s
+      type (mesh_type), intent(in) :: grid
 
       integer :: iEdge, iCell, iVertex, k, cell1, cell2, vertex1, vertex2, eoe, i, j
       real (kind=RKIND) :: flux, vorticity_abs, workpv, q, upstream_bias
@@ -394,9 +400,9 @@ module time_integration
 
       implicit none
 
-      type (grid_state), intent(inout) :: tend
-      type (grid_state), intent(in) :: s
-      type (grid_meta), intent(in) :: grid
+      type (tend_type), intent(inout) :: tend
+      type (state_type), intent(in) :: s
+      type (mesh_type), intent(in) :: grid
 
       integer :: iCell, iEdge, k, iTracer, cell1, cell2
       real (kind=RKIND) :: flux, tracer_edge
@@ -440,8 +446,8 @@ module time_integration
       implicit none
 
       real (kind=RKIND), intent(in) :: dt
-      type (grid_state), intent(inout) :: s
-      type (grid_meta), intent(in) :: grid
+      type (state_type), intent(inout) :: s
+      type (mesh_type), intent(in) :: grid
 
 
       integer :: iEdge, iCell, iVertex, k, cell1, cell2, vertex1, vertex2, eoe, i, j, cov
@@ -753,8 +759,8 @@ module time_integration
 
       implicit none
 
-      type (grid_state), intent(inout) :: tend
-      type (grid_meta), intent(in) :: grid
+      type (tend_type), intent(inout) :: tend
+      type (mesh_type), intent(in) :: grid
 
       integer, dimension(:,:), pointer :: boundaryEdge
       real (kind=RKIND), dimension(:,:), pointer :: tend_u

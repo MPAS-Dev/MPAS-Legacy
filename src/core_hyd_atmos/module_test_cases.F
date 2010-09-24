@@ -35,9 +35,9 @@ module test_cases
          if (config_test_case == 3) write(0,*) ' normal-mode perturbation included '
          block_ptr => domain % blocklist
          do while (associated(block_ptr))
-            call hyd_test_case_1(block_ptr % mesh, block_ptr % time_levs(1) % state, config_test_case)
+            call hyd_test_case_1(block_ptr % mesh, block_ptr % state % time_levs(1) % state, config_test_case)
             do i=2,nTimeLevs
-               call copy_state(block_ptr % time_levs(1) % state, block_ptr % time_levs(i) % state)
+               call copy_state(block_ptr % state % time_levs(i) % state, block_ptr % state % time_levs(1) % state)
             end do
 
             block_ptr => block_ptr % next
@@ -59,8 +59,8 @@ module test_cases
 
       implicit none
 
-      type (grid_meta), intent(inout) :: grid
-      type (grid_state), intent(inout) :: state
+      type (mesh_type), intent(inout) :: grid
+      type (state_type), intent(inout) :: state
       integer, intent(in) :: test_case
 
       real (kind=RKIND), parameter :: u0 = 35.0
@@ -78,7 +78,7 @@ module test_cases
       real (kind=RKIND), dimension(:,:), pointer :: pressure, theta, alpha, geopotential, h
       real (kind=RKIND), dimension(:,:,:), pointer :: scalars
 
-      integer :: iCell, iEdge, vtx1, vtx2, ivtx, k, nz, nz1
+      integer :: iCell, iEdge, vtx1, vtx2, ivtx, k, nz, nz1, index_qv
       real (kind=RKIND) :: u, v, flux, fluxk, lat1, lat2, eta_v, r_pert, u_pert, lat_pert, lon_pert, r
 
       real (kind=RKIND) :: ptop, p0, phi
@@ -129,6 +129,8 @@ module test_cases
       grid % areaCell % array = grid % areaCell % array * a**2.0
       grid % areaTriangle % array = grid % areaTriangle % array * a**2.0
       grid % kiteAreasOnVertex % array = grid % kiteAreasOnVertex % array * a**2.0
+
+      index_qv = state % index_qv
       
       nz1 = grid % nVertLevels
       nz = nz1 + 1

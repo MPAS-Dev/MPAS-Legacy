@@ -13,7 +13,7 @@ module subdriver
       subroutine mpas_init(block, mesh, dt)
          use grid_types
          type (block_type), intent(inout) :: block
-         type (grid_meta), intent(inout) :: mesh
+         type (mesh_type), intent(inout) :: mesh
          real (kind=RKIND), intent(in) :: dt
       end subroutine mpas_init
 
@@ -59,7 +59,7 @@ module subdriver
       block_ptr => domain % blocklist
       do while (associated(block_ptr))
          call mpas_init(block_ptr, block_ptr % mesh, dt)
-         if (.not. config_do_restart) block_ptr % time_levs(1) % state % xtime % scalar = 0.0
+         if (.not. config_do_restart) block_ptr % state % time_levs(1) % state % xtime % scalar = 0.0
          block_ptr => block_ptr % next
       end do
 
@@ -79,7 +79,7 @@ module subdriver
          call timer_stop("time integration")
 
          ! Move time level 2 fields back into time level 1 for next time step
-         call shift_time_levels(domain)
+         call shift_time_levels_state(domain % blocklist % state)
 
          if (mod(itimestep, config_output_interval) == 0) then 
             call write_output_frame(output_obj, domain)
@@ -116,7 +116,7 @@ module subdriver
 
       block_ptr => domain % blocklist
       do while (associated(block_ptr))
-         call compute_output_diagnostics(block_ptr % time_levs(1) % state, block_ptr % mesh)
+         call compute_output_diagnostics(block_ptr % state % time_levs(1) % state, block_ptr % mesh)
          block_ptr => block_ptr % next
       end do
 
@@ -138,8 +138,8 @@ module subdriver
 
       implicit none
 
-      type (grid_state), intent(inout) :: state
-      type (grid_meta), intent(in) :: grid
+      type (state_type), intent(inout) :: state
+      type (mesh_type), intent(in) :: grid
 
       integer :: i, eoe
       integer :: iEdge, k

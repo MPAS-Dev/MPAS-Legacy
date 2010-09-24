@@ -4,8 +4,7 @@ module grid_types
 
    integer, parameter :: nTimeLevs = 2
 
-#include "super_array_indices.inc"
-  
+
    ! Derived type describing info for doing I/O specific to a field
    type io_info
       character (len=1024) :: fieldName
@@ -66,7 +65,7 @@ module grid_types
 
 
    ! Derived type for storing grid meta-data
-   type grid_meta
+   type mesh_type
 
 #include "field_dimensions.inc"
 
@@ -75,19 +74,10 @@ module grid_types
 
 #include "time_invariant_fields.inc"
 
-   end type grid_meta
+   end type mesh_type
 
 
-   ! Derived type for storing model state
-   type grid_state
-
-#include "time_varying_fields.inc"
-
-   end type grid_state
-
-   type grid_state_ptr
-      type (grid_state), pointer :: state
-   end type grid_state_ptr
+#include "variable_groups.inc"
 
 
    ! Type for storing (possibly architecture specific) information concerning to parallelism
@@ -105,10 +95,7 @@ module grid_types
    type block_type
       integer :: storageFactor    ! Additional storage used by time integration scheme
 
-      type (grid_meta), pointer :: mesh
-      type (grid_state_ptr), pointer, dimension(:) :: time_levs
-
-      type (grid_state), allocatable, dimension(:) :: intermediate_step
+#include "block_group_members.inc"
 
       type (domain_type), pointer :: domain
 
@@ -170,58 +157,19 @@ module grid_types
       nullify(b % prev)
       nullify(b % next)
 
-      allocate(b % time_levs(nTimeLevs))
-
-      allocate(b % mesh)
-      call allocate_grid_meta(b % mesh, &
-#include "dim_dummy_args.inc"
-                             )
-  
-      do i=1,nTimeLevs
-         allocate(b % time_levs(i) % state)
-         call allocate_grid_state(b % time_levs(i) % state, b)
-      end do
-
       key = 'STORAGE_FACTOR'
       call mpas_query(key, b % storageFactor)
-
-      ! Allocate storage for intermediate steps used by time integration scheme
-      allocate(b % intermediate_step(b % storageFactor))
-      do i=1,b % storageFactor
-         call allocate_grid_state(b % intermediate_step(i), b)
-      end do
 
       allocate(b % parinfo)
 
       b % domain => dom
 
+#include "block_allocs.inc"
+
    end subroutine allocate_block
 
 
-   subroutine allocate_grid_meta(g, &
-#include "dim_dummy_args.inc"
-                                )
-
-      implicit none
-
-      type (grid_meta), intent(inout) :: g
-#include "dim_dummy_decls.inc"
-
-#include "grid_meta_allocs.inc"
-
-   end subroutine allocate_grid_meta
-
-
-   subroutine allocate_grid_state(s, b)
-
-      implicit none
-
-      type (grid_state), intent(inout) :: s
-      type (block_type), pointer :: b
-
-#include "grid_state_allocs.inc"
-
-   end subroutine allocate_grid_state
+#include "group_alloc_routines.inc"
 
 
    subroutine deallocate_domain(dom)
@@ -251,78 +199,19 @@ module grid_types
 
       integer :: i
 
-      call deallocate_grid_meta(b % mesh)
-      deallocate(b % mesh)
-      do i=1,nTimeLevs
-         call deallocate_grid_state(b % time_levs(i) % state)
-         deallocate(b % time_levs(i) % state)
-      end do
-      deallocate(b % time_levs)
-      do i=1,b % storageFactor
-         call deallocate_grid_state(b % intermediate_step(i))
-      end do
-      deallocate(b % intermediate_step)
       deallocate(b % parinfo)
+
+#include "block_deallocs.inc"
 
    end subroutine deallocate_block
 
 
-   subroutine deallocate_grid_meta(g)
-
-      implicit none
-
-      type (grid_meta), intent(inout) :: g
-
-#include "grid_meta_deallocs.inc"
-
-   end subroutine deallocate_grid_meta
+#include "group_dealloc_routines.inc"
 
 
-   subroutine deallocate_grid_state(s)
-
-      implicit none
-
-      type (grid_state), intent(inout) :: s
-
-#include "grid_state_deallocs.inc"
-
-   end subroutine deallocate_grid_state
+#include "group_copy_routines.inc"
 
 
-   subroutine copy_state(src, dest)
-
-      implicit none
-
-      type (grid_state), intent(in) :: src
-      type (grid_state), intent(inout) :: dest
-
-#include "copy_state.inc"
-  
-   end subroutine copy_state
-
-
-   subroutine shift_time_levels(domain)
-
-      implicit none
-
-      type (domain_type), intent(inout) :: domain
-
-      integer :: i
-      type (block_type), pointer :: block_ptr
-      type (grid_state), pointer :: sptr
-
-      block_ptr => domain % blocklist
-      do while (associated(block_ptr))
-
-         sptr => block_ptr % time_levs(1) % state
-         do i=1,nTimeLevs-1
-            block_ptr % time_levs(i) % state => block_ptr % time_levs(i+1) % state
-         end do
-         block_ptr % time_levs(nTimeLevs) % state => sptr
-
-         block_ptr => block_ptr % next
-      end do
-
-   end subroutine shift_time_levels
+#include "group_shift_level_routines.inc"
 
 end module grid_types

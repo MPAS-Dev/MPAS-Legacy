@@ -337,7 +337,7 @@ module io_output
  
       type (io_output_object), intent(inout) :: output_obj
       type (dm_info), intent(in) :: dminfo
-      type (grid_meta), intent(in) :: mesh
+      type (mesh_type), intent(in) :: mesh
 #include "dim_dummy_decls.inc"
  
       integer :: nferr

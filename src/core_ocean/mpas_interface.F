@@ -22,21 +22,21 @@ subroutine mpas_init(block, mesh, dt)
    implicit none
 
    type (block_type), intent(inout) :: block
-   type (grid_meta), intent(inout) :: mesh
+   type (mesh_type), intent(inout) :: mesh
    real (kind=RKIND), intent(in) :: dt
 
-   call compute_solve_diagnostics(dt, block % time_levs(1) % state, mesh)
+   call compute_solve_diagnostics(dt, block % state % time_levs(1) % state, mesh)
 
    call rbfInterp_initialize(mesh)
    call init_reconstruct(mesh)
-   call reconstruct(block % time_levs(1) % state, mesh)
+   call reconstruct(block % state % time_levs(1) % state, mesh)
 
 ! mrp 100316 In order for this to work, we need to pass domain % dminfo as an 
 ! input arguement into mpas_init.  Ask about that later.  For now, there will be
 ! no initial statistics write.
 
 !   call timer_start("global diagnostics")
-!   call computeGlobalDiagnostics(domain % dminfo, block % time_levs(1) % state, mesh, 0, dt)
+!   call computeGlobalDiagnostics(domain % dminfo, block % state % time_levs(1) % state, mesh, 0, dt)
 !   call timer_stop("global diagnostics")
 !   call output_state_init(output_obj, domain, "OUTPUT")
 !   call write_output_frame(output_obj, domain)
@@ -83,7 +83,7 @@ subroutine mpas_timestep(domain, itimestep, dt)
 
       call timer_start("global diagnostics")
       call computeGlobalDiagnostics(domain % dminfo, &
-         block_ptr % time_levs(2) % state, block_ptr % mesh, &
+         block_ptr % state % time_levs(2) % state, block_ptr % mesh, &
          itimestep, dt)
       call timer_stop("global diagnostics")
    end if
