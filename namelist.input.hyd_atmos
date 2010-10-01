@@ -16,6 +16,10 @@
    config_mp_physics = 0
 /
 
+&dimensions
+   config_nvertlevels = 26
+/
+
 &io
    config_input_name = 'grid.nc'
    config_output_name = 'output.nc'

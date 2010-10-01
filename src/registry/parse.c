@@ -8,6 +8,7 @@ int parse_reg(FILE *, struct namelist **, struct dimension **, struct variable *
 int getword(FILE *, char *);
 int is_integer_constant(char *);
 void sort_vars(struct variable *);
+void sort_group_vars(struct group_list *);
 
 int main(int argc, char ** argv)
 {
@@ -36,6 +37,7 @@ int main(int argc, char ** argv)
    }   
 
    sort_vars(vars);
+   sort_group_vars(groups);
 
    gen_namelists(nls);
    gen_field_defs(groups, vars, dims);
@@ -306,7 +308,7 @@ void sort_vars(struct variable * vars)
 
    var_ptr = vars;
 
-/*
+/* Attempt at sorting first on super-array, then on class in the same loop
    while (var_ptr) {
       memcpy(super_array, var_ptr->super_array, 1024);
       memcpy(array_class, var_ptr->array_class, 1024);
@@ -373,5 +375,70 @@ void sort_vars(struct variable * vars)
          }
       } 
       var_ptr = var_ptr->next;
+   }
+}
+
+
+void sort_group_vars(struct group_list * groups)
+{
+   struct variable_list * var_list;
+   struct variable_list * var_ptr;
+   struct variable_list * var_ptr2;
+   struct variable_list * var_ptr2_prev;
+   struct group_list * group_ptr;
+   char super_array[1024];
+   char array_class[1024];
+
+   group_ptr = groups;
+
+   while (group_ptr) {
+
+      var_ptr = group_ptr->vlist;
+   
+      while (var_ptr) {
+         memcpy(super_array, var_ptr->var->super_array, 1024);
+         var_ptr2_prev = var_ptr;
+         var_ptr2 = var_ptr->next;
+         if (var_ptr2 && strncmp(super_array, var_ptr2->var->super_array, 1024) != 0) {
+            while (var_ptr2) {
+               if (strncmp(super_array, var_ptr2->var->super_array, 1024) == 0) {
+                  var_ptr2_prev->next = var_ptr2->next;
+                  var_ptr2->next = var_ptr->next;
+                  var_ptr->next = var_ptr2;
+                  var_ptr2 = var_ptr2_prev->next;
+               }
+               else {
+                  var_ptr2_prev = var_ptr2_prev->next;
+                  var_ptr2 = var_ptr2->next;
+               }
+            }
+         } 
+         var_ptr = var_ptr->next;
+      }
+   
+      var_ptr = group_ptr->vlist;
+   
+      while (var_ptr) {
+         memcpy(array_class, var_ptr->var->array_class, 1024);
+         var_ptr2_prev = var_ptr;
+         var_ptr2 = var_ptr->next;
+         if (var_ptr2 && strncmp(array_class, var_ptr2->var->array_class, 1024) != 0) {
+            while (var_ptr2) {
+               if (strncmp(array_class, var_ptr2->var->array_class, 1024) == 0) {
+                  var_ptr2_prev->next = var_ptr2->next;
+                  var_ptr2->next = var_ptr->next;
+                  var_ptr->next = var_ptr2;
+                  var_ptr2 = var_ptr2_prev->next;
+               }
+               else {
+                  var_ptr2_prev = var_ptr2_prev->next;
+                  var_ptr2 = var_ptr2->next;
+               }
+            }
+         } 
+         var_ptr = var_ptr->next;
+      }
+
+      group_ptr = group_ptr->next;
    }
 }

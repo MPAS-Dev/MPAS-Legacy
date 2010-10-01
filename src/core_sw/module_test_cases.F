@@ -148,9 +148,6 @@ module test_cases
                                                psiVertex(grid%verticesOnEdge%array(2,iEdge)) - &
                                                psiVertex(grid%verticesOnEdge%array(1,iEdge)) &
                                              ) / grid%dvEdge%array(iEdge)
-#ifdef EXPAND_LEVELS
-         state % u % array(2:EXPAND_LEVELS, iEdge) = state % u % array(1,iEdge)
-#endif
       end do
       deallocate(psiVertex)
 
@@ -164,9 +161,6 @@ module test_cases
          else
             state % h % array(1,iCell) = 0.0
          end if
-#ifdef EXPAND_LEVELS
-         state % h % array(2:EXPAND_LEVELS, iCell) = state % h % array(1,iCell)
-#endif
       end do
 
    end subroutine sw_test_case_1
@@ -230,9 +224,6 @@ module test_cases
                                                psiVertex(grid%verticesOnEdge%array(2,iEdge)) - &
                                                psiVertex(grid%verticesOnEdge%array(1,iEdge)) &
                                              ) / grid%dvEdge%array(iEdge)
-#ifdef EXPAND_LEVELS
-         state % u % array(2:EXPAND_LEVELS, iEdge) = state % u % array(1,iEdge)
-#endif
       end do
       deallocate(psiVertex)
 
@@ -262,9 +253,6 @@ module test_cases
                                              )**2.0 &
                                       ) / &
                                       gravity
-#ifdef EXPAND_LEVELS
-         state % h % array(2:EXPAND_LEVELS, iCell) = state % h % array(1,iCell)
-#endif
       end do
 
    end subroutine sw_test_case_2
@@ -330,9 +318,6 @@ module test_cases
                                                psiVertex(grid%verticesOnEdge%array(2,iEdge)) - &
                                                psiVertex(grid%verticesOnEdge%array(1,iEdge)) &
                                              ) / grid%dvEdge%array(iEdge)
-#ifdef EXPAND_LEVELS
-         state % u % array(2:EXPAND_LEVELS, iEdge) = state % u % array(1,iEdge)
-#endif
       end do
       deallocate(psiVertex)
 
@@ -389,9 +374,6 @@ module test_cases
                                       ) / &
                                       gravity
          state % h % array(1,iCell) = state % h % array(1,iCell) - grid % h_s % array(iCell)
-#ifdef EXPAND_LEVELS
-         state % h % array(2:EXPAND_LEVELS, iCell) = state % h % array(1,iCell)
-#endif
       end do
 
    end subroutine sw_test_case_5
@@ -453,9 +435,6 @@ module test_cases
                                                psiVertex(grid%verticesOnEdge%array(2,iEdge)) - &
                                                psiVertex(grid%verticesOnEdge%array(1,iEdge)) &
                                              ) / grid%dvEdge%array(iEdge)
-#ifdef EXPAND_LEVELS
-         state % u % array(2:EXPAND_LEVELS, iEdge) = state % u % array(1,iEdge)
-#endif
       end do
       deallocate(psiVertex)
 
@@ -467,9 +446,6 @@ module test_cases
                                                       a*a*BB(grid%latCell%array(iCell)) * cos(R*grid%lonCell%array(iCell)) + &
                                                       a*a*CC(grid%latCell%array(iCell)) * cos(2.0*R*grid%lonCell%array(iCell)) &
                                       ) / gravity
-#ifdef EXPAND_LEVELS
-         state % h % array(2:EXPAND_LEVELS, iCell) = state % h % array(1,iCell)
-#endif
       end do
 
    end subroutine sw_test_case_6

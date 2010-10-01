@@ -18,6 +18,7 @@ namelist integer   sw_model config_scalar_adv_order     2
 namelist logical   sw_model config_positive_definite    false
 namelist logical   sw_model config_monotonic            true
 namelist integer   sw_model config_mp_physics           0
+namelist integer   dimensions config_nvertlevels        26
 namelist character io       config_input_name           grid.nc
 namelist character io       config_output_name          output.nc
 namelist character io       config_restart_name         restart.nc
@@ -38,7 +39,8 @@ dim vertexDegree vertexDegree
 dim FIFTEEN 15
 dim TWENTYONE 21
 dim R3 3
-dim nVertLevels nVertLevels
+#dim nVertLevels nVertLevels
+dim nVertLevels namelist:config_nvertlevels
 #dim nTracers nTracers
 dim nVertLevelsP1 nVertLevels+1
 

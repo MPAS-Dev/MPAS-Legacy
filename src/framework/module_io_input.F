@@ -1093,13 +1093,6 @@ module io_input
  
 #include "netcdf_read_ids.inc"
 
-#ifdef EXPAND_LEVELS
-      if (.not. config_do_restart) then
-         input_obj % rdLocalnVertLevels = EXPAND_LEVELS
-         write(0,*) 'Expanding nVertLevels to ',input_obj % rdLocalnVertLevels,' by duplicating the first level.'
-      end if
-#endif
-
    end subroutine io_input_init
 
   
