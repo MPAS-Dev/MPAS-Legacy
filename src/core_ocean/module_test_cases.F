@@ -25,15 +25,14 @@
       type (block_type), pointer :: block_ptr
       type (dm_info) :: dminfo
 
-      ! mrp 100507: for diagnostic output
       integer :: iTracer
       real (kind=RKIND), dimension(:), pointer :: xCell,yCell, &
          hZLevel, zMidZLevel, zTopZLevel, latCell,LonCell
       real (kind=RKIND), dimension(:,:), pointer :: h, u, u_src, rho
       real (kind=RKIND), dimension(:,:,:), pointer :: tracers
       real (kind=RKIND) :: delta_rho, pi, latCenter, lonCenter, dist
+      real (kind=RKIND) :: centerx, centery
       integer :: nCells, nEdges, nVertices, nVertLevels
-      ! mrp 100507 end: for diagnostic output
 
       if (config_test_case == 0) then
          write(0,*) 'Using initial conditions supplied in input file'
@@ -146,6 +145,9 @@
 
            ! Set tracers, if not done in grid.nc file
            !tracers = 0.0
+           centerx = 1.0e6
+           centery = 1.0e6
+           dist = 2.0e5
            do iCell = 1,nCells
              dist = sqrt( (latCell(iCell)-latCenter)**2 + (lonCell(iCell)-lonCenter)**2)
              do iLevel = 1,nVertLevels
@@ -161,10 +163,15 @@
               ! tracers(block_ptr % state % time_levs(1) % state % index_tracer2,iLevel,iCell) = &
               !    (yCell(iCell)/4000.e3 + xCell(iCell)/2500.e3 )/2.0
 
-              ! Tracer blob 
-              !if (dist.lt.pi/16) then
-              !  tracers(block_ptr % state % time_levs(1) % state % index_tracer1,iLevel,iCell) = 1.0
-              !!else  
+              !tracers(block_ptr % state % time_levs(1) % state % index_tracer1,iLevel,iCell) = block_ptr % mesh % lonCell % array(iCell)
+              !tracers(block_ptr % state % time_levs(1) % state % index_tracer2,iLevel,iCell) = block_ptr % mesh % latCell % array(iCell)
+
+              ! place tracer blob with radius dist at (centerx,centery)
+              !if ( sqrt(  (xCell(iCell)-centerx)**2 &
+              !          + (yCell(iCell)-centery)**2) &
+              !  .lt.dist) then
+              !   tracers(block_ptr % state % time_levs(1) % state % index_tracer1,iLevel,iCell) = 1.0
+              !else
               !  tracers(block_ptr % state % time_levs(1) % state % index_tracer1,iLevel,iCell) = 0.0
               !endif
 

@@ -179,8 +179,8 @@ module global_diagnostics
             end do
             keTend_CoriolisForce(iLevel,iEdge) = h_edge(iLevel,iEdge) * u(iLevel,iEdge) * q * areaEdge(iEdge)
 
-            iCell1 = cellsOnEdge(iEdge,1)
-            iCell2 = cellsOnEdge(iEdge,2)
+            iCell1 = cellsOnEdge(1,iEdge)
+            iCell2 = cellsOnEdge(2,iEdge)
 
             refAreaWeightedSurfaceHeight_edge(iLevel,iEdge) = areaEdge(iEdge)*(h_edge(iLevel,iEdge) + 0.5*(h_s(iCell1) + h_s(iCell2)))
 
@@ -197,8 +197,8 @@ module global_diagnostics
       end do
 
       do iEdge = 1,nEdgesSolve
-          iCell1 = cellsOnEdge(iEdge,1)
-          iCell2 = cellsOnEdge(iEdge,2)
+          iCell1 = cellsOnEdge(1,iEdge)
+          iCell2 = cellsOnEdge(2,iEdge)
           
           h_s_edge(iEdge) = 0.5*(h_s(iCell1) + h_s(iCell2))
       end do

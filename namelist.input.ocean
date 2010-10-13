@@ -42,6 +42,9 @@
    config_vert_diffusion  = 1.0e-4
 /
 &advection
-   config_hor_tracer_adv = 'centered'
-   config_vert_tracer_adv = 'centered'
+   config_vert_tracer_adv = 'upwind'
+   config_tracer_adv_order = 2
+   config_thickness_adv_order = 2
+   config_positive_definite = .false.
+   config_monotonic = .false.
 /

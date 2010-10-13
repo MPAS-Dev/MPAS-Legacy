@@ -8,6 +8,10 @@ namelist integer   sw_model config_ntimesteps        7500
 namelist integer   sw_model config_output_interval   500
 namelist integer   sw_model config_stats_interval    100
 namelist real      sw_model config_visc              0.0
+namelist integer   sw_model config_thickness_adv_order  2
+namelist integer   sw_model config_tracer_adv_order     2
+namelist logical   sw_model config_positive_definite    false
+namelist logical   sw_model config_monotonic            false
 namelist character io       config_input_name        grid.nc
 namelist character io       config_output_name       output.nc
 namelist character io       config_restart_name      restart.nc
@@ -25,6 +29,8 @@ dim maxEdges2 maxEdges2
 dim nVertices nVertices
 dim TWO 2
 dim R3 3
+dim FIFTEEN 15
+dim TWENTYONE 21
 dim vertexDegree vertexDegree
 dim nVertLevels nVertLevels
 dim nTracers nTracers
@@ -83,12 +89,24 @@ var persistent real    fVertex ( nVertices ) 0 iro fVertex mesh - -
 var persistent real    fCell ( nCells ) 0 iro fCell mesh - -
 var persistent real    h_s ( nCells ) 0 iro h_s mesh - -
 
+# Space needed for advection
+var persistent real    deriv_two ( FIFTEEN TWO nEdges ) 0 o deriv_two mesh - -
+var persistent integer advCells ( TWENTYONE nCells ) 0 - advCells mesh - -
+
+# !! NOTE: the following arrays are needed to allow the use
+# !! of the module_advection.F w/o alteration
+# Space needed for deformation calculation weights
+var persistent real    defc_a ( maxEdges nCells ) 0 - defc_a mesh - -
+var persistent real    defc_b ( maxEdges nCells ) 0 - defc_b mesh - -
+var persistent real    kdiff ( nVertLevels nCells Time ) 0 - kdiff mesh - -
+
 # Arrays required for reconstruction of velocity field
 var persistent real    coeffs_reconstruct ( R3 maxEdges nCells ) 0 - coeffs_reconstruct mesh - -
 
 # Boundary conditions: read from input, saved in restart and written to output
 var persistent integer boundaryEdge ( nVertLevels nEdges ) 0 iro boundaryEdge mesh - -
 var persistent integer boundaryVertex ( nVertLevels nVertices ) 0 iro boundaryVertex mesh - -
+var persistent integer boundaryCell ( nVertLevels nCells ) 0 iro boundaryCell mesh - -
 
 # Prognostic variables: read from input, saved in restart, and written to output
 var persistent real    u ( nVertLevels nEdges Time ) 2 iro u state - -

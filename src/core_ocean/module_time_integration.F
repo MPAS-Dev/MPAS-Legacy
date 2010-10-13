@@ -679,11 +679,10 @@ module time_integration
       type (state_type), intent(in) :: s
       type (mesh_type), intent(in) :: grid
 
-      integer :: iCell, iEdge, k, iTracer, cell1, cell2, upwindCell,&
-        nEdges, nCells, nVertLevels
-      real (kind=RKIND) :: h_tracer_eddy_diff2, h_tracer_eddy_diff4, invAreaCell1, invAreaCell2, tracer_turb_flux
-      real (kind=RKIND) :: flux, tracer_edge, r
-      real (kind=RKIND) :: dist
+      integer :: i, k, iCell, iEdge, iTracer, cell1, cell2, upwindCell,&
+        nEdges, nCells, nVertLevels, num_tracers
+      real (kind=RKIND) :: invAreaCell1, invAreaCell2, tracer_turb_flux
+      real (kind=RKIND) :: flux, tracer_edge, r, dist
       real (kind=RKIND), dimension(:), pointer :: &
         h_s, fVertex, fEdge, dvEdge, dcEdge, areaCell, areaTriangle
       real (kind=RKIND), dimension(:,:), pointer :: &
@@ -694,16 +693,21 @@ module time_integration
       type (dm_info) :: dminfo
 
       integer, dimension(:), pointer :: nEdgesOnCell, nEdgesOnEdge
-      integer, dimension(:,:), pointer :: cellsOnEdge
-      real (kind=RKIND), dimension(:), pointer :: &
-        zTopZLevel 
+      integer, dimension(:,:), pointer :: cellsOnEdge, boundaryCell
+      real (kind=RKIND), dimension(:), pointer :: zTopZLevel
       real (kind=RKIND), dimension(:,:), allocatable:: fluxVertTop, tracerTop, boundaryMask
       real (kind=RKIND), dimension(:,:,:), allocatable::tr_flux, tr_div, delsq_tracer
 
       real (kind=RKIND), dimension(:), allocatable:: vertDiffTop
 
+      real (kind=RKIND) :: d2fdx2_cell1, d2fdx2_cell2
+      real (kind=RKIND), dimension(:,:,:), pointer :: deriv_two
+      real (kind=RKIND) :: coef_3rd_order
+
+
       u           => s % u % array
       h           => s % h % array
+      boundaryCell=> grid % boundaryCell % array
       wTop        => s % wTop % array
       tracers     => s % tracers % array
       h_edge      => s % h_edge % array
@@ -722,76 +726,159 @@ module time_integration
       nEdges      = grid % nEdges
       nCells      = grid % nCells
       nVertLevels = grid % nVertLevels
+      num_tracers = s % num_tracers
 
+      deriv_two   => grid % deriv_two % array
 
-      h_tracer_eddy_diff2 = config_h_tracer_eddy_diff2
-      h_tracer_eddy_diff4 = config_h_tracer_eddy_diff4
+      !
+      ! initialize tracer tendency (RHS of tracer equation) to zero.
+      !
+      tend_tr(:,:,:) = 0.0
 
       !
       ! tracer tendency: horizontal advection term -div( h \phi u)
       !
-      tend_tr(:,:,:) = 0.0
-      if (config_hor_tracer_adv.eq.'centered') then
+      coef_3rd_order = 0.
+      if (config_tracer_adv_order == 3) coef_3rd_order = 1.0
+      if (config_tracer_adv_order == 3 .and. config_monotonic) coef_3rd_order = 0.25
 
-       do iEdge=1,nEdges
-         cell1 = cellsOnEdge(1,iEdge)
-         cell2 = cellsOnEdge(2,iEdge)
-         if (cell1 <= nCells .and. cell2 <= nCells) then
-            do k=1,nVertLevels
-               do iTracer=1,s % num_tracers
-                  tracer_edge = 0.5 * (  tracers(iTracer,k,cell1) &
-                                       + tracers(iTracer,k,cell2))
-                  flux = u(k,iEdge) * dvEdge(iEdge) * h_edge(k,iEdge) &
-                         * tracer_edge
-                  tend_tr(iTracer,k,cell1) = tend_tr(iTracer,k,cell1) - flux
-                  tend_tr(iTracer,k,cell2) = tend_tr(iTracer,k,cell2) + flux
-               end do 
-            end do 
-         end if
-       end do 
+      if (config_tracer_adv_order == 2) then
 
-      elseif (config_hor_tracer_adv.eq.'upwind') then
-
-       do iEdge=1,nEdges
-         cell1 = cellsOnEdge(1,iEdge)
-         cell2 = cellsOnEdge(2,iEdge)
-         if (cell1 <= nCells .and. cell2 <= nCells) then
-            do k=1,nVertLevels
-               if (u(k,iEdge)>0.0) then
-                 upwindCell = cell1
-               else
-                 upwindCell = cell2
-               endif
-               do iTracer=1,s % num_tracers
-                  flux = u(k,iEdge) * dvEdge(iEdge) * h_edge(k,iEdge) &
-                         * tracers(iTracer,k,upwindCell)
-                  tend_tr(iTracer,k,cell1) = tend_tr(iTracer,k,cell1) - flux
-                  tend_tr(iTracer,k,cell2) = tend_tr(iTracer,k,cell2) + flux
-               end do 
-            end do 
-         end if
-       end do 
-
-      endif
-      do iCell=1,grid % nCellsSolve
-         do k=1,grid % nVertLevelsSolve
-            do iTracer=1,s % num_tracers
-               tend_tr(iTracer,k,iCell) = tend_tr(iTracer,k,iCell) / areaCell(iCell)
-            end do
+         do iEdge=1,nEdges
+            cell1 = cellsOnEdge(1,iEdge)
+            cell2 = cellsOnEdge(2,iEdge)
+            if (cell1 <= grid%nCells .and. cell2 <= grid%nCells) then
+               do k=1,nVertLevels
+                  do iTracer=1,num_tracers
+                     tracer_edge = 0.5 * (tracers(iTracer,k,cell1) + tracers(iTracer,k,cell2))
+                     flux = u(k,iEdge) * dvEdge(iEdge) * h_edge(k,iEdge) * tracer_edge
+                     tend_tr(iTracer,k,cell1) = tend_tr(iTracer,k,cell1) - flux/areaCell(cell1)
+                     tend_tr(iTracer,k,cell2) = tend_tr(iTracer,k,cell2) + flux/areaCell(cell2)
+                  end do
+               end do
+            end if
          end do
-      end do
+
+      else if (config_tracer_adv_order == 3) then
+
+         do iEdge=1,nEdges
+            cell1 = cellsOnEdge(1,iEdge)
+            cell2 = cellsOnEdge(2,iEdge)
+
+            !-- if a cell not on the most outside ring of the halo
+            if (cell1 <= grid%nCells .and. cell2 <= grid%nCells) then
+
+               do k=1,nVertLevels
+
+                  d2fdx2_cell1 = 0.0
+                  d2fdx2_cell2 = 0.0
+
+                  do iTracer=1,num_tracers
+
+                     !-- if not a boundary cell
+                     if(boundaryCell(k,cell1).eq.0.and.boundaryCell(k,cell2).eq.0) then
+
+                        d2fdx2_cell1 = deriv_two(1,1,iEdge) * tracers(iTracer,k,cell1)
+                        d2fdx2_cell2 = deriv_two(1,2,iEdge) * tracers(iTracer,k,cell2)
+
+                        !-- all edges of cell 1
+                        do i=1, grid % nEdgesOnCell % array (cell1)
+                           d2fdx2_cell1 = d2fdx2_cell1 + &
+                              deriv_two(i+1,1,iEdge) * tracers(iTracer,k,grid % CellsOnCell % array (i,cell1))
+                        end do
+
+                        !-- all edges of cell 2
+                        do i=1, grid % nEdgesOnCell % array (cell2)
+                           d2fdx2_cell2 = d2fdx2_cell2 + &
+                              deriv_two(i+1,2,iEdge) * tracers(iTracer,k,grid % CellsOnCell % array (i,cell2))
+                        end do
+
+                     endif
+
+                     !-- if u > 0:
+                     if (u(k,iEdge) > 0) then
+                        flux = dvEdge(iEdge) * u(k,iEdge) * h_edge(k,iEdge) * (          &
+                             0.5*(tracers(iTracer,k,cell1) + tracers(iTracer,k,cell2))      &
+                             -(dcEdge(iEdge) **2) * (d2fdx2_cell1 + d2fdx2_cell2) / 12.          &
+                             -(dcEdge(iEdge) **2) * coef_3rd_order*(d2fdx2_cell1 - d2fdx2_cell2) / 12. )
+                     !-- else u <= 0:
+                     else
+                        flux = dvEdge(iEdge) *  u(k,iEdge) * h_edge(k,iEdge) * (          &
+                             0.5*(tracers(iTracer,k,cell1) + tracers(iTracer,k,cell2))      &
+                             -(dcEdge(iEdge) **2) * (d2fdx2_cell1 + d2fdx2_cell2) / 12.          &
+                             +(dcEdge(iEdge) **2) * coef_3rd_order*(d2fdx2_cell1 - d2fdx2_cell2) / 12. )
+                     end if
+
+                     !-- update tendency
+                     tend_tr(iTracer,k,cell1) = tend_tr(iTracer,k,cell1) - flux/areaCell(cell1)
+                     tend_tr(iTracer,k,cell2) = tend_tr(iTracer,k,cell2) + flux/areaCell(cell2)
+                  enddo
+               end do
+            end if
+         end do
+
+      else if (config_tracer_adv_order == 4) then
+
+         do iEdge=1,nEdges
+            cell1 = cellsOnEdge(1,iEdge)
+            cell2 = cellsOnEdge(2,iEdge)
+
+            !-- if an edge is not on the outer-most ring of the halo
+            if (cell1 <= grid%nCells .and. cell2 <= grid%nCells) then
+
+               do k=1,nVertLevels
+
+                  d2fdx2_cell1 = 0.0
+                  d2fdx2_cell2 = 0.0
+
+                  do iTracer=1,num_tracers
+
+                     !-- if not a boundary cell
+                     if(boundaryCell(k,cell1).eq.0.and.boundaryCell(k,cell2).eq.0) then
+
+                        d2fdx2_cell1 = deriv_two(1,1,iEdge) * tracers(iTracer,k,cell1)
+                        d2fdx2_cell2 = deriv_two(1,2,iEdge) * tracers(iTracer,k,cell2)
+
+                        !-- all edges of cell 1
+                        do i=1, grid % nEdgesOnCell % array (cell1)
+                           d2fdx2_cell1 = d2fdx2_cell1 + &
+                              deriv_two(i+1,1,iEdge) * tracers(iTracer,k,grid % CellsOnCell % array (i,cell1))
+                        end do
+
+                        !-- all edges of cell 2
+                        do i=1, grid % nEdgesOnCell % array (cell2)
+                            d2fdx2_cell2 = d2fdx2_cell2 + &
+                               deriv_two(i+1,2,iEdge) * tracers(iTracer,k,grid % CellsOnCell % array (i,cell2))
+                        end do
+
+                     endif
+
+                     flux = dvEdge(iEdge) *  u(k,iEdge) * h_edge(k,iEdge) * (          &
+                          0.5*(tracers(iTracer,k,cell1) + tracers(iTracer,k,cell2))      &
+                             -(dcEdge(iEdge) **2) * (d2fdx2_cell1 + d2fdx2_cell2) / 12. )
+
+                     !-- update tendency
+                     tend_tr(iTracer,k,cell1) = tend_tr(iTracer,k,cell1) - flux/areaCell(cell1)
+                     tend_tr(iTracer,k,cell2) = tend_tr(iTracer,k,cell2) + flux/areaCell(cell2)
+                  enddo
+               end do
+            end if
+         end do
+
+      endif   ! if (config_tracer_adv_order == 2 )
+
 
       !
       ! tracer tendency: vertical advection term -d/dz( h \phi w)
       !
-      allocate(tracerTop(s % num_tracers,nVertLevels+1))
+      allocate(tracerTop(num_tracers,nVertLevels+1))
       tracerTop(:,1)=0.0
       tracerTop(:,nVertLevels+1)=0.0
       do iCell=1,grid % nCellsSolve 
 
          if (config_vert_tracer_adv.eq.'centered') then
            do k=2,nVertLevels
-             do iTracer=1,s % num_tracers
+             do iTracer=1,num_tracers
                tracerTop(iTracer,k) = ( tracers(iTracer,k-1,iCell) &
                                        +tracers(iTracer,k  ,iCell))/2.0
              end do
@@ -804,7 +891,7 @@ module time_integration
              else
                upwindCell = k-1
              endif
-             do iTracer=1,s % num_tracers
+             do iTracer=1,num_tracers
                tracerTop(iTracer,k) = tracers(iTracer,upwindCell,iCell)
              end do
            end do
@@ -812,7 +899,7 @@ module time_integration
          endif
 
          do k=1,nVertLevels  
-            do iTracer=1,s % num_tracers
+            do iTracer=1,num_tracers
                tend_tr(iTracer,k,iCell) = tend_tr(iTracer,k,iCell) &
                   - (   wTop(k  ,iCell)*tracerTop(iTracer,k  ) &
                       - wTop(k+1,iCell)*tracerTop(iTracer,k+1))
@@ -825,7 +912,7 @@ module time_integration
       !
       ! tracer tendency: del2 horizontal tracer diffusion, div(h \kappa_2 \nabla \phi)
       !
-      if ( h_tracer_eddy_diff2 > 0.0 ) then
+      if ( config_h_tracer_eddy_diff2 > 0.0 ) then
 
          !
          ! compute a boundary mask to enforce insulating boundary conditions in the horizontal
@@ -841,9 +928,9 @@ module time_integration
             invAreaCell2 = 1.0/areaCell(cell2)
 
             do k=1,grid % nVertLevels
-              do iTracer=1,s % num_tracers
+              do iTracer=1,num_tracers
                  ! \kappa_2 \nabla \phi on edge
-                 tracer_turb_flux = h_tracer_eddy_diff2 &
+                 tracer_turb_flux = config_h_tracer_eddy_diff2 &
                     *(  tracers(iTracer,k,cell2) &
                       - tracers(iTracer,k,cell1))/dcEdge(iEdge)
 
@@ -865,7 +952,7 @@ module time_integration
       ! tracer tendency: del4 horizontal tracer diffusion, &
       !    div(h \kappa_4 \nabla [div(h \nabla \phi)])
       !
-      if ( h_tracer_eddy_diff4 > 0.0 ) then
+      if ( config_h_tracer_eddy_diff4 > 0.0 ) then
 
          !
          ! compute a boundary mask to enforce insulating boundary conditions in the horizontal
@@ -874,7 +961,7 @@ module time_integration
          boundaryMask = 1.0
          where(boundaryEdge.eq.1) boundaryMask=0.0
 
-         allocate(delsq_tracer(s % num_tracers,nVertLevels, nCells+1))
+         allocate(delsq_tracer(num_tracers,nVertLevels, nCells+1))
 
          delsq_tracer(:,:,:) = 0.
 
@@ -884,7 +971,7 @@ module time_integration
             cell2 = grid % cellsOnEdge % array(2,iEdge)
 
             do k=1,grid % nVertLevels
-              do iTracer=1,s % num_tracers
+              do iTracer=1,num_tracers
                  delsq_tracer(iTracer,k,cell1) = delsq_tracer(iTracer,k,cell1) &
                     + dvEdge(iEdge)*h_edge(k,iEdge) &
                       *(tracers(iTracer,k,cell2) - tracers(iTracer,k,cell1)) &
@@ -901,7 +988,7 @@ module time_integration
          do iCell = 1, nCells
             r = 1.0 / areaCell(iCell)
             do k=1,nVertLevels
-            do iTracer=1,s % num_tracers
+            do iTracer=1,num_tracers
                delsq_tracer(iTracer,k,iCell) = delsq_tracer(iTracer,k,iCell) * r
             end do
             end do
@@ -915,8 +1002,8 @@ module time_integration
             invAreaCell2 = 1.0 / areaCell(cell2)
 
             do k=1,grid % nVertLevels
-            do iTracer=1,s % num_tracers
-               tracer_turb_flux = h_tracer_eddy_diff4 &
+            do iTracer=1,num_tracers
+               tracer_turb_flux = config_h_tracer_eddy_diff4 &
                   *(  delsq_tracer(iTracer,k,cell2)  &
                     - delsq_tracer(iTracer,k,cell1))/dcEdge(iEdge)
                flux = dvEdge (iEdge) * tracer_turb_flux
@@ -959,12 +1046,12 @@ module time_integration
         call dmpar_abort(dminfo)
       endif
 
-      allocate(fluxVertTop(s % num_tracers,nVertLevels+1))
+      allocate(fluxVertTop(num_tracers,nVertLevels+1))
       fluxVertTop(:,1) = 0.0
       fluxVertTop(:,nVertLevels+1) = 0.0
       do iCell=1,grid % nCellsSolve 
          do k=2,nVertLevels
-           do iTracer=1,s % num_tracers
+           do iTracer=1,num_tracers
              ! compute \kappa_v d\phi/dz
              fluxVertTop(iTracer,k) = vertDiffTop(k) &
                 * (tracers(iTracer,k-1,iCell) - tracers(iTracer,k,iCell) )&
@@ -974,7 +1061,7 @@ module time_integration
 
          do k=1,nVertLevels
            dist = zTop(k,iCell) - zTop(k+1,iCell)
-           do iTracer=1,s % num_tracers
+           do iTracer=1,num_tracers
              tend_tr(iTracer,k,iCell) = tend_tr(iTracer,k,iCell) &
                + h(k,iCell)*(fluxVertTop(iTracer,k) - fluxVertTop(iTracer,k+1))/dist
            enddo
@@ -987,7 +1074,7 @@ module time_integration
           ! print some diagnostics - for debugging
 !         print *, 'after vertical mixing',&
 ! 'iTracer,k, minval(tend_tr(itracer,k,:)), maxval(tend_tr(itracer,k,:))'
-!         do iTracer=1,s % num_tracers
+!         do iTracer=1,num_tracers
 !         do k = 1,nVertLevels
 !            print '(2i5,20es12.4)', iTracer,k, &
 !              minval(tend_tr(itracer,k,:)), maxval(tend_tr(itracer,k,:))
@@ -1032,8 +1119,11 @@ module time_integration
       real (kind=RKIND), dimension(:,:), allocatable:: div_u
       character :: c1*6
 
-      integer, dimension(:,:), pointer :: cellsOnEdge, cellsOnVertex, verticesOnEdge, edgesOnCell, edgesOnEdge, edgesOnVertex, boundaryEdge
+      integer, dimension(:,:), pointer :: cellsOnEdge, cellsOnVertex, verticesOnEdge, edgesOnCell, edgesOnEdge, edgesOnVertex, boundaryEdge, boundaryCell
       integer, dimension(:), pointer :: nEdgesOnCell, nEdgesOnEdge
+      real (kind=RKIND) :: d2fdx2_cell1, d2fdx2_cell2
+      real (kind=RKIND), dimension(:,:,:), pointer :: deriv_two
+      real (kind=RKIND) :: coef_3rd_order
       real (kind=RKIND) :: r, h1, h2
 
 
@@ -1082,6 +1172,7 @@ module time_integration
       fVertex           => grid % fVertex % array
       fEdge             => grid % fEdge % array
       hZLevel           => grid % hZLevel % array
+      deriv_two         => grid % deriv_two % array
                   
       nCells      = grid % nCells
       nEdges      = grid % nEdges
@@ -1089,28 +1180,140 @@ module time_integration
       nVertLevels = grid % nVertLevels
 
       boundaryEdge => grid % boundaryEdge % array
+      boundaryCell => grid % boundaryCell % array
+
+      !
+      ! Find those cells that have an edge on the boundary
+      !
+      boundaryCell(:,:) = 0
+      do iEdge=1,nEdges
+       do k=1,nVertLevels
+         if(boundaryEdge(k,iEdge).eq.1) then
+           cell1 = cellsOnEdge(1,iEdge)
+           cell2 = cellsOnEdge(2,iEdge)
+           boundaryCell(k,cell1) = 1
+           boundaryCell(k,cell2) = 1
+         endif
+       enddo
+      enddo
+
 
       !
       ! Compute height on cell edges at velocity locations
+      !   Namelist options control the order of accuracy of the reconstructed h_edge value
       !
-      do iEdge=1,nEdges
-         cell1 = cellsOnEdge(1,iEdge)
-         cell2 = cellsOnEdge(2,iEdge)
-         if (cell1 <= nCells .and. cell2 <= nCells) then
-            do k=1,nVertLevels
-               h_edge(k,iEdge) = 0.5 * (h(k,cell1) + h(k,cell2))
-            end do
-         elseif(cell1 <= nCells) then
-            do k=1,nVertLevels
-               h_edge(k,iEdge) = h(k,cell1)
-            end do
-         elseif(cell2 <= nCells) then
-            do k=1,nVertLevels
-               h_edge(k,iEdge) = h(k,cell2)
-            end do
-         end if
-      end do
 
+      coef_3rd_order = 0.
+      if (config_thickness_adv_order == 3) coef_3rd_order = 1.0
+      if (config_thickness_adv_order == 3 .and. config_monotonic) coef_3rd_order = 0.25
+
+      if (config_thickness_adv_order == 2) then
+
+         do iEdge=1,grid % nEdges
+            cell1 = cellsOnEdge(1,iEdge)
+            cell2 = cellsOnEdge(2,iEdge)
+            if (cell1 <= grid%nCells .and. cell2 <= grid%nCells) then
+               do k=1,grid % nVertLevels
+                  h_edge(k,iEdge) = 0.5 * (h(k,cell1) + h(k,cell2))
+               end do
+            end if
+         end do
+
+      else if (config_thickness_adv_order == 3) then
+
+         do iEdge=1,grid%nEdges
+            cell1 = cellsOnEdge(1,iEdge)
+            cell2 = cellsOnEdge(2,iEdge)
+
+            !-- if a cell not on the most outside ring of the halo
+            if (cell1 <= grid%nCells .and. cell2 <= grid%nCells) then
+
+               do k=1,grid % nVertLevels
+
+                  d2fdx2_cell1 = 0.0
+                  d2fdx2_cell2 = 0.0
+
+                  !-- if not a boundary cell
+                  if(boundaryCell(k,cell1).eq.0.and.boundaryCell(k,cell2).eq.0) then
+
+                     d2fdx2_cell1 = deriv_two(1,1,iEdge) * h(k,cell1)
+                     d2fdx2_cell2 = deriv_two(1,2,iEdge) * h(k,cell2)
+
+                     !-- all edges of cell 1
+                     do i=1, grid % nEdgesOnCell % array (cell1)
+                             d2fdx2_cell1 = d2fdx2_cell1 + &
+                             deriv_two(i+1,1,iEdge) * h(k,grid % CellsOnCell % array (i,cell1))
+                     end do
+
+                     !-- all edges of cell 2
+                     do i=1, grid % nEdgesOnCell % array (cell2)
+                             d2fdx2_cell2 = d2fdx2_cell2 + &
+                             deriv_two(i+1,2,iEdge) * h(k,grid % CellsOnCell % array (i,cell2))
+                     end do
+
+                  endif
+
+                  !-- if u > 0:
+                  if (u(k,iEdge) > 0) then
+                     h_edge(k,iEdge) =     &
+                          0.5*(h(k,cell1) + h(k,cell2))      &
+                          -(dcEdge(iEdge) **2) * (d2fdx2_cell1 + d2fdx2_cell2) / 12.          &
+                          -(dcEdge(iEdge) **2) * coef_3rd_order*(d2fdx2_cell1 - d2fdx2_cell2) / 12.
+                  !-- else u <= 0:
+                  else
+                     h_edge(k,iEdge) =     &
+                          0.5*(h(k,cell1) + h(k,cell2))      &
+                          -(dcEdge(iEdge) **2) * (d2fdx2_cell1 + d2fdx2_cell2) / 12.          &
+                          +(dcEdge(iEdge) **2) * coef_3rd_order*(d2fdx2_cell1 - d2fdx2_cell2) / 12.
+                  end if
+
+               end do   ! do k
+            end if      ! if (cell1 <=
+         end do         ! do iEdge
+
+      else  if (config_thickness_adv_order == 4) then
+
+         do iEdge=1,grid%nEdges
+            cell1 = cellsOnEdge(1,iEdge)
+            cell2 = cellsOnEdge(2,iEdge)
+
+            !-- if a cell not on the most outside ring of the halo
+            if (cell1 <= grid%nCells .and. cell2 <= grid%nCells) then
+
+               do k=1,grid % nVertLevels
+
+                  d2fdx2_cell1 = 0.0
+                  d2fdx2_cell2 = 0.0
+
+                  !-- if not a boundary cell
+                  if(boundaryCell(k,cell1).eq.0.and.boundaryCell(k,cell2).eq.0) then
+
+                     d2fdx2_cell1 = deriv_two(1,1,iEdge) * h(k,cell1)
+                     d2fdx2_cell2 = deriv_two(1,2,iEdge) * h(k,cell2)
+
+                     !-- all edges of cell 1
+                     do i=1, grid % nEdgesOnCell % array (cell1)
+                             d2fdx2_cell1 = d2fdx2_cell1 + &
+                             deriv_two(i+1,1,iEdge) * h(k,grid % CellsOnCell % array (i,cell1))
+                     end do
+
+                     !-- all edges of cell 2
+                     do i=1, grid % nEdgesOnCell % array (cell2)
+                             d2fdx2_cell2 = d2fdx2_cell2 + &
+                             deriv_two(i+1,2,iEdge) * h(k,grid % CellsOnCell % array (i,cell2))
+                     end do
+
+                  endif
+
+                  h_edge(k,iEdge) =   &
+                       0.5*(h(k,cell1) + h(k,cell2))      &
+                          -(dcEdge(iEdge) **2) * (d2fdx2_cell1 + d2fdx2_cell2) / 12.
+
+               end do   ! do k
+            end if      ! if (cell1 <=
+         end do         ! do iEdge
+
+      endif   ! if(config_thickness_adv_order == 2)
 
       !
       ! set the velocity in the nEdges+1 slot to zero, this is a dummy address

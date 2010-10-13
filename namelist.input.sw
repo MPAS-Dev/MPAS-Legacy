@@ -6,6 +6,10 @@
    config_output_interval = 500
    config_stats_interval = 0
    config_visc  = 0.0
+   config_thickness_adv_order = 2
+   config_tracer_adv_order = 2
+   config_positive_definite = .false.
+   config_monotonic = .false.
 /
 
 &io
