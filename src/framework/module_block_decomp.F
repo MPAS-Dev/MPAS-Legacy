@@ -147,7 +147,9 @@ module block_decomp
          do j=1,maxCells
             if (cellsOnEdge(j,i) /= 0) exit
          end do
-if (j > maxCells) write(0,*) 'Error in block_decomp_partitioned_edge_list: edge/vertex is not adjacent to any valid cells'
+         if (j > maxCells) &
+            write(0,*) 'Error in block_decomp_partitioned_edge_list: ',&
+               'edge/vertex is not adjacent to any valid cells'
          if (hash_search(h, cellsOnEdge(j,i))) then
             lastEdge = lastEdge + 1
             edgeIDList(lastEdge) = edgeIDListLocal(i)
@@ -155,14 +157,16 @@ if (j > maxCells) write(0,*) 'Error in block_decomp_partitioned_edge_list: edge/
             ghostEdgeStart = ghostEdgeStart - 1
             edgeIDList(ghostEdgeStart) = edgeIDListLocal(i)
          end if
-if (ghostEdgeStart <= lastEdge) then
-   write(0,*) 'block_decomp_partitioned_edge_list: Somehow we have more edges than we thought we should.'
-end if
+         if (ghostEdgeStart <= lastEdge) then
+           write(0,*) 'block_decomp_partitioned_edge_list: ',&
+              'Somehow we have more edges than we thought we should.'
+         end if
       end do
 
-if (ghostEdgeStart /= lastEdge + 1) then
-   write(0,*) 'block_decomp_partitioned_edge_list: Somehow we didn''t have enough edges to fill edgeIDList.'
-end if
+      if (ghostEdgeStart /= lastEdge + 1) then
+         write(0,*) 'block_decomp_partitioned_edge_list:',&
+            ' Somehow we didn''t have enough edges to fill edgeIDList.'
+      end if
 
       call hash_destroy(h)
 
@@ -202,10 +206,11 @@ end if
          do j=1,nEdgesOnCell(i)
             if (.not. hash_search(h, edgesOnCell(j,i))) then
                k = k + 1
-if (k > nEdges) then
-   write(0,*) 'block_decomp_all_edges_in_block: Trying to add more edges than expected.'
-   return
-end if
+               if (k > nEdges) then
+                 write(0,*) 'block_decomp_all_edges_in_block: ',&
+                    'Trying to add more edges than expected.'
+                 return
+               end if
                edgeList(k) = edgesOnCell(j,i)
                call hash_insert(h, edgesOnCell(j,i)) 
             end if
@@ -214,9 +219,10 @@ end if
 
       call hash_destroy(h)
 
-if (k < nEdges) then
-   write(0,*) 'block_decomp_all_edges_in_block: Listed fewer edges than expected.'
-end if
+      if (k < nEdges) then
+         write(0,*) 'block_decomp_all_edges_in_block: ',&
+            'Listed fewer edges than expected.'
+      end if
 
    end subroutine block_decomp_all_edges_in_block
 
@@ -234,6 +240,10 @@ end if
 
 
       call hash_init(h)
+
+      do i=1,local_graph_info % nVertices
+         call hash_insert(h, local_graph_info % vertexID(i))
+      end do
 
       do i=1,local_graph_info % nVertices
          do j=1,local_graph_info % nAdjacent(i)
@@ -259,8 +269,9 @@ end if
       call hash_init(h)
 
       do i=1,local_graph_info % nVertices
-if (hash_search(h, local_graph_info % vertexID(i))) &
-  write(0,*) 'block_decomp_add_halo: There appear to be duplicates in vertexID list.'
+         if (hash_search(h, local_graph_info % vertexID(i))) &
+           write(0,*) 'block_decomp_add_halo: ', &
+             'There appear to be duplicates in vertexID list.'
          call hash_insert(h, local_graph_info % vertexID(i)) 
          local_graph_with_halo % vertexID(i) = local_graph_info % vertexID(i) 
          local_graph_with_halo % nAdjacent(i) = local_graph_info % nAdjacent(i) 
@@ -268,8 +279,9 @@ if (hash_search(h, local_graph_info % vertexID(i))) &
       end do
 
       k = local_graph_with_halo % ghostStart
-if (hash_size(h) /= k-1) &
-  write(0,*) 'block_decomp_add_halo: Somehow we don''t have the right number of non-ghost cells.'
+      if (hash_size(h) /= k-1) &
+         write(0,*) 'block_decomp_add_halo: ',&
+           'Somehow we don''t have the right number of non-ghost cells.'
       do i=1,local_graph_info % nVertices
          do j=1,local_graph_info % nAdjacent(i)
             if (local_graph_info % adjacencyList(j,i) /= 0) then
@@ -281,8 +293,9 @@ if (hash_size(h) /= k-1) &
             end if
          end do
       end do 
-if (local_graph_with_halo % nVerticesTotal /= k-1) &
-  write(0,*) 'block_decomp_add_halo: Somehow we don''t have the right number of total cells.'
+      if (local_graph_with_halo % nVerticesTotal /= k-1) &
+         write(0,*) 'block_decomp_add_halo: ',& 
+           'Somehow we don''t have the right number of total cells.'
 
       call hash_destroy(h)
 

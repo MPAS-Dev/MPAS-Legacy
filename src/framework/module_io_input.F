@@ -1127,7 +1127,8 @@ module io_input
          nferr = nf_get_att_real(input_obj % rd_ncid, NF_GLOBAL, attname, attvalue)
       end if
       if (nferr /= NF_NOERR) then
-         write(0,*) 'Warning: Attribute '//trim(attname)//' not found in '//trim(input_obj % filename)
+         write(0,*) 'Warning: Attribute '//trim(attname)//&
+           ' not found in '//trim(input_obj % filename)
          if (index(attname, 'sphere_radius') /= 0) then
             write(0,*) '   Setting '//trim(attname)//' to 1.0'
             attvalue = 1.0
@@ -1151,7 +1152,8 @@ module io_input
 
       nferr = nf_get_att_text(input_obj % rd_ncid, NF_GLOBAL, attname, attvalue)
       if (nferr /= NF_NOERR) then
-         write(0,*) 'Warning: Attribute '//trim(attname)//' not found in '//trim(input_obj % filename)
+         write(0,*) 'Warning: Attribute '//trim(attname)//&
+            ' not found in '//trim(input_obj % filename)
          if (index(attname, 'on_a_sphere') /= 0) then
             write(0,*) '   Setting '//trim(attname)//' to ''YES'''
             attvalue = 'YES'
