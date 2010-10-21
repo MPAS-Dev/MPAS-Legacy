@@ -32,6 +32,8 @@ program mpas
 
    call input_state_for_domain(domain)
 
+   call mpas_init_domain(domain)
+
    if (.not. config_do_restart) call mpas_setup_test_case(domain)
    call timer_stop("initialize")
 

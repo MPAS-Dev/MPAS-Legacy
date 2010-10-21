@@ -12,6 +12,20 @@ subroutine mpas_setup_test_case(domain)
 end subroutine mpas_setup_test_case
 
 
+subroutine mpas_init_domain(domain)
+! Initialize grid variables that are computed from the netcdf input file.
+
+   use grid_types
+
+   implicit none
+
+   type (domain_type), intent(inout) :: domain
+
+   ! This is currently a stub.
+
+end subroutine mpas_init_domain
+
+
 subroutine mpas_init(block, mesh, dt)
 
    use grid_types
