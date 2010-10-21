@@ -4,6 +4,7 @@ module dmpar
 
 #ifdef _MPI
 include 'mpif.h'
+   integer, parameter :: MPI_INTEGERKIND = MPI_INTEGER
 
 #if (RKIND == 8)
    integer, parameter :: MPI_REALKIND = MPI_DOUBLE_PRECISION
@@ -64,7 +65,8 @@ include 'mpif.h'
       dminfo % nprocs = mpi_size
       dminfo % my_proc_id = mpi_rank
 
-      write(0,'(a,i5,a,i5,a)') 'task ', mpi_rank, ' of ', mpi_size, ' is running'
+      write(0,'(a,i5,a,i5,a)') 'task ', mpi_rank, ' of ', mpi_size, &
+        ' is running'
 
       call open_streams(dminfo % my_proc_id)
 
@@ -139,7 +141,7 @@ include 'mpif.h'
 #ifdef _MPI
       integer :: mpi_ierr
 
-      call MPI_Bcast(i, 1, MPI_INTEGER, IO_NODE, dminfo % comm, mpi_ierr)
+      call MPI_Bcast(i, 1, MPI_INTEGERKIND, IO_NODE, dminfo % comm, mpi_ierr)
 #endif
 
    end subroutine dmpar_bcast_int
@@ -156,7 +158,7 @@ include 'mpif.h'
 #ifdef _MPI
       integer :: mpi_ierr
 
-      call MPI_Bcast(iarray, n, MPI_INTEGER, IO_NODE, dminfo % comm, mpi_ierr)
+      call MPI_Bcast(iarray, n, MPI_INTEGERKIND, IO_NODE, dminfo % comm, mpi_ierr)
 #endif
 
    end subroutine dmpar_bcast_ints
@@ -214,7 +216,7 @@ include 'mpif.h'
          end if
       end if
 
-      call MPI_Bcast(itemp, 1, MPI_INTEGER, IO_NODE, dminfo % comm, mpi_ierr)
+      call MPI_Bcast(itemp, 1, MPI_INTEGERKIND, IO_NODE, dminfo % comm, mpi_ierr)
 
       if (itemp == 1) then
          l = .true.
@@ -253,7 +255,7 @@ include 'mpif.h'
       integer :: mpi_ierr
 
 #ifdef _MPI
-      call MPI_Allreduce(i, isum, 1, MPI_INTEGER, MPI_SUM, dminfo % comm, mpi_ierr)
+      call MPI_Allreduce(i, isum, 1, MPI_INTEGERKIND, MPI_SUM, dminfo % comm, mpi_ierr)
 #else
       isum = i
 #endif
@@ -291,7 +293,7 @@ include 'mpif.h'
       integer :: mpi_ierr
 
 #ifdef _MPI
-      call MPI_Allreduce(i, imin, 1, MPI_INTEGER, MPI_MIN, dminfo % comm, mpi_ierr)
+      call MPI_Allreduce(i, imin, 1, MPI_INTEGERKIND, MPI_MIN, dminfo % comm, mpi_ierr)
 #else
       imin = i
 #endif
@@ -329,7 +331,7 @@ include 'mpif.h'
       integer :: mpi_ierr 
       
 #ifdef _MPI
-      call MPI_Allreduce(i, imax, 1, MPI_INTEGER, MPI_MAX, dminfo % comm, mpi_ierr)
+      call MPI_Allreduce(i, imax, 1, MPI_INTEGERKIND, MPI_MAX, dminfo % comm, mpi_ierr)
 #else
       imax = i
 #endif
@@ -368,7 +370,7 @@ include 'mpif.h'
       integer :: mpi_ierr
 
 #ifdef _MPI
-      call MPI_Allreduce(inArray, outArray, nElements, MPI_INTEGER, MPI_SUM, dminfo % comm, mpi_ierr)
+      call MPI_Allreduce(inArray, outArray, nElements, MPI_INTEGERKIND, MPI_SUM, dminfo % comm, mpi_ierr)
 #else
       outArray = inArray
 #endif
@@ -388,7 +390,7 @@ include 'mpif.h'
       integer :: mpi_ierr
 
 #ifdef _MPI
-      call MPI_Allreduce(inArray, outArray, nElements, MPI_INTEGER, MPI_MIN, dminfo % comm, mpi_ierr)
+      call MPI_Allreduce(inArray, outArray, nElements, MPI_INTEGERKIND, MPI_MIN, dminfo % comm, mpi_ierr)
 #else
       outArray = inArray
 #endif
@@ -408,7 +410,7 @@ include 'mpif.h'
       integer :: mpi_ierr
 
 #ifdef _MPI
-      call MPI_Allreduce(inArray, outArray, nElements, MPI_INTEGER, MPI_MAX, dminfo % comm, mpi_ierr)
+      call MPI_Allreduce(inArray, outArray, nElements, MPI_INTEGERKIND, MPI_MAX, dminfo % comm, mpi_ierr)
 #else
       outArray = inArray
 #endif
@@ -489,7 +491,7 @@ include 'mpif.h'
 #ifdef _MPI
       integer :: mpi_ierr
       
-      call MPI_Scatterv(inlist, counts, displs, MPI_INTEGER, outlist, noutlist, MPI_INTEGER, IO_NODE, dminfo % comm, mpi_ierr)
+      call MPI_Scatterv(inlist, counts, displs, MPI_INTEGERKIND, outlist, noutlist, MPI_INTEGERKIND, IO_NODE, dminfo % comm, mpi_ierr)
 #endif
 
    end subroutine dmpar_scatter_ints
@@ -532,13 +534,13 @@ include 'mpif.h'
          
 #ifdef _MPI
       else if (dminfo % my_proc_id == dminfo % nprocs - 1) then
-         call MPI_Recv(global_start, 1, MPI_INTEGER, dminfo % my_proc_id - 1, 0, dminfo % comm, MPI_STATUS_IGNORE, mpi_ierr)
+         call MPI_Recv(global_start, 1, MPI_INTEGERKIND, dminfo % my_proc_id - 1, 0, dminfo % comm, MPI_STATUS_IGNORE, mpi_ierr)
          global_end = global_start + n - 1
 
       else
-         call MPI_Recv(global_start, 1, MPI_INTEGER, dminfo % my_proc_id - 1, 0, dminfo % comm, MPI_STATUS_IGNORE, mpi_ierr)
+         call MPI_Recv(global_start, 1, MPI_INTEGERKIND, dminfo % my_proc_id - 1, 0, dminfo % comm, MPI_STATUS_IGNORE, mpi_ierr)
          global_end = global_start + n
-         call MPI_Send(global_end, 1, MPI_INTEGER, dminfo % my_proc_id + 1, 0, dminfo % comm, mpi_ierr)
+         call MPI_Send(global_end, 1, MPI_INTEGERKIND, dminfo % my_proc_id + 1, 0, dminfo % comm, mpi_ierr)
          global_end = global_end - 1
 #endif
 
@@ -585,7 +587,7 @@ include 'mpif.h'
       end do
       call quicksort(nOwnedList, ownedListSorted)
 
-      call MPI_Allreduce(nNeededList, totalSize, 1, MPI_INTEGER, MPI_MAX, dminfo % comm, mpi_ierr)
+      call MPI_Allreduce(nNeededList, totalSize, 1, MPI_INTEGERKIND, MPI_MAX, dminfo % comm, mpi_ierr)
 
       allocate(ownerListIn(totalSize))
       allocate(ownerListOut(totalSize))
@@ -634,12 +636,12 @@ include 'mpif.h'
          end if
 
          nMesgSend = nMesgRecv
-         call MPI_Irecv(nMesgRecv, 1, MPI_INTEGER, recvNeighbor, i, dminfo % comm, mpi_rreq, mpi_ierr)
-         call MPI_Isend(nMesgSend, 1, MPI_INTEGER, sendNeighbor, i, dminfo % comm, mpi_sreq, mpi_ierr)
+         call MPI_Irecv(nMesgRecv, 1, MPI_INTEGERKIND, recvNeighbor, i, dminfo % comm, mpi_rreq, mpi_ierr)
+         call MPI_Isend(nMesgSend, 1, MPI_INTEGERKIND, sendNeighbor, i, dminfo % comm, mpi_sreq, mpi_ierr)
          call MPI_Wait(mpi_rreq, MPI_STATUS_IGNORE, mpi_ierr)
          call MPI_Wait(mpi_sreq, MPI_STATUS_IGNORE, mpi_ierr)
-         call MPI_Irecv(ownerListIn, nMesgRecv, MPI_INTEGER, recvNeighbor, i, dminfo % comm, mpi_rreq, mpi_ierr)
-         call MPI_Isend(ownerListOut, nMesgSend, MPI_INTEGER, sendNeighbor, i, dminfo % comm, mpi_sreq, mpi_ierr)
+         call MPI_Irecv(ownerListIn, nMesgRecv, MPI_INTEGERKIND, recvNeighbor, i, dminfo % comm, mpi_rreq, mpi_ierr)
+         call MPI_Isend(ownerListOut, nMesgSend, MPI_INTEGERKIND, sendNeighbor, i, dminfo % comm, mpi_sreq, mpi_ierr)
          call MPI_Wait(mpi_rreq, MPI_STATUS_IGNORE, mpi_ierr)
          call MPI_Wait(mpi_sreq, MPI_STATUS_IGNORE, mpi_ierr)
       end do
@@ -741,7 +743,7 @@ include 'mpif.h'
       do while (associated(recvListPtr))
          if (recvListPtr % procID /= dminfo % my_proc_id) then
             allocate(recvListPtr % ibuffer(recvListPtr % nlist))
-            call MPI_Irecv(recvListPtr % ibuffer, recvListPtr % nlist, MPI_INTEGER, &
+            call MPI_Irecv(recvListPtr % ibuffer, recvListPtr % nlist, MPI_INTEGERKIND, &
                            recvListPtr % procID, recvListPtr % procID, dminfo % comm, recvListPtr % reqID, mpi_ierr)
          end if
          recvListPtr => recvListPtr % next
@@ -753,7 +755,7 @@ include 'mpif.h'
             allocate(sendListPtr % ibuffer(sendListPtr % nlist))
             call packSendBuf1dInteger(nOwnedList, arrayIn, sendListPtr, 1, sendListPtr % nlist, &
                                    sendListPtr % ibuffer, nPacked, lastPackedIdx)
-            call MPI_Isend(sendListPtr % ibuffer, sendListPtr % nlist, MPI_INTEGER, &
+            call MPI_Isend(sendListPtr % ibuffer, sendListPtr % nlist, MPI_INTEGERKIND, &
                            sendListPtr % procID, dminfo % my_proc_id, dminfo % comm, sendListPtr % reqID, mpi_ierr)
          end if
          sendListPtr => sendListPtr % next
@@ -781,7 +783,8 @@ include 'mpif.h'
 
 #else
       if (nOwnedList /= nNeededList) then
-         write(0,*) 'Error in dmpar_alltoall_field: For non-dmpar, arrayIn and arrayOut dims must match.'
+         write(0,*) 'Error in dmpar_alltoall_field: For non-dmpar, ', &
+           'arrayIn and arrayOut dims must match.'
          call dmpar_abort(dminfo)
       else
          arrayOut(1:nNeededList) = arrayIn(1:nOwnedList)
@@ -831,7 +834,7 @@ include 'mpif.h'
          if (recvListPtr % procID /= dminfo % my_proc_id) then
             d2 = dim1 * recvListPtr % nlist
             allocate(recvListPtr % ibuffer(d2))
-            call MPI_Irecv(recvListPtr % ibuffer, d2, MPI_INTEGER, &
+            call MPI_Irecv(recvListPtr % ibuffer, d2, MPI_INTEGERKIND, &
                            recvListPtr % procID, recvListPtr % procID, dminfo % comm, recvListPtr % reqID, mpi_ierr)
          end if
          recvListPtr => recvListPtr % next
@@ -844,7 +847,7 @@ include 'mpif.h'
             allocate(sendListPtr % ibuffer(d2))
             call packSendBuf2dInteger(1, dim1, nOwnedList, arrayIn, sendListPtr, 1, d2, &
                                    sendListPtr % ibuffer, nPacked, lastPackedIdx)
-            call MPI_Isend(sendListPtr % ibuffer, d2, MPI_INTEGER, &
+            call MPI_Isend(sendListPtr % ibuffer, d2, MPI_INTEGERKIND, &
                            sendListPtr % procID, dminfo % my_proc_id, dminfo % comm, sendListPtr % reqID, mpi_ierr)
          end if
          sendListPtr => sendListPtr % next
@@ -873,7 +876,8 @@ include 'mpif.h'
 
 #else
       if (nOwnedList /= nNeededList) then
-         write(0,*) 'Error in dmpar_alltoall_field: For non-dmpar, arrayIn and arrayOut dims must match.'
+         write(0,*) 'Error in dmpar_alltoall_field: For non-dmpar, ', &
+           'arrayIn and arrayOut dims must match.'
          call dmpar_abort(dminfo)
       else
          arrayOut(:,1:nNeededList) = arrayIn(:,1:nOwnedList)
@@ -962,7 +966,8 @@ include 'mpif.h'
 
 #else
       if (nOwnedList /= nNeededList) then
-         write(0,*) 'Error in dmpar_alltoall_field: For non-dmpar, arrayIn and arrayOut dims must match.'
+         write(0,*) 'Error in dmpar_alltoall_field: For non-dmpar, ', &
+           'arrayIn and arrayOut dims must match.'
          call dmpar_abort(dminfo)
       else
          arrayOut(1:nNeededList) = arrayIn(1:nOwnedList)
@@ -1054,7 +1059,8 @@ include 'mpif.h'
 
 #else
       if (nOwnedList /= nNeededList) then
-         write(0,*) 'Error in dmpar_alltoall_field: For non-dmpar, arrayIn and arrayOut dims must match.'
+         write(0,*) 'Error in dmpar_alltoall_field: For non-dmpar, ', &
+           'arrayIn and arrayOut dims must match.'
          call dmpar_abort(dminfo)
       else
          arrayOut(:,1:nNeededList) = arrayIn(:,1:nOwnedList)
@@ -1146,7 +1152,8 @@ include 'mpif.h'
 
 #else
       if (nOwnedList /= nNeededList) then
-         write(0,*) 'Error in dmpar_alltoall_field: For non-dmpar, arrayIn and arrayOut dims must match.'
+         write(0,*) 'Error in dmpar_alltoall_field: For non-dmpar, ', &
+           'arrayIn and arrayOut dims must match.'
          call dmpar_abort(dminfo)
       else
          arrayOut(:,:,1:nNeededList) = arrayIn(:,:,1:nOwnedList)
@@ -1198,7 +1205,8 @@ include 'mpif.h'
       n = de-ds+1
 
       if (n > nBuffer) then
-         write(0,*) 'packSendBuf2dInteger: Not enough space in buffer to fit a single slice.'
+         write(0,*) 'packSendBuf2dInteger: Not enough space in buffer', &
+          ' to fit a single slice.'
          return
       end if
 
@@ -1215,6 +1223,45 @@ include 'mpif.h'
       lastPackedIdx = sendList % nlist
 
    end subroutine packSendBuf2dInteger
+
+
+   subroutine packSendBuf3dInteger(d1s, d1e, d2s, d2e, nField, field, sendList, startPackIdx, nBuffer, buffer, nPacked, lastPackedIdx)
+
+      implicit none
+
+      integer, intent(in) :: d1s, d1e, d2s, d2e, nField, nBuffer, startPackIdx
+      integer, dimension(d1s:d1e,d2s:d2e,*), intent(in) :: field
+      type (exchange_list), intent(in) :: sendList
+      integer, dimension(nBuffer), intent(out) :: buffer
+      integer, intent(inout) :: nPacked, lastPackedIdx
+
+      integer :: i, j, k, n
+
+      n = (d1e-d1s+1) * (d2e-d2s+1)
+
+      if (n > nBuffer) then
+         write(0,*) 'packSendBuf3dInteger: Not enough space in buffer', &
+          ' to fit a single slice.'
+         return
+      end if
+
+      nPacked = 0
+      do i=startPackIdx, sendList % nlist
+         nPacked = nPacked + n
+         if (nPacked > nBuffer) then
+            nPacked = nPacked - n
+            lastPackedIdx = i - 1
+            return
+         end if
+         k = nPacked-n+1
+         do j=d2s,d2e
+            buffer(k:k+d1e-d1s) = field(d1s:d1e,j,sendList % list(i))
+            k = k + d1e-d1s+1
+         end do
+      end do
+      lastPackedIdx = sendList % nlist
+
+   end subroutine packSendBuf3dInteger
 
 
    subroutine packSendBuf1dReal(nField, field, sendList, startPackIdx, nBuffer, buffer, nPacked, lastPackedIdx)
@@ -1259,7 +1306,8 @@ include 'mpif.h'
       n = de-ds+1
 
       if (n > nBuffer) then
-         write(0,*) 'packSendBuf2dReal: Not enough space in buffer to fit a single slice.'
+         write(0,*) 'packSendBuf2dReal: Not enough space in buffer', &
+          ' to fit a single slice.'
          return
       end if
 
@@ -1293,7 +1341,8 @@ include 'mpif.h'
       n = (d1e-d1s+1) * (d2e-d2s+1)
 
       if (n > nBuffer) then
-         write(0,*) 'packSendBuf2dReal: Not enough space in buffer to fit a single slice.'
+         write(0,*) 'packSendBuf3dReal: Not enough space in buffer', &
+          ' to fit a single slice.'
          return
       end if
 
@@ -1372,6 +1421,230 @@ include 'mpif.h'
    end subroutine unpackRecvBuf2dInteger
 
 
+   subroutine unpackRecvBuf3dInteger(d1s, d1e, d2s, d2e, nField, field, recvList, startUnpackIdx, nBuffer, buffer, &
+                                  nUnpacked, lastUnpackedIdx)
+
+      implicit none
+
+      integer, intent(in) :: d1s, d1e, d2s, d2e, nField, nBuffer, startUnpackIdx
+      integer, dimension(d1s:d1e,d2s:d2e,*), intent(inout) :: field
+      type (exchange_list), intent(in) :: recvList
+      integer, dimension(nBuffer), intent(in) :: buffer
+      integer, intent(inout) :: nUnpacked, lastUnpackedIdx
+
+      integer :: i, j, k, n
+
+      n = (d1e-d1s+1) * (d2e-d2s+1)
+
+      nUnpacked = 0
+      do i=startUnpackIdx, recvList % nlist
+         nUnpacked = nUnpacked + n
+         if (nUnpacked > nBuffer) then
+            nUnpacked = nUnpacked - n
+            lastUnpackedIdx = i - 1
+            return
+         end if
+         k = nUnpacked-n+1
+         do j=d2s,d2e
+            field(d1s:d1e,j,recvList % list(i)) = buffer(k:k+d1e-d1s)
+            k = k + d1e-d1s+1
+         end do
+      end do
+      lastUnpackedIdx = recvList % nlist
+
+   end subroutine unpackRecvBuf3dInteger
+
+
+   subroutine dmpar_exch_halo_field1dInteger(dminfo, array, dim1, sendList, recvList)
+
+      implicit none
+
+      type (dm_info), intent(in) :: dminfo
+      integer, intent(in) :: dim1
+      integer, dimension(*), intent(inout) :: array
+      type (exchange_list), pointer :: sendList, recvList
+
+      type (exchange_list), pointer :: sendListPtr, recvListPtr
+      integer :: lastPackedIdx, lastUnpackedIdx, nPacked, nUnpacked
+      integer :: mpi_ierr
+
+#ifdef _MPI
+
+      recvListPtr => recvList
+      do while (associated(recvListPtr))
+         if (recvListPtr % procID /= dminfo % my_proc_id) then
+            allocate(recvListPtr % ibuffer(recvListPtr % nlist))
+            call MPI_Irecv(recvListPtr % ibuffer, recvListPtr % nlist, MPI_INTEGERKIND, &
+                           recvListPtr % procID, recvListPtr % procID, dminfo % comm, recvListPtr % reqID, mpi_ierr)
+         end if
+         recvListPtr => recvListPtr % next
+      end do
+      
+      sendListPtr => sendList
+      do while (associated(sendListPtr))
+         if (sendListPtr % procID /= dminfo % my_proc_id) then
+            allocate(sendListPtr % ibuffer(sendListPtr % nlist))
+            call packSendBuf1dInteger(dim1, array, sendListPtr, 1, sendListPtr % nlist, sendListPtr % ibuffer, nPacked, lastPackedIdx)
+            call MPI_Isend(sendListPtr % ibuffer, sendListPtr % nlist, MPI_INTEGERKIND, &
+                           sendListPtr % procID, dminfo % my_proc_id, dminfo % comm, sendListPtr % reqID, mpi_ierr)
+         end if
+         sendListPtr => sendListPtr % next
+      end do
+
+      recvListPtr => recvList
+      do while (associated(recvListPtr))
+         if (recvListPtr % procID /= dminfo % my_proc_id) then
+            call MPI_Wait(recvListPtr % reqID, MPI_STATUS_IGNORE, mpi_ierr)
+            call unpackRecvBuf1dInteger(dim1, array, recvListPtr, 1, recvListPtr % nlist, recvListPtr % ibuffer, nUnpacked, lastUnpackedIdx)
+            deallocate(recvListPtr % ibuffer)
+         end if
+         recvListPtr => recvListPtr % next
+      end do
+      
+      sendListPtr => sendList
+      do while (associated(sendListPtr))
+         if (sendListPtr % procID /= dminfo % my_proc_id) then
+            call MPI_Wait(sendListPtr % reqID, MPI_STATUS_IGNORE, mpi_ierr)
+            deallocate(sendListPtr % ibuffer)
+         end if
+         sendListPtr => sendListPtr % next
+      end do
+
+#endif
+
+   end subroutine dmpar_exch_halo_field1dInteger
+
+
+   subroutine dmpar_exch_halo_field2dInteger(dminfo, array, dim1, dim2, sendList, recvList)
+
+      implicit none
+
+      type (dm_info), intent(in) :: dminfo
+      integer, intent(in) :: dim1, dim2
+      integer, dimension(dim1,*), intent(inout) :: array
+      type (exchange_list), pointer :: sendList, recvList
+
+      type (exchange_list), pointer :: sendListPtr, recvListPtr
+      integer :: lastPackedIdx, lastUnpackedIdx, nPacked, nUnpacked
+      integer :: mpi_ierr
+      integer :: d2
+
+#ifdef _MPI
+
+      recvListPtr => recvList
+      do while (associated(recvListPtr))
+         if (recvListPtr % procID /= dminfo % my_proc_id) then
+            d2 = dim1 * recvListPtr % nlist
+            allocate(recvListPtr % ibuffer(d2))
+            call MPI_Irecv(recvListPtr % ibuffer, d2, MPI_INTEGERKIND, &
+                           recvListPtr % procID, recvListPtr % procID, dminfo % comm, recvListPtr % reqID, mpi_ierr)
+         end if
+         recvListPtr => recvListPtr % next
+      end do
+      
+      sendListPtr => sendList
+      do while (associated(sendListPtr))
+         if (sendListPtr % procID /= dminfo % my_proc_id) then
+            d2 = dim1 * sendListPtr % nlist
+            allocate(sendListPtr % ibuffer(d2))
+            call packSendBuf2dInteger(1, dim1, dim2, array, sendListPtr, 1, d2, sendListPtr % ibuffer, nPacked, lastPackedIdx)
+            call MPI_Isend(sendListPtr % ibuffer, d2, MPI_INTEGERKIND, &
+                           sendListPtr % procID, dminfo % my_proc_id, dminfo % comm, sendListPtr % reqID, mpi_ierr)
+         end if
+         sendListPtr => sendListPtr % next
+      end do
+
+      recvListPtr => recvList
+      do while (associated(recvListPtr))
+         if (recvListPtr % procID /= dminfo % my_proc_id) then
+            call MPI_Wait(recvListPtr % reqID, MPI_STATUS_IGNORE, mpi_ierr)
+            d2 = dim1 * recvListPtr % nlist
+            call unpackRecvBuf2dInteger(1, dim1, dim2, array, recvListPtr, 1, d2, recvListPtr % ibuffer, nUnpacked, lastUnpackedIdx)
+            deallocate(recvListPtr % ibuffer)
+         end if
+         recvListPtr => recvListPtr % next
+      end do
+      
+      sendListPtr => sendList
+      do while (associated(sendListPtr))
+         if (sendListPtr % procID /= dminfo % my_proc_id) then
+            call MPI_Wait(sendListPtr % reqID, MPI_STATUS_IGNORE, mpi_ierr)
+            deallocate(sendListPtr % ibuffer)
+         end if
+         sendListPtr => sendListPtr % next
+      end do
+
+#endif
+
+   end subroutine dmpar_exch_halo_field2dInteger
+
+
+   subroutine dmpar_exch_halo_field3dInteger(dminfo, array, dim1, dim2, dim3, sendList, recvList)
+
+      implicit none
+
+      type (dm_info), intent(in) :: dminfo
+      integer, intent(in) :: dim1, dim2, dim3
+      integer, dimension(dim1,dim2,*), intent(inout) :: array
+      type (exchange_list), pointer :: sendList, recvList
+
+      type (exchange_list), pointer :: sendListPtr, recvListPtr
+      integer :: lastPackedIdx, lastUnpackedIdx, nPacked, nUnpacked
+      integer :: mpi_ierr
+      integer :: d3
+
+#ifdef _MPI
+
+      recvListPtr => recvList
+      do while (associated(recvListPtr))
+         if (recvListPtr % procID /= dminfo % my_proc_id) then
+            d3 = dim1 * dim2 * recvListPtr % nlist
+            allocate(recvListPtr % ibuffer(d3))
+            call MPI_Irecv(recvListPtr % ibuffer, d3, MPI_INTEGERKIND, &
+                           recvListPtr % procID, recvListPtr % procID, dminfo % comm, recvListPtr % reqID, mpi_ierr)
+         end if
+         recvListPtr => recvListPtr % next
+      end do
+
+      sendListPtr => sendList
+      do while (associated(sendListPtr))
+         if (sendListPtr % procID /= dminfo % my_proc_id) then
+            d3 = dim1 * dim2 * sendListPtr % nlist
+            allocate(sendListPtr % ibuffer(d3))
+            call packSendBuf3dInteger(1, dim1, 1, dim2, dim3, array, sendListPtr, 1, d3, &
+                                   sendListPtr % ibuffer, nPacked, lastPackedIdx)
+            call MPI_Isend(sendListPtr % ibuffer, d3, MPI_INTEGERKIND, &
+                           sendListPtr % procID, dminfo % my_proc_id, dminfo % comm, sendListPtr % reqID, mpi_ierr)
+         end if
+         sendListPtr => sendListPtr % next
+      end do
+
+      recvListPtr => recvList
+      do while (associated(recvListPtr))
+         if (recvListPtr % procID /= dminfo % my_proc_id) then
+            call MPI_Wait(recvListPtr % reqID, MPI_STATUS_IGNORE, mpi_ierr)
+            d3 = dim1 * dim2 * recvListPtr % nlist
+            call unpackRecvBuf3dInteger(1, dim1, 1, dim2, dim3, array, recvListPtr, 1, d3, &
+                                     recvListPtr % ibuffer, nUnpacked, lastUnpackedIdx)
+            deallocate(recvListPtr % ibuffer)
+         end if
+         recvListPtr => recvListPtr % next
+      end do
+
+      sendListPtr => sendList
+      do while (associated(sendListPtr))
+         if (sendListPtr % procID /= dminfo % my_proc_id) then
+            call MPI_Wait(sendListPtr % reqID, MPI_STATUS_IGNORE, mpi_ierr)
+            deallocate(sendListPtr % ibuffer)
+         end if
+         sendListPtr => sendListPtr % next
+      end do
+
+#endif
+
+   end subroutine dmpar_exch_halo_field3dInteger
+
+  
    subroutine unpackRecvBuf1dReal(nField, field, recvList, startUnpackIdx, nBuffer, buffer, nUnpacked, lastUnpackedIdx)
 
       implicit none
@@ -1651,5 +1924,5 @@ include 'mpif.h'
 
    end subroutine dmpar_exch_halo_field3dReal
 
-  
+
 end module dmpar
