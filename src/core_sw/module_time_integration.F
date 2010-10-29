@@ -779,16 +779,10 @@ module time_integration
       !
       circulation(:,:) = 0.0
       do iEdge=1,nEdges
-         if (verticesOnEdge(1,iEdge) <= nVertices) then
-            do k=1,nVertLevels
-               circulation(k,verticesOnEdge(1,iEdge)) = circulation(k,verticesOnEdge(1,iEdge)) - dcEdge(iEdge) * u(k,iEdge)
-            end do
-         end if
-         if (verticesOnEdge(2,iEdge) <= nVertices) then
-            do k=1,nVertLevels
-               circulation(k,verticesOnEdge(2,iEdge)) = circulation(k,verticesOnEdge(2,iEdge)) + dcEdge(iEdge) * u(k,iEdge)
-            end do
-         end if
+         do k=1,nVertLevels
+            circulation(k,verticesOnEdge(1,iEdge)) = circulation(k,verticesOnEdge(1,iEdge)) - dcEdge(iEdge) * u(k,iEdge)
+            circulation(k,verticesOnEdge(2,iEdge)) = circulation(k,verticesOnEdge(2,iEdge)) + dcEdge(iEdge) * u(k,iEdge)
+         end do
       end do
       do iVertex=1,nVertices
          do k=1,nVertLevels
@@ -845,11 +839,9 @@ module time_integration
       do iEdge = 1,nEdges
          do i=1,nEdgesOnEdge(iEdge)
             eoe = edgesOnEdge(i,iEdge)
-            if (eoe <= nEdges) then
-               do k = 1,nVertLevels
-                 v(k,iEdge) = v(k,iEdge) + weightsOnEdge(i,iEdge) * u(k, eoe)
-              end do
-            end if
+            do k = 1,nVertLevels
+               v(k,iEdge) = v(k,iEdge) + weightsOnEdge(i,iEdge) * u(k, eoe)
+            end do
          end do
       end do
 
@@ -902,19 +894,18 @@ module time_integration
 
       !
       ! Compute pv at the edges
-      !   ( this computes pv_edge at all edges bounding real cells and distance-1 ghost cells )
+      !   ( this computes pv_edge at all edges bounding real cells )
       !
       pv_edge(:,:) = 0.0
       do iVertex = 1,nVertices
         do i=1,grid % vertexDegree
-          iEdge = edgesOnVertex(i,iVertex)
-          if(iEdge <= nEdges) then
-            do k=1,nVertLevels
+           iEdge = edgesOnVertex(i,iVertex)
+           do k=1,nVertLevels
               pv_edge(k,iEdge) =  pv_edge(k,iEdge)  + 0.5 * pv_vertex(k,iVertex)
-            enddo
-          endif
+           end do
         end do
       end do
+
 
       !
       ! Modify PV edge with upstream bias. 
