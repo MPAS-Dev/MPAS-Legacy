@@ -912,7 +912,7 @@ module time_integration
       !
       do iEdge = 1,nEdges
          do k = 1,nVertLevels
-           pv_edge(k,iEdge) = pv_edge(k,iEdge) - 0.5 * v(k,iEdge) * dt * gradPVt(k,iEdge)
+           pv_edge(k,iEdge) = pv_edge(k,iEdge) - config_apvm_upwinding * v(k,iEdge) * dt * gradPVt(k,iEdge)
          enddo
       enddo
 
@@ -954,7 +954,7 @@ module time_integration
       !
       do iEdge = 1,nEdges
          do k = 1,nVertLevels
-           pv_edge(k,iEdge) = pv_edge(k,iEdge) - 0.5 * u(k,iEdge) * dt * gradPVn(k,iEdge)
+           pv_edge(k,iEdge) = pv_edge(k,iEdge) - config_apvm_upwinding * u(k,iEdge) * dt * gradPVn(k,iEdge)
          enddo
       enddo
 

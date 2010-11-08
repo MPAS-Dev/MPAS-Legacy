@@ -19,6 +19,7 @@ namelist real      hmix     config_h_mom_eddy_visc2     0.0
 namelist real      hmix     config_h_mom_eddy_visc4     0.0
 namelist real      hmix     config_h_tracer_eddy_diff2  0.0
 namelist real      hmix     config_h_tracer_eddy_diff4  0.0
+namelist real      hmix     config_apvm_upwinding       0.5
 namelist character vmix     config_vert_visc_type    const
 namelist character vmix     config_vert_diff_type    const
 namelist real      vmix     config_vert_viscosity    2.5e-4
