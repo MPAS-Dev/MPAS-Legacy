@@ -104,6 +104,18 @@ gfortran:
 	"CORE = $(CORE)" \
 	"CPPFLAGS = -DRKIND=8 $(MODEL_FORMULATION) -D_MPI -DUNDERSCORE -m64 $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
 
+gfortran-serial:
+	( make all \
+	"FC = gfortran" \
+	"CC = gcc" \
+	"SFC = gfortran" \
+	"SCC = gcc" \
+	"FFLAGS = -O3 -m64 -ffree-line-length-none -fdefault-real-8" \
+	"CFLAGS = -O3 -m64" \
+	"LDFLAGS = -O3 -m64" \
+	"CORE = $(CORE)" \
+	"CPPFLAGS = -DRKIND=8 $(MODEL_FORMULATION) $(EXPAND_LEVELS) -DUNDERSCORE -m64 $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
+
 g95:
 	( make all \
 	"FC = mpif90" \

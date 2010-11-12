@@ -274,7 +274,7 @@ module global_diagnostics
          else
              open(fileID, file='GlobalIntegrals.txt',POSITION='append')
          endif 
-         write(fileID,'(1i, 100es24.16)') timeIndex, timeIndex*dt, globalFluidThickness, globalPotentialVorticity, globalPotentialEnstrophy, &
+         write(fileID,'(1i0, 100es24.16)') timeIndex, timeIndex*dt, globalFluidThickness, globalPotentialVorticity, globalPotentialEnstrophy, &
                         globalEnergy, globalCoriolisEnergyTendency, globalKineticEnergyTendency+globalPotentialEnergyTendency, &
                         globalKineticEnergy, globalPotentialEnergy
          close(fileID)

@@ -7,7 +7,10 @@ namelist real      sw_model config_dt                172.8
 namelist integer   sw_model config_ntimesteps        7500
 namelist integer   sw_model config_output_interval   500
 namelist integer   sw_model config_stats_interval    100
-namelist real      sw_model config_visc              0.0
+namelist real      sw_model config_h_mom_eddy_visc2  0.0
+namelist real      sw_model config_h_mom_eddy_visc4  0.0
+namelist real      sw_model config_h_tracer_eddy_diff2    0.0
+namelist real      sw_model config_h_tracer_eddy_diff4    0.0
 namelist integer   sw_model config_thickness_adv_order  2
 namelist integer   sw_model config_tracer_adv_order     2
 namelist logical   sw_model config_positive_definite    false
@@ -141,3 +144,4 @@ var persistent real    circulation ( nVertLevels nVertices Time ) 2 - circulatio
 var persistent real    gradPVt ( nVertLevels nEdges Time ) 2 - gradPVt state - -
 var persistent real    gradPVn ( nVertLevels nEdges Time ) 2 - gradPVn state - -
 var persistent real	h_vertex ( nVertLevels nVertices Time ) 2 - h_vertex state - -
+
