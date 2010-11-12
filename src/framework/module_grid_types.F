@@ -93,7 +93,6 @@ module grid_types
 
    ! Derived type for storing part of a domain; used as a basic unit of work for a process
    type block_type
-      integer :: storageFactor    ! Additional storage used by time integration scheme
 
 #include "block_group_members.inc"
 
@@ -112,16 +111,6 @@ module grid_types
       ! Also store parallelization info here
       type (dm_info), pointer :: dminfo
    end type domain_type
-
-   !
-   ! Solver interface routines provided by specific dycore
-   !
-   interface
-      subroutine mpas_query(key, ivalue)
-         character (len=256), intent(in) :: key
-         integer, intent(out) :: ivalue
-      end subroutine mpas_query
-   end interface
 
 
    contains
@@ -152,13 +141,9 @@ module grid_types
 #include "dim_dummy_decls.inc"
 
       integer :: i
-      character (len=256) :: key
 
       nullify(b % prev)
       nullify(b % next)
-
-      key = 'STORAGE_FACTOR'
-      call mpas_query(key, b % storageFactor)
 
       allocate(b % parinfo)
 
