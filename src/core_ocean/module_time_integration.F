@@ -611,7 +611,7 @@ module time_integration
          ! see POP Reference guide, section 3.4.4.
          tend_u(nVertLevels,iEdge) = tend_u(nVertLevels,iEdge)  &
            - 1.0e-3*u(nVertLevels,iEdge) &
-             *sqrt(2.0*ke_edge(nVertLevels,iEdge))/h_edge(k,iEdge)
+             *sqrt(2.0*ke_edge(nVertLevels,iEdge))/h_edge(nVertLevels,iEdge)
 
          ! old bottom drag, just linear friction
          ! du/dt = u/tau where tau=100 days.
