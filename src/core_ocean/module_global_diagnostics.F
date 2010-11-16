@@ -37,7 +37,7 @@ module global_diagnostics
       real (kind=RKIND) ::  areaCellGlobal, areaEdgeGlobal, areaTriangleGlobal
       real (kind=RKIND), dimension(:), pointer ::  areaCell, dcEdge, dvEdge, areaTriangle, areaEdge
       real (kind=RKIND), dimension(:,:), pointer :: h, u, v, h_edge, circulation, vorticity, ke, pv_edge, pv_vertex, &
-         pv_cell, gradPVn, gradPVt, zMid, zTop, p, pTop, MontPot, wTop, rho, tracerTemp
+         pv_cell, gradPVn, gradPVt, pressure, MontPot, wTop, rho, tracerTemp
       real (kind=RKIND), dimension(:,:,:), pointer :: tracers
 
       real (kind=RKIND) :: volumeCellGlobal, volumeEdgeGlobal, CFLNumberGlobal
@@ -80,11 +80,8 @@ module global_diagnostics
       pv_cell => state % pv_cell % array
       gradPVn => state % gradPVn % array
       gradPVt => state % gradPVt % array
-      zMid => state % zMid % array
-      zTop => state % zTop % array
-      p => state % p % array
-      pTop => state % pTop % array
       MontPot => state % MontPot % array
+      pressure => state % pressure % array
 
       variableIndex = 0
       ! h
@@ -156,28 +153,10 @@ module global_diagnostics
         gradPVt(:,1:nEdgesSolve), sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), &
         verticalSumMaxes(variableIndex))
 
-      ! zMid
-      variableIndex = variableIndex + 1
-      call computeFieldAreaWeightedLocalStats(dminfo, nVertLevels, nCellsSolve, areaCell(1:nCellsSolve), &
-        zMid(:,1:nCellsSolve), sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), &
-        verticalSumMaxes(variableIndex))
-
-      ! zTop
-      variableIndex = variableIndex + 1
-      call computeFieldAreaWeightedLocalStats(dminfo, nVertLevels, nCellsSolve, areaCell(1:nCellsSolve), &
-        zTop(:,1:nCellsSolve), sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), &
-        verticalSumMaxes(variableIndex))
-
-      ! p
+      ! pressure
       variableIndex = variableIndex + 1
       call computeFieldVolumeWeightedLocalStats(dminfo, nVertLevels, nCellsSolve, areaCell(1:nCellsSolve), h(:,1:nCellsSolve), &
-        p(:,1:nCellsSolve), sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), &
-        verticalSumMaxes(variableIndex))
-
-      ! pTop
-      variableIndex = variableIndex + 1
-      call computeFieldVolumeWeightedLocalStats(dminfo, nVertLevels, nCellsSolve, areaCell(1:nCellsSolve), h(:,1:nCellsSolve), &
-        pTop(:,1:nCellsSolve), sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), &
+        pressure(:,1:nCellsSolve), sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), &
         verticalSumMaxes(variableIndex))
 
       ! MontPot
@@ -309,19 +288,7 @@ module global_diagnostics
       variableIndex = variableIndex + 1
       averages(variableIndex) = sums(variableIndex)/volumeEdgeGlobal
 
-      ! zMid
-      variableIndex = variableIndex + 1
-      averages(variableIndex) = sums(variableIndex)/(areaCellGlobal*nVertLevels)
-
-      ! zTop
-      variableIndex = variableIndex + 1
-      averages(variableIndex) = sums(variableIndex)/(areaCellGlobal*nVertLevels)
-
-      ! p
-      variableIndex = variableIndex + 1
-      averages(variableIndex) = sums(variableIndex)/volumeCellGlobal
-
-      ! pTop
+      ! pressure
       variableIndex = variableIndex + 1
       averages(variableIndex) = sums(variableIndex)/volumeCellGlobal
 

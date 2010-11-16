@@ -30,6 +30,7 @@ namelist real      vmix     config_vmixTanhDiffMax   2.5e-2
 namelist real      vmix     config_vmixTanhDiffMin   1.0e-5
 namelist real      vmix     config_vmixTanhZMid      -100
 namelist real      vmix     config_vmixTanhZWidth    100
+namelist character eos       config_eos_type         linear
 namelist character advection config_vert_tracer_adv 'centered'
 namelist integer   advection config_tracer_adv_order     2
 namelist integer   advection config_thickness_adv_order  2
@@ -106,7 +107,7 @@ var persistent real    fVertex ( nVertices ) 0 iro fVertex mesh - -
 var persistent real    h_s ( nCells ) 0 iro h_s mesh - -
 
 # Space needed for advection
-var persistent real    deriv_two ( FIFTEEN TWO nEdges ) 0 o deriv_two mesh - -
+var persistent real    deriv_two ( FIFTEEN TWO nEdges ) 0 - deriv_two mesh - -
 var persistent integer advCells ( TWENTYONE nCells ) 0 - advCells mesh - -
 
 # !! NOTE: the following arrays are needed to allow the use
@@ -120,11 +121,14 @@ var persistent real    kdiff ( nVertLevels nCells Time ) 0 - kdiff mesh - -
 var persistent real    coeffs_reconstruct ( R3 maxEdges nCells ) 0 - coeffs_reconstruct mesh - -
 
 # Arrays for z-level version of mpas-ocean
-var persistent integer maxLevelsCell ( nCells ) 0 iro kmaxCell mesh - -
-var persistent integer maxLevelsEdge ( nEdges ) 0 iro kmaxEdge mesh - -
+var persistent integer maxLevelCell ( nCells ) 0 iro maxLevelCell mesh - -
+var persistent integer maxLevelEdgeTop ( nEdges ) 0 - maxLevelEdgeTop mesh - -
+var persistent integer maxLevelEdgeBot ( nEdges ) 0 - maxLevelEdgeBot mesh - -
+var persistent integer maxLevelVertexTop ( nVertices ) 0 - maxLevelVertexTop mesh - -
+var persistent integer maxLevelVertexBot ( nVertices ) 0 - maxLevelVertexBot mesh - -
 var persistent real hZLevel ( nVertLevels ) 0 iro hZLevel mesh - -
-var persistent real zMidZLevel ( nVertLevels ) 0 iro zMidZLevel mesh - -
-var persistent real zTopZLevel ( nVertLevelsP1 ) 0 iro zTopZLevel mesh - -
+var persistent real zMidZLevel ( nVertLevels ) 0 - zMidZLevel mesh - -
+var persistent real zTopZLevel ( nVertLevelsP1 ) 0 - zTopZLevel mesh - -
 
 # Boundary conditions: read from input, saved in restart and written to output
 var persistent integer boundaryEdge ( nVertLevels nEdges ) 0 iro boundaryEdge mesh - -
@@ -150,31 +154,24 @@ var persistent real    tend_tracer1 ( nVertLevels nCells Time ) 1 - tracer1 tend
 var persistent real    tend_tracer2 ( nVertLevels nCells Time ) 1 - tracer2 tend tracers testing
 
 # Diagnostic fields: only written to output
-var persistent real    v ( nVertLevels nEdges Time ) 2 o v state - -
+var persistent real    v ( nVertLevels nEdges Time ) 2 - v state - -
 var persistent real    divergence ( nVertLevels nCells Time ) 2 o divergence state - -
-var persistent real    vorticity ( nVertLevels nVertices Time ) 2 o vorticity state - -
-var persistent real    pv_edge ( nVertLevels nEdges Time ) 2 o pv_edge state - -
-var persistent real    h_edge ( nVertLevels nEdges Time ) 2 o h_edge state - -
-var persistent real    h_vertex ( nVertLevels nVertices Time ) 2 o h_vertex state - -
+var persistent real    vorticity ( nVertLevels nVertices Time ) 2 - vorticity state - -
+var persistent real    pv_edge ( nVertLevels nEdges Time ) 2 - pv_edge state - -
+var persistent real    h_edge ( nVertLevels nEdges Time ) 2 - h_edge state - -
+var persistent real    h_vertex ( nVertLevels nVertices Time ) 2 - h_vertex state - -
 var persistent real    ke ( nVertLevels nCells Time ) 2 o ke state - -
-var persistent real    ke_edge ( nVertLevels nEdges Time ) 2 o ke_edge state - -
-var persistent real    pv_vertex ( nVertLevels nVertices Time ) 2 o pv_vertex state - -
+var persistent real    ke_edge ( nVertLevels nEdges Time ) 2 - ke_edge state - -
+var persistent real    pv_vertex ( nVertLevels nVertices Time ) 2 - pv_vertex state - -
 var persistent real    pv_cell ( nVertLevels nCells Time ) 2 o pv_cell state - -
 var persistent real    uReconstructX ( nVertLevels nCells Time ) 2 o uReconstructX state - -
 var persistent real    uReconstructY ( nVertLevels nCells Time ) 2 o uReconstructY state - -
 var persistent real    uReconstructZ ( nVertLevels nCells Time ) 2 o uReconstructZ state - -
 var persistent real    uReconstructZonal ( nVertLevels nCells Time ) 2 o uReconstructZonal state - -
 var persistent real    uReconstructMeridional ( nVertLevels nCells Time ) 2 o uReconstructMeridional state - -
-var persistent real    zMid ( nVertLevels nCells Time ) 2 o zMid state - -
-var persistent real    zTop ( nVertLevelsP1 nCells Time ) 2 o zTop state - -
-var persistent real    zMidEdge ( nVertLevels nEdges Time ) 2 o zMidEdge state - -
-var persistent real    zTopEdge ( nVertLevelsP1 nEdges Time ) 2 o zTopEdge state - -
-var persistent real    p ( nVertLevels nCells Time ) 2 o p state - -
-var persistent real    pTop ( nVertLevelsP1 nCells Time ) 2 o pTop state - -
-var persistent real    pZLevel ( nVertLevels nCells Time ) 2 o pZLevel state - -
 var persistent real    MontPot ( nVertLevels nCells Time ) 2 o MontPot state - -
+var persistent real    pressure ( nVertLevels nCells Time ) 2 o pressure state - -
 var persistent real    wTop ( nVertLevelsP1 nCells Time ) 2 o wTop state - -
-var persistent real    ssh ( nCells Time ) 2 o ssh state - -
 
 # Other diagnostic variables: neither read nor written to any files
 var persistent real    vh ( nVertLevels nEdges Time ) 2 - vh state - -
@@ -182,7 +179,6 @@ var persistent real    circulation ( nVertLevels nVertices Time ) 2 - circulatio
 var persistent real    gradPVt ( nVertLevels nEdges Time ) 2 - gradPVt state - -
 var persistent real    gradPVn ( nVertLevels nEdges Time ) 2 - gradPVn state - -
 
-# xsad 10-02-05:
 # Globally reduced diagnostic variables: only written to output
 var persistent real    areaCellGlobal ( Time ) 2 o areaCellGlobal state - -
 var persistent real    areaEdgeGlobal ( Time ) 2 o areaEdgeGlobal state - -
@@ -191,5 +187,4 @@ var persistent real    areaTriangleGlobal ( Time ) 2 o areaTriangleGlobal state 
 var persistent real    volumeCellGlobal ( Time ) 2 o volumeCellGlobal state - -
 var persistent real    volumeEdgeGlobal ( Time ) 2 o volumeEdgeGlobal state - -
 var persistent real    CFLNumberGlobal ( Time ) 2 o CFLNumberGlobal state - -
-# xsad 10-02-05 end
 

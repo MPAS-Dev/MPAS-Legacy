@@ -1,6 +1,8 @@
 module mpas_core
 
    use mpas_framework
+   use dmpar
+      use test_cases
 
    type (io_output_object) :: restart_obj
    integer :: restart_frame
@@ -13,7 +15,6 @@ module mpas_core
 
       use configure
       use grid_types
-      use test_cases
 
       implicit none
 
@@ -21,9 +22,23 @@ module mpas_core
 
       real (kind=RKIND) :: dt
       type (block_type), pointer :: block
+      type (dm_info) :: dminfo
 
 
       if (.not. config_do_restart) call setup_sw_test_case(domain)
+
+      if (config_vert_grid_type.eq.'isopycnal') then
+         print *, ' Using isopycnal coordinates'
+      elseif (config_vert_grid_type.eq.'zlevel') then
+         print *, ' Using z-level coordinates'
+         call init_ZLevel(domain)
+      else 
+         print *, ' Incorrect choice of config_vert_grid_type:',&
+           config_vert_grid_type
+         call dmpar_abort(dminfo)
+      endif
+
+      call compute_maxLevel(domain)
 
       !
       ! Initialize core
@@ -208,6 +223,180 @@ module mpas_core
       end if
    
    end subroutine mpas_timestep
+
+
+subroutine init_ZLevel(domain)
+! Initialize maxLevel and bouncary grid variables.
+
+   use grid_types
+   use configure
+
+   implicit none
+
+   type (domain_type), intent(inout) :: domain
+
+   integer :: i, iCell, iEdge, iVertex, k
+   type (block_type), pointer :: block
+
+   integer :: iTracer, cell
+   real (kind=RKIND), dimension(:), pointer :: &
+      hZLevel, zMidZLevel, zTopZLevel
+   real (kind=RKIND), dimension(:,:), pointer :: h
+   integer :: nVertLevels
+
+   ! Initialize z-level grid variables from h, read in from input file.
+   block => domain % blocklist
+   do while (associated(block))
+
+      h          => block % state % time_levs(1) % state % h % array
+      hZLevel    => block % mesh % hZLevel % array
+      zMidZLevel => block % mesh % zMidZLevel % array
+      zTopZLevel => block % mesh % zTopZLevel % array
+      nVertLevels = block % mesh % nVertLevels
+
+      ! These should eventually be in an input file.  For now
+      ! I just read them in from h(:,1).
+      ! Upon restart, the correct hZLevel should be in restart.nc
+      if (.not. config_do_restart) hZLevel = h(:,1)
+
+      ! hZLevel should be in the grid.nc and restart.nc file, 
+      ! and h for k=1 must be specified there as well.
+ 
+      zTopZLevel(1) = 0.0
+      do k = 1,nVertLevels
+         zMidZLevel(k) = zTopZLevel(k)-0.5*hZLevel(k)
+         zTopZLevel(k+1) = zTopZLevel(k)-  hZLevel(k)
+      end do
+
+      block => block % next
+
+   end do
+
+end subroutine init_ZLevel
+
+
+subroutine compute_maxLevel(domain)
+! Initialize maxLevel and bouncary grid variables.
+
+   use grid_types
+   use configure
+   use constants
+
+   implicit none
+
+   type (domain_type), intent(inout) :: domain
+
+   integer :: i, iCell, iEdge, iVertex, k
+   type (block_type), pointer :: block
+
+   real (kind=RKIND), dimension(:,:), pointer :: h, u, u_src, rho
+   real (kind=RKIND), dimension(:,:,:), pointer :: tracers
+   real (kind=RKIND) :: delta_rho, pi, latCenter, lonCenter, dist
+   real (kind=RKIND) :: centerx, centery
+   integer :: nCells, nEdges, nVertices, nVertLevels, vertexDegree
+
+   integer, dimension(:), pointer :: &
+      maxLevelCell, maxLevelEdgeTop, maxLevelEdgeBot, &
+      maxLevelVertexTop, maxLevelVertexBot
+   integer, dimension(:,:), pointer :: &
+      cellsOnEdge, cellsOnVertex, boundaryEdge, boundaryCell, &
+      boundaryVertex, verticesOnEdge
+
+   ! Initialize z-level grid variables from h, read in from input file.
+   block => domain % blocklist
+   do while (associated(block))
+
+      maxLevelCell => block % mesh % maxLevelCell % array
+      maxLevelEdgeTop => block % mesh % maxLevelEdgeTop % array
+      maxLevelEdgeBot => block % mesh % maxLevelEdgeBot % array
+      maxLevelVertexTop => block % mesh % maxLevelVertexTop % array
+      maxLevelVertexBot => block % mesh % maxLevelVertexBot % array
+      cellsOnEdge    => block % mesh % cellsOnEdge % array
+      cellsOnVertex  => block % mesh % cellsOnVertex % array
+      verticesOnEdge => block % mesh % verticesOnEdge % array
+      boundaryEdge   => block % mesh % boundaryEdge % array
+      boundaryCell   => block % mesh % boundaryCell % array
+      boundaryVertex => block % mesh % boundaryVertex % array
+
+      nCells      = block % mesh % nCells
+      nEdges      = block % mesh % nEdges
+      nVertices   = block % mesh % nVertices
+      nVertLevels = block % mesh % nVertLevels
+      vertexDegree = block % mesh % vertexDegree
+
+      ! for z-grids, maxLevelCell should be in input state
+      ! Isopycnal grid uses all vertical cells
+      if (config_vert_grid_type.eq.'isopycnal') then
+         maxLevelCell(1:nCells) = nVertLevels
+      endif
+      maxLevelCell(nCells+1) = 0
+
+      ! maxLevelEdgeTop is the minimum (shallowest) of the surrounding cells
+      do iEdge=1,nEdges
+         maxLevelEdgeTop(iEdge) = &
+            min( maxLevelCell(cellsOnEdge(1,iEdge)), &
+                 maxLevelCell(cellsOnEdge(2,iEdge)) )
+      end do 
+      maxLevelEdgeTop(nEdges+1) = 0
+
+      ! maxLevelEdgeBot is the maximum (deepest) of the surrounding cells
+      do iEdge=1,nEdges
+         maxLevelEdgeBot(iEdge) = &
+            max( maxLevelCell(cellsOnEdge(1,iEdge)), &
+                 maxLevelCell(cellsOnEdge(2,iEdge)) )
+      end do 
+      maxLevelEdgeBot(nEdges+1) = 0
+
+      ! maxLevelVertexBot is the maximum (deepest) of the surrounding cells
+      do iVertex = 1,nVertices
+         maxLevelVertexBot(iVertex) = maxLevelCell(cellsOnVertex(1,iVertex))
+         do i=2,vertexDegree
+            maxLevelVertexBot(iVertex) = &
+               max( maxLevelVertexBot(iVertex), &
+                    maxLevelCell(cellsOnVertex(i,iVertex)))
+         end do
+      end do 
+      maxLevelVertexBot(nVertices+1) = 0
+
+      ! maxLevelVertexTop is the minimum (shallowest) of the surrounding cells
+      do iVertex = 1,nVertices
+         maxLevelVertexTop(iVertex) = maxLevelCell(cellsOnVertex(1,iVertex))
+         do i=2,vertexDegree
+            maxLevelVertexTop(iVertex) = &
+               min( maxLevelVertexTop(iVertex), &
+                    maxLevelCell(cellsOnVertex(i,iVertex)))
+         end do
+      end do 
+      maxLevelVertexTop(nVertices+1) = 0
+
+      ! set boundary edge
+      boundaryEdge=1
+      do iEdge=1,nEdges
+         boundaryEdge(1:maxLevelEdgeTop(iEdge),iEdge)=0
+      end do 
+
+      !
+      ! Find cells and vertices that have an edge on the boundary
+      !
+      boundaryCell(:,:) = 0
+      do iEdge=1,nEdges
+         do k=1,nVertLevels
+            if (boundaryEdge(k,iEdge).eq.1) then
+               boundaryCell(k,cellsOnEdge(1,iEdge)) = 1
+               boundaryCell(k,cellsOnEdge(2,iEdge)) = 1
+               boundaryVertex(k,verticesOnEdge(1,iEdge)) = 1
+               boundaryVertex(k,verticesOnEdge(2,iEdge)) = 1
+            endif
+         end do
+      end do
+
+      block => block % next
+   end do
+
+   ! Note: We do not update halos on maxLevel* variables.  I want the
+   ! outside edge of a halo to be zero on each processor.
+
+end subroutine compute_maxLevel
    
    
    subroutine mpas_core_finalize(domain)

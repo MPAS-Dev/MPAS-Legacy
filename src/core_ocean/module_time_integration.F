@@ -92,7 +92,7 @@ module time_integration
          block % state % time_levs(2) % state % u % array(:,:) = block % state % time_levs(1) % state % u % array(:,:)
          block % state % time_levs(2) % state % h % array(:,:) = block % state % time_levs(1) % state % h % array(:,:)
          do iCell=1,block % mesh % nCells  ! couple tracers to h
-           do k=1,block % mesh % nVertLevels
+           do k=1,block % mesh % maxLevelCell % array(iCell)
              block % state % time_levs(2) % state % tracers % array(:,k,iCell) = block % state % time_levs(1) % state % tracers % array(:,k,iCell) &
                                                                        * block % state % time_levs(1) % state % h % array(k,iCell)
             end do
@@ -175,7 +175,7 @@ module time_integration
               provis % h % array(:,:)       = block % state % time_levs(1) % state % h % array(:,:)  &
                                          + rk_substep_weights(rk_step) * block % tend % h % array(:,:)
               do iCell=1,block % mesh % nCells
-                 do k=1,block % mesh % nVertLevels
+                 do k=1,block % mesh % maxLevelCell % array(iCell)
                     provis % tracers % array(:,k,iCell) = ( &
                                                                       block % state % time_levs(1) % state % h % array(k,iCell) * &
                                                                       block % state % time_levs(1) % state % tracers % array(:,k,iCell)  &
@@ -204,7 +204,7 @@ module time_integration
                                    + rk_weights(rk_step) * block % tend % h % array(:,:) 
 
            do iCell=1,block % mesh % nCells
-              do k=1,block % mesh % nVertLevels
+              do k=1,block % mesh % maxLevelCell % array(iCell)
                  block % state % time_levs(2) % state % tracers % array(:,k,iCell) =  &
                                                                        block % state % time_levs(2) % state % tracers % array(:,k,iCell) &
                                                + rk_weights(rk_step) * block % tend % tracers % array(:,k,iCell)
@@ -225,7 +225,7 @@ module time_integration
       block => domain % blocklist
       do while (associated(block))
          do iCell=1,block % mesh % nCells
-            do k=1,block % mesh % nVertLevels
+            do k=1,block % mesh % maxLevelCell % array(iCell)
                block % state % time_levs(2) % state % tracers % array(:,k,iCell) = &
                                                                      block % state % time_levs(2) % state % tracers % array(:,k,iCell)  &
                                                                    / block % state % time_levs(2) % state % h % array(k,iCell)
@@ -264,22 +264,23 @@ module time_integration
       type (state_type), intent(in) :: s
       type (mesh_type), intent(in) :: grid
 
-      integer :: iEdge, iCell, iVertex, k, cell1, cell2, vertex1, vertex2, eoe, i, j
+      integer :: iEdge, iCell, iVertex, k, cell1, cell2, &
+        vertex1, vertex2, eoe, i, j, kmax
 
-      integer :: nCells, nEdges, nVertices, nVertLevels
-      real (kind=RKIND) :: h_mom_eddy_visc2, h_mom_eddy_visc4
+      integer :: nCells, nEdges, nVertices, nVertLevels, nEdgesSolve
       real (kind=RKIND) :: flux, vorticity_abs, h_vertex, workpv, q, &
         upstream_bias, wTopEdge, rho0Inv, r
       real (kind=RKIND), dimension(:), pointer :: &
         h_s, fVertex, fEdge, dvEdge, dcEdge, areaCell, areaTriangle, &
         zMidZLevel, zTopZLevel 
       real (kind=RKIND), dimension(:,:), pointer :: &
-        weightsOnEdge, kiteAreasOnVertex, h_edge, h, u, v, wTop, &
+        weightsOnEdge, kiteAreasOnVertex, h_edge, h, u, v, pressure, &
         tend_h, tend_u, circulation, vorticity, ke, ke_edge, pv_edge, &
-        divergence, MontPot, pZLevel, zMidEdge, zTopEdge
+        MontPot, wTop, divergence
       type (dm_info) :: dminfo
 
-      integer, dimension(:), pointer :: nEdgesOnCell, nEdgesOnEdge
+      integer, dimension(:), pointer :: nEdgesOnCell, nEdgesOnEdge, &
+        maxLevelCell, maxLevelEdgeTop, maxLevelVertexBot
       integer, dimension(:,:), pointer :: &
         cellsOnEdge, cellsOnVertex, verticesOnEdge, edgesOnCell, &
         edgesOnEdge, edgesOnVertex
@@ -303,12 +304,10 @@ module time_integration
       vorticity   => s % vorticity % array
       divergence  => s % divergence % array
       ke          => s % ke % array
-      ke_edge          => s % ke_edge % array
+      ke_edge     => s % ke_edge % array
       pv_edge     => s % pv_edge % array
       MontPot     => s % MontPot % array
-      pZLevel     => s % pZLevel % array
-      zTopEdge    => s % zTopEdge % array
-      zMidEdge    => s % zMidEdge % array
+      pressure    => s % pressure % array
 
       weightsOnEdge     => grid % weightsOnEdge % array
       kiteAreasOnVertex => grid % kiteAreasOnVertex % array
@@ -329,44 +328,52 @@ module time_integration
       fEdge             => grid % fEdge % array
       zMidZLevel        => grid % zMidZLevel % array
       zTopZLevel        => grid % zTopZLevel % array
+      maxLevelCell      => grid % maxLevelCell % array
+      maxLevelEdgeTop      => grid % maxLevelEdgeTop % array
+      maxLevelVertexBot    => grid % maxLevelVertexBot % array
 
       tend_h      => tend % h % array
       tend_u      => tend % u % array
                   
       nCells      = grid % nCells
       nEdges      = grid % nEdges
+      nEdgesSolve = grid % nEdgesSolve
       nVertices   = grid % nVertices
       nVertLevels = grid % nVertLevels
 
       u_src => grid % u_src % array
 
-      h_mom_eddy_visc2 = config_h_mom_eddy_visc2
-      h_mom_eddy_visc4 = config_h_mom_eddy_visc4
+      !
+      ! height tendency: start accumulating tendency terms
+      !
+      tend_h = 0.0
 
       !
       ! height tendency: horizontal advection term -\nabla\cdot ( hu)
       !
       ! See Ringler et al. (2010) jcp paper, eqn 19, 21, and fig. 3. 
       ! for explanation of divergence operator.
-      tend_h(:,:) = 0.0
+      !
+      ! for z-level, only compute height tendency for top layer.
+
+      if (config_vert_grid_type.eq.'isopycnal') then
+        kmax = nVertLevels
+      elseif (config_vert_grid_type.eq.'zlevel') then
+        kmax = 1
+      endif
+ 
       do iEdge=1,nEdges
-            cell1 = cellsOnEdge(1,iEdge)
-            cell2 = cellsOnEdge(2,iEdge)
-            if (cell1 <= nCells) then
-               do k=1,nVertLevels
-                  flux = u(k,iEdge) * dvEdge(iEdge) * h_edge(k,iEdge)
-                  tend_h(k,cell1) = tend_h(k,cell1) - flux
-               end do 
-            end if
-            if (cell2 <= nCells) then
-               do k=1,nVertLevels
-                  flux = u(k,iEdge) * dvEdge(iEdge) * h_edge(k,iEdge)
-                  tend_h(k,cell2) = tend_h(k,cell2) + flux
-               end do 
-            end if
-      end do 
+         cell1 = cellsOnEdge(1,iEdge)
+         cell2 = cellsOnEdge(2,iEdge)
+         do k=1,kmax
+            flux = u(k,iEdge) * dvEdge(iEdge) * h_edge(k,iEdge)
+            tend_h(k,cell1) = tend_h(k,cell1) - flux
+            tend_h(k,cell2) = tend_h(k,cell2) + flux
+         end do
+      end do
+
       do iCell=1,nCells
-         do k=1,nVertLevels
+         do k=1,kmax
             tend_h(k,iCell) = tend_h(k,iCell) / areaCell(iCell)
          end do
       end do
@@ -374,22 +381,10 @@ module time_integration
       !
       ! height tendency: vertical advection term -d/dz(hw)
       !
+      ! Vertical advection computed for top layer of a z grid only.
       if (config_vert_grid_type.eq.'zlevel') then
-
         do iCell=1,nCells
-
            tend_h(1,iCell) =   tend_h(1,iCell) + wTop(2,iCell)
-
-           ! This next loop is to verify that h for levels below the first
-           ! remain constant.  At a later time this could be replaced
-           ! by just tend_h(2:nVertLevels,:) = 0.0, and then there is 
-           ! no need to compute the horizontal tend_h term for k=2:nVertLevels
-           ! on a zlevel grid, above.
-           do k=2,nVertLevels
-              tend_h(k,iCell) =   tend_h(k,iCell) &
-               - (wTop(k,iCell) - wTop(k+1,iCell))
-            end do
-
         end do
       endif ! coordinate type
 
@@ -401,30 +396,30 @@ module time_integration
       !
       ! velocity tendency: vertical advection term -w du/dz
       !
-      allocate(w_dudzTopEdge(nVertLevels+1))
-      w_dudzTopEdge(1) = 0.0
-      w_dudzTopEdge(nVertLevels+1) = 0.0
       if (config_vert_grid_type.eq.'zlevel') then
-       do iEdge=1,grid % nEdgesSolve
-         cell1 = cellsOnEdge(1,iEdge)
-         cell2 = cellsOnEdge(2,iEdge)
+        allocate(w_dudzTopEdge(nVertLevels+1))
+        w_dudzTopEdge(1) = 0.0
+        do iEdge=1,grid % nEdgesSolve
+          cell1 = cellsOnEdge(1,iEdge)
+          cell2 = cellsOnEdge(2,iEdge)
 
-         do k=2,nVertLevels
-           ! Average w from cell center to edge
-           wTopEdge = 0.5*(wTop(k,cell1)+wTop(k,cell2))
+          do k=2,maxLevelEdgeTop(iEdge)
+            ! Average w from cell center to edge
+            wTopEdge = 0.5*(wTop(k,cell1)+wTop(k,cell2))
 
-           ! compute dudz at vertical interface with first order derivative.
-           w_dudzTopEdge(k) = wTopEdge * (u(k-1,iEdge)-u(k,iEdge)) &
-                        / (zMidZLevel(k-1) - zMidZLevel(k))
-         end do
+            ! compute dudz at vertical interface with first order derivative.
+            w_dudzTopEdge(k) = wTopEdge * (u(k-1,iEdge)-u(k,iEdge)) &
+                         / (zMidZLevel(k-1) - zMidZLevel(k))
+          end do
+          w_dudzTopEdge(maxLevelEdgeTop(iEdge)+1) = 0.0
 
-         ! Average w*du/dz from vertical interface to vertical middle of cell
-         do k=1,nVertLevels
-            tend_u(k,iEdge) = - 0.5 * (w_dudzTopEdge(k) + w_dudzTopEdge(k+1))
-         enddo
-       enddo
+          ! Average w*du/dz from vertical interface to vertical middle of cell
+          do k=1,maxLevelEdgeTop(iEdge)
+             tend_u(k,iEdge) = - 0.5 * (w_dudzTopEdge(k) + w_dudzTopEdge(k+1))
+          enddo
+        enddo
+        deallocate(w_dudzTopEdge)
       endif
-      deallocate(w_dudzTopEdge)
 
       !
       ! velocity tendency: pressure gradient
@@ -434,7 +429,7 @@ module time_integration
         do iEdge=1,grid % nEdgesSolve
           cell1 = cellsOnEdge(1,iEdge)
           cell2 = cellsOnEdge(2,iEdge)
-          do k=1,nVertLevels
+          do k=1,maxLevelEdgeTop(iEdge)
              tend_u(k,iEdge) = tend_u(k,iEdge)     &
                - (MontPot(k,cell2) - MontPot(k,cell1))/dcEdge(iEdge)
            end do
@@ -443,10 +438,10 @@ module time_integration
         do iEdge=1,grid % nEdgesSolve
           cell1 = cellsOnEdge(1,iEdge)
           cell2 = cellsOnEdge(2,iEdge)
-          do k=1,nVertLevels
+          do k=1,maxLevelEdgeTop(iEdge)
              tend_u(k,iEdge) = tend_u(k,iEdge)     &
-               - rho0Inv*(  pZLevel(k,cell2) &
-                          - pZLevel(k,cell1) )/dcEdge(iEdge)
+               - rho0Inv*(  pressure(k,cell2) &
+                          - pressure(k,cell1) )/dcEdge(iEdge)
           end do
         enddo
       endif
@@ -454,16 +449,16 @@ module time_integration
       !
       ! velocity tendency: del2 dissipation, \nu_2 \nabla^2 u
       !   computed as \nu( \nabla divergence + k \times \nabla vorticity )
-      !   strictly only valid for h_mom_eddy_visc2 == constant
+      !   strictly only valid for config_h_mom_eddy_visc2 == constant
       !
-      if ( h_mom_eddy_visc2 > 0.0 ) then
+      if ( config_h_mom_eddy_visc2 > 0.0 ) then
          do iEdge=1,grid % nEdgesSolve
             cell1 = cellsOnEdge(1,iEdge)
             cell2 = cellsOnEdge(2,iEdge)
             vertex1 = verticesOnEdge(1,iEdge)
             vertex2 = verticesOnEdge(2,iEdge)
 
-            do k=1,nVertLevels
+            do k=1,maxLevelEdgeTop(iEdge)
 
                ! Here -( vorticity(k,vertex2) - vorticity(k,vertex1) ) / dvEdge(iEdge)
                ! is - \nabla vorticity pointing from vertex 2 to vertex 1, or equivalently 
@@ -471,7 +466,7 @@ module time_integration
 
                u_diffusion = ( divergence(k,cell2)  - divergence(k,cell1) ) / dcEdge(iEdge)  &
                             -( vorticity(k,vertex2) - vorticity(k,vertex1) ) / dvEdge(iEdge)
-               u_diffusion = h_mom_eddy_visc2 * u_diffusion
+               u_diffusion = config_h_mom_eddy_visc2 * u_diffusion
 
                tend_u(k,iEdge) = tend_u(k,iEdge) + u_diffusion
 
@@ -483,9 +478,9 @@ module time_integration
       ! velocity tendency: del4 dissipation, -\nu_4 \nabla^4 u
       !   computed as \nabla^2 u = \nabla divergence + k \times \nabla vorticity
       !   applied recursively.
-      !   strictly only valid for h_mom_eddy_visc4 == constant
+      !   strictly only valid for config_h_mom_eddy_visc4 == constant
       !
-      if ( h_mom_eddy_visc4 > 0.0 ) then
+      if ( config_h_mom_eddy_visc4 > 0.0 ) then
 
          allocate(delsq_divergence(nVertLevels, nCells+1))
          allocate(delsq_u(nVertLevels, nEdges+1))
@@ -501,12 +496,11 @@ module time_integration
             vertex1 = verticesOnEdge(1,iEdge)
             vertex2 = verticesOnEdge(2,iEdge)
 
-            do k=1,nVertLevels
+            do k=1,maxLevelEdgeTop(iEdge)
 
-               u_diffusion = ( divergence(k,cell2)  - divergence(k,cell1) ) / dcEdge(iEdge)  &
-                            -( vorticity(k,vertex2) - vorticity(k,vertex1)) / dvEdge(iEdge)
- 
-               delsq_u(k,iEdge) = delsq_u(k,iEdge) + u_diffusion
+               delsq_u(k,iEdge) = & 
+                  ( divergence(k,cell2)  - divergence(k,cell1) ) / dcEdge(iEdge)  &
+                 -( vorticity(k,vertex2) - vorticity(k,vertex1)) / dvEdge(iEdge)
 
             end do
          end do
@@ -516,7 +510,7 @@ module time_integration
          do iEdge=1,nEdges
             vertex1 = verticesOnEdge(1,iEdge)
             vertex2 = verticesOnEdge(2,iEdge)
-            do k=1,nVertLevels
+            do k=1,maxLevelEdgeTop(iEdge)
                delsq_circulation(k,vertex1) = delsq_circulation(k,vertex1) &
                   - dcEdge(iEdge) * delsq_u(k,iEdge)
                delsq_circulation(k,vertex2) = delsq_circulation(k,vertex2) &
@@ -525,7 +519,7 @@ module time_integration
          end do
          do iVertex=1,nVertices
             r = 1.0 / areaTriangle(iVertex)
-            do k=1,nVertLevels
+            do k=1,maxLevelVertexBot(iVertex)
                delsq_vorticity(k,iVertex) = delsq_circulation(k,iVertex) * r
             end do
          end do
@@ -535,7 +529,7 @@ module time_integration
          do iEdge=1,nEdges
             cell1 = cellsOnEdge(1,iEdge)
             cell2 = cellsOnEdge(2,iEdge)
-            do k=1,nVertLevels
+            do k=1,maxLevelEdgeTop(iEdge)
               delsq_divergence(k,cell1) = delsq_divergence(k,cell1) &
                 + delsq_u(k,iEdge)*dvEdge(iEdge)
               delsq_divergence(k,cell2) = delsq_divergence(k,cell2) &
@@ -544,7 +538,7 @@ module time_integration
          end do
          do iCell = 1,nCells
             r = 1.0 / areaCell(iCell)
-            do k = 1,nVertLevels
+            do k = 1,maxLevelCell(iCell)
                delsq_divergence(k,iCell) = delsq_divergence(k,iCell) * r
             end do
          end do
@@ -557,14 +551,14 @@ module time_integration
             vertex1 = verticesOnEdge(1,iEdge)
             vertex2 = verticesOnEdge(2,iEdge)
 
-            do k=1,nVertLevels
+            do k=1,maxLevelEdgeTop(iEdge)
 
                u_diffusion = (  delsq_divergence(k,cell2) &
                               - delsq_divergence(k,cell1) ) / dcEdge(iEdge)  &
                             -(  delsq_vorticity(k,vertex2) &
                               - delsq_vorticity(k,vertex1) ) / dvEdge(iEdge)
  
-               tend_u(k,iEdge) = tend_u(k,iEdge) - h_mom_eddy_visc4 * u_diffusion
+               tend_u(k,iEdge) = tend_u(k,iEdge) - config_h_mom_eddy_visc4 * u_diffusion
             end do
          end do
 
@@ -582,7 +576,7 @@ module time_integration
          cell1 = cellsOnEdge(1,iEdge)
          cell2 = cellsOnEdge(2,iEdge)
 
-         do k=1,nVertLevels
+         do k=1,maxLevelEdgeTop(iEdge)
 
             q = 0.0
             do j = 1,nEdgesOnEdge(iEdge)
@@ -600,23 +594,38 @@ module time_integration
       !
       ! velocity tendency: forcing and bottom drag
       !
+      ! mrp 101115 note: in order to include flux boundary conditions, we will need to 
+      ! know the bottom edge with nonzero velocity and place the drag there.
+
       do iEdge=1,grid % nEdgesSolve
 
-         ! forcing in top layer only
-         tend_u(1,iEdge) =  tend_u(1,iEdge) &
+        ! forcing in top layer only
+        tend_u(1,iEdge) =  tend_u(1,iEdge) &
            + u_src(1,iEdge)/rho_ref/h_edge(1,iEdge)
+
+        k = maxLevelEdgeTop(iEdge)
+
+        ! efficiency note: it would be nice to avoid this
+        ! if within a do.  This could be done with
+        ! k =  max(maxLevelEdgeTop(iEdge),1)
+        ! and then tend_u(1,iEdge) is just not used for land cells.
+
+        if (k>0) then
 
          ! bottom drag is the same as POP:
          ! -c |u| u  where c is unitless and 1.0e-3.
          ! see POP Reference guide, section 3.4.4.
-         tend_u(nVertLevels,iEdge) = tend_u(nVertLevels,iEdge)  &
-           - 1.0e-3*u(nVertLevels,iEdge) &
-             *sqrt(2.0*ke_edge(nVertLevels,iEdge))/h_edge(nVertLevels,iEdge)
+
+         tend_u(k,iEdge) = tend_u(k,iEdge)  &
+           - 1.0e-3*u(k,iEdge) &
+             *sqrt(2.0*ke_edge(k,iEdge))/h_edge(k,iEdge)
 
          ! old bottom drag, just linear friction
          ! du/dt = u/tau where tau=100 days.
-         !tend_u(nVertLevels,iEdge) = tend_u(nVertLevels,iEdge)  &
-         !  - u(nVertLevels,iEdge)/(100.0*86400.0)
+         !tend_u(k,iEdge) = tend_u(k,iEdge)  &
+         !  - u(k,iEdge)/(100.0*86400.0)
+
+        endif
 
       enddo
 
@@ -644,20 +653,23 @@ module time_integration
         call dmpar_abort(dminfo)
       endif
 
-      allocate(fluxVertTop(1:nVertLevels+1))
+      allocate(fluxVertTop(nVertLevels+1))
       fluxVertTop(1) = 0.0
-      fluxVertTop(nVertLevels+1) = 0.0
       do iEdge=1,grid % nEdgesSolve
-         do k=2,nVertLevels
+         
+         do k=2,maxLevelEdgeTop(iEdge)
            fluxVertTop(k) = vertViscTop(k) &
               * ( u(k-1,iEdge) - u(k,iEdge) ) &
-              / (zMidEdge(k-1,iEdge) - zMidEdge(k,iEdge))
+              * 2 / (h_edge(k-1,iEdge) + h_edge(k,iEdge))
          enddo
-         do k=1,nVertLevels
+         fluxVertTop(maxLevelEdgeTop(iEdge)+1) = 0.0
+
+         do k=1,maxLevelEdgeTop(iEdge)
            tend_u(k,iEdge) = tend_u(k,iEdge) &
              + (fluxVertTop(k) - fluxVertTop(k+1)) &
-              /(zTopEdge(k,iEdge) - zTopEdge(k+1,iEdge))
+             / h_edge(k,iEdge)
          enddo
+
       end do
       deallocate(fluxVertTop, vertViscTop)
 
@@ -682,17 +694,18 @@ module time_integration
       integer :: i, k, iCell, iEdge, iTracer, cell1, cell2, upwindCell,&
         nEdges, nCells, nVertLevels, num_tracers
       real (kind=RKIND) :: invAreaCell1, invAreaCell2, tracer_turb_flux
-      real (kind=RKIND) :: flux, tracer_edge, r, dist
+      real (kind=RKIND) :: flux, tracer_edge, r
       real (kind=RKIND), dimension(:), pointer :: &
         h_s, fVertex, fEdge, dvEdge, dcEdge, areaCell, areaTriangle
       real (kind=RKIND), dimension(:,:), pointer :: &
-        u,h,wTop, h_edge, zMid, zTop
+        u,h,wTop, h_edge
       real (kind=RKIND), dimension(:,:,:), pointer :: &
         tracers, tend_tr
       integer, dimension(:,:), pointer :: boundaryEdge
       type (dm_info) :: dminfo
 
-      integer, dimension(:), pointer :: nEdgesOnCell, nEdgesOnEdge
+      integer, dimension(:), pointer :: nEdgesOnCell, nEdgesOnEdge, &
+        maxLevelCell, maxLevelEdgeTop, maxLevelVertexBot
       integer, dimension(:,:), pointer :: cellsOnEdge, boundaryCell
       real (kind=RKIND), dimension(:), pointer :: zTopZLevel
       real (kind=RKIND), dimension(:,:), allocatable:: fluxVertTop, tracerTop, boundaryMask
@@ -711,8 +724,6 @@ module time_integration
       wTop        => s % wTop % array
       tracers     => s % tracers % array
       h_edge      => s % h_edge % array
-      zMid        => s % zMid % array
-      zTop        => s % zTop % array
 
       tend_tr     => tend % tracers % array
                   
@@ -722,6 +733,9 @@ module time_integration
       dcEdge            => grid % dcEdge % array
       zTopZLevel        => grid % zTopZLevel % array
       boundaryEdge      => grid % boundaryEdge % array
+      maxLevelCell      => grid % maxLevelCell % array
+      maxLevelEdgeTop      => grid % maxLevelEdgeTop % array
+      maxLevelVertexBot    => grid % maxLevelVertexBot % array
 
       nEdges      = grid % nEdges
       nCells      = grid % nCells
@@ -738,6 +752,11 @@ module time_integration
       !
       ! tracer tendency: horizontal advection term -div( h \phi u)
       !
+      ! mrp 101115 note: in order to include flux boundary conditions, we will need to 
+      ! assign h_edge for maxLevelEdgeTop:maxLevelEdgeBot in the compute_solve_diagnostics
+      ! and then change maxLevelEdgeTop to maxLevelEdgeBot in the following section.
+      ! tracer_edge at the boundary will also need to be defined for flux boundaries.
+
       coef_3rd_order = 0.
       if (config_tracer_adv_order == 3) coef_3rd_order = 1.0
       if (config_tracer_adv_order == 3 .and. config_monotonic) coef_3rd_order = 0.25
@@ -747,16 +766,14 @@ module time_integration
          do iEdge=1,nEdges
             cell1 = cellsOnEdge(1,iEdge)
             cell2 = cellsOnEdge(2,iEdge)
-            if (cell1 <= grid%nCells .and. cell2 <= grid%nCells) then
-               do k=1,nVertLevels
-                  do iTracer=1,num_tracers
-                     tracer_edge = 0.5 * (tracers(iTracer,k,cell1) + tracers(iTracer,k,cell2))
-                     flux = u(k,iEdge) * dvEdge(iEdge) * h_edge(k,iEdge) * tracer_edge
-                     tend_tr(iTracer,k,cell1) = tend_tr(iTracer,k,cell1) - flux/areaCell(cell1)
-                     tend_tr(iTracer,k,cell2) = tend_tr(iTracer,k,cell2) + flux/areaCell(cell2)
-                  end do
+            do k=1,maxLevelEdgeTop(iEdge)
+               do iTracer=1,num_tracers
+                  tracer_edge = 0.5 * (tracers(iTracer,k,cell1) + tracers(iTracer,k,cell2))
+                  flux = u(k,iEdge) * dvEdge(iEdge) * h_edge(k,iEdge) * tracer_edge
+                  tend_tr(iTracer,k,cell1) = tend_tr(iTracer,k,cell1) - flux/areaCell(cell1)
+                  tend_tr(iTracer,k,cell2) = tend_tr(iTracer,k,cell2) + flux/areaCell(cell2)
                end do
-            end if
+            end do
          end do
 
       else if (config_tracer_adv_order == 3) then
@@ -765,56 +782,52 @@ module time_integration
             cell1 = cellsOnEdge(1,iEdge)
             cell2 = cellsOnEdge(2,iEdge)
 
-            !-- if a cell not on the most outside ring of the halo
-            if (cell1 <= grid%nCells .and. cell2 <= grid%nCells) then
+            do k=1,maxLevelEdgeTop(iEdge)
 
-               do k=1,nVertLevels
+               d2fdx2_cell1 = 0.0
+               d2fdx2_cell2 = 0.0
 
-                  d2fdx2_cell1 = 0.0
-                  d2fdx2_cell2 = 0.0
+               do iTracer=1,num_tracers
 
-                  do iTracer=1,num_tracers
+                  !-- if not a boundary cell
+                  if(boundaryCell(k,cell1).eq.0.and.boundaryCell(k,cell2).eq.0) then
 
-                     !-- if not a boundary cell
-                     if(boundaryCell(k,cell1).eq.0.and.boundaryCell(k,cell2).eq.0) then
+                     d2fdx2_cell1 = deriv_two(1,1,iEdge) * tracers(iTracer,k,cell1)
+                     d2fdx2_cell2 = deriv_two(1,2,iEdge) * tracers(iTracer,k,cell2)
 
-                        d2fdx2_cell1 = deriv_two(1,1,iEdge) * tracers(iTracer,k,cell1)
-                        d2fdx2_cell2 = deriv_two(1,2,iEdge) * tracers(iTracer,k,cell2)
+                     !-- all edges of cell 1
+                     do i=1, grid % nEdgesOnCell % array (cell1)
+                        d2fdx2_cell1 = d2fdx2_cell1 + &
+                        deriv_two(i+1,1,iEdge) * tracers(iTracer,k,grid % CellsOnCell % array (i,cell1))
+                     end do
 
-                        !-- all edges of cell 1
-                        do i=1, grid % nEdgesOnCell % array (cell1)
-                           d2fdx2_cell1 = d2fdx2_cell1 + &
-                              deriv_two(i+1,1,iEdge) * tracers(iTracer,k,grid % CellsOnCell % array (i,cell1))
-                        end do
+                     !-- all edges of cell 2
+                     do i=1, grid % nEdgesOnCell % array (cell2)
+                        d2fdx2_cell2 = d2fdx2_cell2 + &
+                        deriv_two(i+1,2,iEdge) * tracers(iTracer,k,grid % CellsOnCell % array (i,cell2))
+                     end do
 
-                        !-- all edges of cell 2
-                        do i=1, grid % nEdgesOnCell % array (cell2)
-                           d2fdx2_cell2 = d2fdx2_cell2 + &
-                              deriv_two(i+1,2,iEdge) * tracers(iTracer,k,grid % CellsOnCell % array (i,cell2))
-                        end do
+                  endif
 
-                     endif
+                  !-- if u > 0:
+                  if (u(k,iEdge) > 0) then
+                     flux = dvEdge(iEdge) * u(k,iEdge) * h_edge(k,iEdge) * (          &
+                          0.5*(tracers(iTracer,k,cell1) + tracers(iTracer,k,cell2))      &
+                          -(dcEdge(iEdge) **2) * (d2fdx2_cell1 + d2fdx2_cell2) / 12.          &
+                          -(dcEdge(iEdge) **2) * coef_3rd_order*(d2fdx2_cell1 - d2fdx2_cell2) / 12. )
+                  !-- else u <= 0:
+                  else
+                     flux = dvEdge(iEdge) *  u(k,iEdge) * h_edge(k,iEdge) * (          &
+                          0.5*(tracers(iTracer,k,cell1) + tracers(iTracer,k,cell2))      &
+                          -(dcEdge(iEdge) **2) * (d2fdx2_cell1 + d2fdx2_cell2) / 12.          &
+                          +(dcEdge(iEdge) **2) * coef_3rd_order*(d2fdx2_cell1 - d2fdx2_cell2) / 12. )
+                  end if
 
-                     !-- if u > 0:
-                     if (u(k,iEdge) > 0) then
-                        flux = dvEdge(iEdge) * u(k,iEdge) * h_edge(k,iEdge) * (          &
-                             0.5*(tracers(iTracer,k,cell1) + tracers(iTracer,k,cell2))      &
-                             -(dcEdge(iEdge) **2) * (d2fdx2_cell1 + d2fdx2_cell2) / 12.          &
-                             -(dcEdge(iEdge) **2) * coef_3rd_order*(d2fdx2_cell1 - d2fdx2_cell2) / 12. )
-                     !-- else u <= 0:
-                     else
-                        flux = dvEdge(iEdge) *  u(k,iEdge) * h_edge(k,iEdge) * (          &
-                             0.5*(tracers(iTracer,k,cell1) + tracers(iTracer,k,cell2))      &
-                             -(dcEdge(iEdge) **2) * (d2fdx2_cell1 + d2fdx2_cell2) / 12.          &
-                             +(dcEdge(iEdge) **2) * coef_3rd_order*(d2fdx2_cell1 - d2fdx2_cell2) / 12. )
-                     end if
-
-                     !-- update tendency
-                     tend_tr(iTracer,k,cell1) = tend_tr(iTracer,k,cell1) - flux/areaCell(cell1)
-                     tend_tr(iTracer,k,cell2) = tend_tr(iTracer,k,cell2) + flux/areaCell(cell2)
-                  enddo
-               end do
-            end if
+                  !-- update tendency
+                  tend_tr(iTracer,k,cell1) = tend_tr(iTracer,k,cell1) - flux/areaCell(cell1)
+                  tend_tr(iTracer,k,cell2) = tend_tr(iTracer,k,cell2) + flux/areaCell(cell2)
+               enddo
+            end do
          end do
 
       else if (config_tracer_adv_order == 4) then
@@ -823,46 +836,42 @@ module time_integration
             cell1 = cellsOnEdge(1,iEdge)
             cell2 = cellsOnEdge(2,iEdge)
 
-            !-- if an edge is not on the outer-most ring of the halo
-            if (cell1 <= grid%nCells .and. cell2 <= grid%nCells) then
+            do k=1,maxLevelEdgeTop(iEdge)
 
-               do k=1,nVertLevels
+               d2fdx2_cell1 = 0.0
+               d2fdx2_cell2 = 0.0
 
-                  d2fdx2_cell1 = 0.0
-                  d2fdx2_cell2 = 0.0
+               do iTracer=1,num_tracers
 
-                  do iTracer=1,num_tracers
+                  !-- if not a boundary cell
+                  if(boundaryCell(k,cell1).eq.0.and.boundaryCell(k,cell2).eq.0) then
 
-                     !-- if not a boundary cell
-                     if(boundaryCell(k,cell1).eq.0.and.boundaryCell(k,cell2).eq.0) then
+                     d2fdx2_cell1 = deriv_two(1,1,iEdge) * tracers(iTracer,k,cell1)
+                     d2fdx2_cell2 = deriv_two(1,2,iEdge) * tracers(iTracer,k,cell2)
 
-                        d2fdx2_cell1 = deriv_two(1,1,iEdge) * tracers(iTracer,k,cell1)
-                        d2fdx2_cell2 = deriv_two(1,2,iEdge) * tracers(iTracer,k,cell2)
+                     !-- all edges of cell 1
+                     do i=1, grid % nEdgesOnCell % array (cell1)
+                        d2fdx2_cell1 = d2fdx2_cell1 + &
+                        deriv_two(i+1,1,iEdge) * tracers(iTracer,k,grid % CellsOnCell % array (i,cell1))
+                     end do
 
-                        !-- all edges of cell 1
-                        do i=1, grid % nEdgesOnCell % array (cell1)
-                           d2fdx2_cell1 = d2fdx2_cell1 + &
-                              deriv_two(i+1,1,iEdge) * tracers(iTracer,k,grid % CellsOnCell % array (i,cell1))
-                        end do
+                     !-- all edges of cell 2
+                     do i=1, grid % nEdgesOnCell % array (cell2)
+                         d2fdx2_cell2 = d2fdx2_cell2 + &
+                         deriv_two(i+1,2,iEdge) * tracers(iTracer,k,grid % CellsOnCell % array (i,cell2))
+                     end do
 
-                        !-- all edges of cell 2
-                        do i=1, grid % nEdgesOnCell % array (cell2)
-                            d2fdx2_cell2 = d2fdx2_cell2 + &
-                               deriv_two(i+1,2,iEdge) * tracers(iTracer,k,grid % CellsOnCell % array (i,cell2))
-                        end do
+                  endif
 
-                     endif
+                  flux = dvEdge(iEdge) *  u(k,iEdge) * h_edge(k,iEdge) * (          &
+                       0.5*(tracers(iTracer,k,cell1) + tracers(iTracer,k,cell2))      &
+                          -(dcEdge(iEdge) **2) * (d2fdx2_cell1 + d2fdx2_cell2) / 12. )
 
-                     flux = dvEdge(iEdge) *  u(k,iEdge) * h_edge(k,iEdge) * (          &
-                          0.5*(tracers(iTracer,k,cell1) + tracers(iTracer,k,cell2))      &
-                             -(dcEdge(iEdge) **2) * (d2fdx2_cell1 + d2fdx2_cell2) / 12. )
-
-                     !-- update tendency
-                     tend_tr(iTracer,k,cell1) = tend_tr(iTracer,k,cell1) - flux/areaCell(cell1)
-                     tend_tr(iTracer,k,cell2) = tend_tr(iTracer,k,cell2) + flux/areaCell(cell2)
-                  enddo
-               end do
-            end if
+                  !-- update tendency
+                  tend_tr(iTracer,k,cell1) = tend_tr(iTracer,k,cell1) - flux/areaCell(cell1)
+                  tend_tr(iTracer,k,cell2) = tend_tr(iTracer,k,cell2) + flux/areaCell(cell2)
+               enddo
+            end do
          end do
 
       endif   ! if (config_tracer_adv_order == 2 )
@@ -873,11 +882,10 @@ module time_integration
       !
       allocate(tracerTop(num_tracers,nVertLevels+1))
       tracerTop(:,1)=0.0
-      tracerTop(:,nVertLevels+1)=0.0
       do iCell=1,grid % nCellsSolve 
 
          if (config_vert_tracer_adv.eq.'centered') then
-           do k=2,nVertLevels
+           do k=2,maxLevelCell(iCell)
              do iTracer=1,num_tracers
                tracerTop(iTracer,k) = ( tracers(iTracer,k-1,iCell) &
                                        +tracers(iTracer,k  ,iCell))/2.0
@@ -885,7 +893,7 @@ module time_integration
            end do
          
          elseif (config_vert_tracer_adv.eq.'upwind') then
-           do k=2,nVertLevels
+           do k=2,maxLevelCell(iCell)
              if (wTop(k,iCell)>0.0) then
                upwindCell = k
              else
@@ -897,8 +905,9 @@ module time_integration
            end do
 
          endif
+         tracerTop(:,maxLevelCell(iCell)+1)=0.0
 
-         do k=1,nVertLevels  
+         do k=1,maxLevelCell(iCell)  
             do iTracer=1,num_tracers
                tend_tr(iTracer,k,iCell) = tend_tr(iTracer,k,iCell) &
                   - (   wTop(k  ,iCell)*tracerTop(iTracer,k  ) &
@@ -927,7 +936,7 @@ module time_integration
             invAreaCell1 = 1.0/areaCell(cell1)
             invAreaCell2 = 1.0/areaCell(cell2)
 
-            do k=1,grid % nVertLevels
+            do k=1,maxLevelEdgeTop(iEdge)
               do iTracer=1,num_tracers
                  ! \kappa_2 \nabla \phi on edge
                  tracer_turb_flux = config_h_tracer_eddy_diff2 &
@@ -970,7 +979,7 @@ module time_integration
             cell1 = grid % cellsOnEdge % array(1,iEdge)
             cell2 = grid % cellsOnEdge % array(2,iEdge)
 
-            do k=1,grid % nVertLevels
+            do k=1,maxLevelEdgeTop(iEdge)
               do iTracer=1,num_tracers
                  delsq_tracer(iTracer,k,cell1) = delsq_tracer(iTracer,k,cell1) &
                     + dvEdge(iEdge)*h_edge(k,iEdge) &
@@ -985,9 +994,9 @@ module time_integration
 
          end do
 
-         do iCell = 1, nCells
+         do iCell = 1,nCells
             r = 1.0 / areaCell(iCell)
-            do k=1,nVertLevels
+            do k=1,maxLevelCell(iCell)
             do iTracer=1,num_tracers
                delsq_tracer(iTracer,k,iCell) = delsq_tracer(iTracer,k,iCell) * r
             end do
@@ -1001,21 +1010,20 @@ module time_integration
             invAreaCell1 = 1.0 / areaCell(cell1)
             invAreaCell2 = 1.0 / areaCell(cell2)
 
-            do k=1,grid % nVertLevels
-            do iTracer=1,num_tracers
-               tracer_turb_flux = config_h_tracer_eddy_diff4 &
-                  *(  delsq_tracer(iTracer,k,cell2)  &
-                    - delsq_tracer(iTracer,k,cell1))/dcEdge(iEdge)
-               flux = dvEdge (iEdge) * tracer_turb_flux
+            do k=1,maxLevelEdgeTop(iEdge)
+               do iTracer=1,num_tracers
+                  tracer_turb_flux = config_h_tracer_eddy_diff4 &
+                     *(  delsq_tracer(iTracer,k,cell2)  &
+                       - delsq_tracer(iTracer,k,cell1))/dcEdge(iEdge)
+                  flux = dvEdge (iEdge) * tracer_turb_flux
 
-               tend_tr(iTracer,k,cell1) = tend_tr(iTracer,k,cell1) & 
-                  - flux * invAreaCell1 * boundaryMask(k,iEdge)
-               tend_tr(iTracer,k,cell2) = tend_tr(iTracer,k,cell2) &
-                  + flux * invAreaCell2 * boundaryMask(k,iEdge)
+                  tend_tr(iTracer,k,cell1) = tend_tr(iTracer,k,cell1) & 
+                     - flux * invAreaCell1 * boundaryMask(k,iEdge)
+                  tend_tr(iTracer,k,cell2) = tend_tr(iTracer,k,cell2) &
+                     + flux * invAreaCell2 * boundaryMask(k,iEdge)
 
-            end do
+               enddo
             enddo
-
          end do
 
          deallocate(delsq_tracer)
@@ -1048,28 +1056,29 @@ module time_integration
 
       allocate(fluxVertTop(num_tracers,nVertLevels+1))
       fluxVertTop(:,1) = 0.0
-      fluxVertTop(:,nVertLevels+1) = 0.0
       do iCell=1,grid % nCellsSolve 
-         do k=2,nVertLevels
+
+         do k=2,maxLevelCell(iCell)
            do iTracer=1,num_tracers
              ! compute \kappa_v d\phi/dz
              fluxVertTop(iTracer,k) = vertDiffTop(k) &
                 * (tracers(iTracer,k-1,iCell) - tracers(iTracer,k,iCell) )&
-                / (zMid(k-1,iCell) -zMid(k,iCell))
+                * 2 / (h(k-1,iCell) + h(k,iCell))
            enddo
          enddo
+         fluxVertTop(:,maxLevelCell(iCell)+1) = 0.0
 
-         do k=1,nVertLevels
-           dist = zTop(k,iCell) - zTop(k+1,iCell)
+         do k=1,maxLevelCell(iCell)
            do iTracer=1,num_tracers
+             ! This is h d/dz( fluxVertTop) but h and dz cancel, so 
+             ! reduces to delta( fluxVertTop)
              tend_tr(iTracer,k,iCell) = tend_tr(iTracer,k,iCell) &
-               + h(k,iCell)*(fluxVertTop(iTracer,k) - fluxVertTop(iTracer,k+1))/dist
+               + fluxVertTop(iTracer,k) - fluxVertTop(iTracer,k+1)
            enddo
          enddo
 
       enddo ! iCell loop
       deallocate(fluxVertTop, vertDiffTop)
-
 
           ! print some diagnostics - for debugging
 !         print *, 'after vertical mixing',&
@@ -1102,25 +1111,30 @@ module time_integration
 
 
       integer :: iEdge, iCell, iVertex, k, cell1, cell2, vertex1, vertex2, eoe, i, j, cov
-      real (kind=RKIND) :: flux, vorticity_abs, h_vertex, workpv, delta_p
+      real (kind=RKIND) :: flux, vorticity_abs, h_vertex, workpv, rho0Inv
 
-      integer :: nCells, nEdges, nVertices, nVertLevels
+      integer :: nCells, nEdges, nVertices, nVertLevels, vertexDegree
 
 
       real (kind=RKIND), dimension(:), pointer :: &
         h_s, fVertex, fEdge, dvEdge, dcEdge, areaCell, areaTriangle, &
-        hZLevel, ssh
+        hZLevel
       real (kind=RKIND), dimension(:,:), pointer :: &
-        weightsOnEdge, kiteAreasOnVertex, h_edge, h, u, v, w, wTop, &
-        circulation, vorticity, ke, ke_edge, &
+        weightsOnEdge, kiteAreasOnVertex, h_edge, h, u, v, w, pressure,&
+        circulation, vorticity, ke, ke_edge, MontPot, wTop, &
         pv_edge, pv_vertex, pv_cell, gradPVn, gradPVt, divergence, &
-        zMid, zTop, zMidEdge, zTopEdge, p, pTop, MontPot, rho, temperature, salinity, pZLevel
+        rho, temperature, salinity
       real (kind=RKIND), dimension(:,:,:), pointer :: tracers
+      real (kind=RKIND), dimension(:), allocatable:: pTop
       real (kind=RKIND), dimension(:,:), allocatable:: div_u
       character :: c1*6
 
-      integer, dimension(:,:), pointer :: cellsOnEdge, cellsOnVertex, verticesOnEdge, edgesOnCell, edgesOnEdge, edgesOnVertex, boundaryEdge, boundaryCell
-      integer, dimension(:), pointer :: nEdgesOnCell, nEdgesOnEdge
+      integer, dimension(:,:), pointer :: cellsOnEdge, cellsOnVertex, &
+        verticesOnEdge, edgesOnCell, edgesOnEdge, edgesOnVertex, &
+        boundaryEdge, boundaryCell
+      integer, dimension(:), pointer :: nEdgesOnCell, nEdgesOnEdge, &
+        maxLevelCell, maxLevelEdgeTop, maxLevelEdgeBot, &
+        maxLevelVertexBot,  maxLevelVertexTop
       real (kind=RKIND) :: d2fdx2_cell1, d2fdx2_cell2
       real (kind=RKIND), dimension(:,:,:), pointer :: deriv_two
       real (kind=RKIND) :: coef_3rd_order
@@ -1144,15 +1158,8 @@ module time_integration
       gradPVt     => s % gradPVt % array
       rho         => s % rho % array
       tracers     => s % tracers % array
-      zMid        => s % zMid % array
-      zTop        => s % zTop % array
-      zMidEdge    => s % zMidEdge % array
-      zTopEdge    => s % zTopEdge % array
-      p           => s % p % array
-      pZLevel     => s % pZLevel % array
-      pTop        => s % pTop % array
       MontPot     => s % MontPot % array
-      ssh         => s % ssh  % array
+      pressure    => s % pressure % array
 
       weightsOnEdge     => grid % weightsOnEdge % array
       kiteAreasOnVertex => grid % kiteAreasOnVertex % array
@@ -1173,35 +1180,27 @@ module time_integration
       fEdge             => grid % fEdge % array
       hZLevel           => grid % hZLevel % array
       deriv_two         => grid % deriv_two % array
+      maxLevelCell      => grid % maxLevelCell % array
+      maxLevelEdgeTop   => grid % maxLevelEdgeTop % array
+      maxLevelEdgeBot   => grid % maxLevelEdgeBot % array
+      maxLevelVertexBot => grid % maxLevelVertexBot % array
+      maxLevelVertexTop => grid % maxLevelVertexTop % array
                   
       nCells      = grid % nCells
       nEdges      = grid % nEdges
       nVertices   = grid % nVertices
       nVertLevels = grid % nVertLevels
+      vertexDegree = grid % vertexDegree
 
       boundaryEdge => grid % boundaryEdge % array
       boundaryCell => grid % boundaryCell % array
 
       !
-      ! Find those cells that have an edge on the boundary
-      !
-      boundaryCell(:,:) = 0
-      do iEdge=1,nEdges
-       do k=1,nVertLevels
-         if(boundaryEdge(k,iEdge).eq.1) then
-           cell1 = cellsOnEdge(1,iEdge)
-           cell2 = cellsOnEdge(2,iEdge)
-           boundaryCell(k,cell1) = 1
-           boundaryCell(k,cell2) = 1
-         endif
-       enddo
-      enddo
-
-
-      !
       ! Compute height on cell edges at velocity locations
       !   Namelist options control the order of accuracy of the reconstructed h_edge value
       !
+      ! mrp 101115 note: in order to include flux boundary conditions, we will need to 
+      ! assign h_edge for maxLevelEdgeTop:maxLevelEdgeBot in the following section
 
       coef_3rd_order = 0.
       if (config_thickness_adv_order == 3) coef_3rd_order = 1.0
@@ -1209,140 +1208,128 @@ module time_integration
 
       if (config_thickness_adv_order == 2) then
 
-         do iEdge=1,grid % nEdges
+         do iEdge=1,nEdges
             cell1 = cellsOnEdge(1,iEdge)
             cell2 = cellsOnEdge(2,iEdge)
-            if (cell1 <= grid%nCells .and. cell2 <= grid%nCells) then
-               do k=1,grid % nVertLevels
-                  h_edge(k,iEdge) = 0.5 * (h(k,cell1) + h(k,cell2))
-               end do
-            end if
+            do k=1,maxLevelEdgeTop(iEdge)
+               h_edge(k,iEdge) = 0.5 * (h(k,cell1) + h(k,cell2))
+            end do
          end do
 
       else if (config_thickness_adv_order == 3) then
 
-         do iEdge=1,grid%nEdges
+         do iEdge=1,nEdges
             cell1 = cellsOnEdge(1,iEdge)
             cell2 = cellsOnEdge(2,iEdge)
 
-            !-- if a cell not on the most outside ring of the halo
-            if (cell1 <= grid%nCells .and. cell2 <= grid%nCells) then
+            do k=1,maxLevelEdgeTop(iEdge)
 
-               do k=1,grid % nVertLevels
+               d2fdx2_cell1 = 0.0
+               d2fdx2_cell2 = 0.0
 
-                  d2fdx2_cell1 = 0.0
-                  d2fdx2_cell2 = 0.0
+               !-- if not a boundary cell
+               if(boundaryCell(k,cell1).eq.0.and.boundaryCell(k,cell2).eq.0) then
 
-                  !-- if not a boundary cell
-                  if(boundaryCell(k,cell1).eq.0.and.boundaryCell(k,cell2).eq.0) then
+                  d2fdx2_cell1 = deriv_two(1,1,iEdge) * h(k,cell1)
+                  d2fdx2_cell2 = deriv_two(1,2,iEdge) * h(k,cell2)
 
-                     d2fdx2_cell1 = deriv_two(1,1,iEdge) * h(k,cell1)
-                     d2fdx2_cell2 = deriv_two(1,2,iEdge) * h(k,cell2)
+                  !-- all edges of cell 1
+                  do i=1, grid % nEdgesOnCell % array (cell1)
+                          d2fdx2_cell1 = d2fdx2_cell1 + &
+                          deriv_two(i+1,1,iEdge) * h(k,grid % CellsOnCell % array (i,cell1))
+                  end do
 
-                     !-- all edges of cell 1
-                     do i=1, grid % nEdgesOnCell % array (cell1)
-                             d2fdx2_cell1 = d2fdx2_cell1 + &
-                             deriv_two(i+1,1,iEdge) * h(k,grid % CellsOnCell % array (i,cell1))
-                     end do
+                  !-- all edges of cell 2
+                  do i=1, grid % nEdgesOnCell % array (cell2)
+                          d2fdx2_cell2 = d2fdx2_cell2 + &
+                          deriv_two(i+1,2,iEdge) * h(k,grid % CellsOnCell % array (i,cell2))
+                  end do
 
-                     !-- all edges of cell 2
-                     do i=1, grid % nEdgesOnCell % array (cell2)
-                             d2fdx2_cell2 = d2fdx2_cell2 + &
-                             deriv_two(i+1,2,iEdge) * h(k,grid % CellsOnCell % array (i,cell2))
-                     end do
+               endif
 
-                  endif
+               !-- if u > 0:
+               if (u(k,iEdge) > 0) then
+                  h_edge(k,iEdge) =     &
+                       0.5*(h(k,cell1) + h(k,cell2))      &
+                       -(dcEdge(iEdge) **2) * (d2fdx2_cell1 + d2fdx2_cell2) / 12.          &
+                       -(dcEdge(iEdge) **2) * coef_3rd_order*(d2fdx2_cell1 - d2fdx2_cell2) / 12.
+               !-- else u <= 0:
+               else
+                  h_edge(k,iEdge) =     &
+                       0.5*(h(k,cell1) + h(k,cell2))      &
+                       -(dcEdge(iEdge) **2) * (d2fdx2_cell1 + d2fdx2_cell2) / 12.          &
+                       +(dcEdge(iEdge) **2) * coef_3rd_order*(d2fdx2_cell1 - d2fdx2_cell2) / 12.
+               end if
 
-                  !-- if u > 0:
-                  if (u(k,iEdge) > 0) then
-                     h_edge(k,iEdge) =     &
-                          0.5*(h(k,cell1) + h(k,cell2))      &
-                          -(dcEdge(iEdge) **2) * (d2fdx2_cell1 + d2fdx2_cell2) / 12.          &
-                          -(dcEdge(iEdge) **2) * coef_3rd_order*(d2fdx2_cell1 - d2fdx2_cell2) / 12.
-                  !-- else u <= 0:
-                  else
-                     h_edge(k,iEdge) =     &
-                          0.5*(h(k,cell1) + h(k,cell2))      &
-                          -(dcEdge(iEdge) **2) * (d2fdx2_cell1 + d2fdx2_cell2) / 12.          &
-                          +(dcEdge(iEdge) **2) * coef_3rd_order*(d2fdx2_cell1 - d2fdx2_cell2) / 12.
-                  end if
-
-               end do   ! do k
-            end if      ! if (cell1 <=
+            end do   ! do k
          end do         ! do iEdge
 
       else  if (config_thickness_adv_order == 4) then
 
-         do iEdge=1,grid%nEdges
+         do iEdge=1,nEdges
             cell1 = cellsOnEdge(1,iEdge)
             cell2 = cellsOnEdge(2,iEdge)
 
-            !-- if a cell not on the most outside ring of the halo
-            if (cell1 <= grid%nCells .and. cell2 <= grid%nCells) then
+            do k=1,maxLevelEdgeTop(iEdge)
 
-               do k=1,grid % nVertLevels
+               d2fdx2_cell1 = 0.0
+               d2fdx2_cell2 = 0.0
 
-                  d2fdx2_cell1 = 0.0
-                  d2fdx2_cell2 = 0.0
+               !-- if not a boundary cell
+               if(boundaryCell(k,cell1).eq.0.and.boundaryCell(k,cell2).eq.0) then
 
-                  !-- if not a boundary cell
-                  if(boundaryCell(k,cell1).eq.0.and.boundaryCell(k,cell2).eq.0) then
+                  d2fdx2_cell1 = deriv_two(1,1,iEdge) * h(k,cell1)
+                  d2fdx2_cell2 = deriv_two(1,2,iEdge) * h(k,cell2)
 
-                     d2fdx2_cell1 = deriv_two(1,1,iEdge) * h(k,cell1)
-                     d2fdx2_cell2 = deriv_two(1,2,iEdge) * h(k,cell2)
+                  !-- all edges of cell 1
+                  do i=1, grid % nEdgesOnCell % array (cell1)
+                          d2fdx2_cell1 = d2fdx2_cell1 + &
+                          deriv_two(i+1,1,iEdge) * h(k,grid % CellsOnCell % array (i,cell1))
+                  end do
 
-                     !-- all edges of cell 1
-                     do i=1, grid % nEdgesOnCell % array (cell1)
-                             d2fdx2_cell1 = d2fdx2_cell1 + &
-                             deriv_two(i+1,1,iEdge) * h(k,grid % CellsOnCell % array (i,cell1))
-                     end do
+                  !-- all edges of cell 2
+                  do i=1, grid % nEdgesOnCell % array (cell2)
+                          d2fdx2_cell2 = d2fdx2_cell2 + &
+                          deriv_two(i+1,2,iEdge) * h(k,grid % CellsOnCell % array (i,cell2))
+                  end do
 
-                     !-- all edges of cell 2
-                     do i=1, grid % nEdgesOnCell % array (cell2)
-                             d2fdx2_cell2 = d2fdx2_cell2 + &
-                             deriv_two(i+1,2,iEdge) * h(k,grid % CellsOnCell % array (i,cell2))
-                     end do
+               endif
 
-                  endif
+               h_edge(k,iEdge) =   &
+                    0.5*(h(k,cell1) + h(k,cell2))      &
+                       -(dcEdge(iEdge) **2) * (d2fdx2_cell1 + d2fdx2_cell2) / 12.
 
-                  h_edge(k,iEdge) =   &
-                       0.5*(h(k,cell1) + h(k,cell2))      &
-                          -(dcEdge(iEdge) **2) * (d2fdx2_cell1 + d2fdx2_cell2) / 12.
-
-               end do   ! do k
-            end if      ! if (cell1 <=
+            end do   ! do k
          end do         ! do iEdge
 
       endif   ! if(config_thickness_adv_order == 2)
 
       !
-      ! set the velocity in the nEdges+1 slot to zero, this is a dummy address
-      !    used to when reading for edges that do not exist
+      ! set the velocity and height at dummy address
+      !    used -1e34 so error clearly occurs if these values are used.
       !
-      u(:,nEdges+1) = 0.0
+      u(:,nEdges+1) = -1e34
+      h(:,nCells+1) = -1e34
+      tracers(s % index_temperature,:,nCells+1) = -1e34
+      tracers(s % index_salinity,:,nCells+1) = -1e34
 
       !
       ! Compute circulation and relative vorticity at each vertex
       !
       circulation(:,:) = 0.0
       do iEdge=1,nEdges
-         if (verticesOnEdge(1,iEdge) <= nVertices) then
-            do k=1,nVertLevels
-               circulation(k,verticesOnEdge(1,iEdge)) = circulation(k,verticesOnEdge(1,iEdge)) - dcEdge(iEdge) * u(k,iEdge)
-            end do
-         end if
-         if (verticesOnEdge(2,iEdge) <= nVertices) then
-            do k=1,nVertLevels
-               circulation(k,verticesOnEdge(2,iEdge)) = circulation(k,verticesOnEdge(2,iEdge)) + dcEdge(iEdge) * u(k,iEdge)
-            end do
-         end if
+         vertex1 = verticesOnEdge(1,iEdge)
+         vertex2 = verticesOnEdge(2,iEdge)
+         do k=1,maxLevelEdgeBot(iEdge)
+            circulation(k,vertex1) = circulation(k,vertex1) - dcEdge(iEdge) * u(k,iEdge)
+            circulation(k,vertex2) = circulation(k,vertex2) + dcEdge(iEdge) * u(k,iEdge)
+         end do
       end do
       do iVertex=1,nVertices
-         do k=1,nVertLevels
+         do k=1,maxLevelVertexBot(iVertex)
             vorticity(k,iVertex) = circulation(k,iVertex) / areaTriangle(iVertex)
          end do
       end do
-
 
       !
       ! Compute the divergence at each cell center
@@ -1351,22 +1338,16 @@ module time_integration
       do iEdge=1,nEdges
          cell1 = cellsOnEdge(1,iEdge)
          cell2 = cellsOnEdge(2,iEdge)
-         if (cell1 <= nCells) then
-            do k=1,nVertLevels
-              divergence(k,cell1) = divergence(k,cell1) + u(k,iEdge)*dvEdge(iEdge)
-            enddo
-         endif
-         if(cell2 <= nCells) then
-            do k=1,nVertLevels
-              divergence(k,cell2) = divergence(k,cell2) - u(k,iEdge)*dvEdge(iEdge)
-            enddo
-         end if
+         do k=1,maxLevelEdgeBot(iEdge)
+             divergence(k,cell1) = divergence(k,cell1) + u(k,iEdge)*dvEdge(iEdge)
+             divergence(k,cell2) = divergence(k,cell2) - u(k,iEdge)*dvEdge(iEdge)
+         enddo
       end do
       do iCell = 1,nCells
-        r = 1.0 / areaCell(iCell)
-        do k = 1,nVertLevels
-           divergence(k,iCell) = divergence(k,iCell) * r
-        enddo
+         r = 1.0 / areaCell(iCell)
+         do k = 1,maxLevelCell(iCell)
+            divergence(k,iCell) = divergence(k,iCell) * r
+         enddo
       enddo
 
       !
@@ -1376,16 +1357,15 @@ module time_integration
       do iCell=1,nCells
          do i=1,nEdgesOnCell(iCell)
             iEdge = edgesOnCell(i,iCell)
-            do k=1,nVertLevels
+            do k=1,maxLevelCell(iCell)
                ke(k,iCell) = ke(k,iCell) + 0.25 * dcEdge(iEdge) * dvEdge(iEdge) * u(k,iEdge)**2.0
             end do
          end do
-         do k=1,nVertLevels
+         do k=1,maxLevelCell(iCell)
             ke(k,iCell) = ke(k,iCell) / areaCell(iCell)
          end do
       end do
 
-      !
       !
       ! Compute v (tangential) velocities
       !
@@ -1393,103 +1373,71 @@ module time_integration
       do iEdge = 1,nEdges
          do i=1,nEdgesOnEdge(iEdge)
             eoe = edgesOnEdge(i,iEdge)
-            if (eoe <= nEdges) then
-               do k = 1,nVertLevels
-                 v(k,iEdge) = v(k,iEdge) + weightsOnEdge(i,iEdge) * u(k, eoe)
-              end do
-            end if
+            do k = 1,maxLevelEdgeBot(iEdge)
+               v(k,iEdge) = v(k,iEdge) + weightsOnEdge(i,iEdge) * u(k, eoe)
+            end do
          end do
       end do
 
       !
       ! Compute ke on cell edges at velocity locations for quadratic bottom drag. 
       !
+      ! mrp 101025 efficiency note: we could get rid of ke_edge completely by 
+      ! using sqrt(u(k,iEdge)**2 + v(k,iEdge)**2) in its place elsewhere.
+      ke_edge = 0.0  !mrp remove 0 for efficiency
       do iEdge=1,nEdges
          cell1 = cellsOnEdge(1,iEdge)
          cell2 = cellsOnEdge(2,iEdge)
-         if (cell1 <= nCells .and. cell2 <= nCells) then
-            do k=1,nVertLevels
-               ke_edge(k,iEdge) = 0.5 * (ke(k,cell1) + ke(k,cell2))
-            end do
-         else
-            do k=1,nVertLevels
-               ke_edge(k,iEdge) = 0.0
-            end do
-         end if
+         do k=1,maxLevelEdgeTop(iEdge)
+            ke_edge(k,iEdge) = 0.5 * (ke(k,cell1) + ke(k,cell2))
+         end do
       end do
 
       !
       ! Compute height at vertices, pv at vertices, and average pv to edge locations
       !  ( this computes pv_vertex at all vertices bounding real cells and distance-1 ghost cells )
       !
-      VTX_LOOP: do iVertex = 1,nVertices
-         do i=1,grid % vertexDegree
-            if (cellsOnVertex(i,iVertex) > nCells) cycle VTX_LOOP
-         end do
-         do k=1,nVertLevels
+      do iVertex = 1,nVertices
+         do k=1,maxLevelVertexBot(iVertex)
             h_vertex = 0.0
-            do i=1,grid % vertexDegree
+            do i=1,vertexDegree
                h_vertex = h_vertex + h(k,cellsOnVertex(i,iVertex)) * kiteAreasOnVertex(i,iVertex)
             end do
             h_vertex = h_vertex / areaTriangle(iVertex)
 
             pv_vertex(k,iVertex) = (fVertex(iVertex) + vorticity(k,iVertex)) / h_vertex
          end do
-      end do VTX_LOOP
-
-
-      !
-      ! Compute gradient of PV in the tangent direction
-      !   ( this computes gradPVt at all edges bounding real cells and distance-1 ghost cells )
-      !
-      do iEdge = 1,nEdges
-         do k = 1,nVertLevels
-           gradPVt(k,iEdge) = (pv_vertex(k,verticesOnEdge(2,iEdge)) - pv_vertex(k,verticesOnEdge(1,iEdge))) / &
-                              dvEdge(iEdge)
-         enddo
-      enddo
-
-      !
-      ! Compute pv at the edges
-      !   ( this computes pv_edge at all edges bounding real cells and distance-1 ghost cells )
-      !
-      pv_edge(:,:) = 0.0
-      do iVertex = 1,nVertices
-        do i=1,grid % vertexDegree
-          iEdge = edgesOnVertex(i,iVertex)
-          if(iEdge <= nEdges) then
-            do k=1,nVertLevels
-              pv_edge(k,iEdge) =  pv_edge(k,iEdge)  + 0.5 * pv_vertex(k,iVertex)
-            enddo
-          endif
-        end do
       end do
-
-      !
-      ! Modify PV edge with upstream bias. 
-      !
-      do iEdge = 1,nEdges
-         do k = 1,nVertLevels
-           pv_edge(k,iEdge) = pv_edge(k,iEdge) - config_apvm_upwinding * v(k,iEdge) * dt * gradPVt(k,iEdge)
-         enddo
-      enddo
-
 
       !
       ! Compute pv at cell centers
       !    ( this computes pv_cell for all real cells and distance-1 ghost cells )
       !
       pv_cell(:,:) = 0.0
-      do iVertex = 1, nVertices
-       do i=1,grid % vertexDegree
-         iCell = cellsOnVertex(i,iVertex)
-         if (iCell <= nCells) then
-           do k = 1,nVertLevels
-             pv_cell(k,iCell) = pv_cell(k,iCell) + kiteAreasOnVertex(i, iVertex) * pv_vertex(k, iVertex) / areaCell(iCell)
-           enddo
-         endif
-       enddo
+      do iVertex = 1,nVertices
+         do i=1,vertexDegree
+            iCell = cellsOnVertex(i,iVertex)
+            do k = 1,maxLevelCell(iCell)
+               pv_cell(k,iCell) = pv_cell(k,iCell)  &
+                  + kiteAreasOnVertex(i, iVertex) * pv_vertex(k, iVertex) &
+                    / areaCell(iCell)
+            enddo
+         enddo
       enddo
+
+      !
+      ! Compute pv at the edges
+      !   ( this computes pv_edge at all edges bounding real cells )
+      !
+      pv_edge(:,:) = 0.0
+      do iVertex = 1,nVertices
+         do i=1,vertexDegree
+            iEdge = edgesOnVertex(i,iVertex)
+            do k=1,maxLevelEdgeBot(iEdge)
+               pv_edge(k,iEdge) =  pv_edge(k,iEdge) + 0.5 * pv_vertex(k,iVertex)
+            enddo
+        end do
+      end do
 
       !
       ! Compute gradient of PV in normal direction
@@ -1497,113 +1445,102 @@ module time_integration
       !
       gradPVn(:,:) = 0.0
       do iEdge = 1,nEdges
-        if( cellsOnEdge(1,iEdge) <= nCells .and. cellsOnEdge(2,iEdge) <= nCells) then
-          do k = 1,nVertLevels
-            gradPVn(k,iEdge) = (pv_cell(k,cellsOnEdge(2,iEdge)) - pv_cell(k,cellsOnEdge(1,iEdge))) / &
-                                 dcEdge(iEdge)
-          enddo
-        endif
-      enddo
-
-
-      ! Modify PV edge with upstream bias.
-      !
-      do iEdge = 1,nEdges
-         do k = 1,nVertLevels
-           pv_edge(k,iEdge) = pv_edge(k,iEdge) - config_apvm_upwinding * u(k,iEdge) * dt * gradPVn(k,iEdge)
+         do k=1,maxLevelEdgeTop(iEdge)
+            gradPVn(k,iEdge) = (  pv_cell(k,cellsOnEdge(2,iEdge)) &
+                                - pv_cell(k,cellsOnEdge(1,iEdge))) &
+                               / dcEdge(iEdge)
          enddo
       enddo
 
       !
-      ! Compute sea surface height
+      ! Compute gradient of PV in the tangent direction
+      !   ( this computes gradPVt at all edges bounding real cells and distance-1 ghost cells )
       !
-      do iCell=1,nCells
-        ssh(iCell) = h(1,iCell) - hZLevel(1)
+      do iEdge = 1,nEdges
+         do k = 1,maxLevelEdgeBot(iEdge)
+           gradPVt(k,iEdge) = (  pv_vertex(k,verticesOnEdge(2,iEdge)) &
+                               - pv_vertex(k,verticesOnEdge(1,iEdge))) &
+                                 /dvEdge(iEdge)
+         enddo
+      enddo
+
+      !
+      ! Modify PV edge with upstream bias.
+      !
+      do iEdge = 1,nEdges
+         do k = 1,maxLevelEdgeBot(iEdge)
+           pv_edge(k,iEdge) = pv_edge(k,iEdge) &
+             - 0.5 * dt* (  u(k,iEdge) * gradPVn(k,iEdge) &
+                          + v(k,iEdge) * gradPVt(k,iEdge) )
+         enddo
       enddo
 
       !
       ! equation of state
       !
-      ! For a isopycnal model, density should remain constant.
+      ! For an isopycnal model, density should remain constant.
       if (config_vert_grid_type.eq.'zlevel') then
-        do iCell=1,nCells
-          do k=1,nVertLevels
-            ! Linear equation of state, for the time being
-            rho(k,iCell) = 1000.0*(  1.0 &
-               - 2.5e-4*tracers(s % index_temperature,k,iCell) &
-               + 7.6e-4*tracers(s % index_salinity,k,iCell))
-          end do
-        end do
+         call equation_of_state(s,grid)
       endif
 
-
-      ! For Isopycnal model.
-      ! Compute mid- and bottom-depth of each layer, from bottom up.
-      ! Then compute mid- and bottom-pressure of each layer, and 
-      ! Montgomery Potential, from top down
       !
-      do iCell=1,nCells
-
-         ! h_s is ocean topography: elevation above lowest point, 
-         ! and is positive. z coordinates are pos upward, and z=0
-         ! is at lowest ocean point.
-         zTop(nVertLevels+1,iCell) = h_s(iCell) 
-         do k=nVertLevels,1,-1
-            zMid(k,iCell) = zTop(k+1,iCell) + 0.5*h(k,iCell)
-            zTop(k,iCell) = zTop(k+1,iCell) +     h(k,iCell)
-         end do
-
-         ! assume atmospheric pressure at the surface is zero for now.
-         pTop(1,iCell) = 0.0
-         do k=1,nVertLevels
-            delta_p = rho(k,iCell)*gravity* h(k,iCell)
-            p(k  ,iCell) = pTop(k,iCell) + 0.5*delta_p
-            pTop(k+1,iCell) = pTop(k,iCell) + delta_p
-         end do
-
-         MontPot(1,iCell) = gravity * zTop(1,iCell) 
-         do k=2,nVertLevels
-            ! from delta M = p delta / rho
-            MontPot(k,iCell) = MontPot(k-1,iCell) &
-               + pTop(k,iCell)*(1.0/rho(k,iCell) - 1.0/rho(k-1,iCell)) 
-         end do
-
-      end do
-
-      do iEdge=1,nEdges
-       cell1 = cellsOnEdge(1,iEdge)
-       cell2 = cellsOnEdge(2,iEdge)
-       if(cell1<=nCells .and. cell2<=nCells) then
-         do k=1,nVertLevels
-           zTopEdge(k,iEdge) = (zTop(k,cell1)+zTop(k,cell2))/2.0
-           zMidEdge(k,iEdge) = (zMid(k,cell1)+zMid(k,cell2))/2.0
-         enddo
-         zTopEdge(nVertLevels+1,iEdge) = ( zTop(nVertLevels+1,cell1) &
-                                         + zTop(nVertLevels+1,cell2))/2.0
-        endif
-      enddo
-
-
-      ! For z-level model.
-      ! Compute pressure at middle of each level.  
-      ! pZLevel and p should only differ at k=1, where p is 
-      ! pressure at middle of layer including SSH, and pZLevel is
-      ! pressure at a depth of hZLevel(1)/2.
+      ! Pressure
+      ! This section must be after computing rho
       !
-      do iCell=1,nCells
-         ! compute pressure for z-level coordinates
-         ! assume atmospheric pressure at the surface is zero for now.
-         pZLevel(1,iCell) = rho(1,iCell)*gravity &
-            * (h(1,iCell)-0.5*hZLevel(1)) 
-         do k=2,nVertLevels
-            pZLevel(k,iCell) = pZLevel(k-1,iCell)  &
-              + 0.5*gravity*(  rho(k-1,iCell)*hZLevel(k-1) &
-                             + rho(k  ,iCell)*hZLevel(k  ))
-         end do
+      if (config_vert_grid_type.eq.'isopycnal') then
 
-      end do
+        ! For Isopycnal model.
+        ! Compute pressure at top of each layer, and then
+        ! Montgomery Potential.
+        allocate(pTop(nVertLevels))
+        do iCell=1,nCells
 
-      ! compute vertical velocity
+           ! assume atmospheric pressure at the surface is zero for now.
+           pTop(1) = 0.0
+           ! For isopycnal mode, p is the Montgomery Potential.
+           ! At top layer it is g*SSH, where SSH may be off by a 
+           ! constant (ie, h_s can be relative to top or bottom)
+           MontPot(1,iCell) = gravity &
+              * (h_s(iCell) + sum(h(1:nVertLevels,iCell)))
+
+           do k=2,nVertLevels
+              pTop(k) = pTop(k-1) + rho(k-1,iCell)*gravity* h(k-1,iCell)
+
+              ! from delta M = p delta / rho
+              MontPot(k,iCell) = MontPot(k-1,iCell) &
+                 + pTop(k)*(1.0/rho(k,iCell) - 1.0/rho(k-1,iCell)) 
+           end do
+
+        end do
+        deallocate(pTop)
+
+      elseif (config_vert_grid_type.eq.'zlevel') then
+
+        ! For z-level model.
+        ! Compute pressure at middle of each level.  
+        ! At k=1, where p is pressure at a depth of hZLevel(1)/2, not
+        ! pressure at middle of layer including SSH.
+
+        do iCell=1,nCells
+           ! compute pressure for z-level coordinates
+           ! assume atmospheric pressure at the surface is zero for now.
+
+           pressure(1,iCell) = rho(1,iCell)*gravity &
+              * (h(1,iCell)-0.5*hZLevel(1)) 
+
+           do k=2,maxLevelCell(iCell)
+              pressure(k,iCell) = pressure(k-1,iCell)  &
+                + 0.5*gravity*(  rho(k-1,iCell)*hZLevel(k-1) &
+                               + rho(k  ,iCell)*hZLevel(k  ))
+           end do
+
+        end do
+
+      endif
+
+      !
+      ! vertical velocity
+      !
       if (config_vert_grid_type.eq.'isopycnal') then
         ! set vertical velocity to zero in isopycnal case
         wTop=0.0  
@@ -1614,34 +1551,26 @@ module time_integration
         ! Compute div(u) for each cell
         ! See Ringler et al. (2010) jcp paper, eqn 19, 21, and fig. 3.
         !
-        allocate(div_u(nVertLevels,nCells))
+        allocate(div_u(nVertLevels,nCells+1))
         div_u(:,:) = 0.0
         do iEdge=1,nEdges
-            cell1 = cellsOnEdge(1,iEdge)
-            cell2 = cellsOnEdge(2,iEdge)
-            if (cell1 <= nCells) then
-               do k=1,nVertLevels
-                  flux = u(k,iEdge) * dvEdge(iEdge) 
-                  div_u(k,cell1) = div_u(k,cell1) + flux
-               end do 
-            end if
-            if (cell2 <= nCells) then
-               do k=1,nVertLevels
-                  flux = u(k,iEdge) * dvEdge(iEdge) 
-                  div_u(k,cell2) = div_u(k,cell2) - flux
-               end do 
-            end if
+           cell1 = cellsOnEdge(1,iEdge)
+           cell2 = cellsOnEdge(2,iEdge)
+           do k=1,maxLevelEdgeBot(iEdge)
+              flux = u(k,iEdge) * dvEdge(iEdge) 
+              div_u(k,cell1) = div_u(k,cell1) + flux
+              div_u(k,cell2) = div_u(k,cell2) - flux
+           end do 
         end do 
 
         do iCell=1,nCells
-           do k=1,nVertLevels
+           do k=1,maxLevelCell(iCell)
               div_u(k,iCell) = div_u(k,iCell) / areaCell(iCell)
            end do
 
            ! Vertical velocity at bottom is zero.
-           ! this next line can be set permanently somewhere upon startup.
-           wTop(nVertLevels+1,iCell) = 0.0
-           do k=nVertLevels,1,-1
+           wTop(maxLevelCell(iCell)+1,iCell) = 0.0
+           do k=maxLevelCell(iCell),1,-1
               wTop(k,iCell) = wTop(k+1,iCell) - div_u(k,iCell)*h(k,iCell)
            end do
 
@@ -1649,7 +1578,6 @@ module time_integration
         deallocate(div_u)
 
       endif
-
 
    end subroutine compute_solve_diagnostics
 
@@ -1695,5 +1623,262 @@ module time_integration
        enddo
 
    end subroutine enforce_boundaryEdge
+
+
+   subroutine equation_of_state(s, grid)
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   !  This module contains routines necessary for computing the density
+   !  from model temperature and salinity using an equation of state.
+   !
+   ! Input: grid - grid metadata
+   !        s - state: tracers
+   !
+   ! Output: s - state: computed density
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      implicit none
+
+      type (state_type), intent(inout) :: s
+      type (mesh_type), intent(in) :: grid
+
+      integer, dimension(:), pointer :: maxLevelCell
+      real (kind=RKIND), dimension(:,:), pointer :: rho
+      real (kind=RKIND), dimension(:,:,:), pointer :: tracers
+      integer :: nCells, iCell, k
+      type (dm_info) :: dminfo
+
+      rho         => s % rho % array
+      tracers     => s % tracers % array
+
+      maxLevelCell      => grid % maxLevelCell % array
+      nCells      = grid % nCells
+
+      if (config_eos_type.eq.'linear') then
+
+         do iCell=1,nCells
+            do k=1,maxLevelCell(iCell)
+               ! Linear equation of state
+               rho(k,iCell) = 1000.0*(  1.0 &
+                  - 2.5e-4*tracers(s % index_temperature,k,iCell) &
+                  + 7.6e-4*tracers(s % index_salinity,k,iCell))
+            end do
+         end do
+
+      elseif (config_eos_type.eq.'jm') then
+
+         call equation_of_state_jm(s, grid)  
+
+      else 
+         print *, ' Incorrect choice of config_eos_type:',&
+            config_eos_type
+         call dmpar_abort(dminfo)
+      endif
+
+   end subroutine equation_of_state
+
+
+   subroutine equation_of_state_jm(s, grid)
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   !  This module contains routines necessary for computing the density
+   !  from model temperature and salinity using an equation of state.
+   !
+   !  The UNESCO equation of state computed using the
+   !  potential-temperature-based bulk modulus from Jackett and
+   !  McDougall, JTECH, Vol.12, pp 381-389, April, 1995.
+   !
+   ! Input: grid - grid metadata
+   !        s - state: tracers
+   !
+   ! Output: s - state: computed density
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+      implicit none
+
+      type (state_type), intent(in) :: s
+      type (mesh_type), intent(in) :: grid
+
+
+      type (dm_info) :: dminfo
+      integer :: iEdge, iCell, iVertex, k
+
+      integer :: nCells, nEdges, nVertices, nVertLevels
+
+
+      real (kind=RKIND), dimension(:), pointer :: &
+        zMidZLevel, pRefEOS
+      real (kind=RKIND), dimension(:,:), pointer :: &
+        rho
+      real (kind=RKIND), dimension(:,:,:), pointer :: tracers
+
+      integer, dimension(:), pointer :: maxLevelCell
+
+   real (kind=RKIND) :: &
+      TQ,SQ,             &! adjusted T,S
+      BULK_MOD,          &! Bulk modulus
+      RHO_S,             &! density at the surface
+      DRDT0,             &! d(density)/d(temperature), for surface
+      DRDS0,             &! d(density)/d(salinity   ), for surface
+      DKDT,              &! d(bulk modulus)/d(pot. temp.)
+      DKDS,              &! d(bulk modulus)/d(salinity  )
+      SQR,DENOMK,        &! work arrays
+      WORK1, WORK2, WORK3, WORK4, T2, depth
+
+   real (kind=RKIND) :: & 
+      tmin, tmax,        &! valid temperature range for level k
+      smin, smax          ! valid salinity    range for level k
+
+   real (kind=RKIND) :: p, p2 ! temporary pressure scalars
+
+!-----------------------------------------------------------------------
+!
+!  UNESCO EOS constants and JMcD bulk modulus constants
+!
+!-----------------------------------------------------------------------
+
+   !*** for density of fresh water (standard UNESCO)
+
+   real (kind=RKIND), parameter ::              &
+      unt0 =   999.842594,           &
+      unt1 =  6.793952e-2,           &
+      unt2 = -9.095290e-3,           &
+      unt3 =  1.001685e-4,           &
+      unt4 = -1.120083e-6,           &
+      unt5 =  6.536332e-9
+
+   !*** for dependence of surface density on salinity (UNESCO)
+
+   real (kind=RKIND), parameter ::              &
+      uns1t0 =  0.824493 ,           &
+      uns1t1 = -4.0899e-3,           &
+      uns1t2 =  7.6438e-5,           &
+      uns1t3 = -8.2467e-7,           &
+      uns1t4 =  5.3875e-9,           &
+      unsqt0 = -5.72466e-3,          &
+      unsqt1 =  1.0227e-4,           &
+      unsqt2 = -1.6546e-6,           &
+      uns2t0 =  4.8314e-4
+
+   !*** from Table A1 of Jackett and McDougall
+
+   real (kind=RKIND), parameter ::              &
+      bup0s0t0 =  1.965933e+4,       &
+      bup0s0t1 =  1.444304e+2,       &
+      bup0s0t2 = -1.706103   ,       &
+      bup0s0t3 =  9.648704e-3,       &
+      bup0s0t4 = -4.190253e-5
+
+   real (kind=RKIND), parameter ::              &
+      bup0s1t0 =  5.284855e+1,       &
+      bup0s1t1 = -3.101089e-1,       &
+      bup0s1t2 =  6.283263e-3,       &
+      bup0s1t3 = -5.084188e-5
+
+   real (kind=RKIND), parameter ::              &
+      bup0sqt0 =  3.886640e-1,       &
+      bup0sqt1 =  9.085835e-3,       &
+      bup0sqt2 = -4.619924e-4
+
+   real (kind=RKIND), parameter ::              &
+      bup1s0t0 =  3.186519   ,       &
+      bup1s0t1 =  2.212276e-2,       &
+      bup1s0t2 = -2.984642e-4,       &
+      bup1s0t3 =  1.956415e-6 
+
+   real (kind=RKIND), parameter ::              &
+      bup1s1t0 =  6.704388e-3,       &
+      bup1s1t1 = -1.847318e-4,       &
+      bup1s1t2 =  2.059331e-7,       &
+      bup1sqt0 =  1.480266e-4 
+
+   real (kind=RKIND), parameter ::              &
+      bup2s0t0 =  2.102898e-4,       &
+      bup2s0t1 = -1.202016e-5,       &
+      bup2s0t2 =  1.394680e-7,       &
+      bup2s1t0 = -2.040237e-6,       &
+      bup2s1t1 =  6.128773e-8,       &
+      bup2s1t2 =  6.207323e-10
+
+      rho         => s % rho % array
+      tracers     => s % tracers % array
+
+      nCells      = grid % nCells
+      maxLevelCell      => grid % maxLevelCell % array
+      nVertLevels = grid % nVertLevels
+      zMidZLevel        => grid % zMidZLevel % array
+
+
+!  Jackett and McDougall
+      tmin = -2.0  ! valid pot. temp. range
+      tmax = 40.0 
+      smin =  0.0  ! valid salinity, in psu   
+      smax = 42.0 
+
+      ! This could be put in a startup routine.
+      ! Note I am using zMidZlevel, so pressure on top level does
+      ! not include SSH contribution.  I am not sure if that matters.
+
+!  This function computes pressure in bars from depth in meters
+!  using a mean density derived from depth-dependent global 
+!  average temperatures and salinities from Levitus 1994, and 
+!  integrating using hydrostatic balance.
+
+      allocate(pRefEOS(nVertLevels))
+      do k = 1,nVertLevels
+        depth = -zMidZLevel(k)
+        pRefEOS(k) = 0.059808*(exp(-0.025*depth) - 1.0) &
+            + 0.100766*depth + 2.28405e-7*depth**2
+      enddo
+
+  do iCell=1,nCells
+    do k=1,maxLevelCell(iCell)
+
+      p   = pRefEOS(k)
+      p2  = pRefEOS(k)*pRefEOS(k)
+
+      SQ  = max(min(tracers(s%index_salinity,k,iCell),smax),smin)
+      TQ  = max(min(tracers(s%index_temperature,k,iCell),tmax),tmin)
+
+      SQR = sqrt(SQ)
+      T2  = TQ*TQ
+
+      !***
+      !*** first calculate surface (p=0) values from UNESCO eqns.
+      !***
+
+      WORK1 = uns1t0 + uns1t1*TQ + & 
+             (uns1t2 + uns1t3*TQ + uns1t4*T2)*T2
+      WORK2 = SQR*(unsqt0 + unsqt1*TQ + unsqt2*T2)
+
+      RHO_S = unt1*TQ + (unt2 + unt3*TQ + (unt4 + unt5*TQ)*T2)*T2 &
+                      + (uns2t0*SQ + WORK1 + WORK2)*SQ
+
+      !***
+      !*** now calculate bulk modulus at pressure p from 
+      !*** Jackett and McDougall formula
+      !***
+
+      WORK3 = bup0s1t0 + bup0s1t1*TQ +                    &
+             (bup0s1t2 + bup0s1t3*TQ)*T2 +                &
+              p *(bup1s1t0 + bup1s1t1*TQ + bup1s1t2*T2) + &
+              p2*(bup2s1t0 + bup2s1t1*TQ + bup2s1t2*T2)
+      WORK4 = SQR*(bup0sqt0 + bup0sqt1*TQ + bup0sqt2*T2 + &
+                   bup1sqt0*p)
+
+      BULK_MOD  = bup0s0t0 + bup0s0t1*TQ +                    &
+                  (bup0s0t2 + bup0s0t3*TQ + bup0s0t4*T2)*T2 + &
+                  p *(bup1s0t0 + bup1s0t1*TQ +                &
+                     (bup1s0t2 + bup1s0t3*TQ)*T2) +           &
+                  p2*(bup2s0t0 + bup2s0t1*TQ + bup2s0t2*T2) + &
+                  SQ*(WORK3 + WORK4)
+
+      DENOMK = 1.0/(BULK_MOD - p)
+
+      rho(k,iCell) = (unt0 + RHO_S)*BULK_MOD*DENOMK
+
+    end do
+  end do
+
+      deallocate(pRefEOS)
+
+   end subroutine equation_of_state_jm
 
 end module time_integration

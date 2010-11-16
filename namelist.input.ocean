@@ -41,6 +41,9 @@
    config_vert_viscosity  = 1.0e-4
    config_vert_diffusion  = 1.0e-4
 /
+&eos
+   config_eos_type = 'linear'
+/
 &advection
    config_vert_tracer_adv = 'upwind'
    config_tracer_adv_order = 2
