@@ -314,20 +314,13 @@ module time_integration
       !
       tend_h(:,:) = 0.0
       do iEdge=1,nEdges
-            cell1 = cellsOnEdge(1,iEdge)
-            cell2 = cellsOnEdge(2,iEdge)
-            if (cell1 <= nCells) then
-               do k=1,nVertLevels
-                  flux = u(k,iEdge) * dvEdge(iEdge) * h_edge(k,iEdge)
-                  tend_h(k,cell1) = tend_h(k,cell1) - flux
-               end do 
-            end if
-            if (cell2 <= nCells) then
-               do k=1,nVertLevels
-                  flux = u(k,iEdge) * dvEdge(iEdge) * h_edge(k,iEdge)
-                  tend_h(k,cell2) = tend_h(k,cell2) + flux
-               end do 
-            end if
+         cell1 = cellsOnEdge(1,iEdge)
+         cell2 = cellsOnEdge(2,iEdge)
+         do k=1,nVertLevels
+            flux = u(k,iEdge) * dvEdge(iEdge) * h_edge(k,iEdge)
+            tend_h(k,cell1) = tend_h(k,cell1) - flux
+            tend_h(k,cell2) = tend_h(k,cell2) + flux
+         end do
       end do 
       do iCell=1,grid % nCellsSolve
          do k=1,nVertLevels
@@ -1092,10 +1085,7 @@ module time_integration
       ! Compute height at vertices, pv at vertices, and average pv to edge locations
       !  ( this computes pv_vertex at all vertices bounding real cells and distance-1 ghost cells )
       !
-      VTX_LOOP: do iVertex = 1,nVertices
-         do i=1,grid % vertexDegree
-            if (cellsOnVertex(i,iVertex) > nCells) cycle VTX_LOOP
-         end do
+      do iVertex = 1,nVertices
          do k=1,nVertLevels
             h_vertex(k,iVertex) = 0.0
             do i=1,grid % vertexDegree
@@ -1105,7 +1095,7 @@ module time_integration
 
             pv_vertex(k,iVertex) = (fVertex(iVertex) + vorticity(k,iVertex)) / h_vertex(k,iVertex)
          end do
-      end do VTX_LOOP
+      end do
 
 
       !

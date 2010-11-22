@@ -1937,10 +1937,7 @@ module time_integration
       ! Compute height at vertices, pv at vertices, and average pv to edge locations
       !  ( this computes pv_vertex at all vertices bounding real cells )
       !
-      VTX_LOOP: do iVertex = 1,nVertices
-         do i=1,grid % vertexDegree
-            if (cellsOnVertex(i,iVertex) > nCells) cycle VTX_LOOP
-         end do
+      do iVertex = 1,nVertices
          do k=1,nVertLevels
             h_vertex = 0.0
             do i=1,grid % vertexDegree
@@ -1950,7 +1947,7 @@ module time_integration
 
             pv_vertex(k,iVertex) = (fVertex(iVertex) + vorticity(k,iVertex)) / h_vertex
          end do
-      end do VTX_LOOP
+      end do
       ! tdr
 
 
