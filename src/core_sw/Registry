@@ -16,9 +16,10 @@ namelist integer   sw_model config_tracer_adv_order     2
 namelist logical   sw_model config_positive_definite    false
 namelist logical   sw_model config_monotonic            false
 namelist real      sw_model config_apvm_upwinding       0.5
-namelist character io       config_input_name        grid.nc
-namelist character io       config_output_name       output.nc
-namelist character io       config_restart_name      restart.nc
+namelist character io       config_input_name          grid.nc
+namelist character io       config_output_name         output.nc
+namelist character io       config_restart_name        restart.nc
+namelist character io       config_decomp_file_prefix  graph.info.part.
 namelist integer   restart  config_restart_interval  0
 namelist logical   restart  config_do_restart        false
 namelist real      restart  config_restart_time      172800.0

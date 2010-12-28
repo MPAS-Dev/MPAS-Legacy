@@ -38,7 +38,7 @@ ftn:
 	"CC = cc" \
 	"SFC = ftn" \
 	"SCC = cc" \
-	"FFLAGS = -i4 -r8 -gopt -O2 -Mvect=nosse -Kieee" \
+	"FFLAGS = -i4 -r8 -gopt -O2 -Mvect=nosse -Kieee -convert big_endian" \
 	"CFLAGS = -fast" \
 	"LDFLAGS = " \
 	"CORE = $(CORE)" \
@@ -50,7 +50,7 @@ pgi:
 	"CC = mpicc" \
 	"SFC = pgf90" \
 	"SCC = pgcc" \
-	"FFLAGS = -r8 -O3" \
+	"FFLAGS = -r8 -O3 -byteswapio" \
 	"CFLAGS = -O3" \
 	"LDFLAGS = -O3" \
 	"CORE = $(CORE)" \
@@ -62,7 +62,7 @@ pgi-llnl:
 	"CC = pgcc" \
 	"SFC = pgf90" \
 	"SCC = pgcc" \
-	"FFLAGS = -i4 -r8 -g -O2" \
+	"FFLAGS = -i4 -r8 -g -O2 -byteswapio" \
 	"CFLAGS = -fast" \
 	"LDFLAGS = " \
 	"CORE = $(CORE)" \
@@ -74,7 +74,7 @@ pgi-serial:
 	"CC = pgcc" \
 	"SFC = pgf90" \
 	"SCC = pgcc" \
-	"FFLAGS = -r8 -O0 -g -Mbounds -Mchkptr" \
+	"FFLAGS = -r8 -O0 -g -Mbounds -Mchkptr -byteswapio" \
 	"CFLAGS = -O0 -g" \
 	"LDFLAGS = -O0 -g -Mbounds -Mchkptr" \
 	"CORE = $(CORE)" \
@@ -86,7 +86,7 @@ ifort:
 	"CC = gcc" \
 	"SFC = ifort" \
 	"SCC = gcc" \
-	"FFLAGS = -real-size 64 -O3" \
+	"FFLAGS = -real-size 64 -O3 -convert big_endian" \
 	"CFLAGS = -O3 -m64" \
 	"LDFLAGS = -O3" \
 	"CORE = $(CORE)" \
@@ -98,7 +98,7 @@ gfortran:
 	"CC = mpicc" \
 	"SFC = gfortran" \
 	"SCC = gcc" \
-	"FFLAGS = -O3 -m64 -ffree-line-length-none -fdefault-real-8" \
+	"FFLAGS = -O3 -m64 -ffree-line-length-none -fdefault-real-8 -fconvert=big-endian" \
 	"CFLAGS = -O3 -m64" \
 	"LDFLAGS = -O3 -m64" \
 	"CORE = $(CORE)" \
@@ -110,7 +110,7 @@ gfortran-serial:
 	"CC = gcc" \
 	"SFC = gfortran" \
 	"SCC = gcc" \
-	"FFLAGS = -O3 -m64 -ffree-line-length-none -fdefault-real-8" \
+	"FFLAGS = -O3 -m64 -ffree-line-length-none -fdefault-real-8 -fconvert=big-endian" \
 	"CFLAGS = -O3 -m64" \
 	"LDFLAGS = -O3 -m64" \
 	"CORE = $(CORE)" \
@@ -122,7 +122,7 @@ g95:
 	"CC = mpicc" \
 	"SFC = g95" \
 	"SCC = gcc" \
-	"FFLAGS = -O3 -ffree-line-length-huge -r8" \
+	"FFLAGS = -O3 -ffree-line-length-huge -r8 -fendian=big" \
 	"CFLAGS = -O3" \
 	"LDFLAGS = -O3" \
 	"CORE = $(CORE)" \
@@ -134,7 +134,7 @@ g95-serial:
 	"CC = gcc" \
 	"SFC = g95" \
 	"SCC = gcc" \
-	"FFLAGS = -O3 -ffree-line-length-huge -r8" \
+	"FFLAGS = -O3 -ffree-line-length-huge -r8 -fendian=big" \
 	"CFLAGS = -O3" \
 	"LDFLAGS = -O3" \
 	"CORE = $(CORE)" \

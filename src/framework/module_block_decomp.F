@@ -18,6 +18,8 @@ module block_decomp
 
    subroutine block_decomp_cells_for_proc(dminfo, partial_global_graph_info, local_cell_list)
 
+      use configure
+
       implicit none
 
       type (dm_info), intent(in) :: dminfo
@@ -41,15 +43,15 @@ module block_decomp
 
             iunit = 50 + dminfo % my_proc_id
             if (dminfo % nprocs < 10) then
-               write(filename,'(a,i1)') 'graph.info.part.', dminfo % nprocs
+               write(filename,'(a,i1)') trim(config_decomp_file_prefix), dminfo % nprocs
             else if (dminfo % nprocs < 100) then
-               write(filename,'(a,i2)') 'graph.info.part.', dminfo % nprocs
+               write(filename,'(a,i2)') trim(config_decomp_file_prefix), dminfo % nprocs
             else if (dminfo % nprocs < 1000) then
-               write(filename,'(a,i3)') 'graph.info.part.', dminfo % nprocs
+               write(filename,'(a,i3)') trim(config_decomp_file_prefix), dminfo % nprocs
             else if (dminfo % nprocs < 10000) then
-               write(filename,'(a,i4)') 'graph.info.part.', dminfo % nprocs
+               write(filename,'(a,i4)') trim(config_decomp_file_prefix), dminfo % nprocs
             else if (dminfo % nprocs < 100000) then
-               write(filename,'(a,i5)') 'graph.info.part.', dminfo % nprocs
+               write(filename,'(a,i5)') trim(config_decomp_file_prefix), dminfo % nprocs
             end if
           
             open(unit=iunit, file=trim(filename), form='formatted', status='old', iostat=istatus)

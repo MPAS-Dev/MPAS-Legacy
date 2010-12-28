@@ -7,9 +7,10 @@ namelist real      sw_model config_dt                172.8
 namelist integer   sw_model config_ntimesteps        7500
 namelist integer   sw_model config_output_interval   500
 namelist integer   sw_model config_stats_interval    100
-namelist character io       config_input_name        grid.nc
-namelist character io       config_output_name       output.nc
-namelist character io       config_restart_name      restart.nc
+namelist character io       config_input_name          grid.nc
+namelist character io       config_output_name         output.nc
+namelist character io       config_restart_name        restart.nc
+namelist character io       config_decomp_file_prefix  graph.info.part.
 namelist integer   restart  config_restart_interval  0
 namelist logical   restart  config_do_restart        false
 namelist real      restart  config_restart_time      172800.0
