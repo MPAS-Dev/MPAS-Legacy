@@ -24,7 +24,6 @@ module mpas_core
       type (block_type), pointer :: block
       type (dm_info) :: dminfo
 
-
       if (.not. config_do_restart) call setup_sw_test_case(domain)
 
       if (config_vert_grid_type.eq.'isopycnal') then
@@ -77,6 +76,7 @@ module mpas_core
       type (block_type), intent(inout) :: block
       type (mesh_type), intent(inout) :: mesh
       real (kind=RKIND), intent(in) :: dt
+      integer :: i
    
    
       call compute_solve_diagnostics(dt, block % state % time_levs(1) % state, mesh)
@@ -85,7 +85,14 @@ module mpas_core
       call init_reconstruct(mesh)
       call reconstruct(block % state % time_levs(1) % state, mesh)
    
-      if (.not. config_do_restart) block % state % time_levs(1) % state % xtime % scalar = 0.0
+      if (.not. config_do_restart) then 
+          block % state % time_levs(1) % state % xtime % scalar = 0.0
+      else
+          do i=2,nTimeLevs
+             call copy_state(block % state % time_levs(i) % state, &
+                             block % state % time_levs(1) % state)
+          end do
+      endif
    
    end subroutine mpas_init_block
    
@@ -123,14 +130,18 @@ module mpas_core
          ! Move time level 2 fields back into time level 1 for next time step
          call shift_time_levels_state(domain % blocklist % state)
    
-         if (mod(itimestep, config_output_interval) == 0) then
-            call write_output_frame(output_obj, output_frame, domain)
-         end if
-         if (mod(itimestep, config_restart_interval) == 0 .and. config_restart_interval > 0) then
-            if (restart_frame == 1) call output_state_init(restart_obj, domain, "RESTART")
-            call output_state_for_domain(restart_obj, domain, restart_frame)
-            restart_frame = restart_frame + 1
-         end if
+         if (config_output_interval > 0) then
+             if (mod(itimestep, config_output_interval) == 0) then
+                 call write_output_frame(output_obj, output_frame, domain)
+             end if
+         endif
+         if (config_restart_interval > 0) then
+             if (mod(itimestep, config_restart_interval) == 0) then
+                 if (restart_frame == 1) call output_state_init(restart_obj, domain, "RESTART")
+                     call output_state_for_domain(restart_obj, domain, restart_frame)
+                     restart_frame = restart_frame + 1
+             end if
+         endif
       end do
 
    end subroutine mpas_core_run
@@ -208,18 +219,20 @@ module mpas_core
    
       call timestep(domain, dt)
    
-      if (mod(itimestep, config_stats_interval) == 0) then
-         block_ptr => domain % blocklist
-         if(associated(block_ptr % next)) then
-            write(0,*) 'Error: computeGlobalDiagnostics assumes ',&
-               'that there is only one block per processor.'
-         end if
+      if (config_stats_interval > 0) then
+          if (mod(itimestep, config_stats_interval) == 0) then
+              block_ptr => domain % blocklist
+              if (associated(block_ptr % next)) then
+                  write(0,*) 'Error: computeGlobalDiagnostics assumes ',&
+                            'that there is only one block per processor.'
+              end if
    
-         call timer_start("global diagnostics")
-         call computeGlobalDiagnostics(domain % dminfo, &
-            block_ptr % state % time_levs(2) % state, block_ptr % mesh, &
-            itimestep, dt)
-         call timer_stop("global diagnostics")
+          call timer_start("global diagnostics")
+          call computeGlobalDiagnostics(domain % dminfo, &
+             block_ptr % state % time_levs(2) % state, block_ptr % mesh, &
+             itimestep, dt)
+          call timer_stop("global diagnostics")
+          end if
       end if
    
    end subroutine mpas_timestep
