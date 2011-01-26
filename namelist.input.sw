@@ -13,6 +13,8 @@
    config_tracer_adv_order = 2
    config_positive_definite = .false.
    config_monotonic = .false.
+   config_wind_stress = .false.
+   config_bottom_drag = .false.
 /
 
 &io

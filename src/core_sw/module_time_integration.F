@@ -269,7 +269,9 @@ module time_integration
       real (kind=RKIND), allocatable, dimension(:,:) :: delsq_u
       real (kind=RKIND), allocatable, dimension(:,:) :: delsq_circulation, delsq_vorticity
 
-
+      real (kind=RKIND), dimension(:,:), pointer :: u_src
+      real (kind=RKIND), parameter :: rho_ref = 1000.0
+      real (kind=RKIND) :: ke_edge
 
       h           => s % h % array
       u           => s % u % array
@@ -308,6 +310,7 @@ module time_integration
       nVertices   = grid % nVertices
       nVertLevels = grid % nVertLevels
 
+      u_src => grid % u_src % array
 
       !
       ! Compute height tendency for each cell
@@ -496,6 +499,28 @@ module time_integration
         deallocate(delsq_vorticity)
 
      end if
+
+     ! Compute u (velocity) tendency from wind stress (u_src)
+     if(config_wind_stress) then
+         do iEdge=1,grid % nEdges
+            tend_u(1,iEdge) =  tend_u(1,iEdge) &
+                  + u_src(1,iEdge)/rho_ref/h_edge(1,iEdge)
+         end do
+     endif
+
+     if (config_bottom_drag) then
+         do iEdge=1,grid % nEdges
+             ! bottom drag is the same as POP:
+             ! -c |u| u  where c is unitless and 1.0e-3.
+             ! see POP Reference guide, section 3.4.4.
+             ke_edge = 0.5 * ( ke(1,cellsOnEdge(1,iEdge)) &
+                   + ke(1,cellsOnEdge(2,iEdge)))
+
+             tend_u(1,iEdge) = tend_u(1,iEdge)  &
+                  - 1.0e-3*u(1,iEdge) &
+                  *sqrt(2.0*ke_edge)/h_edge(1,iEdge)
+         end do
+     endif
 
    end subroutine compute_tend
 

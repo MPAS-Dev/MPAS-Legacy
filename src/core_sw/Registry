@@ -15,6 +15,8 @@ namelist integer   sw_model config_thickness_adv_order  2
 namelist integer   sw_model config_tracer_adv_order     2
 namelist logical   sw_model config_positive_definite    false
 namelist logical   sw_model config_monotonic            false
+namelist logical   sw_model config_wind_stress			false
+namelist logical   sw_model config_bottom_drag			false
 namelist real      sw_model config_apvm_upwinding       0.5
 namelist character io       config_input_name          grid.nc
 namelist character io       config_output_name         output.nc
@@ -112,6 +114,7 @@ var persistent real    coeffs_reconstruct ( R3 maxEdges nCells ) 0 - coeffs_reco
 var persistent integer boundaryEdge ( nVertLevels nEdges ) 0 iro boundaryEdge mesh - -
 var persistent integer boundaryVertex ( nVertLevels nVertices ) 0 iro boundaryVertex mesh - -
 var persistent integer boundaryCell ( nVertLevels nCells ) 0 iro boundaryCell mesh - -
+var persistent real    u_src ( nVertLevels nEdges ) 0 iro u_src mesh - -
 
 # Prognostic variables: read from input, saved in restart, and written to output
 var persistent real    u ( nVertLevels nEdges Time ) 2 iro u state - -
