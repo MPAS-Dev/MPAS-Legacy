@@ -45,7 +45,8 @@
    config_eos_type = 'linear'
 /
 &advection
-   config_vert_tracer_adv = 'upwind'
+   config_vert_tracer_adv = 'spline'
+   config_vert_tracer_adv_order = 3
    config_tracer_adv_order = 2
    config_thickness_adv_order = 2
    config_positive_definite = .false.

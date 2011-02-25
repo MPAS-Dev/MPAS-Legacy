@@ -76,14 +76,36 @@ module mpas_core
       type (block_type), intent(inout) :: block
       type (mesh_type), intent(inout) :: mesh
       real (kind=RKIND), intent(in) :: dt
-      integer :: i
+      integer :: i, iEdge, iCell, k
    
    
       call compute_solve_diagnostics(dt, block % state % time_levs(1) % state, mesh)
-   
+ 
       call rbfInterp_initialize(mesh)
       call init_reconstruct(mesh)
       call reconstruct(block % state % time_levs(1) % state, mesh)
+
+      ! initialize velocities and tracers on land to be -1e34
+      ! The reconstructed velocity on land will have values not exactly
+      ! -1e34 due to the interpolation of reconstruction.
+
+      do iEdge=1,block % mesh % nEdges
+         ! mrp 101115 note: in order to include flux boundary conditions, the following
+         ! line will need to change.  Right now, set boundary edges between land and 
+         ! water to have zero velocity.
+         block % state % time_levs(1) % state % u % array( &
+             block % mesh % maxLevelEdgeTop % array(iEdge)+1 &
+            :block % mesh % maxLevelEdgeBot % array(iEdge), iEdge) = 0.0
+
+         block % state % time_levs(1) % state % u % array( &
+             block % mesh % maxLevelEdgeBot % array(iEdge)+1: &
+             block % mesh % nVertLevels,iEdge) = -1e34
+      end do
+      do iCell=1,block % mesh % nCells
+         block % state % time_levs(1) % state % tracers % array( &
+            :, block % mesh % maxLevelCell % array(iCell)+1 &
+              :block % mesh % nVertLevels,iCell) =  -1e34
+      end do
    
       if (.not. config_do_restart) then 
           block % state % time_levs(1) % state % xtime % scalar = 0.0
@@ -224,7 +246,7 @@ module mpas_core
               block_ptr => domain % blocklist
               if (associated(block_ptr % next)) then
                   write(0,*) 'Error: computeGlobalDiagnostics assumes ',&
-                            'that there is only one block per processor.'
+                     'that there is only one block per processor.'
               end if
    
           call timer_start("global diagnostics")
@@ -253,7 +275,8 @@ subroutine init_ZLevel(domain)
 
    integer :: iTracer, cell
    real (kind=RKIND), dimension(:), pointer :: &
-      hZLevel, zMidZLevel, zTopZLevel
+      hZLevel, zMidZLevel, zTopZLevel, &
+      hMeanTopZLevel, hRatioZLevelK, hRatioZLevelKm1
    real (kind=RKIND), dimension(:,:), pointer :: h
    integer :: nVertLevels
 
@@ -266,6 +289,9 @@ subroutine init_ZLevel(domain)
       zMidZLevel => block % mesh % zMidZLevel % array
       zTopZLevel => block % mesh % zTopZLevel % array
       nVertLevels = block % mesh % nVertLevels
+      hMeanTopZLevel    => block % mesh % hMeanTopZLevel % array
+      hRatioZLevelK    => block % mesh % hRatioZLevelK % array
+      hRatioZLevelKm1    => block % mesh % hRatioZLevelKm1 % array
 
       ! These should eventually be in an input file.  For now
       ! I just read them in from h(:,1).
@@ -279,6 +305,15 @@ subroutine init_ZLevel(domain)
       do k = 1,nVertLevels
          zMidZLevel(k) = zTopZLevel(k)-0.5*hZLevel(k)
          zTopZLevel(k+1) = zTopZLevel(k)-  hZLevel(k)
+      end do
+
+      hMeanTopZLevel(1) = 0.0
+      hRatioZLevelK(1) = 0.0
+      hRatioZLevelKm1(1) = 0.0
+      do k = 2,nVertLevels
+         hMeanTopZLevel(k) = 0.5*(hZLevel(k-1) + hZLevel(k))
+         hRatioZLevelK(k) = 0.5*hZLevel(k)/hMeanTopZLevel(k)
+         hRatioZLevelKm1(k) = 0.5*hZLevel(k-1)/hMeanTopZLevel(k)
       end do
 
       block => block % next

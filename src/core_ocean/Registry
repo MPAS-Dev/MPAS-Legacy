@@ -32,7 +32,8 @@ namelist real      vmix     config_vmixTanhDiffMin   1.0e-5
 namelist real      vmix     config_vmixTanhZMid      -100
 namelist real      vmix     config_vmixTanhZWidth    100
 namelist character eos       config_eos_type         linear
-namelist character advection config_vert_tracer_adv 'centered'
+namelist character advection config_vert_tracer_adv  stencil
+namelist integer   advection config_vert_tracer_adv_order 4
 namelist integer   advection config_tracer_adv_order     2
 namelist integer   advection config_thickness_adv_order  2
 namelist logical   advection config_positive_definite    false
@@ -130,6 +131,9 @@ var persistent integer maxLevelVertexBot ( nVertices ) 0 - maxLevelVertexBot mes
 var persistent real hZLevel ( nVertLevels ) 0 iro hZLevel mesh - -
 var persistent real zMidZLevel ( nVertLevels ) 0 - zMidZLevel mesh - -
 var persistent real zTopZLevel ( nVertLevelsP1 ) 0 - zTopZLevel mesh - -
+var persistent real hMeanTopZLevel ( nVertLevels ) 0 - hMeanTopZLevel mesh - -
+var persistent real hRatioZLevelK ( nVertLevels ) 0 - hRatioZLevelK mesh - -
+var persistent real hRatioZLevelKm1 ( nVertLevels ) 0 - hRatioZLevelKm1 mesh - -
 
 # Boundary conditions: read from input, saved in restart and written to output
 var persistent integer boundaryEdge ( nVertLevels nEdges ) 0 iro boundaryEdge mesh - -

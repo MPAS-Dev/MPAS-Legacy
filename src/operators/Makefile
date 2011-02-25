@@ -1,6 +1,6 @@
 .SUFFIXES: .F .o
 
-OBJS = module_RBF_interpolation.o module_vector_reconstruction.o
+OBJS = module_RBF_interpolation.o module_vector_reconstruction.o module_spline_interpolation.o
 
 all: operators
 
@@ -9,6 +9,7 @@ operators: $(OBJS)
 
 module_vector_reconstruction.o: module_RBF_interpolation.o
 module_RBF_interpolation.o:
+module_spline_interpolation:
 
 clean:
 	$(RM) *.o *.mod *.f90 libops.a

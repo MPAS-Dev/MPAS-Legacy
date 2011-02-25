@@ -5,6 +5,7 @@ module time_integration
    use constants
    use dmpar
    use vector_reconstruction
+   use spline_interpolation
 
    contains
 
@@ -71,7 +72,7 @@ module time_integration
       type (block_type), pointer :: block
       type (state_type) :: provis
 
-      integer :: rk_step
+      integer :: rk_step, iEdge
 
       real (kind=RKIND), dimension(4) :: rk_weights, rk_substep_weights
 
@@ -265,7 +266,7 @@ module time_integration
       type (mesh_type), intent(in) :: grid
 
       integer :: iEdge, iCell, iVertex, k, cell1, cell2, &
-        vertex1, vertex2, eoe, i, j, kmax
+        vertex1, vertex2, eoe, i, j
 
       integer :: nCells, nEdges, nVertices, nVertLevels, nEdgesSolve
       real (kind=RKIND) :: flux, vorticity_abs, h_vertex, workpv, q, &
@@ -357,26 +358,38 @@ module time_integration
       ! for z-level, only compute height tendency for top layer.
 
       if (config_vert_grid_type.eq.'isopycnal') then
-        kmax = nVertLevels
-      elseif (config_vert_grid_type.eq.'zlevel') then
-        kmax = 1
-      endif
  
-      do iEdge=1,nEdges
-         cell1 = cellsOnEdge(1,iEdge)
-         cell2 = cellsOnEdge(2,iEdge)
-         do k=1,kmax
-            flux = u(k,iEdge) * dvEdge(iEdge) * h_edge(k,iEdge)
-            tend_h(k,cell1) = tend_h(k,cell1) - flux
-            tend_h(k,cell2) = tend_h(k,cell2) + flux
+         do iEdge=1,nEdges
+            cell1 = cellsOnEdge(1,iEdge)
+            cell2 = cellsOnEdge(2,iEdge)
+            do k=1,nVertLevels
+               flux = u(k,iEdge) * dvEdge(iEdge) * h_edge(k,iEdge)
+               tend_h(k,cell1) = tend_h(k,cell1) - flux
+               tend_h(k,cell2) = tend_h(k,cell2) + flux
+            end do
          end do
-      end do
+         do iCell=1,nCells
+            do k=1,nVertLevels
+               tend_h(k,iCell) = tend_h(k,iCell) / areaCell(iCell)
+            end do
+         end do
 
-      do iCell=1,nCells
-         do k=1,kmax
-            tend_h(k,iCell) = tend_h(k,iCell) / areaCell(iCell)
+      elseif (config_vert_grid_type.eq.'zlevel') then
+
+         do iEdge=1,nEdges
+            cell1 = cellsOnEdge(1,iEdge)
+            cell2 = cellsOnEdge(2,iEdge)
+            do k=1,min(1,maxLevelEdgeTop(iEdge))
+               flux = u(k,iEdge) * dvEdge(iEdge) * h_edge(k,iEdge)
+               tend_h(k,cell1) = tend_h(k,cell1) - flux
+               tend_h(k,cell2) = tend_h(k,cell2) + flux
+            end do
          end do
-      end do
+         do iCell=1,nCells
+            tend_h(1,iCell) = tend_h(1,iCell) / areaCell(iCell)
+         end do
+
+      endif ! config_vert_grid_type
 
       !
       ! height tendency: vertical advection term -d/dz(hw)
@@ -599,10 +612,6 @@ module time_integration
 
       do iEdge=1,grid % nEdgesSolve
 
-        ! forcing in top layer only
-        tend_u(1,iEdge) =  tend_u(1,iEdge) &
-           + u_src(1,iEdge)/rho_ref/h_edge(1,iEdge)
-
         k = maxLevelEdgeTop(iEdge)
 
         ! efficiency note: it would be nice to avoid this
@@ -612,18 +621,17 @@ module time_integration
 
         if (k>0) then
 
-         ! bottom drag is the same as POP:
-         ! -c |u| u  where c is unitless and 1.0e-3.
-         ! see POP Reference guide, section 3.4.4.
+           ! forcing in top layer only
+           tend_u(1,iEdge) =  tend_u(1,iEdge) &
+              + u_src(1,iEdge)/rho_ref/h_edge(1,iEdge)
 
-         tend_u(k,iEdge) = tend_u(k,iEdge)  &
-           - 1.0e-3*u(k,iEdge) &
-             *sqrt(2.0*ke_edge(k,iEdge))/h_edge(k,iEdge)
+           ! bottom drag is the same as POP:
+           ! -c |u| u  where c is unitless and 1.0e-3.
+           ! see POP Reference guide, section 3.4.4.
 
-         ! old bottom drag, just linear friction
-         ! du/dt = u/tau where tau=100 days.
-         !tend_u(k,iEdge) = tend_u(k,iEdge)  &
-         !  - u(k,iEdge)/(100.0*86400.0)
+           tend_u(k,iEdge) = tend_u(k,iEdge)  &
+             - 1.0e-3*u(k,iEdge) &
+               *sqrt(2.0*ke_edge(k,iEdge))/h_edge(k,iEdge)
 
         endif
 
@@ -692,7 +700,7 @@ module time_integration
       type (mesh_type), intent(in) :: grid
 
       integer :: i, k, iCell, iEdge, iTracer, cell1, cell2, upwindCell,&
-        nEdges, nCells, nVertLevels, num_tracers
+        nEdges, nCells, nCellsSolve, nVertLevels, num_tracers
       real (kind=RKIND) :: invAreaCell1, invAreaCell2, tracer_turb_flux
       real (kind=RKIND) :: flux, tracer_edge, r
       real (kind=RKIND), dimension(:), pointer :: &
@@ -707,16 +715,17 @@ module time_integration
       integer, dimension(:), pointer :: nEdgesOnCell, nEdgesOnEdge, &
         maxLevelCell, maxLevelEdgeTop, maxLevelVertexBot
       integer, dimension(:,:), pointer :: cellsOnEdge, boundaryCell
-      real (kind=RKIND), dimension(:), pointer :: zTopZLevel
-      real (kind=RKIND), dimension(:,:), allocatable:: fluxVertTop, tracerTop, boundaryMask
-      real (kind=RKIND), dimension(:,:,:), allocatable::tr_flux, tr_div, delsq_tracer
+      real (kind=RKIND), dimension(:), pointer :: zTopZLevel,zMidZLevel, &
+         hRatioZLevelK, hRatioZLevelKm1
+      real (kind=RKIND), dimension(:), allocatable:: vertDiffTop, tracer2ndDer, tracersIn, tracersOut, posZMidZLevel, &
+            posZTopZLevel
+      real (kind=RKIND), dimension(:,:), allocatable:: fluxVertTop, boundaryMask
+      real (kind=RKIND), dimension(:,:,:), allocatable::tr_flux, tr_div, delsq_tracer, tracerTop
 
-      real (kind=RKIND), dimension(:), allocatable:: vertDiffTop
 
       real (kind=RKIND) :: d2fdx2_cell1, d2fdx2_cell2
       real (kind=RKIND), dimension(:,:,:), pointer :: deriv_two
-      real (kind=RKIND) :: coef_3rd_order
-
+      real (kind=RKIND) :: coef_3rd_order, flux3Coef, cSignWTop
 
       u           => s % u % array
       h           => s % h % array
@@ -732,6 +741,9 @@ module time_integration
       dvEdge            => grid % dvEdge % array
       dcEdge            => grid % dcEdge % array
       zTopZLevel        => grid % zTopZLevel % array
+      zMidZLevel        => grid % zMidZLevel % array
+      hRatioZLevelK    => grid % hRatioZLevelK % array
+      hRatioZLevelKm1    => grid % hRatioZLevelKm1 % array
       boundaryEdge      => grid % boundaryEdge % array
       maxLevelCell      => grid % maxLevelCell % array
       maxLevelEdgeTop      => grid % maxLevelEdgeTop % array
@@ -739,6 +751,7 @@ module time_integration
 
       nEdges      = grid % nEdges
       nCells      = grid % nCells
+      nCellsSolve = grid % nCellsSolve
       nVertLevels = grid % nVertLevels
       num_tracers = s % num_tracers
 
@@ -880,43 +893,182 @@ module time_integration
       !
       ! tracer tendency: vertical advection term -d/dz( h \phi w)
       !
-      allocate(tracerTop(num_tracers,nVertLevels+1))
-      tracerTop(:,1)=0.0
-      do iCell=1,grid % nCellsSolve 
 
-         if (config_vert_tracer_adv.eq.'centered') then
-           do k=2,maxLevelCell(iCell)
-             do iTracer=1,num_tracers
-               tracerTop(iTracer,k) = ( tracers(iTracer,k-1,iCell) &
-                                       +tracers(iTracer,k  ,iCell))/2.0
-             end do
-           end do
-         
-         elseif (config_vert_tracer_adv.eq.'upwind') then
-           do k=2,maxLevelCell(iCell)
-             if (wTop(k,iCell)>0.0) then
-               upwindCell = k
-             else
-               upwindCell = k-1
-             endif
-             do iTracer=1,num_tracers
-               tracerTop(iTracer,k) = tracers(iTracer,upwindCell,iCell)
-             end do
-           end do
+      if (config_vert_grid_type.eq.'zlevel') then
 
-         endif
-         tracerTop(:,maxLevelCell(iCell)+1)=0.0
+         allocate(tracerTop(num_tracers,nVertLevels+1,nCells))
 
-         do k=1,maxLevelCell(iCell)  
+         ! Tracers at the top and bottom boundary are assigned nearest 
+         ! cell-centered value, regardless of tracer interpolation method.
+         ! wTop=0 at top and bottom sets the boundary condition.
+         do iCell=1,nCellsSolve 
             do iTracer=1,num_tracers
-               tend_tr(iTracer,k,iCell) = tend_tr(iTracer,k,iCell) &
-                  - (   wTop(k  ,iCell)*tracerTop(iTracer,k  ) &
-                      - wTop(k+1,iCell)*tracerTop(iTracer,k+1))
+               tracerTop(iTracer,1,iCell) = tracers(iTracer,1,iCell)
+               tracerTop(iTracer,maxLevelCell(iCell)+1,iCell) = &
+               tracers(iTracer,maxLevelCell(iCell),iCell)
             end do
          end do
 
-      enddo ! iCell
-      deallocate(tracerTop)
+         if (config_vert_tracer_adv.eq.'stencil'.and. &
+             config_vert_tracer_adv_order.eq.2) then
+
+            ! Compute tracerTop using centered stencil, a simple average.
+
+            do iCell=1,nCellsSolve 
+               do k=2,maxLevelCell(iCell)
+                  do iTracer=1,num_tracers
+                     tracerTop(iTracer,k,iCell) = &
+                        ( tracers(iTracer,k-1,iCell) &
+                         +tracers(iTracer,k  ,iCell))/2.0
+                  end do
+               end do
+            end do
+         
+         elseif (config_vert_tracer_adv.eq.'stencil'.and. &
+             config_vert_tracer_adv_order.eq.3) then
+
+            ! Compute tracerTop using 3rd order stencil.  This is the same
+            ! as 4th order, but includes upwinding.
+
+            ! Hardwire flux3Coeff at 1.0 for now.  Could add this to the 
+            ! namelist, if desired.
+            flux3Coef = 1.0
+            do iCell=1,nCellsSolve 
+               k=2
+               do iTracer=1,num_tracers
+                 tracerTop(iTracer,k,iCell) = &
+                      hRatioZLevelK(k)  *tracers(iTracer,k-1,iCell) &
+                    + hRatioZLevelKm1(k)*tracers(iTracer,k  ,iCell)
+               end do
+               do k=3,maxLevelCell(iCell)-1
+                  cSignWTop = sign(flux3Coef,wTop(k,iCell))
+                  do iTracer=1,num_tracers
+                     tracerTop(iTracer,k,iCell) = &
+                        ( (-1.+   cSignWTop)*tracers(iTracer,k-2,iCell) &
+                         +( 7.-3.*cSignWTop)*tracers(iTracer,k-1,iCell) &
+                         +( 7.+3.*cSignWTop)*tracers(iTracer,k  ,iCell) &
+                         +(-1.-   cSignWTop)*tracers(iTracer,k+1,iCell) &
+                        )/12.
+                  end do
+               end do
+               k=maxLevelCell(iCell)
+                  do iTracer=1,num_tracers
+                    tracerTop(iTracer,k,iCell) = &
+                         hRatioZLevelK(k)  *tracers(iTracer,k-1,iCell) &
+                       + hRatioZLevelKm1(k)*tracers(iTracer,k  ,iCell)
+                  end do
+            end do
+
+         elseif (config_vert_tracer_adv.eq.'stencil'.and. &
+             config_vert_tracer_adv_order.eq.4) then
+
+            ! Compute tracerTop using 4rd order stencil [-1 7 7 -1]
+
+            do iCell=1,nCellsSolve 
+               k=2
+                  do iTracer=1,num_tracers
+                    tracerTop(iTracer,k,iCell) = &
+                         hRatioZLevelK(k)  *tracers(iTracer,k-1,iCell) &
+                       + hRatioZLevelKm1(k)*tracers(iTracer,k  ,iCell)
+                  end do
+               do k=3,maxLevelCell(iCell)-1
+                  do iTracer=1,num_tracers
+                     tracerTop(iTracer,k,iCell) = &
+                        (-   tracers(iTracer,k-2,iCell) &
+                         +7.*tracers(iTracer,k-1,iCell) &
+                         +7.*tracers(iTracer,k  ,iCell) &
+                         -   tracers(iTracer,k+1,iCell) &
+                        )/12.
+                  end do
+               end do
+               k=maxLevelCell(iCell)
+                  do iTracer=1,num_tracers
+                    tracerTop(iTracer,k,iCell) = &
+                         hRatioZLevelK(k)  *tracers(iTracer,k-1,iCell) &
+                       + hRatioZLevelKm1(k)*tracers(iTracer,k  ,iCell)
+                  end do
+            end do
+
+         elseif (config_vert_tracer_adv.eq.'spline'.and. &
+             config_vert_tracer_adv_order.eq.2) then
+
+            ! Compute tracerTop using linear interpolation.
+
+            do iCell=1,nCellsSolve 
+               do k=2,maxLevelCell(iCell)
+                  do iTracer=1,num_tracers
+                     ! Note hRatio on the k side is multiplied by tracer at k-1
+                     ! and hRatio on the Km1 (k-1) side is mult. by tracer at k.
+                     tracerTop(iTracer,k,iCell) = &
+                          hRatioZLevelK(k)  *tracers(iTracer,k-1,iCell) &
+                        + hRatioZLevelKm1(k)*tracers(iTracer,k  ,iCell)
+                  end do
+               end do
+            end do
+         
+         elseif (config_vert_tracer_adv.eq.'spline'.and. &
+             config_vert_tracer_adv_order.eq.3) then
+
+            ! Compute tracerTop using cubic spline interpolation.
+
+            allocate(tracer2ndDer(nVertLevels))
+            allocate(tracersIn(nVertLevels),tracersOut(nVertLevels), &
+               posZMidZLevel(nVertLevels), posZTopZLevel(nVertLevels-1))
+
+            ! For the ocean, zlevel coordinates are negative and decreasing, 
+            ! but spline functions assume increasing, so flip to positive.
+
+            posZMidZLevel = -zMidZLevel(1:nVertLevels)
+            posZTopZLevel = -zTopZLevel(2:nVertLevels)
+
+            do iCell=1,nCellsSolve 
+               ! mrp 110201 efficiency note: push tracer loop down
+               ! into spline subroutines to improve efficiency
+               do iTracer=1,num_tracers
+
+                  ! Place data in arrays to avoid creating new temporary arrays for every 
+                  ! subroutine call.  
+                  tracersIn(1:maxLevelCell(iCell))=tracers(iTracer,1:maxLevelCell(iCell),iCell)
+
+                  call CubicSplineCoefficients(posZMidZLevel, &
+                     tracersIn, maxLevelCell(iCell), tracer2ndDer)
+
+                  call InterpolateCubicSpline( &
+                     posZMidZLevel, tracersIn, tracer2ndDer, maxLevelCell(iCell), &
+                     posZTopZLevel, tracersOut, maxLevelCell(iCell)-1 )
+
+                  tracerTop(iTracer,2:maxLevelCell(iCell),iCell) = tracersOut(1:maxLevelCell(iCell)-1)
+
+               end do
+            end do
+
+            deallocate(tracer2ndDer)
+            deallocate(tracersIn,tracersOut, posZMidZLevel, posZTopZLevel)
+
+        else
+
+            print *, 'Abort: Incorrect combination of ', &
+              'config_vert_tracer_adv and config_vert_tracer_adv_order.'
+            print *, 'Use:'
+            print *, 'config_vert_tracer_adv=''stencil'' and config_vert_tracer_adv_order=2,3,4 or'
+            print *, 'config_vert_tracer_adv=''spline''  and config_vert_tracer_adv_order=2,3'
+            call dmpar_abort(dminfo)
+
+         endif ! vertical tracer advection method
+
+         do iCell=1,nCellsSolve 
+            do k=1,maxLevelCell(iCell)  
+               do iTracer=1,num_tracers
+                  tend_tr(iTracer,k,iCell) = tend_tr(iTracer,k,iCell) &
+                     - (   wTop(k  ,iCell)*tracerTop(iTracer,k  ,iCell) &
+                         - wTop(k+1,iCell)*tracerTop(iTracer,k+1,iCell))
+               end do
+            end do
+         end do
+
+         deallocate(tracerTop)
+
+      endif ! ZLevel
 
       !
       ! tracer tendency: del2 horizontal tracer diffusion, div(h \kappa_2 \nabla \phi)
@@ -1056,7 +1208,7 @@ module time_integration
 
       allocate(fluxVertTop(num_tracers,nVertLevels+1))
       fluxVertTop(:,1) = 0.0
-      do iCell=1,grid % nCellsSolve 
+      do iCell=1,nCellsSolve 
 
          do k=2,maxLevelCell(iCell)
            do iTracer=1,num_tracers
@@ -1354,17 +1506,19 @@ module time_integration
       ! Compute kinetic energy in each cell
       !
       ke(:,:) = 0.0
-      do iCell=1,nCells
-         do i=1,nEdgesOnCell(iCell)
-            iEdge = edgesOnCell(i,iCell)
-            do k=1,maxLevelCell(iCell)
-               ke(k,iCell) = ke(k,iCell) + 0.25 * dcEdge(iEdge) * dvEdge(iEdge) * u(k,iEdge)**2.0
-            end do
-         end do
-         do k=1,maxLevelCell(iCell)
-            ke(k,iCell) = ke(k,iCell) / areaCell(iCell)
-         end do
+      do iEdge=1,nEdges
+         cell1 = cellsOnEdge(1,iEdge)
+         cell2 = cellsOnEdge(2,iEdge)
+         do k=1,maxLevelEdgeBot(iEdge)
+              ke(k,cell1) = ke(k,cell1) + 0.25 * dcEdge(iEdge) * dvEdge(iEdge) * u(k,iEdge)**2.0
+              ke(k,cell2) = ke(k,cell2) + 0.25 * dcEdge(iEdge) * dvEdge(iEdge) * u(k,iEdge)**2.0
+         enddo
       end do
+      do iCell = 1,nCells
+         do k = 1,maxLevelCell(iCell)
+            ke(k,iCell) = ke(k,iCell) / areaCell(iCell)
+         enddo
+      enddo
 
       !
       ! Compute v (tangential) velocities
@@ -1373,7 +1527,9 @@ module time_integration
       do iEdge = 1,nEdges
          do i=1,nEdgesOnEdge(iEdge)
             eoe = edgesOnEdge(i,iEdge)
-            do k = 1,maxLevelEdgeBot(iEdge)
+            ! mrp 101115 note: in order to include flux boundary conditions,
+            ! the following loop may need to change to maxLevelEdgeBot
+            do k = 1,maxLevelEdgeTop(iEdge) 
                v(k,iEdge) = v(k,iEdge) + weightsOnEdge(i,iEdge) * u(k, eoe)
             end do
          end do
@@ -1539,7 +1695,7 @@ module time_integration
       endif
 
       !
-      ! vertical velocity
+      ! vertical velocity through layer interface
       !
       if (config_vert_grid_type.eq.'isopycnal') then
         ! set vertical velocity to zero in isopycnal case
@@ -1556,7 +1712,7 @@ module time_integration
         do iEdge=1,nEdges
            cell1 = cellsOnEdge(1,iEdge)
            cell2 = cellsOnEdge(2,iEdge)
-           do k=1,maxLevelEdgeBot(iEdge)
+           do k=2,maxLevelEdgeBot(iEdge)
               flux = u(k,iEdge) * dvEdge(iEdge) 
               div_u(k,cell1) = div_u(k,cell1) + flux
               div_u(k,cell2) = div_u(k,cell2) - flux
@@ -1564,16 +1720,14 @@ module time_integration
         end do 
 
         do iCell=1,nCells
-           do k=1,maxLevelCell(iCell)
-              div_u(k,iCell) = div_u(k,iCell) / areaCell(iCell)
-           end do
-
-           ! Vertical velocity at bottom is zero.
+           ! Vertical velocity through layer interface at top and 
+           ! bottom is zero.
+           wTop(1,iCell) = 0.0
            wTop(maxLevelCell(iCell)+1,iCell) = 0.0
-           do k=maxLevelCell(iCell),1,-1
-              wTop(k,iCell) = wTop(k+1,iCell) - div_u(k,iCell)*h(k,iCell)
+           do k=maxLevelCell(iCell),2,-1
+              wTop(k,iCell) = wTop(k+1,iCell) &
+                 - div_u(k,iCell)/areaCell(iCell)*h(k,iCell)
            end do
-
         end do
         deallocate(div_u)
 
