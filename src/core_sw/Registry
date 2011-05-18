@@ -7,6 +7,7 @@ namelist real      sw_model config_dt                172.8
 namelist integer   sw_model config_ntimesteps        7500
 namelist integer   sw_model config_output_interval   500
 namelist integer   sw_model config_stats_interval    100
+namelist logical   sw_model config_h_ScaleWithMesh     false
 namelist real      sw_model config_h_mom_eddy_visc2  0.0
 namelist real      sw_model config_h_mom_eddy_visc4  0.0
 namelist real      sw_model config_h_tracer_eddy_diff2    0.0
@@ -52,6 +53,7 @@ var persistent real    lonCell ( nCells ) 0 iro lonCell mesh - -
 var persistent real    xCell ( nCells ) 0 iro xCell mesh - -
 var persistent real    yCell ( nCells ) 0 iro yCell mesh - -
 var persistent real    zCell ( nCells ) 0 iro zCell mesh - -
+var persistent real    meshDensity ( nCells ) 0 iro meshDensity mesh - -
 var persistent integer indexToCellID ( nCells ) 0 iro indexToCellID mesh - -
 
 var persistent real    latEdge ( nEdges ) 0 iro latEdge mesh - -

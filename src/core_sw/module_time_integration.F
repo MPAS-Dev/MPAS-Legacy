@@ -258,7 +258,7 @@ module time_integration
       real (kind=RKIND) :: flux, vorticity_abs, workpv, q, upstream_bias
 
       integer :: nCells, nEdges, nVertices, nVertLevels
-      real (kind=RKIND), dimension(:), pointer :: h_s, fVertex, fEdge, dvEdge, dcEdge, areaCell, areaTriangle
+      real (kind=RKIND), dimension(:), pointer :: h_s, fVertex, fEdge, dvEdge, dcEdge, areaCell, areaTriangle, meshDensity
       real (kind=RKIND), dimension(:,:), pointer :: vh, weightsOnEdge, kiteAreasOnVertex, h_edge, h, u, v, tend_h, tend_u, &
                                                     circulation, vorticity, ke, pv_edge, divergence, h_vertex
       integer, dimension(:,:), pointer :: cellsOnEdge, cellsOnVertex, verticesOnEdge, edgesOnCell, edgesOnEdge, edgesOnVertex
@@ -272,6 +272,8 @@ module time_integration
       real (kind=RKIND), dimension(:,:), pointer :: u_src
       real (kind=RKIND), parameter :: rho_ref = 1000.0
       real (kind=RKIND) :: ke_edge
+
+      real (kind=RKIND), allocatable, dimension(:) :: meshScalingDel2, meshScalingDel4
 
       h           => s % h % array
       u           => s % u % array
@@ -311,6 +313,24 @@ module time_integration
       nVertLevels = grid % nVertLevels
 
       u_src => grid % u_src % array
+
+      meshDensity => grid % meshDensity % array
+
+      !
+      ! Compute the scaling factors to be used in the del2 and del4 dissipation
+      !
+      allocate(meshScalingDel2(nEdges))
+      allocate(meshScalingDel4(nEdges))
+      meshScalingDel2(:) = 1.0
+      meshScalingDel4(:) = 1.0
+      if(config_h_ScaleWithMesh) then
+      do iEdge=1,nEdges
+         cell1 = cellsOnEdge(1,iEdge)
+         cell2 = cellsOnEdge(2,iEdge)
+         meshScalingDel2(iEdge) = ( (meshDensity(cell1) + meshDensity(cell2) )/2.0)**(5.0/12.0)
+         meshScalingDel4(iEdge) = (meshScalingDel2(iEdge))**2
+      enddo
+      endif
 
       !
       ! Compute height tendency for each cell
@@ -399,7 +419,7 @@ module time_integration
            do k=1,nVertLevels
               u_diffusion =   ( divergence(k,cell2)  -  divergence(k,cell1) ) / dcEdge(iEdge) &
                    -(vorticity(k,vertex2)  - vorticity(k,vertex1) ) / dvEdge(iEdge)
-              u_diffusion = config_h_mom_eddy_visc2 * u_diffusion
+              u_diffusion = meshScalingDel2(iEdge) * config_h_mom_eddy_visc2 * u_diffusion
               tend_u(k,iEdge) = tend_u(k,iEdge) + u_diffusion
            end do
         end do
@@ -487,7 +507,7 @@ module time_integration
                    -(  delsq_vorticity(k,vertex2) &
                    - delsq_vorticity(k,vertex1) ) / dvEdge(iEdge)
 
-              u_diffusion = config_h_mom_eddy_visc4 * u_diffusion
+              u_diffusion = meshScalingDel4(iEdge) * config_h_mom_eddy_visc4 * u_diffusion
               tend_u(k,iEdge) = tend_u(k,iEdge) - u_diffusion
 
            end do
@@ -521,6 +541,9 @@ module time_integration
                   *sqrt(2.0*ke_edge)/h_edge(1,iEdge)
          end do
      endif
+ 
+     deallocate(meshScalingDel2)
+     deallocate(meshScalingDel4)
 
    end subroutine compute_tend
 

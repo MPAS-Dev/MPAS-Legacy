@@ -5,6 +5,7 @@
    config_ntimesteps = 7500
    config_output_interval = 500
    config_stats_interval = 0
+   config_h_ScaleWithMesh = .false.
    config_h_mom_eddy_visc2  = 0.0
    config_h_mom_eddy_visc4  = 0.0
    config_h_tracer_eddy_diff2  = 0.0
