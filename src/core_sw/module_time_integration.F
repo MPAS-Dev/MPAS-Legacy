@@ -328,7 +328,7 @@ module time_integration
          cell1 = cellsOnEdge(1,iEdge)
          cell2 = cellsOnEdge(2,iEdge)
          meshScalingDel2(iEdge) = 1.0 / ( (meshDensity(cell1) + meshDensity(cell2) )/2.0)**(5.0/12.0)
-         meshScalingDel4(iEdge) = 1.0 / (meshScalingDel2(iEdge))**2
+         meshScalingDel4(iEdge) = 1.0 / ( (meshDensity(cell1) + meshDensity(cell2) )/2.0)**(5.0/6.0)
       enddo
       endif
 
