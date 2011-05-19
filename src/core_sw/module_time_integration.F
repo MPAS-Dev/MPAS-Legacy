@@ -258,7 +258,8 @@ module time_integration
       real (kind=RKIND) :: flux, vorticity_abs, workpv, q, upstream_bias
 
       integer :: nCells, nEdges, nVertices, nVertLevels
-      real (kind=RKIND), dimension(:), pointer :: h_s, fVertex, fEdge, dvEdge, dcEdge, areaCell, areaTriangle, meshDensity
+      real (kind=RKIND), dimension(:), pointer :: h_s, fVertex, fEdge, dvEdge, dcEdge, areaCell, areaTriangle, &
+                                                  meshScalingDel2, meshScalingDel4
       real (kind=RKIND), dimension(:,:), pointer :: vh, weightsOnEdge, kiteAreasOnVertex, h_edge, h, u, v, tend_h, tend_u, &
                                                     circulation, vorticity, ke, pv_edge, divergence, h_vertex
       integer, dimension(:,:), pointer :: cellsOnEdge, cellsOnVertex, verticesOnEdge, edgesOnCell, edgesOnEdge, edgesOnVertex
@@ -273,7 +274,6 @@ module time_integration
       real (kind=RKIND), parameter :: rho_ref = 1000.0
       real (kind=RKIND) :: ke_edge
 
-      real (kind=RKIND), allocatable, dimension(:) :: meshScalingDel2, meshScalingDel4
 
       h           => s % h % array
       u           => s % u % array
@@ -314,23 +314,9 @@ module time_integration
 
       u_src => grid % u_src % array
 
-      meshDensity => grid % meshDensity % array
+      meshScalingDel2 => grid % meshScalingDel2 % array
+      meshScalingDel4 => grid % meshScalingDel4 % array
 
-      !
-      ! Compute the scaling factors to be used in the del2 and del4 dissipation
-      !
-      allocate(meshScalingDel2(nEdges))
-      allocate(meshScalingDel4(nEdges))
-      meshScalingDel2(:) = 1.0
-      meshScalingDel4(:) = 1.0
-      if(config_h_ScaleWithMesh) then
-      do iEdge=1,nEdges
-         cell1 = cellsOnEdge(1,iEdge)
-         cell2 = cellsOnEdge(2,iEdge)
-         meshScalingDel2(iEdge) = 1.0 / ( (meshDensity(cell1) + meshDensity(cell2) )/2.0)**(5.0/12.0)
-         meshScalingDel4(iEdge) = 1.0 / ( (meshDensity(cell1) + meshDensity(cell2) )/2.0)**(5.0/6.0)
-      enddo
-      endif
 
       !
       ! Compute height tendency for each cell
@@ -542,9 +528,6 @@ module time_integration
          end do
      endif
  
-     deallocate(meshScalingDel2)
-     deallocate(meshScalingDel4)
-
    end subroutine compute_tend
 
 

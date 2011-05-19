@@ -55,7 +55,8 @@ module mpas_core
    
    
       call compute_solve_diagnostics(dt, block % state % time_levs(1) % state, mesh)
-   
+      call compute_mesh_scaling(mesh) 
+
       call rbfInterp_initialize(mesh)
       call init_reconstruct(mesh)
       call reconstruct(block % state % time_levs(1) % state, mesh)
@@ -213,5 +214,37 @@ module mpas_core
       if (restart_frame > 1) call output_state_finalize(restart_obj, domain % dminfo)
    
    end subroutine mpas_core_finalize
+
+
+   subroutine compute_mesh_scaling(mesh)
+
+      use grid_types
+
+      implicit none
+
+      type (mesh_type), intent(inout) :: mesh
+
+      integer :: iEdge, cell1, cell2
+      real (kind=RKIND), dimension(:), pointer :: meshDensity, meshScalingDel2, meshScalingDel4
+
+      meshDensity => mesh % meshDensity % array
+      meshScalingDel2 => mesh % meshScalingDel2 % array
+      meshScalingDel4 => mesh % meshScalingDel4 % array
+
+      !
+      ! Compute the scaling factors to be used in the del2 and del4 dissipation
+      !
+      meshScalingDel2(:) = 1.0
+      meshScalingDel4(:) = 1.0
+      if (config_h_ScaleWithMesh) then
+         do iEdge=1,mesh%nEdges
+            cell1 = mesh % cellsOnEdge % array(1,iEdge)
+            cell2 = mesh % cellsOnEdge % array(2,iEdge)
+            meshScalingDel2(iEdge) = 1.0 / ( (meshDensity(cell1) + meshDensity(cell2) )/2.0)**(5.0/12.0)
+            meshScalingDel4(iEdge) = 1.0 / ( (meshDensity(cell1) + meshDensity(cell2) )/2.0)**(5.0/6.0)
+         end do
+      end if
+
+   end subroutine compute_mesh_scaling
 
 end module mpas_core

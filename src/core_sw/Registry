@@ -53,7 +53,6 @@ var persistent real    lonCell ( nCells ) 0 iro lonCell mesh - -
 var persistent real    xCell ( nCells ) 0 iro xCell mesh - -
 var persistent real    yCell ( nCells ) 0 iro yCell mesh - -
 var persistent real    zCell ( nCells ) 0 iro zCell mesh - -
-var persistent real    meshDensity ( nCells ) 0 iro meshDensity mesh - -
 var persistent integer indexToCellID ( nCells ) 0 iro indexToCellID mesh - -
 
 var persistent real    latEdge ( nEdges ) 0 iro latEdge mesh - -
@@ -69,6 +68,10 @@ var persistent real    xVertex ( nVertices ) 0 iro xVertex mesh - -
 var persistent real    yVertex ( nVertices ) 0 iro yVertex mesh - -
 var persistent real    zVertex ( nVertices ) 0 iro zVertex mesh - -
 var persistent integer indexToVertexID ( nVertices ) 0 iro indexToVertexID mesh - -
+
+var persistent real    meshDensity ( nCells ) 0 iro meshDensity mesh - -
+var persistent real    meshScalingDel2 ( nEdges ) 0 ro meshScalingDel2 mesh - -
+var persistent real    meshScalingDel4 ( nEdges ) 0 ro meshScalingDel4 mesh - -
 
 var persistent integer cellsOnEdge ( TWO nEdges ) 0 iro cellsOnEdge mesh - -
 var persistent integer nEdgesOnCell ( nCells ) 0 iro nEdgesOnCell mesh - -
