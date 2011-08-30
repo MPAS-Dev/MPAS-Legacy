@@ -2,8 +2,8 @@
    config_test_case = 2
    config_time_integration = 'SRK3'
    config_dt = 3600
-   config_ntimesteps = 240
-   config_output_interval = 24
+   config_start_time = '0000-01-01_00:00:00'
+   config_run_duration = '10_00:00:00'
    config_number_of_sub_steps = 4
    config_h_mom_eddy_visc2 = 0.0
    config_h_mom_eddy_visc4 = 0.0
@@ -24,10 +24,11 @@
    config_input_name = 'grid.nc'
    config_output_name = 'output.nc'
    config_restart_name = 'restart.nc'
+   config_output_interval = '1_00:00:00'
+   config_frames_per_outfile = 0
 /
 
 &restart
-   config_restart_interval = 3000
+   config_restart_interval = '1000_00:00:00'
    config_do_restart = .false.
-   config_restart_time = 1036800.0
 /

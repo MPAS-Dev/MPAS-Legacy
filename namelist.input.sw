@@ -2,8 +2,8 @@
    config_test_case = 5
    config_time_integration = 'RK4'
    config_dt = 172.8
-   config_ntimesteps = 7500
-   config_output_interval = 500
+   config_start_time = '0000-01-01_00:00:00'
+   config_run_duration = '15_00:00:00'
    config_stats_interval = 0
    config_h_ScaleWithMesh = .false.
    config_h_mom_eddy_visc2  = 0.0
@@ -17,15 +17,17 @@
    config_wind_stress = .false.
    config_bottom_drag = .false.
 /
+   config_stop_time  = '0000-01-16_00:00:00'
 
 &io
    config_input_name = 'grid.nc'
    config_output_name = 'output.nc'
    config_restart_name = 'restart.nc'
+   config_output_interval = '1_00:00:00'
+   config_frames_per_outfile = 0
 /
 
 &restart
-   config_restart_interval = 3000
+   config_restart_interval = '15_00:00:00'
    config_do_restart = .false.
-   config_restart_time = 1036800.0
 /

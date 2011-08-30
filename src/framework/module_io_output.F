@@ -16,6 +16,7 @@ module io_output
 
       integer :: stream
 
+      integer :: wrDimIDStrLen
 #include "io_output_obj_decls.inc"
 
       logical :: validExchangeLists
@@ -34,6 +35,8 @@ module io_output
       module procedure io_output_field3dReal
       module procedure io_output_field1dInteger
       module procedure io_output_field2dInteger
+      module procedure io_output_field0dChar
+      module procedure io_output_field1dChar
    end interface io_output_field
 
    interface io_output_field_time
@@ -41,19 +44,24 @@ module io_output
       module procedure io_output_field1dReal_time
       module procedure io_output_field2dReal_time
       module procedure io_output_field3dReal_time
+      module procedure io_output_field0dChar_time
+      module procedure io_output_field1dChar_time
    end interface io_output_field_time
  
 
    contains
 
  
-   subroutine output_state_init(output_obj, domain, stream)
+   subroutine output_state_init(output_obj, domain, stream, outputSuffix)
 
       implicit none
 
       type (io_output_object), intent(inout) :: output_obj
       type (domain_type), intent(in) :: domain
       character (len=*) :: stream
+      character (len=*), optional :: outputSuffix
+
+      character (len=128) :: tempfilename
 
       type (block_type), pointer :: block_ptr
 #include "output_dim_actual_decls.inc"
@@ -79,7 +87,12 @@ module io_output
       nVertLevelsGlobal = block_ptr % mesh % nVertLevels
 
       if (trim(stream) == 'OUTPUT') then
-         output_obj % filename = trim(config_output_name)
+         if(present(outputSuffix)) then
+            call insert_string_suffix(config_output_name, outputSuffix, tempfilename)
+         else
+            tempfilename = config_output_name
+         end if
+         output_obj % filename = trim(tempfilename)
          output_obj % stream = OUTPUT
       else if (trim(stream) == 'RESTART') then
          output_obj % filename = trim(config_restart_name)
@@ -93,8 +106,30 @@ module io_output
                           block_ptr % mesh, &
 #include "output_dim_actual_args.inc"
                          )
-   
+
    end subroutine output_state_init
+
+
+   subroutine insert_string_suffix(stream, suffix, filename)
+
+      implicit none
+
+      character (len=*), intent(in) :: stream
+      character (len=*), intent(in) :: suffix
+      character (len=*), intent(out) :: filename
+      integer :: length, i
+
+      filename = trim(stream) // '.' // trim(suffix)
+
+      length = len_trim(stream)
+      do i=length-1,1,-1
+         if(stream(i:i) == '.') then
+            filename = trim(stream(:i)) // trim(suffix) // trim(stream(i:))
+            exit
+         end if
+      end do
+
+   end subroutine  insert_string_suffix
 
 
    subroutine output_state_for_domain(output_obj, domain, itime)
@@ -126,15 +161,19 @@ module io_output
       type (field1dReal) :: real1d
       type (field2dReal) :: real2d
       type (field3dReal) :: real3d
+      type (field0dChar) :: char0d
+      type (field1dChar) :: char1d
 
       integer :: i1, i2, i3, i4
 
       integer, dimension(:), pointer :: super_int1d
       integer, dimension(:,:), pointer :: super_int2d
-      real :: super_real0d
+      real (kind=RKIND) :: super_real0d
       real (kind=RKIND), dimension(:), pointer :: super_real1d
       real (kind=RKIND), dimension(:,:), pointer :: super_real2d
       real (kind=RKIND), dimension(:,:,:), pointer :: super_real3d
+      character (len=64) :: super_char0d
+      character (len=64), dimension(:), pointer :: super_char1d
 
       output_obj % time = itime
 
@@ -144,6 +183,8 @@ module io_output
       allocate(real1d % ioinfo)
       allocate(real2d % ioinfo)
       allocate(real3d % ioinfo)
+      allocate(char0d % ioinfo)
+      allocate(char1d % ioinfo)
 
       call dmpar_sum_int(domain % dminfo, domain % blocklist % mesh % nCellsSolve, nCellsGlobal)
       call dmpar_sum_int(domain % dminfo, domain % blocklist % mesh % nEdgesSolve, nEdgesGlobal)
@@ -350,6 +391,7 @@ module io_output
       nferr = nf_create(trim(output_obj % filename), NF_CLOBBER, output_obj % wr_ncid)
 #endif
  
+      nferr = nf_def_dim(output_obj % wr_ncid, 'StrLen', 64, output_obj % wrDimIDStrLen)
 #include "netcdf_def_dims_vars.inc"
 
       if (mesh % on_a_sphere) then
@@ -669,6 +711,116 @@ module io_output
       nferr = nf_sync(output_obj % wr_ncid)
 
    end subroutine io_output_field2dInteger
+
+
+   subroutine io_output_field0dChar_time(output_obj, field)
+
+      implicit none
+
+      type (io_output_object), intent(in) :: output_obj
+      type (field0dChar), intent(inout) :: field
+
+      include 'netcdf.inc'
+
+      integer :: nferr
+      integer :: varID
+      integer, dimension(2) :: start1, count1
+
+      start1(1) = 1
+      count1(1) = 64
+      start1(2) = output_obj % time
+      count1(2) = 1
+
+#include "output_field0dchar_time.inc"
+
+      nferr = nf_put_vara_text(output_obj % wr_ncid, varID, start1, count1, field % scalar)
+ 
+      nferr = nf_sync(output_obj % wr_ncid)
+
+   end subroutine io_output_field0dChar_time
+
+
+   subroutine io_output_field1dChar_time(output_obj, field)
+
+      implicit none
+
+      type (io_output_object), intent(in) :: output_obj
+      type (field1dChar), intent(inout) :: field
+
+      include 'netcdf.inc'
+
+      integer :: nferr
+      integer :: varID
+      integer, dimension(3) :: start2, count2
+
+      start2(1) = 1
+      start2(2) = field % ioinfo % start(1)
+      start2(3) = output_obj % time
+      count2(1) = 64
+      count2(2) = field % ioinfo % count(1)
+      count2(3) = 1
+
+#include "output_field1dchar_time.inc"
+
+      nferr = nf_put_vara_text(output_obj % wr_ncid, varID, start2, count2, field % array)
+ 
+      nferr = nf_sync(output_obj % wr_ncid)
+
+   end subroutine io_output_field1dChar_time
+
+
+   subroutine io_output_field0dChar(output_obj, field)
+
+      implicit none
+
+      type (io_output_object), intent(in) :: output_obj
+      type (field0dChar), intent(inout) :: field
+
+      include 'netcdf.inc'
+
+      integer :: nferr
+      integer :: varID
+      integer, dimension(2) :: start1, count1
+
+      start1(1) = 1
+      count1(1) = 64
+      start1(2) = 1
+      count1(2) = 1
+
+#include "output_field0dchar.inc"
+
+      nferr = nf_put_vara_text(output_obj % wr_ncid, varID, start1, count1, field % scalar)
+ 
+      nferr = nf_sync(output_obj % wr_ncid)
+
+   end subroutine io_output_field0dChar
+
+
+   subroutine io_output_field1dChar(output_obj, field)
+
+      implicit none
+
+      type (io_output_object), intent(in) :: output_obj
+      type (field1dChar), intent(inout) :: field
+
+      include 'netcdf.inc'
+
+      integer :: nferr
+      integer :: varID
+      integer, dimension(2) :: start1, count1
+
+      start1(1) = 1
+      count1(1) = 64
+      start1(2) = field % ioinfo % start(1)
+      count1(2) = field % ioinfo % count(1)
+
+#include "output_field1dchar.inc"
+
+      nferr = nf_put_vara_text(output_obj % wr_ncid, VarID, start1, count1, field % array)
+ 
+      nferr = nf_sync(output_obj % wr_ncid)
+
+   end subroutine io_output_field1dChar
 
 
    subroutine io_output_finalize(output_obj, dminfo)

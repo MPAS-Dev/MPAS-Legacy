@@ -1,31 +1,34 @@
 #
 # namelist  type  namelist_record  name  default_value
 #
-namelist integer   sw_model config_test_case         5
-namelist character sw_model config_time_integration  RK4
-namelist real      sw_model config_dt                172.8
-namelist integer   sw_model config_ntimesteps        7500
-namelist integer   sw_model config_output_interval   500
-namelist integer   sw_model config_stats_interval    100
-namelist logical   sw_model config_h_ScaleWithMesh     false
-namelist real      sw_model config_h_mom_eddy_visc2  0.0
-namelist real      sw_model config_h_mom_eddy_visc4  0.0
-namelist real      sw_model config_h_tracer_eddy_diff2    0.0
-namelist real      sw_model config_h_tracer_eddy_diff4    0.0
-namelist integer   sw_model config_thickness_adv_order  2
-namelist integer   sw_model config_tracer_adv_order     2
-namelist logical   sw_model config_positive_definite    false
-namelist logical   sw_model config_monotonic            false
-namelist logical   sw_model config_wind_stress			false
-namelist logical   sw_model config_bottom_drag			false
-namelist real      sw_model config_apvm_upwinding       0.5
-namelist character io       config_input_name          grid.nc
-namelist character io       config_output_name         output.nc
-namelist character io       config_restart_name        restart.nc
-namelist character io       config_decomp_file_prefix  graph.info.part.
-namelist integer   restart  config_restart_interval  0
-namelist logical   restart  config_do_restart        false
-namelist real      restart  config_restart_time      172800.0
+namelist integer     sw_model  config_test_case             5
+namelist character   sw_model  config_time_integration      RK4
+namelist real        sw_model  config_dt                    172.8
+namelist integer     sw_model  config_calendar_type         MPAS_360DAY
+namelist character   sw_model  config_start_time            0000-01-01_00:00:00
+namelist character   sw_model  config_stop_time             none
+namelist character   sw_model  config_run_duration          none
+namelist integer     sw_model  config_stats_interval        100
+namelist logical     sw_model  config_h_ScaleWithMesh       false
+namelist real        sw_model  config_h_mom_eddy_visc2      0.0
+namelist real        sw_model  config_h_mom_eddy_visc4      0.0
+namelist real        sw_model  config_h_tracer_eddy_diff2   0.0
+namelist real        sw_model  config_h_tracer_eddy_diff4   0.0
+namelist integer     sw_model  config_thickness_adv_order   2
+namelist integer     sw_model  config_tracer_adv_order      2
+namelist logical     sw_model  config_positive_definite     false
+namelist logical     sw_model  config_monotonic             false
+namelist logical     sw_model  config_wind_stress           false
+namelist logical     sw_model  config_bottom_drag           false
+namelist real        sw_model  config_apvm_upwinding        0.5
+namelist character   io        config_input_name            grid.nc
+namelist character   io        config_output_name           output.nc
+namelist character   io        config_restart_name          restart.nc
+namelist character   io        config_output_interval       06:00:00
+namelist integer     io        config_frames_per_outfile    0
+namelist character   io        config_decomp_file_prefix    graph.info.part.
+namelist logical     restart   config_do_restart            false
+namelist character   restart   config_restart_interval      none
 
 #
 # dim  type  name_in_file  name_in_code
@@ -46,7 +49,7 @@ dim nTracers nTracers
 #
 # var persistence type  name_in_file  ( dims )  time_levs iro-  name_in_code struct super-array array_class
 #
-var persistent real    xtime ( Time ) 2 ro xtime state - -
+var persistent text    xtime ( Time ) 2 ro xtime state - -
 
 var persistent real    latCell ( nCells ) 0 iro latCell mesh - -
 var persistent real    lonCell ( nCells ) 0 iro lonCell mesh - -
@@ -152,5 +155,5 @@ var persistent real    vh ( nVertLevels nEdges Time ) 2 - vh state - -
 var persistent real    circulation ( nVertLevels nVertices Time ) 2 - circulation state - -
 var persistent real    gradPVt ( nVertLevels nEdges Time ) 2 - gradPVt state - -
 var persistent real    gradPVn ( nVertLevels nEdges Time ) 2 - gradPVn state - -
-var persistent real	h_vertex ( nVertLevels nVertices Time ) 2 - h_vertex state - -
+var persistent real    h_vertex ( nVertLevels nVertices Time ) 2 - h_vertex state - -
 

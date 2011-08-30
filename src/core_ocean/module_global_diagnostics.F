@@ -322,7 +322,7 @@ module global_diagnostics
             write (fileID,'(100es24.16)') averages(1:nVariables)
          close (fileID)
          open(fileID,file='stats_time.txt',ACCESS='append')
-            write (fileID,'(i5,100es24.16)') timeIndex, &
+            write (fileID,'(i5,10x,a,100es24.16)') timeIndex, &
                state % xtime % scalar, dt, &
                CFLNumberGlobal
          close (fileID)

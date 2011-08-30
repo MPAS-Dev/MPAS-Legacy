@@ -1,9 +1,9 @@
 .SUFFIXES: .F .c .o
 
-all: dummy
+all: esmf_time
 
-dummy:
-	echo "*** Compiling external packages ***"
+esmf_time:
+	( cd esmf_time_f90; make FC="$(FC) $(FFLAGS)" CPP="$(CPP)" )
 
 clean:
-	echo "*** Cleaning external packages ***"
+	( cd esmf_time_f90; make clean )

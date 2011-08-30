@@ -50,7 +50,7 @@ pgi:
 	"CC = mpicc" \
 	"SFC = pgf90" \
 	"SCC = pgcc" \
-	"FFLAGS = -r8 -O3 -byteswapio" \
+	"FFLAGS = -r8 -O3 -byteswapio -Mfree" \
 	"CFLAGS = -O3" \
 	"LDFLAGS = -O3" \
 	"CORE = $(CORE)" \
@@ -74,7 +74,7 @@ pgi-serial:
 	"CC = pgcc" \
 	"SFC = pgf90" \
 	"SCC = pgcc" \
-	"FFLAGS = -r8 -O0 -g -Mbounds -Mchkptr -byteswapio" \
+	"FFLAGS = -r8 -O0 -g -Mbounds -Mchkptr -byteswapio -Mfree" \
 	"CFLAGS = -O0 -g" \
 	"LDFLAGS = -O0 -g -Mbounds -Mchkptr" \
 	"CORE = $(CORE)" \
@@ -86,7 +86,7 @@ ifort:
 	"CC = gcc" \
 	"SFC = ifort" \
 	"SCC = gcc" \
-	"FFLAGS = -real-size 64 -O3 -convert big_endian" \
+	"FFLAGS = -real-size 64 -O3 -convert big_endian -FR" \
 	"CFLAGS = -O3 -m64" \
 	"LDFLAGS = -O3" \
 	"CORE = $(CORE)" \
@@ -98,7 +98,7 @@ gfortran:
 	"CC = mpicc" \
 	"SFC = gfortran" \
 	"SCC = gcc" \
-	"FFLAGS = -O3 -m64 -ffree-line-length-none -fdefault-real-8 -fconvert=big-endian" \
+	"FFLAGS = -O3 -m64 -ffree-line-length-none -fdefault-real-8 -fconvert=big-endian -ffree-form" \
 	"CFLAGS = -O3 -m64" \
 	"LDFLAGS = -O3 -m64" \
 	"CORE = $(CORE)" \
@@ -110,7 +110,7 @@ gfortran-serial:
 	"CC = gcc" \
 	"SFC = gfortran" \
 	"SCC = gcc" \
-	"FFLAGS = -O3 -m64 -ffree-line-length-none -fdefault-real-8 -fconvert=big-endian" \
+	"FFLAGS = -O3 -m64 -ffree-line-length-none -fdefault-real-8 -fconvert=big-endian -ffree-form" \
 	"CFLAGS = -O3 -m64" \
 	"LDFLAGS = -O3 -m64" \
 	"CORE = $(CORE)" \

@@ -5,6 +5,8 @@ module io_input
    use block_decomp
    use sort
    use configure
+   use mpas_timekeeping
+
 
 #ifdef HAVE_ZOLTAN
    use zoltan_interface
@@ -27,6 +29,8 @@ module io_input
       module procedure io_input_field3dReal
       module procedure io_input_field1dInteger
       module procedure io_input_field2dInteger
+      module procedure io_input_field0dChar
+      module procedure io_input_field1dChar
    end interface io_input_field
 
    interface io_input_field_time
@@ -34,6 +38,8 @@ module io_input
       module procedure io_input_field1dReal_time
       module procedure io_input_field2dReal_time
       module procedure io_input_field3dReal_time
+      module procedure io_input_field0dChar_time
+      module procedure io_input_field1dChar_time
    end interface io_input_field_time
  
 
@@ -76,7 +82,7 @@ module io_input
 #endif
 #endif
 
-      type (field1dReal) :: xtime
+      type (field1DChar) :: xtime
    
       integer, dimension(:), pointer :: indexToCellID_0Halo
       integer, dimension(:), pointer :: nEdgesOnCell_0Halo
@@ -113,8 +119,11 @@ module io_input
       type (graph) :: block_graph_0Halo, block_graph_1Halo, block_graph_2Halo
       integer :: ghostEdgeStart, ghostVertexStart
 
-      real (kind=RKIND) :: tdiff
-      integer :: idxTdiff
+      type (MPAS_Time_type) :: startTime
+      type (MPAS_Time_type) :: sliceTime
+      type (MPAS_TimeInterval_type) :: timeDiff
+      type (MPAS_TimeInterval_type) :: minTimeDiff
+      character(len=32) :: timeStamp
 
       if (config_do_restart) then
          input_obj % filename = trim(config_restart_name)
@@ -766,25 +775,29 @@ module io_input
             xtime % ioinfo % fieldName = 'xtime'
             call io_input_field(input_obj, xtime)
 
-            tdiff = 1.E20
+            call MPAS_setTimeInterval(interval=minTimeDiff, DD=10000)
+            call MPAS_setTime(curr_time=startTime, dateTimeString=config_start_time)
+
             do i=1,input_obj % rdLocalTime
-               if (abs(xtime % array(i) - config_restart_time) < tdiff) then
+               call MPAS_setTime(curr_time=sliceTime, dateTimeString=xtime % array(i))
+               timeDiff = abs(sliceTime - startTime)
+               if (timeDiff < minTimeDiff) then
+                  minTimeDiff = timeDiff
                   input_obj % time = i
-                  tdiff = abs(xtime % array(i) - config_restart_time)
                end if
             end do
 
-            tdiff = xtime % array(input_obj % time)
+            timeStamp = xtime % array(input_obj % time)
 
             deallocate(xtime % ioinfo)
             deallocate(xtime % array)
          end if
 
          call dmpar_bcast_int(domain % dminfo, input_obj % time)
-         call dmpar_bcast_real(domain % dminfo, tdiff)
+         call dmpar_bcast_char(domain % dminfo, timeStamp)
 
-         write(0,*) 'Restarting model from time ', tdiff
-    
+         write(0,*) 'Restarting model from time ', timeStamp
+
       end if
 
 
@@ -1036,6 +1049,8 @@ module io_input
       type (field1dReal) :: real1d
       type (field2dReal) :: real2d
       type (field3dReal) :: real3d
+      type (field0dChar) :: char0d
+      type (field1dChar) :: char1d
 
       integer :: i1, i2, i3, i4
 
@@ -1045,6 +1060,8 @@ module io_input
       real (kind=RKIND), dimension(:), pointer :: super_real1d
       real (kind=RKIND), dimension(:,:), pointer :: super_real2d
       real (kind=RKIND), dimension(:,:,:), pointer :: super_real3d
+      character (len=64) :: super_char0d
+      character (len=64), dimension(:), pointer :: super_char1d
 
       integer :: k
 
@@ -1054,6 +1071,8 @@ module io_input
       allocate(real1d % ioinfo)
       allocate(real2d % ioinfo)
       allocate(real3d % ioinfo)
+      allocate(char0d % ioinfo)
+      allocate(char1d % ioinfo)
 
 
 #include "io_input_fields.inc"
@@ -1451,6 +1470,116 @@ module io_input
       nferr = nf_get_vara_int(input_obj % rd_ncid, varID, start2, count2, field % array)
 
    end subroutine io_input_field2dInteger
+
+
+   subroutine io_input_field0dChar_time(input_obj, field)
+ 
+      implicit none
+
+      type (io_input_object), intent(in) :: input_obj      
+      type (field0dChar), intent(inout) :: field
+ 
+      include 'netcdf.inc'
+ 
+      integer :: nferr
+      integer :: varID
+      integer, dimension(2) :: start1, count1
+ 
+      start1(1) = 1
+      count1(1) = 64
+      start1(2) = input_obj % time
+      count1(2) = 1
+ 
+#include "input_field0dchar_time.inc"
+
+      nferr = nf_get_vara_text(input_obj % rd_ncid, varID, start1, count1, field % scalar)
+
+   end subroutine io_input_field0dChar_time
+
+
+   subroutine io_input_field1dChar_time(input_obj, field)
+ 
+      implicit none
+
+      type (io_input_object), intent(in) :: input_obj      
+      type (field1dChar), intent(inout) :: field
+ 
+      include 'netcdf.inc'
+ 
+      integer :: nferr
+      integer :: varID
+      integer, dimension(3) :: start2, count2
+ 
+      start2(1) = 1
+      start2(2) = field % ioinfo % start(1)
+      start2(3) = input_obj % time
+      count2(1) = 64
+      count2(2) = field % ioinfo % count(1)
+      count2(3) = 1
+ 
+#include "input_field1dchar_time.inc"
+
+      nferr = nf_get_vara_text(input_obj % rd_ncid, varID, start2, count2, field % array)
+
+   end subroutine io_input_field1dChar_time
+
+
+   subroutine io_input_field0dChar(input_obj, field)
+ 
+      implicit none
+
+      type (io_input_object), intent(in) :: input_obj      
+      type (field0dChar), intent(inout) :: field
+ 
+      include 'netcdf.inc'
+ 
+      integer :: nferr
+      integer :: varID
+      integer, dimension(2) :: start1, count1
+ 
+      start1(1) = 1
+      count1(1) = 64
+      start1(2) = 1
+      count1(2) = 1
+
+#include "input_field0dchar.inc"
+
+      nferr = nf_get_vara_text(input_obj % rd_ncid, varID, start1, count1, field % scalar)
+ 
+   end subroutine io_input_field0dChar
+
+
+   subroutine io_input_field1dChar(input_obj, field)
+ 
+      implicit none
+
+      type (io_input_object), intent(in) :: input_obj      
+      type (field1dChar), intent(inout) :: field
+ 
+      include 'netcdf.inc'
+ 
+      integer :: nferr
+      integer :: varID
+      integer, dimension(2) :: start1, count1
+ 
+      start1(1) = 1
+      count1(1) = 64
+      start1(2) = field % ioinfo % start(1)
+      count1(2) = field % ioinfo % count(1)
+
+      !
+      ! Special case: we may want to read the xtime variable across the
+      !   time dimension as a 1d array.
+      !
+      if (trim(field % ioinfo % fieldName) == 'xtime') then
+         varID = input_obj % rdVarIDxtime
+      end if
+ 
+#include "input_field1dchar.inc"
+
+      nferr = nf_get_vara_text(input_obj % rd_ncid, varID, start1, count1, field % array)
+ 
+   end subroutine io_input_field1dChar
 
 
    subroutine io_input_finalize(input_obj, dminfo)

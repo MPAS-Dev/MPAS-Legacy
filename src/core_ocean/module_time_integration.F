@@ -9,7 +9,7 @@ module time_integration
 
    contains
 
-   subroutine timestep(domain, dt)
+   subroutine timestep(domain, dt, timeStamp)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! Advance model state forward in time by the specified time step
    !
@@ -23,6 +23,7 @@ module time_integration
 
       type (domain_type), intent(inout) :: domain
       real (kind=RKIND), intent(in) :: dt
+      character(len=*), intent(in) :: timeStamp
 
       type (dm_info) :: dminfo
       type (block_type), pointer :: block
@@ -38,8 +39,7 @@ module time_integration
 
       block => domain % blocklist
       do while (associated(block))
-         block % state % time_levs(2) % state % xtime % scalar &
-           = block % state % time_levs(1) % state % xtime % scalar + dt
+         block % state % time_levs(2) % state % xtime % scalar = timeStamp
 
          if (isNaN(sum(block % state % time_levs(2) % state % u % array))) then
             write(0,*) 'Abort: NaN detected'

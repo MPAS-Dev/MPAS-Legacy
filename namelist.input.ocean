@@ -2,21 +2,22 @@
    config_test_case = 0
    config_time_integration = 'RK4'
    config_dt = 90.0
-   config_ntimesteps = 1920000
-   config_output_interval = 19200
+   config_start_time = '0000-01-01_00:00:00'
+   config_run_duration = '2000_00:00:00'
    config_stats_interval = 1920
 /
 
 &io
-   config_input_name = grid.nc
-   config_output_name = output.nc
-   config_restart_name = restart.nc
+   config_input_name = 'grid.nc'
+   config_output_name = 'output.nc'
+   config_restart_name = 'restart.nc'
+   config_output_interval = '20_00:00:00'
+   config_frames_per_outfile = 0
 /
 
 &restart
-   config_restart_interval = 115200
+   config_restart_interval = '120_00:00:00'
    config_do_restart = .false.
-   config_restart_time = 31104000
 /
 
 &grid

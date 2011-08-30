@@ -153,6 +153,8 @@ int parse_reg(FILE * regfile, struct namelist ** nls, struct dimension ** dims, 
             var_ptr->vtype = INTEGER;
          else if (strncmp(word, "logical", 1024) == 0) 
             var_ptr->vtype = LOGICAL;
+         else if (strncmp(word, "text", 1024) == 0) 
+            var_ptr->vtype = CHARACTER;
 
          getword(regfile, var_ptr->name_in_file); 
 

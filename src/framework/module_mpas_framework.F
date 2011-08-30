@@ -6,6 +6,7 @@ module mpas_framework
    use io_output
    use configure
    use timer
+   use mpas_timekeeping
 
 
    contains
@@ -24,6 +25,8 @@ module mpas_framework
       call read_namelist(dminfo)
 
       call allocate_domain(domain, dminfo)
+      
+      call mpas_timekeeping_init(config_calendar_type)
 
    end subroutine mpas_framework_init
 
@@ -38,6 +41,8 @@ module mpas_framework
       call deallocate_domain(domain)
 
       call dmpar_finalize(dminfo)
+
+      call mpas_timekeeping_finalize()
 
    end subroutine mpas_framework_finalize
 

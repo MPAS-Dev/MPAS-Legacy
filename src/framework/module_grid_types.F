@@ -64,6 +64,22 @@ module grid_types
    end type field1DInteger
 
 
+   ! Derived type for storing fields
+   type field1DChar
+      type (block_type), pointer :: block
+      character (len=64), dimension(:), pointer :: array
+      type (io_info), pointer :: ioinfo
+   end type field1DChar
+
+
+   ! Derived type for storing fields
+   type field0DChar
+      type (block_type), pointer :: block
+      character (len=64) :: scalar
+      type (io_info), pointer :: ioinfo
+   end type field0DChar
+
+
    ! Derived type for storing grid meta-data
    type mesh_type
 

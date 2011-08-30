@@ -17,6 +17,7 @@ module mpas_subdriver
       implicit none
 
       real (kind=RKIND) :: dt
+      character(len=32) :: timeStamp
 
       call timer_start("total time")
       call timer_start("initialize")
@@ -34,7 +35,7 @@ module mpas_subdriver
       !
       ! Initialize core
       !
-      call mpas_core_init(domain)
+      call mpas_core_init(domain, timeStamp)
 
       call timer_stop("initialize")
 
@@ -43,7 +44,13 @@ module mpas_subdriver
       ! Set up output streams to be written to by the MPAS core
       !
       output_frame = 1
-      call output_state_init(output_obj, domain, "OUTPUT")
+
+      if(config_frames_per_outfile > 0) then
+         call output_state_init(output_obj, domain, "OUTPUT", trim(timeStamp))
+      else
+         call output_state_init(output_obj, domain, "OUTPUT")         
+      end if
+
 
    end subroutine mpas_init
 

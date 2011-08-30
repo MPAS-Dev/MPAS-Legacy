@@ -322,12 +322,14 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
          while (var_list_ptr) {
             var_ptr = var_list_ptr->var;
             if (!strncmp(var_ptr->super_array, "-", 1024)) {
-              if (var_ptr->vtype == INTEGER) fortprintf(fd, "      type (field%idInteger), pointer :: %s\n", var_ptr->ndims, var_ptr->name_in_code);
-              if (var_ptr->vtype == REAL)    fortprintf(fd, "      type (field%idReal), pointer :: %s\n", var_ptr->ndims, var_ptr->name_in_code);
+              if (var_ptr->vtype == INTEGER)   fortprintf(fd, "      type (field%idInteger), pointer :: %s\n", var_ptr->ndims, var_ptr->name_in_code);
+              if (var_ptr->vtype == REAL)      fortprintf(fd, "      type (field%idReal), pointer :: %s\n", var_ptr->ndims, var_ptr->name_in_code);
+              if (var_ptr->vtype == CHARACTER) fortprintf(fd, "      type (field%idChar), pointer :: %s\n", var_ptr->ndims, var_ptr->name_in_code);
             }
             else {
-              if (var_ptr->vtype == INTEGER) fortprintf(fd, "      type (field%idInteger), pointer :: %s\n", var_ptr->ndims+1, var_ptr->super_array);
-              if (var_ptr->vtype == REAL)    fortprintf(fd, "      type (field%idReal), pointer :: %s\n", var_ptr->ndims+1, var_ptr->super_array);
+              if (var_ptr->vtype == INTEGER)   fortprintf(fd, "      type (field%idInteger), pointer :: %s\n", var_ptr->ndims+1, var_ptr->super_array);
+              if (var_ptr->vtype == REAL)      fortprintf(fd, "      type (field%idReal), pointer :: %s\n", var_ptr->ndims+1, var_ptr->super_array);
+              if (var_ptr->vtype == CHARACTER) fortprintf(fd, "      type (field%idChar), pointer :: %s\n", var_ptr->ndims+1, var_ptr->super_array);
               while (var_list_ptr->next && !strncmp(var_list_ptr->next->var->super_array, var_list_ptr->var->super_array, 1024)) var_list_ptr = var_list_ptr->next;
             }
             var_list_ptr = var_list_ptr->next;
@@ -413,12 +415,14 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
          while (var_list_ptr) {
             var_ptr = var_list_ptr->var;
             if (!strncmp(var_ptr->super_array, "-", 1024)) {
-              if (var_ptr->vtype == INTEGER) fortprintf(fd, "      type (field%idInteger), pointer :: %s\n", var_ptr->ndims, var_ptr->name_in_code);
-              if (var_ptr->vtype == REAL)    fortprintf(fd, "      type (field%idReal), pointer :: %s\n", var_ptr->ndims, var_ptr->name_in_code);
+              if (var_ptr->vtype == INTEGER)   fortprintf(fd, "      type (field%idInteger), pointer :: %s\n", var_ptr->ndims, var_ptr->name_in_code);
+              if (var_ptr->vtype == REAL)      fortprintf(fd, "      type (field%idReal), pointer :: %s\n", var_ptr->ndims, var_ptr->name_in_code);
+              if (var_ptr->vtype == CHARACTER) fortprintf(fd, "      type (field%idChar), pointer :: %s\n", var_ptr->ndims, var_ptr->name_in_code);
             }
             else {
-              if (var_ptr->vtype == INTEGER) fortprintf(fd, "      type (field%idInteger), pointer :: %s\n", var_ptr->ndims+1, var_ptr->super_array);
-              if (var_ptr->vtype == REAL)    fortprintf(fd, "      type (field%idReal), pointer :: %s\n", var_ptr->ndims+1, var_ptr->super_array);
+              if (var_ptr->vtype == INTEGER)   fortprintf(fd, "      type (field%idInteger), pointer :: %s\n", var_ptr->ndims+1, var_ptr->super_array);
+              if (var_ptr->vtype == REAL)      fortprintf(fd, "      type (field%idReal), pointer :: %s\n", var_ptr->ndims+1, var_ptr->super_array);
+              if (var_ptr->vtype == CHARACTER) fortprintf(fd, "      type (field%idChar), pointer :: %s\n", var_ptr->ndims+1, var_ptr->super_array);
               while (var_list_ptr->next && !strncmp(var_list_ptr->next->var->super_array, var_list_ptr->var->super_array, 1024)) var_list_ptr = var_list_ptr->next;
             }
             var_list_ptr = var_list_ptr->next;
@@ -567,7 +571,12 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
                dimlist_ptr = dimlist_ptr->next;
             }
             fortprintf(fd, "))\n");
-            fortprintf(fd, "      %s %% %s %% array = 0\n", group_ptr->name, var_ptr2->super_array ); /* initialize field to zero */
+            if (var_ptr->vtype == INTEGER)
+               fortprintf(fd, "      %s %% %s %% array = 0\n", group_ptr->name, var_ptr2->super_array ); /* initialize field to zero */
+            else if (var_ptr->vtype == REAL)
+               fortprintf(fd, "      %s %% %s %% array = 0.0\n", group_ptr->name, var_ptr2->super_array ); /* initialize field to zero */
+            else if (var_ptr->vtype == CHARACTER)
+               fortprintf(fd, "      %s %% %s %% array = \'\'\n", group_ptr->name, var_ptr2->super_array ); /* initialize field to zero */
 
             if (var_ptr2->iostreams & INPUT0) 
                fortprintf(fd, "      %s %% %s %% ioinfo %% input = .true.\n", group_ptr->name, var_ptr2->super_array);
@@ -612,7 +621,12 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
                   dimlist_ptr = dimlist_ptr->next;
                }
                fortprintf(fd, "))\n");
-               fortprintf(fd, "      %s %% %s %% array = 0\n", group_ptr->name, var_ptr->name_in_code ); /* initialize field to zero */
+               if (var_ptr->vtype == INTEGER)
+                  fortprintf(fd, "      %s %% %s %% array = 0\n", group_ptr->name, var_ptr->name_in_code ); /* initialize field to zero */
+               else if (var_ptr->vtype == REAL)
+                  fortprintf(fd, "      %s %% %s %% array = 0.0\n", group_ptr->name, var_ptr->name_in_code ); /* initialize field to zero */
+               else if (var_ptr->vtype == CHARACTER)
+                  fortprintf(fd, "      %s %% %s %% array = \'\'\n", group_ptr->name, var_ptr->name_in_code ); /* initialize field to zero */
 
             }
             if (var_ptr->iostreams & INPUT0) 
@@ -825,6 +839,7 @@ void gen_reads(struct group_list * groups, struct variable * vars, struct dimens
          dimlist_ptr = var_ptr->dimlist;
          if (var_ptr->vtype == INTEGER) sprintf(vtype, "int"); 
          else if (var_ptr->vtype == REAL) sprintf(vtype, "real"); 
+         else if (var_ptr->vtype == CHARACTER) sprintf(vtype, "char"); 
    
          if (strncmp(var_ptr->super_array, "-", 1024) != 0) {
             fortprintf(fd, "      if ((%s %% %s %% ioinfo %% input .and. .not. config_do_restart) .or. &\n", struct_deref, var_ptr->super_array);
@@ -1133,15 +1148,19 @@ void gen_reads(struct group_list * groups, struct variable * vars, struct dimens
    /*
     *  Generate code to read 0d, 1d, 2d, 3d time-invariant fields
     */
-   for(j=0; j<2; j++) {
+   for(j=0; j<3; j++) {
       for(i=0; i<=3; i++) {
          if (j == 0) {
             sprintf(fname, "input_field%idinteger.inc", i);
             ivtype = INTEGER;
          }
-         else {
+         else if (j == 1) {
             sprintf(fname, "input_field%idreal.inc", i);
             ivtype = REAL;
+         }
+         else if (j == 2) {
+            sprintf(fname, "input_field%idchar.inc", i);
+            ivtype = CHARACTER;
          }
          fd = fopen(fname, "w");
    
@@ -1181,6 +1200,33 @@ void gen_reads(struct group_list * groups, struct variable * vars, struct dimens
          var_ptr = var_ptr->next;
          while (var_ptr) {
             if (var_ptr->ndims == i && var_ptr->vtype == REAL && var_ptr->timedim) {
+               fortprintf(fd, "      else if (trim(field %% ioinfo %% fieldName) == \'%s\') then\n", var_ptr->name_in_file);
+               fortprintf(fd, "         varID = input_obj %% rdVarID%s\n", var_ptr->name_in_file);
+            }
+            var_ptr = var_ptr->next;
+         }
+         fortprintf(fd, "      end if\n");
+      }
+   
+      fclose(fd);
+   } 
+   
+   
+   /*
+    *  Generate code to read 0d and 1d time-varying character fields
+    */
+   for(i=0; i<=1; i++) { 
+      sprintf(fname, "input_field%idchar_time.inc", i);
+      fd = fopen(fname, "w");
+   
+      var_ptr = vars;
+      while (var_ptr && (var_ptr->ndims != i || var_ptr->vtype != CHARACTER || !var_ptr->timedim)) var_ptr = var_ptr->next;
+      if (var_ptr) {
+         fortprintf(fd, "      if (trim(field %% ioinfo %% fieldName) == \'%s\') then\n", var_ptr->name_in_file);
+         fortprintf(fd, "         varID = input_obj %% rdVarID%s\n", var_ptr->name_in_file);
+         var_ptr = var_ptr->next;
+         while (var_ptr) {
+            if (var_ptr->ndims == i && var_ptr->vtype == CHARACTER && var_ptr->timedim) {
                fortprintf(fd, "      else if (trim(field %% ioinfo %% fieldName) == \'%s\') then\n", var_ptr->name_in_file);
                fortprintf(fd, "         varID = input_obj %% rdVarID%s\n", var_ptr->name_in_file);
             }
@@ -1308,6 +1354,8 @@ void gen_writes(struct group_list * groups, struct variable * vars, struct dimen
       fortprintf(fd, "      ) then\n");
       dimlist_ptr = var_ptr->dimlist;
       i = 1;
+      if (var_ptr->vtype == CHARACTER)
+         fortprintf(fd, "      dimlist(%i) = output_obj %% wrDimIDStrLen\n", i++);
       while(dimlist_ptr) {
          fortprintf(fd, "      dimlist(%i) = output_obj %% wrDimID%s\n", i++, dimlist_ptr->dim->name_in_file);
          dimlist_ptr = dimlist_ptr->next;
@@ -1317,6 +1365,8 @@ void gen_writes(struct group_list * groups, struct variable * vars, struct dimen
          fortprintf(fd, "      nferr = nf_def_var(output_obj %% wr_ncid, \'%s\', NF_INT, %i, dimlist, output_obj %% wrVarID%s)\n", var_ptr->name_in_file, var_ptr->ndims + var_ptr->timedim, var_ptr->name_in_file);
       else if (var_ptr->vtype == REAL)
          fortprintf(fd, "      nferr = nf_def_var(output_obj %% wr_ncid, \'%s\', NF_DOUBLE, %i, dimlist, output_obj %% wrVarID%s)\n", var_ptr->name_in_file, var_ptr->ndims + var_ptr->timedim, var_ptr->name_in_file);
+      else if (var_ptr->vtype == CHARACTER)
+         fortprintf(fd, "      nferr = nf_def_var(output_obj %% wr_ncid, \'%s\', NF_CHAR, %i, dimlist, output_obj %% wrVarID%s)\n", var_ptr->name_in_file, var_ptr->ndims + var_ptr->timedim + 1, var_ptr->name_in_file);
 
       fortprintf(fd, "      end if\n\n");
 
@@ -1369,6 +1419,7 @@ void gen_writes(struct group_list * groups, struct variable * vars, struct dimen
          dimlist_ptr = var_ptr->dimlist;
          if (var_ptr->vtype == INTEGER) sprintf(vtype, "int"); 
          else if (var_ptr->vtype == REAL) sprintf(vtype, "real"); 
+         else if (var_ptr->vtype == CHARACTER) sprintf(vtype, "char"); 
    
          if (strncmp(var_ptr->super_array, "-", 1024) != 0) {
             fortprintf(fd, "      if ((%s %% %s %% ioinfo %% output .and. output_obj %% stream == OUTPUT) .or. &\n", struct_deref, var_ptr->super_array);
@@ -1580,15 +1631,19 @@ void gen_writes(struct group_list * groups, struct variable * vars, struct dimen
    /*
     *  Generate code to write 0d, 1d, 2d, 3d time-invariant fields
     */
-   for(j=0; j<2; j++) {
+   for(j=0; j<3; j++) {
       for(i=0; i<=3; i++) {
          if (j == 0) {
             sprintf(fname, "output_field%idinteger.inc", i);
             ivtype = INTEGER;
          }
-         else {
+         else if (j == 1) {
             sprintf(fname, "output_field%idreal.inc", i);
             ivtype = REAL;
+         }
+         else if (j == 2) {
+            sprintf(fname, "output_field%idchar.inc", i);
+            ivtype = CHARACTER;
          }
          fd = fopen(fname, "w");
    
@@ -1628,6 +1683,33 @@ void gen_writes(struct group_list * groups, struct variable * vars, struct dimen
          var_ptr = var_ptr->next;
          while (var_ptr) {
             if (var_ptr->ndims == i && var_ptr->vtype == REAL && var_ptr->timedim) {
+               fortprintf(fd, "      else if (trim(field %% ioinfo %% fieldName) == \'%s\') then\n", var_ptr->name_in_file);
+               fortprintf(fd, "         varID = output_obj %% wrVarID%s\n", var_ptr->name_in_file);
+            }
+            var_ptr = var_ptr->next;
+         }
+         fortprintf(fd, "      end if\n");
+      }
+   
+      fclose(fd);
+   }
+
+   
+   /*
+    *  Generate code to write 0d and 1d character time-varying fields
+    */
+   for(i=0; i<=1; i++) {
+      sprintf(fname, "output_field%idchar_time.inc", i);
+      fd = fopen(fname, "w");
+
+      var_ptr = vars;
+      while (var_ptr && (var_ptr->ndims != i || var_ptr->vtype != CHARACTER || !var_ptr->timedim)) var_ptr = var_ptr->next;
+      if (var_ptr) {
+         fortprintf(fd, "      if (trim(field %% ioinfo %% fieldName) == \'%s\') then\n", var_ptr->name_in_file);
+         fortprintf(fd, "         varID = output_obj %% wrVarID%s\n", var_ptr->name_in_file);
+         var_ptr = var_ptr->next;
+         while (var_ptr) {
+            if (var_ptr->ndims == i && var_ptr->vtype == CHARACTER && var_ptr->timedim) {
                fortprintf(fd, "      else if (trim(field %% ioinfo %% fieldName) == \'%s\') then\n", var_ptr->name_in_file);
                fortprintf(fd, "         varID = output_obj %% wrVarID%s\n", var_ptr->name_in_file);
             }
