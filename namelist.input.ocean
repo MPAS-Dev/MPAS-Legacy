@@ -16,34 +16,46 @@
 /
 
 &restart
-   config_restart_interval = '120_00:00:00'
    config_do_restart = .false.
+   config_restart_interval = '120_00:00:00'
 /
 
 &grid
-   config_vert_grid_type = 'isopycnal'
-   config_rho0 = 1015
+   config_vert_grid_type = 'zlevel'
+   config_rho0 = 1000
 /
 &hmix
-   config_h_mom_eddy_visc2 = 0.0
-   config_h_mom_eddy_visc4 = 5.0e8
-   config_h_tracer_eddy_diff2 = 10.0
+   config_h_mom_eddy_visc2 = 1.0e5
+   config_h_mom_eddy_visc4 = 0.0
+   config_h_tracer_eddy_diff2 = 1.0e4
    config_h_tracer_eddy_diff4 = 0.0
 /
 &vmix
-   config_vert_visc_type  = 'const'
-   config_vert_diff_type  = 'const'
-   config_vmixTanhViscMax = 2.5e-1
-   config_vmixTanhViscMin = 1.0e-4
-   config_vmixTanhDiffMax = 2.5e-2
-   config_vmixTanhDiffMin = 1.0e-5
-   config_vmixTanhZMid    = -100
-   config_vmixTanhZWidth  = 100
-   config_vert_viscosity  = 1.0e-4
-   config_vert_diffusion  = 1.0e-4
+   config_vert_visc_type  = 'rich'
+   config_vert_diff_type  = 'rich'
+   config_implicit_vertical_mix = .true.
+   config_convective_visc       = 1.0
+   config_convective_diff       = 1.0
+/
+&vmix_const
+   config_vert_visc       = 2.5e-5
+   config_vert_diff       = 2.5e-5 
+/
+&vmix_rich
+   config_bkrd_vert_visc  = 1.0e-4
+   config_bkrd_vert_diff  = 1.0e-5
+   config_rich_mix        = 0.005
+/
+&vmix_tanh
+   config_max_visc_tanh = 2.5e-1
+   config_min_visc_tanh = 1.0e-4
+   config_max_diff_tanh = 2.5e-2
+   config_min_diff_tanh = 1.0e-5
+   config_zMid_tanh    = -100
+   config_zWidth_tanh  = 100
 /
 &eos
-   config_eos_type = 'linear'
+   config_eos_type = 'jm'
 /
 &advection
    config_vert_tracer_adv = 'spline'
@@ -52,4 +64,9 @@
    config_thickness_adv_order = 2
    config_positive_definite = .false.
    config_monotonic = .false.
+/
+&restore
+config_restoreTS = .false.
+config_restoreT_timescale = 90.0
+config_restoreS_timescale = 90.0
 /

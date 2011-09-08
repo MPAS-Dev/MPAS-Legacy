@@ -26,21 +26,31 @@ namelist real      hmix     config_h_tracer_eddy_diff4  0.0
 namelist real      hmix     config_apvm_upwinding       0.5
 namelist character vmix     config_vert_visc_type       const
 namelist character vmix     config_vert_diff_type       const
-namelist real      vmix     config_vert_viscosity       2.5e-4
-namelist real      vmix     config_vert_diffusion       2.5e-5
-namelist real      vmix     config_vmixTanhViscMax      2.5e-1
-namelist real      vmix     config_vmixTanhViscMin      1.0e-4
-namelist real      vmix     config_vmixTanhDiffMax      2.5e-2
-namelist real      vmix     config_vmixTanhDiffMin      1.0e-5
-namelist real      vmix     config_vmixTanhZMid         -100
-namelist real      vmix     config_vmixTanhZWidth       100
-namelist character eos      config_eos_type             linear
-namelist character advection config_vert_tracer_adv       stencil
+namelist logical   vmix     config_implicit_vertical_mix  .true.
+namelist real      vmix     config_convective_visc      1.0
+namelist real      vmix     config_convective_diff      1.0
+namelist real      vmix     config_bottom_drag_coeff    1.0e-3
+namelist real      vmix_const   config_vert_visc        2.5e-4
+namelist real      vmix_const   config_vert_diff        2.5e-5
+namelist real      vmix_rich    config_bkrd_vert_visc   1.0e-4
+namelist real      vmix_rich    config_bkrd_vert_diff   1.0e-5
+namelist real      vmix_rich    config_rich_mix         0.005
+namelist real      vmix_tanh    config_max_visc_tanh    2.5e-1
+namelist real      vmix_tanh    config_min_visc_tanh    1.0e-4
+namelist real      vmix_tanh    config_max_diff_tanh    2.5e-2
+namelist real      vmix_tanh    config_min_diff_tanh    1.0e-5
+namelist real      vmix_tanh    config_zMid_tanh        -100
+namelist real      vmix_tanh    config_zWidth_tanh      100
+namelist character eos       config_eos_type            linear
+namelist character advection config_vert_tracer_adv     stencil
 namelist integer   advection config_vert_tracer_adv_order 4
-namelist integer   advection config_tracer_adv_order      2
-namelist integer   advection config_thickness_adv_order   2
-namelist logical   advection config_positive_definite     false
-namelist logical   advection config_monotonic             false
+namelist integer   advection config_tracer_adv_order    2
+namelist integer   advection config_thickness_adv_order 2
+namelist logical   advection config_positive_definite   false
+namelist logical   advection config_monotonic           false
+namelist logical   restore   config_restoreTS           false
+namelist real      restore   config_restoreT_timescale  90.0
+namelist real      restore   config_restoreS_timescale  90.0
 
 #
 # dim  type  name_in_file  name_in_code
@@ -143,6 +153,8 @@ var persistent integer boundaryEdge ( nVertLevels nEdges ) 0 iro boundaryEdge me
 var persistent integer boundaryVertex ( nVertLevels nVertices ) 0 iro boundaryVertex mesh - -
 var persistent integer boundaryCell ( nVertLevels nCells ) 0 iro boundaryCell mesh - -
 var persistent real    u_src ( nVertLevels nEdges ) 0 iro u_src mesh - -
+var persistent real    temperatureRestore ( nCells ) 0 iro temperatureRestore mesh - -
+var persistent real    salinityRestore ( nCells ) 0 iro salinityRestore mesh - -
 
 # Prognostic variables: read from input, saved in restart, and written to output
 var persistent real    u ( nVertLevels nEdges Time ) 2 iro u state - -
@@ -180,6 +192,7 @@ var persistent real    uReconstructMeridional ( nVertLevels nCells Time ) 2 o uR
 var persistent real    MontPot ( nVertLevels nCells Time ) 2 o MontPot state - -
 var persistent real    pressure ( nVertLevels nCells Time ) 2 o pressure state - -
 var persistent real    wTop ( nVertLevelsP1 nCells Time ) 2 o wTop state - -
+var persistent real    rhoDisplaced ( nVertLevels nCells Time ) 2 o rhoDisplaced state - -
 
 # Other diagnostic variables: neither read nor written to any files
 var persistent real    vh ( nVertLevels nEdges Time ) 2 - vh state - -
@@ -195,4 +208,11 @@ var persistent real    areaTriangleGlobal ( Time ) 2 o areaTriangleGlobal state 
 var persistent real    volumeCellGlobal ( Time ) 2 o volumeCellGlobal state - -
 var persistent real    volumeEdgeGlobal ( Time ) 2 o volumeEdgeGlobal state - -
 var persistent real    CFLNumberGlobal ( Time ) 2 o CFLNumberGlobal state - -
+
+# Diagnostics fields, only one time level required
+var persistent real    RiTopOfCell ( nVertLevelsP1 nCells Time ) 1 o RiTopOfCell diagnostics - -
+var persistent real    RiTopOfEdge ( nVertLevelsP1 nEdges Time ) 1 o RiTopOfEdge diagnostics - -
+var persistent real    vertViscTopOfEdge ( nVertLevelsP1 nEdges Time ) 1 o vertViscTopOfEdge diagnostics - -
+var persistent real    vertDiffTopOfCell ( nVertLevelsP1 nCells Time ) 1 o vertDiffTopOfCell diagnostics - -
+
 

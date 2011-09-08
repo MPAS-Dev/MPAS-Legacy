@@ -72,9 +72,19 @@ module time_integration
       type (block_type), pointer :: block
       type (state_type) :: provis
 
-      integer :: rk_step, iEdge
+      integer :: rk_step, iEdge, cell1, cell2
 
       real (kind=RKIND), dimension(4) :: rk_weights, rk_substep_weights
+
+      integer :: nCells, nEdges, nVertLevels, num_tracers
+      real (kind=RKIND), dimension(:,:), pointer :: &
+        u, h, h_edge, vertViscTopOfEdge, vertDiffTopOfCell, ke_edge
+      real (kind=RKIND), dimension(:,:,:), pointer :: tracers
+      integer, dimension(:), pointer :: & 
+        maxLevelCell, maxLevelEdgeTop
+      real (kind=RKIND), dimension(:), allocatable:: A,C,uTemp
+      real (kind=RKIND), dimension(:,:), allocatable:: tracersTemp
+
 
       block => domain % blocklist
       call allocate_state(provis, &
@@ -143,8 +153,11 @@ module time_integration
 
         block => domain % blocklist
         do while (associated(block))
-           call compute_tend(block % tend, provis, block % mesh)
-           call compute_scalar_tend(block % tend, provis, block % mesh)
+           if (.not.config_implicit_vertical_mix) then
+              call compute_vertical_mix_coefficients(provis, block % diagnostics, block % mesh)
+           end if
+           call compute_tend(block % tend, provis, block % diagnostics, block % mesh)
+           call compute_scalar_tend(block % tend, provis, block % diagnostics, block % mesh)
            call enforce_boundaryEdge(block % tend, block % mesh)
            block => block % next
         end do
@@ -189,6 +202,7 @@ module time_integration
                  provis % u % array(:,:) = block % state % time_levs(1) % state % u % array(:,:)
               end if
               call compute_solve_diagnostics(dt, provis, block % mesh)
+
               block => block % next
            end do
         end if
@@ -225,13 +239,101 @@ module time_integration
       !
       block => domain % blocklist
       do while (associated(block))
-         do iCell=1,block % mesh % nCells
-            do k=1,block % mesh % maxLevelCell % array(iCell)
-               block % state % time_levs(2) % state % tracers % array(:,k,iCell) = &
-                                                                     block % state % time_levs(2) % state % tracers % array(:,k,iCell)  &
-                                                                   / block % state % time_levs(2) % state % h % array(k,iCell)
+
+         u           => block % state % time_levs(2) % state % u % array
+         tracers     => block % state % time_levs(2) % state % tracers % array
+         h           => block % state % time_levs(2) % state % h % array
+         h_edge      => block % state % time_levs(2) % state % h_edge % array
+         ke_edge     => block % state % time_levs(2) % state % ke_edge % array
+         num_tracers = block % state % time_levs(2) % state % num_tracers
+         vertViscTopOfEdge => block % diagnostics % vertViscTopOfEdge % array
+         vertDiffTopOfCell => block % diagnostics % vertDiffTopOfCell % array
+         maxLevelCell    => block % mesh % maxLevelCell % array
+         maxLevelEdgeTop => block % mesh % maxLevelEdgeTop % array
+                  
+         nCells      = block % mesh % nCells
+         nEdges      = block % mesh % nEdges
+         nVertLevels = block % mesh % nVertLevels
+
+         do iCell=1,nCells
+            do k=1,maxLevelCell(iCell)
+               tracers(:,k,iCell) = tracers(:,k,iCell) / h(k,iCell)
             end do
          end do
+
+         if (config_implicit_vertical_mix) then
+            allocate(A(nVertLevels),C(nVertLevels),uTemp(nVertLevels), &
+               tracersTemp(num_tracers,nVertLevels))
+
+            call compute_vertical_mix_coefficients(block % state % time_levs(2) % state, block % diagnostics, block % mesh)
+
+            !
+            !  Implicit vertical solve for momentum
+            !
+            do iEdge=1,nEdges
+              if (maxLevelEdgeTop(iEdge).gt.0) then
+
+               ! Compute A(k), C(k) for momentum
+               ! mrp 110315 efficiency note: for z-level, could precompute
+               ! -2.0*dt/(h(k)_h(k+1))/h(k) in setup
+               ! h_edge is computed in compute_solve_diag, and is not available yet.
+               ! This could be removed if hZLevel used instead.
+               cell1 = block % mesh % cellsOnEdge % array(1,iEdge)
+               cell2 = block % mesh % cellsOnEdge % array(2,iEdge)
+               do k=1,maxLevelEdgeTop(iEdge)
+                  h_edge(k,iEdge) = 0.5 * (h(k,cell1) + h(k,cell2))
+               end do
+
+               do k=1,maxLevelEdgeTop(iEdge)-1
+                  A(k) = -2.0*dt*vertViscTopOfEdge(k+1,iEdge) &
+                     / (h_edge(k,iEdge) + h_edge(k+1,iEdge)) &
+                     / h_edge(k,iEdge)
+               enddo
+               A(maxLevelEdgeTop(iEdge)) = -dt*config_bottom_drag_coeff  &
+                  *sqrt(2.0*ke_edge(k,iEdge))/h_edge(k,iEdge)
+
+               C(1) = 1 - A(1)
+               do k=2,maxLevelEdgeTop(iEdge)
+                  C(k) = 1 - A(k) - A(k-1)
+               enddo
+
+               call tridiagonal_solve(A,C,A,u(:,iEdge),uTemp,maxLevelEdgeTop(iEdge))
+
+               u(1:maxLevelEdgeTop(iEdge),iEdge) = uTemp(1:maxLevelEdgeTop(iEdge))
+               u(maxLevelEdgeTop(iEdge)+1:nVertLevels,iEdge) = 0.0
+
+              end if
+            end do
+
+            !
+            !  Implicit vertical solve for tracers
+            !
+            do iCell=1,nCells
+               ! Compute A(k), C(k) for tracers
+               ! mrp 110315 efficiency note: for z-level, could precompute
+               ! -2.0*dt/(h(k)_h(k+1))/h(k) in setup
+               do k=1,maxLevelCell(iCell)-1
+                  A(k) = -2.0*dt*vertDiffTopOfCell(k+1,iCell) &
+                     / (h(k,iCell) + h(k+1,iCell)) &
+                     / h(k,iCell)
+               enddo
+
+               A(maxLevelCell(iCell)) = 0.0
+
+               C(1) = 1 - A(1)
+               do k=2,maxLevelCell(iCell)
+                  C(k) = 1 - A(k) - A(k-1)
+               enddo
+
+               call tridiagonal_solve_mult(A,C,A,tracers(:,:,iCell), &
+                  tracersTemp, maxLevelCell(iCell), &
+                  nVertLevels,num_tracers)
+
+               tracers(:,1:maxLevelCell(iCell),iCell) = tracersTemp(:,1:maxLevelCell(iCell))
+               tracers(:,maxLevelCell(iCell)+1:nVertLevels,iCell) = -1e34
+            end do
+            deallocate(A,C,uTemp,tracersTemp)
+         end if
 
          if (config_test_case == 1) then    ! For case 1, wind field should be fixed
             block % state % time_levs(2) % state % u % array(:,:) = block % state % time_levs(1) % state % u % array(:,:)
@@ -249,7 +351,7 @@ module time_integration
    end subroutine rk4
 
 
-   subroutine compute_tend(tend, s, grid)
+   subroutine compute_tend(tend, s, d, grid)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! Compute height and normal wind tendencies, as well as diagnostic variables
    !
@@ -263,6 +365,7 @@ module time_integration
 
       type (tend_type), intent(inout) :: tend
       type (state_type), intent(in) :: s
+      type (diagnostics_type), intent(in) :: d
       type (mesh_type), intent(in) :: grid
 
       integer :: iEdge, iCell, iVertex, k, cell1, cell2, &
@@ -277,7 +380,7 @@ module time_integration
       real (kind=RKIND), dimension(:,:), pointer :: &
         weightsOnEdge, kiteAreasOnVertex, h_edge, h, u, v, pressure, &
         tend_h, tend_u, circulation, vorticity, ke, ke_edge, pv_edge, &
-        MontPot, wTop, divergence
+        MontPot, wTop, divergence, vertViscTopOfEdge
       type (dm_info) :: dminfo
 
       integer, dimension(:), pointer :: nEdgesOnCell, nEdgesOnEdge, &
@@ -286,7 +389,7 @@ module time_integration
         cellsOnEdge, cellsOnVertex, verticesOnEdge, edgesOnCell, &
         edgesOnEdge, edgesOnVertex
       real (kind=RKIND) :: u_diffusion
-      real (kind=RKIND), dimension(:), allocatable:: fluxVertTop,w_dudzTopEdge, vertViscTop
+      real (kind=RKIND), dimension(:), allocatable:: fluxVertTop,w_dudzTopEdge
 
       real (kind=RKIND), allocatable, dimension(:,:) :: delsq_divergence
       real (kind=RKIND), allocatable, dimension(:,:) :: delsq_u
@@ -309,6 +412,7 @@ module time_integration
       pv_edge     => s % pv_edge % array
       MontPot     => s % MontPot % array
       pressure    => s % pressure % array
+      vertViscTopOfEdge => d % vertViscTopOfEdge % array
 
       weightsOnEdge     => grid % weightsOnEdge % array
       kiteAreasOnVertex => grid % kiteAreasOnVertex % array
@@ -629,9 +733,11 @@ module time_integration
            ! -c |u| u  where c is unitless and 1.0e-3.
            ! see POP Reference guide, section 3.4.4.
 
-           tend_u(k,iEdge) = tend_u(k,iEdge)  &
-             - 1.0e-3*u(k,iEdge) &
-               *sqrt(2.0*ke_edge(k,iEdge))/h_edge(k,iEdge)
+           if (.not.config_implicit_vertical_mix) then
+              tend_u(k,iEdge) = tend_u(k,iEdge)  &
+                - config_bottom_drag_coeff*u(k,iEdge) &
+                  *sqrt(2.0*ke_edge(k,iEdge))/h_edge(k,iEdge)
+           end if
 
         endif
 
@@ -640,51 +746,32 @@ module time_integration
       !
       ! velocity tendency: vertical mixing d/dz( nu_v du/dz))
       !
-      allocate(vertViscTop(nVertLevels+1))
-      if (config_vert_visc_type.eq.'const') then
-        vertViscTop = config_vert_viscosity
-      elseif (config_vert_visc_type.eq.'tanh') then
-        if (config_vert_grid_type.ne.'zlevel') then
-          write(0,*) 'Abort: config_vert_visc_type.eq.tanh may only', &
-            ' use config_vert_grid_type of zlevel at this time'
-          call dmpar_abort(dminfo)
-        endif
-  
-        do k=1,nVertLevels+1
-          vertViscTop(k) = -(config_vmixTanhViscMax-config_vmixTanhViscMin)/2.0 &
-            *tanh(-(zTopZLevel(k)-config_vmixTanhZMid) &
-                  /config_vmixTanhZWidth) &
-            + (config_vmixTanhViscMax+config_vmixTanhViscMin)/2
-        enddo
-      else
-        write(0,*) 'Abort: unrecognized config_vert_visc_type'
-        call dmpar_abort(dminfo)
-      endif
-
-      allocate(fluxVertTop(nVertLevels+1))
-      fluxVertTop(1) = 0.0
-      do iEdge=1,grid % nEdgesSolve
+      if (.not.config_implicit_vertical_mix) then
+         allocate(fluxVertTop(nVertLevels+1))
+         fluxVertTop(1) = 0.0
+         do iEdge=1,grid % nEdgesSolve
          
-         do k=2,maxLevelEdgeTop(iEdge)
-           fluxVertTop(k) = vertViscTop(k) &
-              * ( u(k-1,iEdge) - u(k,iEdge) ) &
-              * 2 / (h_edge(k-1,iEdge) + h_edge(k,iEdge))
-         enddo
-         fluxVertTop(maxLevelEdgeTop(iEdge)+1) = 0.0
+            do k=2,maxLevelEdgeTop(iEdge)
+              fluxVertTop(k) = vertViscTopOfEdge(k,iEdge) &
+                 * ( u(k-1,iEdge) - u(k,iEdge) ) &
+                 * 2 / (h_edge(k-1,iEdge) + h_edge(k,iEdge))
+            enddo
+            fluxVertTop(maxLevelEdgeTop(iEdge)+1) = 0.0
 
-         do k=1,maxLevelEdgeTop(iEdge)
-           tend_u(k,iEdge) = tend_u(k,iEdge) &
-             + (fluxVertTop(k) - fluxVertTop(k+1)) &
-             / h_edge(k,iEdge)
-         enddo
+            do k=1,maxLevelEdgeTop(iEdge)
+              tend_u(k,iEdge) = tend_u(k,iEdge) &
+                + (fluxVertTop(k) - fluxVertTop(k+1)) &
+                / h_edge(k,iEdge)
+            enddo
 
-      end do
-      deallocate(fluxVertTop, vertViscTop)
+         end do
+         deallocate(fluxVertTop)
+      endif
 
    end subroutine compute_tend
 
 
-   subroutine compute_scalar_tend(tend, s, grid)
+   subroutine compute_scalar_tend(tend, s, d, grid)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    !
    ! Input: s - current model state
@@ -697,6 +784,7 @@ module time_integration
 
       type (tend_type), intent(inout) :: tend
       type (state_type), intent(in) :: s
+      type (diagnostics_type), intent(in) :: d
       type (mesh_type), intent(in) :: grid
 
       integer :: i, k, iCell, iEdge, iTracer, cell1, cell2, upwindCell,&
@@ -706,7 +794,7 @@ module time_integration
       real (kind=RKIND), dimension(:), pointer :: &
         h_s, fVertex, fEdge, dvEdge, dcEdge, areaCell, areaTriangle
       real (kind=RKIND), dimension(:,:), pointer :: &
-        u,h,wTop, h_edge
+        u,h,wTop, h_edge, vertDiffTopOfCell
       real (kind=RKIND), dimension(:,:,:), pointer :: &
         tracers, tend_tr
       integer, dimension(:,:), pointer :: boundaryEdge
@@ -717,7 +805,7 @@ module time_integration
       integer, dimension(:,:), pointer :: cellsOnEdge, boundaryCell
       real (kind=RKIND), dimension(:), pointer :: zTopZLevel,zMidZLevel, &
          hRatioZLevelK, hRatioZLevelKm1
-      real (kind=RKIND), dimension(:), allocatable:: vertDiffTop, tracer2ndDer, tracersIn, tracersOut, posZMidZLevel, &
+      real (kind=RKIND), dimension(:), allocatable:: tracer2ndDer, tracersIn, tracersOut, posZMidZLevel, &
             posZTopZLevel
       real (kind=RKIND), dimension(:,:), allocatable:: fluxVertTop, boundaryMask
       real (kind=RKIND), dimension(:,:,:), allocatable::tr_flux, tr_div, delsq_tracer, tracerTop
@@ -727,12 +815,16 @@ module time_integration
       real (kind=RKIND), dimension(:,:,:), pointer :: deriv_two
       real (kind=RKIND) :: coef_3rd_order, flux3Coef, cSignWTop
 
+      integer :: index_temperature, index_salinity, rrr
+      real (kind=RKIND), dimension(:), pointer :: temperatureRestore, salinityRestore
+
       u           => s % u % array
       h           => s % h % array
       boundaryCell=> grid % boundaryCell % array
       wTop        => s % wTop % array
       tracers     => s % tracers % array
       h_edge      => s % h_edge % array
+      vertDiffTopOfCell => d % vertDiffTopOfCell % array
 
       tend_tr     => tend % tracers % array
                   
@@ -756,6 +848,13 @@ module time_integration
       num_tracers = s % num_tracers
 
       deriv_two   => grid % deriv_two % array
+
+      if(config_restoreTS) then
+        index_temperature = s % index_temperature
+        index_salinity = s % index_salinity
+        temperatureRestore => grid % temperatureRestore % array
+        salinityRestore => grid % salinityRestore % array
+      endif
 
       !
       ! initialize tracer tendency (RHS of tracer equation) to zero.
@@ -1185,52 +1284,59 @@ module time_integration
       !
       ! tracer tendency: vertical diffusion h d/dz( \kappa_v d\phi/dz)
       !
-      allocate(vertDiffTop(nVertLevels+1))
-      if (config_vert_diff_type.eq.'const') then
-        vertDiffTop = config_vert_diffusion
-      elseif (config_vert_diff_type.eq.'tanh') then
-        if (config_vert_grid_type.ne.'zlevel') then
-          write(0,*) 'Abort: config_vert_diff_type.eq.tanh may only', &
-            ' use config_vert_grid_type of zlevel at this time'
-          call dmpar_abort(dminfo)
-        endif
-  
-        do k=1,nVertLevels+1
-          vertDiffTop(k) = -(config_vmixTanhDiffMax-config_vmixTanhDiffMin)/2.0 &
-            *tanh(-(zTopZLevel(k)-config_vmixTanhZMid) &
-                  /config_vmixTanhZWidth) &
-            + (config_vmixTanhDiffMax+config_vmixTanhDiffMin)/2
-        enddo
-      else
-        write(0,*) 'Abort: unrecognized config_vert_diff_type'
-        call dmpar_abort(dminfo)
+      if (.not.config_implicit_vertical_mix) then
+         allocate(fluxVertTop(num_tracers,nVertLevels+1))
+         fluxVertTop(:,1) = 0.0
+         do iCell=1,nCellsSolve 
+
+            do k=2,maxLevelCell(iCell)
+              do iTracer=1,num_tracers
+                ! compute \kappa_v d\phi/dz
+                fluxVertTop(iTracer,k) = vertDiffTopOfCell(k,iCell) &
+                   * (tracers(iTracer,k-1,iCell) - tracers(iTracer,k,iCell) )&
+                   * 2 / (h(k-1,iCell) + h(k,iCell))
+              enddo
+            enddo
+            fluxVertTop(:,maxLevelCell(iCell)+1) = 0.0
+
+            do k=1,maxLevelCell(iCell)
+              do iTracer=1,num_tracers
+                ! This is h d/dz( fluxVertTop) but h and dz cancel, so 
+                ! reduces to delta( fluxVertTop)
+                tend_tr(iTracer,k,iCell) = tend_tr(iTracer,k,iCell) &
+                  + fluxVertTop(iTracer,k) - fluxVertTop(iTracer,k+1)
+              enddo
+            enddo
+
+         enddo ! iCell loop
+         deallocate(fluxVertTop)
       endif
 
-      allocate(fluxVertTop(num_tracers,nVertLevels+1))
-      fluxVertTop(:,1) = 0.0
-      do iCell=1,nCellsSolve 
+      !
+      ! add restoring to T and S in top model layer
+      !
+      if(config_restoreTS) then
+         k = 1  ! restoring only in top layer
+         do iCell=1,nCellsSolve
 
-         do k=2,maxLevelCell(iCell)
-           do iTracer=1,num_tracers
-             ! compute \kappa_v d\phi/dz
-             fluxVertTop(iTracer,k) = vertDiffTop(k) &
-                * (tracers(iTracer,k-1,iCell) - tracers(iTracer,k,iCell) )&
-                * 2 / (h(k-1,iCell) + h(k,iCell))
-           enddo
+           tend_tr(index_temperature, k, iCell) = tend_tr(index_temperature, k, iCell)  &
+                - h(k,iCell)*(tracers(index_temperature, k, iCell) - temperatureRestore(iCell)) &
+                / (config_restoreT_timescale * 86400.0)
+
+           tend_tr(index_salinity, k, iCell) = tend_tr(index_salinity, k, iCell)  &
+                - h(k,iCell)*(tracers(index_salinity, k, iCell) - salinityRestore(iCell)) &
+                / (config_restoreS_timescale * 86400.0)
+
+   !       write(6,10) iCell, tracers(index_temperature, k, iCell), &
+   !              temperatureRestore(iCell), tracers(index_temperature, k, iCell), &
+   !             (tracers(index_temperature, k, iCell) - temperatureRestore(iCell)) &
+   !             / (config_restoreT_timescale * 86400.0)
+
          enddo
-         fluxVertTop(:,maxLevelCell(iCell)+1) = 0.0
 
-         do k=1,maxLevelCell(iCell)
-           do iTracer=1,num_tracers
-             ! This is h d/dz( fluxVertTop) but h and dz cancel, so 
-             ! reduces to delta( fluxVertTop)
-             tend_tr(iTracer,k,iCell) = tend_tr(iTracer,k,iCell) &
-               + fluxVertTop(iTracer,k) - fluxVertTop(iTracer,k+1)
-           enddo
-         enddo
+      endif
+ 10   format(2i8,10e20.10)
 
-      enddo ! iCell loop
-      deallocate(fluxVertTop, vertDiffTop)
 
           ! print some diagnostics - for debugging
 !         print *, 'after vertical mixing',&
@@ -1291,7 +1397,6 @@ module time_integration
       real (kind=RKIND), dimension(:,:,:), pointer :: deriv_two
       real (kind=RKIND) :: coef_3rd_order
       real (kind=RKIND) :: r, h1, h2
-
 
       h           => s % h % array
       u           => s % u % array
@@ -1635,8 +1740,11 @@ module time_integration
       ! equation of state
       !
       ! For an isopycnal model, density should remain constant.
+      ! For zlevel, calculate in-istu density
       if (config_vert_grid_type.eq.'zlevel') then
-         call equation_of_state(s,grid)
+         call equation_of_state(s,grid,0,'relative')
+      ! mrp 110324 In order to visualize rhoDisplaced, include the following
+         call equation_of_state(s, grid, 1,'relative')
       endif
 
       !
@@ -1735,6 +1843,300 @@ module time_integration
 
    end subroutine compute_solve_diagnostics
 
+   subroutine compute_vertical_mix_coefficients(s, d, grid)
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   ! Compute diagnostic fields used in the tendency computations
+   !
+   ! Input: grid - grid metadata
+   !
+   ! Output: s - computed diagnostics
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+      implicit none
+
+      type (state_type), intent(inout) :: s
+      type (diagnostics_type), intent(inout) :: d
+      type (mesh_type), intent(in) :: grid
+
+      type (dm_info) :: dminfo
+
+      integer :: iEdge, iCell, iVertex, k, cell1, cell2, i, j
+      integer :: nCells, nEdges, nVertices, nVertLevels
+
+      real (kind=RKIND), dimension(:,:), allocatable:: &
+        drhoTopOfCell, drhoTopOfEdge, &
+        du2TopOfCell, du2TopOfEdge
+      real (kind=RKIND) :: coef
+      real (kind=RKIND), dimension(:,:), pointer :: &
+        vertViscTopOfEdge, vertDiffTopOfCell, &
+        RiTopOfEdge, RiTopOfCell, rhoDisplaced, rho, &
+        kiteAreasOnVertex, h_edge, h, u
+
+      real (kind=RKIND), dimension(:), pointer :: &
+        h_s, fVertex, fEdge, dvEdge, dcEdge, areaCell, areaTriangle, &
+        hZLevel, zTopZLevel  
+      character :: c1*6
+
+      integer, dimension(:), pointer :: nEdgesOnCell, nEdgesOnEdge, &
+        maxLevelCell, maxLevelEdgeTop, maxLevelEdgeBot, &
+        maxLevelVertexBot,  maxLevelVertexTop
+      integer, dimension(:,:), pointer :: &
+        cellsOnEdge
+      real (kind=RKIND) :: d2fdx2_cell1, d2fdx2_cell2
+      real (kind=RKIND), dimension(:,:,:), pointer :: deriv_two
+      real (kind=RKIND) :: coef_3rd_order
+      real (kind=RKIND) :: r, h1, h2
+
+      rho => s % rho % array
+      rhoDisplaced => s % rhoDisplaced % array
+      u           => s % u % array
+      h           => s % h % array
+      h_edge      => s % h_edge % array
+
+      vertViscTopOfEdge => d % vertViscTopOfEdge % array
+      vertDiffTopOfCell => d % vertDiffTopOfCell % array
+      RiTopOfEdge => d % RiTopOfEdge % array
+      RiTopOfCell => d % RiTopOfCell % array
+
+      zTopZLevel        => grid % zTopZLevel % array
+      maxLevelCell      => grid % maxLevelCell % array
+      maxLevelEdgeTop   => grid % maxLevelEdgeTop % array
+      maxLevelEdgeBot   => grid % maxLevelEdgeBot % array
+      cellsOnEdge       => grid % cellsOnEdge % array
+      dcEdge            => grid % dcEdge % array
+      dvEdge            => grid % dvEdge % array
+      areaCell          => grid % areaCell % array
+
+      nCells      = grid % nCells
+      nEdges      = grid % nEdges
+      nVertices   = grid % nVertices
+      nVertLevels = grid % nVertLevels
+
+   !
+   !  Compute Richardson Number
+   !
+   if (config_vert_visc_type.eq.'rich'.or. &
+       config_vert_diff_type.eq.'rich') then
+      allocate( &
+         drhoTopOfCell(nVertLevels+1,nCells+1), drhoTopOfEdge(nVertLevels+1,nEdges+1), &
+         du2TopOfCell(nVertLevels+1,nCells+1), du2TopOfEdge(nVertLevels+1,nEdges+1))
+
+      ! compute density of parcel displaced to next deeper z-level,
+      ! in state % rhoDisplaced
+!maltrud make sure rho is current--check this for redundancy
+      call equation_of_state(s, grid, 0, 'relative')
+      call equation_of_state(s, grid, 1, 'relative')
+
+      ! drhoTopOfCell(k) = $\rho^*_{k-1}-\rho^*_k$
+      drhoTopOfCell = 0.0
+      do iCell=1,nCells
+         do k=2,maxLevelCell(iCell)
+            drhoTopOfCell(k,iCell) = rho(k-1,iCell) - rhoDisplaced(k-1,iCell)
+          end do
+      end do
+
+      ! interpolate drhoTopOfCell to drhoTopOfEdge
+      do iEdge=1,nEdges
+         cell1 = cellsOnEdge(1,iEdge)
+         cell2 = cellsOnEdge(2,iEdge)
+         do k=2,maxLevelEdgeTop(iEdge)
+            drhoTopOfEdge(k,iEdge) = &
+               (drhoTopOfCell(k,cell1) + &
+                drhoTopOfCell(k,cell2))/2  
+         end do
+       end do
+
+      ! du2TopOfEdge(k) = $u_{k-1}-u_k$
+      du2TopOfEdge=0.0
+      do iEdge=1,nEdges
+         do k=2,maxLevelEdgeTop(iEdge)
+            du2TopOfEdge(k,iEdge) = (u(k-1,iEdge) - u(k,iEdge))**2
+         end do
+      end do
+
+      ! interpolate du2TopOfEdge to du2TopOfCell
+      du2TopOfCell(:,:) = 0.0
+      do iEdge=1,nEdges
+         cell1 = cellsOnEdge(1,iEdge)
+         cell2 = cellsOnEdge(2,iEdge)
+         do k=2,maxLevelEdgeBot(iEdge)
+            du2TopOfCell(k,cell1) = du2TopOfCell(k,cell1) &
+               + 0.5 * dcEdge(iEdge) * dvEdge(iEdge) * du2TopOfEdge(k,iEdge)
+            du2TopOfCell(k,cell2) = du2TopOfCell(k,cell2) &
+               + 0.5 * dcEdge(iEdge) * dvEdge(iEdge) * du2TopOfEdge(k,iEdge)
+         end do
+      end do
+      do iCell = 1,nCells
+         do k = 2,maxLevelCell(iCell)
+            du2TopOfCell(k,iCell) = du2TopOfCell(k,iCell) / areaCell(iCell)
+         end do
+      end do
+
+      ! compute RiTopOfEdge using drhoTopOfEdge and du2TopOfEdge
+      ! coef = -g/rho_0/2
+      RiTopOfEdge = 0.0
+      coef = -gravity/1000.0/2.0
+      do iEdge = 1,nEdges
+         do k = 2,maxLevelEdgeTop(iEdge)
+            RiTopOfEdge(k,iEdge) = coef*drhoTopOfEdge(k,iEdge) &
+               *(h_edge(k-1,iEdge)+h_edge(k,iEdge)) &
+               / (du2TopOfEdge(k,iEdge) + 1e-20)
+         end do
+      end do
+
+      ! compute RiTopOfCell using drhoTopOfCell and du2TopOfCell
+      ! coef = -g/rho_0/2
+      RiTopOfCell = 0.0
+      coef = -gravity/1000.0/2.0
+      do iCell = 1,nCells
+         do k = 2,maxLevelCell(iCell)
+            RiTopOfCell(k,iCell) = coef*drhoTopOfCell(k,iCell) &
+               *(h(k-1,iCell)+h(k,iCell)) &
+               / (du2TopOfCell(k,iCell) + 1e-20)
+         end do
+      end do
+
+      deallocate(drhoTopOfCell, drhoTopOfEdge, &
+        du2TopOfCell, du2TopOfEdge)
+   endif
+
+   !
+   !  Compute vertical viscosity
+   !
+   if (config_vert_visc_type.eq.'const') then
+
+      vertViscTopOfEdge = config_vert_visc
+
+   elseif (config_vert_visc_type.eq.'tanh') then
+
+      if (config_vert_grid_type.ne.'zlevel') then
+         write(0,*) 'Abort: config_vert_visc_type.eq.tanh may only', &
+            ' use config_vert_grid_type of zlevel at this time'
+         call dmpar_abort(dminfo)
+      endif
+  
+      do k=1,nVertLevels+1
+          vertViscTopOfEdge(k,:) = -(config_max_visc_tanh-config_min_visc_tanh)/2.0 &
+            *tanh(-(zTopZLevel(k)-config_ZMid_tanh) &
+                  /config_zWidth_tanh) &
+            + (config_max_visc_tanh+config_min_visc_tanh)/2
+      end do
+
+   elseif (config_vert_visc_type.eq.'rich') then
+
+      vertViscTopOfEdge = 0.0
+      do iEdge = 1,nEdges
+         do k = 2,maxLevelEdgeTop(iEdge)
+            ! mrp 110324 efficiency note: this if is inside iEdge and k loops.
+            ! Perhaps there is a more efficient way to do this.
+            if (RiTopOfEdge(k,iEdge)>0.0) then
+               vertViscTopOfEdge(k,iEdge) = config_bkrd_vert_visc &
+                  + config_rich_mix / (1.0 + 5.0*RiTopOfEdge(k,iEdge))**2
+            ! maltrud do limiting of coefficient--should not be necessary
+            ! also probably better logic could be found
+               if (vertViscTopOfEdge(k,iEdge) > config_convective_visc) then
+                   if( config_implicit_vertical_mix) then
+                      vertViscTopOfEdge(k,iEdge) = config_convective_visc
+                   else
+                      vertViscTopOfEdge(k,iEdge) = &
+                      ((h_edge(k-1,iEdge)+h_edge(k,iEdge))/2.0)**2/config_dt/4.0
+                   end if
+               end if
+            else
+               ! mrp 110324 efficiency note: this if is inside iCell and k loops.
+               if (config_implicit_vertical_mix) then
+                  ! for Ri<0 and implicit mix, use convective diffusion
+                  vertViscTopOfEdge(k,iEdge) = config_convective_visc
+               else
+                  ! for Ri<0 and explicit vertical mix, 
+                  ! use maximum diffusion allowed by CFL criterion
+                  ! mrp 110324 efficiency note: for z-level, could use fixed
+                  ! grid array hMeanTopZLevel and compute maxdiff on startup.
+                  vertViscTopOfEdge(k,iEdge) = &
+                      ((h_edge(k-1,iEdge)+h_edge(k,iEdge))/2.0)**2/config_dt/4.0
+               end if
+            end if
+         end do
+      end do
+
+   else
+
+      write(0,*) 'Abort: unrecognized config_vert_visc_type'
+      call dmpar_abort(dminfo)
+
+   endif
+
+   !
+   !  Compute vertical tracer diffusion
+   !
+   if (config_vert_diff_type.eq.'const') then
+
+      vertDiffTopOfCell = config_vert_diff
+
+   elseif (config_vert_diff_type.eq.'tanh') then
+
+      if (config_vert_grid_type.ne.'zlevel') then
+         write(0,*) 'Abort: config_vert_diff_type.eq.tanh may only', &
+            ' use config_vert_grid_type of zlevel at this time'
+         call dmpar_abort(dminfo)
+      endif
+
+      do k=1,nVertLevels+1
+         vertDiffTopOfCell(k,:) = -(config_max_diff_tanh-config_min_diff_tanh)/2.0 &
+            *tanh(-(zTopZLevel(k)-config_ZMid_tanh) &
+                  /config_zWidth_tanh) &
+            + (config_max_diff_tanh+config_min_diff_tanh)/2
+      end do
+
+   elseif (config_vert_diff_type.eq.'rich') then
+
+      vertDiffTopOfCell = 0.0
+      coef = -gravity/1000.0/2.0
+      do iCell = 1,nCells
+         do k = 2,maxLevelCell(iCell)
+            ! mrp 110324 efficiency note: this if is inside iCell and k loops.
+            ! Perhaps there is a more efficient way to do this.
+            if (RiTopOfCell(k,iCell)>0.0) then
+               vertDiffTopOfCell(k,iCell) = config_bkrd_vert_diff &
+                  + (config_bkrd_vert_visc & 
+                     + config_rich_mix / (1.0 + 5.0*RiTopOfCell(k,iCell))**2) &
+                  / (1.0 + 5.0*RiTopOfCell(k,iCell))
+            ! maltrud do limiting of coefficient--should not be necessary
+            ! also probably better logic could be found
+               if (vertDiffTopOfCell(k,iCell) > config_convective_diff) then
+                  if (config_implicit_vertical_mix) then
+                     vertDiffTopOfCell(k,iCell) = config_convective_diff
+                  else
+                     vertDiffTopOfCell(k,iCell) = &
+                        ((h(k-1,iCell)+h(k,iCell))/2.0)**2/config_dt/4.0
+                  end if
+               end if
+             else
+               ! mrp 110324 efficiency note: this if is inside iCell and k loops.
+               if (config_implicit_vertical_mix) then
+                  ! for Ri<0 and implicit mix, use convective diffusion
+                  vertDiffTopOfCell(k,iCell) = config_convective_diff
+               else
+                  ! for Ri<0 and explicit vertical mix, 
+                  ! use maximum diffusion allowed by CFL criterion
+                  ! mrp 110324 efficiency note: for z-level, could use fixed
+                  ! grid array hMeanTopZLevel and compute maxdiff on startup.
+                  vertDiffTopOfCell(k,iCell) = &
+                     ((h(k-1,iCell)+h(k,iCell))/2.0)**2/config_dt/4.0
+               end if
+            end if
+         end do
+      end do
+
+   else
+
+      write(0,*) 'Abort: unrecognized config_vert_diff_type'
+      call dmpar_abort(dminfo)
+
+   endif
+
+   end subroutine compute_vertical_mix_coefficients
+
 
    subroutine enforce_boundaryEdge(tend, grid)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1779,13 +2181,18 @@ module time_integration
    end subroutine enforce_boundaryEdge
 
 
-   subroutine equation_of_state(s, grid)
+   subroutine equation_of_state(s, grid, k_displaced, displacement_type)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    !  This module contains routines necessary for computing the density
    !  from model temperature and salinity using an equation of state.
    !
    ! Input: grid - grid metadata
    !        s - state: tracers
+   !        k_displaced 
+   !  If k_displaced<=0, state % rho is returned with no displaced
+   !  If k_displaced>0,the state % rhoDisplaced is returned, and is for
+   !  a parcel adiabatically displaced from its original level to level 
+   !  k_displaced.  This does not effect the linear EOS.
    !
    ! Output: s - state: computed density
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1793,6 +2200,8 @@ module time_integration
 
       type (state_type), intent(inout) :: s
       type (mesh_type), intent(in) :: grid
+      integer :: k_displaced
+      character(len=8), intent(in) :: displacement_type
 
       integer, dimension(:), pointer :: maxLevelCell
       real (kind=RKIND), dimension(:,:), pointer :: rho
@@ -1800,13 +2209,12 @@ module time_integration
       integer :: nCells, iCell, k
       type (dm_info) :: dminfo
 
-      rho         => s % rho % array
-      tracers     => s % tracers % array
-
-      maxLevelCell      => grid % maxLevelCell % array
-      nCells      = grid % nCells
-
       if (config_eos_type.eq.'linear') then
+
+         rho         => s % rho % array
+         tracers     => s % tracers % array
+         maxLevelCell      => grid % maxLevelCell % array
+         nCells      = grid % nCells
 
          do iCell=1,nCells
             do k=1,maxLevelCell(iCell)
@@ -1819,7 +2227,7 @@ module time_integration
 
       elseif (config_eos_type.eq.'jm') then
 
-         call equation_of_state_jm(s, grid)  
+         call equation_of_state_jm(s, grid, k_displaced, displacement_type)
 
       else 
          print *, ' Incorrect choice of config_eos_type:',&
@@ -1830,7 +2238,7 @@ module time_integration
    end subroutine equation_of_state
 
 
-   subroutine equation_of_state_jm(s, grid)
+   subroutine equation_of_state_jm(s, grid, k_displaced, displacement_type)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    !  This module contains routines necessary for computing the density
    !  from model temperature and salinity using an equation of state.
@@ -1841,6 +2249,13 @@ module time_integration
    !
    ! Input: grid - grid metadata
    !        s - state: tracers
+   !        k_displaced 
+
+   !  If k_displaced<=0, density is returned with no displaced
+   !  If k_displaced>0,the density returned is that for a parcel
+   !  adiabatically displaced from its original level to level 
+   !  k_displaced.
+
    !
    ! Output: s - state: computed density
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1849,7 +2264,8 @@ module time_integration
 
       type (state_type), intent(in) :: s
       type (mesh_type), intent(in) :: grid
-
+      integer :: k_displaced
+      character(len=8), intent(in) :: displacement_type
 
       type (dm_info) :: dminfo
       integer :: iEdge, iCell, iVertex, k
@@ -1860,7 +2276,7 @@ module time_integration
       real (kind=RKIND), dimension(:), pointer :: &
         zMidZLevel, pRefEOS
       real (kind=RKIND), dimension(:,:), pointer :: &
-        rho
+        rhoPointer
       real (kind=RKIND), dimension(:,:,:), pointer :: tracers
 
       integer, dimension(:), pointer :: maxLevelCell
@@ -1880,7 +2296,8 @@ module time_integration
       tmin, tmax,        &! valid temperature range for level k
       smin, smax          ! valid salinity    range for level k
 
-   real (kind=RKIND) :: p, p2 ! temporary pressure scalars
+   real (kind=RKIND), dimension(:), allocatable :: &
+      p, p2 ! temporary pressure scalars
 
 !-----------------------------------------------------------------------
 !
@@ -1951,7 +2368,8 @@ module time_integration
       bup2s1t1 =  6.128773e-8,       &
       bup2s1t2 =  6.207323e-10
 
-      rho         => s % rho % array
+   integer :: k_test, k_ref
+
       tracers     => s % tracers % array
 
       nCells      = grid % nCells
@@ -1975,18 +2393,53 @@ module time_integration
 !  average temperatures and salinities from Levitus 1994, and 
 !  integrating using hydrostatic balance.
 
-      allocate(pRefEOS(nVertLevels))
+      allocate(pRefEOS(nVertLevels),p(nVertLevels),p2(nVertLevels))
       do k = 1,nVertLevels
         depth = -zMidZLevel(k)
         pRefEOS(k) = 0.059808*(exp(-0.025*depth) - 1.0) &
             + 0.100766*depth + 2.28405e-7*depth**2
       enddo
 
+   !  If k_displaced=0, in-situ density is returned (no displacement)
+   !  If k_displaced/=0, potential density is returned
+
+   !  if displacement_type = 'relative', potential density is calculated
+   !     referenced to level k + k_displaced
+   !  if displacement_type = 'absolute', potential density is calculated
+   !     referenced to level k_displaced for all k
+   !  NOTE: k_displaced = 0 or > nVertLevels is incompatible with 'absolute'
+   !     so abort if necessary
+
+   if (displacement_type == 'absolute' .and.   &
+       (k_displaced <= 0 .or. k_displaced > nVertLevels) ) then
+      write(0,*) 'Abort: In equation_of_state_jm', &
+         ' k_displaced must be between 1 and nVertLevels for displacement_type = absolute'
+      call dmpar_abort(dminfo)
+   endif
+
+   if (k_displaced == 0) then
+      rhoPointer => s % rho % array
+      do k=1,nVertLevels
+         p(k)   = pRefEOS(k)
+         p2(k)  = p(k)*p(k)
+      enddo
+   else ! k_displaced /= 0
+      rhoPointer => s % rhoDisplaced % array
+      do k=1,nVertLevels
+         if (displacement_type == 'relative') then
+            k_test = min(k + k_displaced, nVertLevels)
+            k_ref  = max(k_test, 1)
+         else
+            k_test = min(k_displaced, nVertLevels)
+            k_ref  = max(k_test, 1)
+         endif
+         p(k)   = pRefEOS(k_ref)
+         p2(k)  = p(k)*p(k)
+      enddo
+   endif
+
   do iCell=1,nCells
     do k=1,maxLevelCell(iCell)
-
-      p   = pRefEOS(k)
-      p2  = pRefEOS(k)*pRefEOS(k)
 
       SQ  = max(min(tracers(s%index_salinity,k,iCell),smax),smin)
       TQ  = max(min(tracers(s%index_temperature,k,iCell),tmax),tmin)
@@ -2012,27 +2465,122 @@ module time_integration
 
       WORK3 = bup0s1t0 + bup0s1t1*TQ +                    &
              (bup0s1t2 + bup0s1t3*TQ)*T2 +                &
-              p *(bup1s1t0 + bup1s1t1*TQ + bup1s1t2*T2) + &
-              p2*(bup2s1t0 + bup2s1t1*TQ + bup2s1t2*T2)
+              p(k) *(bup1s1t0 + bup1s1t1*TQ + bup1s1t2*T2) + &
+              p2(k)*(bup2s1t0 + bup2s1t1*TQ + bup2s1t2*T2)
       WORK4 = SQR*(bup0sqt0 + bup0sqt1*TQ + bup0sqt2*T2 + &
-                   bup1sqt0*p)
+                   bup1sqt0*p(k))
 
       BULK_MOD  = bup0s0t0 + bup0s0t1*TQ +                    &
                   (bup0s0t2 + bup0s0t3*TQ + bup0s0t4*T2)*T2 + &
-                  p *(bup1s0t0 + bup1s0t1*TQ +                &
+                  p(k) *(bup1s0t0 + bup1s0t1*TQ +                &
                      (bup1s0t2 + bup1s0t3*TQ)*T2) +           &
-                  p2*(bup2s0t0 + bup2s0t1*TQ + bup2s0t2*T2) + &
+                  p2(k)*(bup2s0t0 + bup2s0t1*TQ + bup2s0t2*T2) + &
                   SQ*(WORK3 + WORK4)
 
-      DENOMK = 1.0/(BULK_MOD - p)
+      DENOMK = 1.0/(BULK_MOD - p(k))
 
-      rho(k,iCell) = (unt0 + RHO_S)*BULK_MOD*DENOMK
+      rhoPointer(k,iCell) = (unt0 + RHO_S)*BULK_MOD*DENOMK
 
     end do
   end do
 
-      deallocate(pRefEOS)
+   deallocate(pRefEOS,p,p2)
 
    end subroutine equation_of_state_jm
+
+
+subroutine tridiagonal_solve(a,b,c,r,x,n)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! Solve the matrix equation Ax=r for x, where A is tridiagonal.
+! A is an nxn matrix, with:
+!   a sub-diagonal, filled from 1:n-1 (a(1) appears on row 2)
+!   b diagonal, filled from 1:n
+!   c sup-diagonal, filled from 1:n-1  (c(1) apears on row 1)
+!
+! Input: a,b,c,r,n
+!
+! Output: x
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ 
+   implicit none
+
+   integer,intent(in) :: n
+   real (KIND=RKIND), dimension(n), intent(in) :: a,b,c,r
+   real (KIND=RKIND), dimension(n), intent(out) :: x
+   real (KIND=RKIND), dimension(n) :: bTemp,rTemp
+   real (KIND=RKIND) :: m
+   integer i
+ 
+   ! Use work variables for b and r
+   bTemp(1) = b(1)
+   rTemp(1) = r(1)
+ 
+   ! First pass: set the coefficients
+   do i = 2,n
+      m = a(i-1)/bTemp(i-1)
+      bTemp(i) = b(i) - m*c(i-1)
+      rTemp(i) = r(i) - m*rTemp(i-1)
+   end do 
+ 
+   x(n) = rTemp(n)/bTemp(n)
+   ! Second pass: back-substition
+   do i = n-1, 1, -1
+      x(i) = (rTemp(i) - c(i)*x(i+1))/bTemp(i)
+   end do
+ 
+end subroutine tridiagonal_solve
+
+
+subroutine tridiagonal_solve_mult(a,b,c,r,x,n,nDim,nSystems)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! Solve the matrix equation Ax=r for x, where A is tridiagonal.
+! A is an nxn matrix, with:
+!   a sub-diagonal, filled from 1:n-1 (a(1) appears on row 2)
+!   b diagonal, filled from 1:n
+!   c sup-diagonal, filled from 1:n-1  (c(1) apears on row 1)
+!
+! Input: a,b,c,r,n
+!
+! Output: x
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ 
+   implicit none
+
+   integer,intent(in) :: n, nDim, nSystems
+   real (KIND=RKIND), dimension(n), intent(in) :: a,b,c
+   real (KIND=RKIND), dimension(nSystems,nDim), intent(in) :: r
+   real (KIND=RKIND), dimension(nSystems,nDim), intent(out) :: x
+   real (KIND=RKIND), dimension(n) :: bTemp
+   real (KIND=RKIND), dimension(nSystems,n) :: rTemp
+   real (KIND=RKIND) :: m
+   integer i,j
+ 
+   ! Use work variables for b and r
+   bTemp(1) = b(1)
+   do j = 1,nSystems
+      rTemp(j,1) = r(j,1)
+   end do
+ 
+   ! First pass: set the coefficients
+   do i = 2,n
+      m = a(i-1)/bTemp(i-1)
+      bTemp(i) = b(i) - m*c(i-1)
+      do j = 1,nSystems
+         rTemp(j,i) = r(j,i) - m*rTemp(j,i-1)
+      end do 
+   end do 
+ 
+   do j = 1,nSystems
+      x(j,n) = rTemp(j,n)/bTemp(n)
+   end do
+   ! Second pass: back-substition
+   do i = n-1, 1, -1
+      do j = 1,nSystems
+         x(j,i) = (rTemp(j,i) - c(i)*x(j,i+1))/bTemp(i)
+      end do
+   end do
+ 
+end subroutine tridiagonal_solve_mult
+
 
 end module time_integration
