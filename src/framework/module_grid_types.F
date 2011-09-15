@@ -11,6 +11,7 @@ module grid_types
       integer, dimension(4) :: start
       integer, dimension(4) :: count
       logical :: input
+      logical :: sfc
       logical :: restart
       logical :: output
    end type io_info

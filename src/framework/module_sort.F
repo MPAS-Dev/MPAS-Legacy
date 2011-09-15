@@ -1,5 +1,10 @@
 module sort
 
+   interface quicksort
+      module procedure quicksort_int
+      module procedure quicksort_real
+   end interface
+
 
    contains
 
@@ -67,7 +72,7 @@ module sort
    end subroutine mergesort
 
 
-   subroutine quicksort(nArray, array)
+   subroutine quicksort_int(nArray, array)
 
       implicit none
 
@@ -127,7 +132,70 @@ if (top > 1000) write(0,*) 'Error: Quicksort exhausted its stack.'
          end if
       end do
 
-   end subroutine quicksort
+   end subroutine quicksort_int
+
+
+   subroutine quicksort_real(nArray, array)
+
+      implicit none
+
+      integer, intent(in) :: nArray
+      real (kind=RKIND), dimension(2,nArray), intent(inout) :: array
+
+      integer :: i, j, top, l, r, pivot, s
+      real (kind=RKIND) :: pivot_value
+      real (kind=RKIND), dimension(2) :: temp
+      integer, dimension(1000) :: lstack, rstack
+
+      if (nArray < 1) return
+
+      top = 1
+      lstack(top) = 1
+      rstack(top) = nArray
+
+      do while (top > 0)
+
+         l = lstack(top)
+         r = rstack(top)
+         top = top - 1
+
+         pivot = (l+r)/2
+
+         pivot_value = array(1,pivot)
+         temp(:) = array(:,pivot)
+         array(:,pivot) = array(:,r)
+         array(:,r) = temp(:)
+
+         s = l
+         do i=l,r-1
+            if (array(1,i) <= pivot_value) then
+               temp(:) = array(:,s)
+               array(:,s) = array(:,i)
+               array(:,i) = temp(:)
+               s = s + 1
+            end if
+         end do
+
+         temp(:) = array(:,s)
+         array(:,s) = array(:,r)
+         array(:,r) = temp(:)
+
+         if (s-1 > l) then
+            top = top + 1
+if (top > 1000) write(0,*) 'Error: Quicksort exhausted its stack.'
+            lstack(top) = l
+            rstack(top) = s-1
+         end if
+
+         if (r > s+1) then
+            top = top + 1
+if (top > 1000) write(0,*) 'Error: Quicksort exhausted its stack.'
+            lstack(top) = s+1
+            rstack(top) = r
+         end if
+      end do
+
+   end subroutine quicksort_real
 
 
    integer function binary_search(array, d1, n1, n2, key)

@@ -583,6 +583,11 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
             else
                fortprintf(fd, "      %s %% %s %% ioinfo %% input = .false.\n", group_ptr->name, var_ptr2->super_array);
 
+            if (var_ptr2->iostreams & SFC0) 
+               fortprintf(fd, "      %s %% %s %% ioinfo %% sfc = .true.\n", group_ptr->name, var_ptr2->super_array);
+            else
+               fortprintf(fd, "      %s %% %s %% ioinfo %% sfc = .false.\n", group_ptr->name, var_ptr2->super_array);
+
             if (var_ptr2->iostreams & RESTART0) 
                fortprintf(fd, "      %s %% %s %% ioinfo %% restart = .true.\n", group_ptr->name, var_ptr2->super_array);
             else
@@ -633,6 +638,11 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
                fortprintf(fd, "      %s %% %s %% ioinfo %% input = .true.\n", group_ptr->name, var_ptr->name_in_code);
             else
                fortprintf(fd, "      %s %% %s %% ioinfo %% input = .false.\n", group_ptr->name, var_ptr->name_in_code);
+
+            if (var_ptr->iostreams & SFC0) 
+               fortprintf(fd, "      %s %% %s %% ioinfo %% sfc = .true.\n", group_ptr->name, var_ptr->name_in_code);
+            else
+               fortprintf(fd, "      %s %% %s %% ioinfo %% sfc = .false.\n", group_ptr->name, var_ptr->name_in_code);
 
             if (var_ptr->iostreams & RESTART0) 
                fortprintf(fd, "      %s %% %s %% ioinfo %% restart = .true.\n", group_ptr->name, var_ptr->name_in_code);
@@ -817,6 +827,396 @@ void gen_reads(struct group_list * groups, struct variable * vars, struct dimens
    }
 
    fclose(fd);
+
+   /*
+    *  Definitions of read bounds and exchange lists for non-decomposed fields
+    */
+   fd = fopen("nondecomp_dims.inc", "w");
+
+   dim_ptr = dims;
+   while (dim_ptr) {
+
+      if (strncmp(dim_ptr->name_in_file,"nCells",1024) != 0 &&
+          strncmp(dim_ptr->name_in_file,"nEdges",1024) != 0 &&
+          strncmp(dim_ptr->name_in_file,"nVertices",1024) != 0 &&
+          strncmp(dim_ptr->name_in_file,"nVertLevels",1024) != 0
+         ) {
+
+         if (is_derived_dim(dim_ptr->name_in_code)) {
+            fortprintf(fd, "      integer :: read%sStart\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "      integer :: read%sCount\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "      type (exchange_list), pointer :: send%sList\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "      type (exchange_list), pointer :: recv%sList\n", dim_ptr->name_in_file+1);
+         }
+         else if (dim_ptr->constant_value > 0) {
+            fortprintf(fd, "      integer :: read%sStart\n", dim_ptr->name_in_file);
+            fortprintf(fd, "      integer :: read%sCount\n", dim_ptr->name_in_file);
+            fortprintf(fd, "      type (exchange_list), pointer :: send%sList\n", dim_ptr->name_in_file);
+            fortprintf(fd, "      type (exchange_list), pointer :: recv%sList\n", dim_ptr->name_in_file);
+         }
+         else if (dim_ptr->namelist_defined) {
+            fortprintf(fd, "      integer :: read%sStart\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "      integer :: read%sCount\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "      type (exchange_list), pointer :: send%sList\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "      type (exchange_list), pointer :: recv%sList\n", dim_ptr->name_in_file+1);
+         }
+         else {
+            fortprintf(fd, "      integer :: read%sStart\n", dim_ptr->name_in_code+1);
+            fortprintf(fd, "      integer :: read%sCount\n", dim_ptr->name_in_code+1);
+            fortprintf(fd, "      type (exchange_list), pointer :: send%sList\n", dim_ptr->name_in_code+1);
+            fortprintf(fd, "      type (exchange_list), pointer :: recv%sList\n", dim_ptr->name_in_code+1);
+         }
+      }
+
+      dim_ptr = dim_ptr->next;
+   }
+
+   fortprintf(fd, "\n");
+
+   dim_ptr = dims;
+   while (dim_ptr) {
+
+      if (strncmp(dim_ptr->name_in_file,"nCells",1024) != 0 &&
+          strncmp(dim_ptr->name_in_file,"nEdges",1024) != 0 &&
+          strncmp(dim_ptr->name_in_file,"nVertices",1024) != 0 &&
+          strncmp(dim_ptr->name_in_file,"nVertLevels",1024) != 0
+         ) {
+
+         if (is_derived_dim(dim_ptr->name_in_code)) {
+            fortprintf(fd, "      read%sStart = 1\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "      read%sCount = block %% mesh %% %s\n", dim_ptr->name_in_file+1, dim_ptr->name_in_code);
+            fortprintf(fd, "      allocate(send%sList)\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "      allocate(recv%sList)\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "      nullify(send%sList %% next)\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "      nullify(recv%sList %% next)\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "      recv%sList %% procID = dminfo %% my_proc_id\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "      send%sList %% procID = dminfo %% my_proc_id\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "      recv%sList %% nlist = read%sCount\n", dim_ptr->name_in_file+1, dim_ptr->name_in_file+1);
+            fortprintf(fd, "      send%sList %% nlist = read%sCount\n", dim_ptr->name_in_file+1, dim_ptr->name_in_file+1);
+            fortprintf(fd, "      allocate(recv%sList %% list(read%sCount))\n", dim_ptr->name_in_file+1, dim_ptr->name_in_file+1);
+            fortprintf(fd, "      allocate(send%sList %% list(read%sCount))\n", dim_ptr->name_in_file+1, dim_ptr->name_in_file+1);
+            fortprintf(fd, "      do i=1,read%sCount\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "         recv%sList %% list(i) = i\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "         send%sList %% list(i) = i\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "      end do\n");
+            fortprintf(fd, "\n");
+         }
+         else if (dim_ptr->constant_value > 0) {
+            fortprintf(fd, "      read%sStart = 1\n", dim_ptr->name_in_file);
+            fortprintf(fd, "      read%sCount = %s\n", dim_ptr->name_in_file, dim_ptr->name_in_code);
+            fortprintf(fd, "      allocate(send%sList)\n", dim_ptr->name_in_file);
+            fortprintf(fd, "      allocate(recv%sList)\n", dim_ptr->name_in_file);
+            fortprintf(fd, "      nullify(send%sList %% next)\n", dim_ptr->name_in_file);
+            fortprintf(fd, "      nullify(recv%sList %% next)\n", dim_ptr->name_in_file);
+            fortprintf(fd, "      recv%sList %% procID = dminfo %% my_proc_id\n", dim_ptr->name_in_file);
+            fortprintf(fd, "      send%sList %% procID = dminfo %% my_proc_id\n", dim_ptr->name_in_file);
+            fortprintf(fd, "      recv%sList %% nlist = read%sCount\n", dim_ptr->name_in_file, dim_ptr->name_in_file);
+            fortprintf(fd, "      send%sList %% nlist = read%sCount\n", dim_ptr->name_in_file, dim_ptr->name_in_file);
+            fortprintf(fd, "      allocate(recv%sList %% list(read%sCount))\n", dim_ptr->name_in_file, dim_ptr->name_in_file);
+            fortprintf(fd, "      allocate(send%sList %% list(read%sCount))\n", dim_ptr->name_in_file, dim_ptr->name_in_file);
+            fortprintf(fd, "      do i=1,read%sCount\n", dim_ptr->name_in_file);
+            fortprintf(fd, "         recv%sList %% list(i) = i\n", dim_ptr->name_in_file);
+            fortprintf(fd, "         send%sList %% list(i) = i\n", dim_ptr->name_in_file);
+            fortprintf(fd, "      end do\n");
+            fortprintf(fd, "\n");
+         }
+         else if (dim_ptr->namelist_defined) {
+            fortprintf(fd, "      read%sStart = 1\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "      read%sCount = block %% mesh %% %s\n", dim_ptr->name_in_file+1, dim_ptr->name_in_file);
+            fortprintf(fd, "      allocate(send%sList)\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "      allocate(recv%sList)\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "      nullify(send%sList %% next)\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "      nullify(recv%sList %% next)\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "      recv%sList %% procID = dminfo %% my_proc_id\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "      send%sList %% procID = dminfo %% my_proc_id\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "      recv%sList %% nlist = read%sCount\n", dim_ptr->name_in_file+1, dim_ptr->name_in_file+1);
+            fortprintf(fd, "      send%sList %% nlist = read%sCount\n", dim_ptr->name_in_file+1, dim_ptr->name_in_file+1);
+            fortprintf(fd, "      allocate(recv%sList %% list(read%sCount))\n", dim_ptr->name_in_file+1, dim_ptr->name_in_file+1);
+            fortprintf(fd, "      allocate(send%sList %% list(read%sCount))\n", dim_ptr->name_in_file+1, dim_ptr->name_in_file+1);
+            fortprintf(fd, "      do i=1,read%sCount\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "         recv%sList %% list(i) = i\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "         send%sList %% list(i) = i\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "      end do\n");
+            fortprintf(fd, "\n");
+         }
+         else {
+            fortprintf(fd, "      read%sStart = 1\n", dim_ptr->name_in_code+1);
+            fortprintf(fd, "      read%sCount = block %% mesh %% %s\n", dim_ptr->name_in_code+1, dim_ptr->name_in_code);
+            fortprintf(fd, "      allocate(send%sList)\n", dim_ptr->name_in_code+1);
+            fortprintf(fd, "      allocate(recv%sList)\n", dim_ptr->name_in_code+1);
+            fortprintf(fd, "      nullify(send%sList %% next)\n", dim_ptr->name_in_code+1);
+            fortprintf(fd, "      nullify(recv%sList %% next)\n", dim_ptr->name_in_code+1);
+            fortprintf(fd, "      recv%sList %% procID = dminfo %% my_proc_id\n", dim_ptr->name_in_code+1);
+            fortprintf(fd, "      send%sList %% procID = dminfo %% my_proc_id\n", dim_ptr->name_in_code+1);
+            fortprintf(fd, "      recv%sList %% nlist = read%sCount\n", dim_ptr->name_in_code+1, dim_ptr->name_in_code+1);
+            fortprintf(fd, "      send%sList %% nlist = read%sCount\n", dim_ptr->name_in_code+1, dim_ptr->name_in_code+1);
+            fortprintf(fd, "      allocate(recv%sList %% list(read%sCount))\n", dim_ptr->name_in_code+1, dim_ptr->name_in_code+1);
+            fortprintf(fd, "      allocate(send%sList %% list(read%sCount))\n", dim_ptr->name_in_code+1, dim_ptr->name_in_code+1);
+            fortprintf(fd, "      do i=1,read%sCount\n", dim_ptr->name_in_code+1);
+            fortprintf(fd, "         recv%sList %% list(i) = i\n", dim_ptr->name_in_code+1);
+            fortprintf(fd, "         send%sList %% list(i) = i\n", dim_ptr->name_in_code+1);
+            fortprintf(fd, "      end do\n");
+            fortprintf(fd, "\n");
+         }
+
+      }
+
+      dim_ptr = dim_ptr->next;
+   }
+
+   fclose(fd);
+
+
+   /*
+    *  Deallocation of exchange lists for non-decomposed fields
+    */
+   fd = fopen("nondecomp_dims_dealloc.inc", "w");
+
+   dim_ptr = dims;
+   while (dim_ptr) {
+
+      if (strncmp(dim_ptr->name_in_file,"nCells",1024) != 0 &&
+          strncmp(dim_ptr->name_in_file,"nEdges",1024) != 0 &&
+          strncmp(dim_ptr->name_in_file,"nVertices",1024) != 0 &&
+          strncmp(dim_ptr->name_in_file,"nVertLevels",1024) != 0
+         ) {
+
+         if (is_derived_dim(dim_ptr->name_in_code)) {
+            fortprintf(fd, "      deallocate(recv%sList %% list)\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "      deallocate(send%sList %% list)\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "      deallocate(send%sList)\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "      deallocate(recv%sList)\n", dim_ptr->name_in_file+1);
+         }
+         else if (dim_ptr->constant_value > 0) {
+            fortprintf(fd, "      deallocate(recv%sList %% list)\n", dim_ptr->name_in_file);
+            fortprintf(fd, "      deallocate(send%sList %% list)\n", dim_ptr->name_in_file);
+            fortprintf(fd, "      deallocate(send%sList)\n", dim_ptr->name_in_file);
+            fortprintf(fd, "      deallocate(recv%sList)\n", dim_ptr->name_in_file);
+         }
+         else if (dim_ptr->namelist_defined) {
+            fortprintf(fd, "      deallocate(recv%sList %% list)\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "      deallocate(send%sList %% list)\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "      deallocate(send%sList)\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "      deallocate(recv%sList)\n", dim_ptr->name_in_file+1);
+         }
+         else {
+            fortprintf(fd, "      deallocate(recv%sList %% list)\n", dim_ptr->name_in_code+1);
+            fortprintf(fd, "      deallocate(send%sList %% list)\n", dim_ptr->name_in_code+1);
+            fortprintf(fd, "      deallocate(send%sList)\n", dim_ptr->name_in_code+1);
+            fortprintf(fd, "      deallocate(recv%sList)\n", dim_ptr->name_in_code+1);
+         }
+
+      }
+
+      dim_ptr = dim_ptr->next;
+   }
+
+   fclose(fd);
+
+
+   /*
+    *  Definitions of read bounds and exchange lists for non-decomposed fields
+    */
+   fd = fopen("nondecomp_outputs.inc", "w");
+
+   dim_ptr = dims;
+   while (dim_ptr) {
+
+      if (strncmp(dim_ptr->name_in_file,"nCells",1024) != 0 &&
+          strncmp(dim_ptr->name_in_file,"nEdges",1024) != 0 &&
+          strncmp(dim_ptr->name_in_file,"nVertices",1024) != 0 &&
+          strncmp(dim_ptr->name_in_file,"nVertLevels",1024) != 0
+         ) {
+
+         if (is_derived_dim(dim_ptr->name_in_code)) {
+            fortprintf(fd, "      integer :: %sGlobal\n", dim_ptr->name_in_file);
+            fortprintf(fd, "      type (exchange_list), pointer :: send%sList\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "      type (exchange_list), pointer :: recv%sList\n", dim_ptr->name_in_file+1);
+         }
+         else if (dim_ptr->constant_value > 0) {
+            fortprintf(fd, "      type (exchange_list), pointer :: send%sList\n", dim_ptr->name_in_file);
+            fortprintf(fd, "      type (exchange_list), pointer :: recv%sList\n", dim_ptr->name_in_file);
+         }
+         else if (dim_ptr->namelist_defined) {
+            fortprintf(fd, "      integer :: %sGlobal\n", dim_ptr->name_in_file);
+            fortprintf(fd, "      type (exchange_list), pointer :: send%sList\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "      type (exchange_list), pointer :: recv%sList\n", dim_ptr->name_in_file+1);
+         }
+         else {
+            fortprintf(fd, "      integer :: %sGlobal\n", dim_ptr->name_in_code);
+            fortprintf(fd, "      type (exchange_list), pointer :: send%sList\n", dim_ptr->name_in_code+1);
+            fortprintf(fd, "      type (exchange_list), pointer :: recv%sList\n", dim_ptr->name_in_code+1);
+         }
+
+      }
+
+      dim_ptr = dim_ptr->next;
+   }
+
+   fortprintf(fd, "\n");
+
+   dim_ptr = dims;
+   while (dim_ptr) {
+
+      if (strncmp(dim_ptr->name_in_file,"nCells",1024) != 0 &&
+          strncmp(dim_ptr->name_in_file,"nEdges",1024) != 0 &&
+          strncmp(dim_ptr->name_in_file,"nVertices",1024) != 0 &&
+          strncmp(dim_ptr->name_in_file,"nVertLevels",1024) != 0
+         ) {
+
+         if (is_derived_dim(dim_ptr->name_in_code)) {
+            fortprintf(fd, "      %sGlobal = domain %% blocklist %% mesh %% %s\n", dim_ptr->name_in_file, dim_ptr->name_in_code);
+            fortprintf(fd, "      if (domain %% dminfo %% my_proc_id == 0) then\n");
+            fortprintf(fd, "         allocate(send%sList)\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "         allocate(recv%sList)\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "         nullify(send%sList %% next)\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "         nullify(recv%sList %% next)\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "         recv%sList %% procID = 0\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "         send%sList %% procID = 0\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "         recv%sList %% nlist = %sGlobal\n", dim_ptr->name_in_file+1, dim_ptr->name_in_file);
+            fortprintf(fd, "         send%sList %% nlist = %sGlobal\n", dim_ptr->name_in_file+1, dim_ptr->name_in_file);
+            fortprintf(fd, "         allocate(recv%sList %% list(%sGlobal))\n", dim_ptr->name_in_file+1, dim_ptr->name_in_file);
+            fortprintf(fd, "         allocate(send%sList %% list(%sGlobal))\n", dim_ptr->name_in_file+1, dim_ptr->name_in_file);
+            fortprintf(fd, "         do i=1,%sGlobal\n", dim_ptr->name_in_file);
+            fortprintf(fd, "            recv%sList %% list(i) = i\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "            send%sList %% list(i) = i\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "         end do\n");
+            fortprintf(fd, "      else\n");
+            fortprintf(fd, "         nullify(send%sList)\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "         nullify(recv%sList)\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "      end if\n");
+            fortprintf(fd, "\n");
+         }
+         else if (dim_ptr->constant_value > 0) {
+            fortprintf(fd, "      if (domain %% dminfo %% my_proc_id == 0) then\n");
+            fortprintf(fd, "         allocate(send%sList)\n", dim_ptr->name_in_file);
+            fortprintf(fd, "         allocate(recv%sList)\n", dim_ptr->name_in_file);
+            fortprintf(fd, "         nullify(send%sList %% next)\n", dim_ptr->name_in_file);
+            fortprintf(fd, "         nullify(recv%sList %% next)\n", dim_ptr->name_in_file);
+            fortprintf(fd, "         recv%sList %% procID = 0\n", dim_ptr->name_in_file);
+            fortprintf(fd, "         send%sList %% procID = 0\n", dim_ptr->name_in_file);
+            fortprintf(fd, "         recv%sList %% nlist = %s\n", dim_ptr->name_in_file, dim_ptr->name_in_code);
+            fortprintf(fd, "         send%sList %% nlist = %s\n", dim_ptr->name_in_file, dim_ptr->name_in_code);
+            fortprintf(fd, "         allocate(recv%sList %% list(%s))\n", dim_ptr->name_in_file, dim_ptr->name_in_code);
+            fortprintf(fd, "         allocate(send%sList %% list(%s))\n", dim_ptr->name_in_file, dim_ptr->name_in_code);
+            fortprintf(fd, "         do i=1,%s\n", dim_ptr->name_in_code);
+            fortprintf(fd, "            recv%sList %% list(i) = i\n", dim_ptr->name_in_file);
+            fortprintf(fd, "            send%sList %% list(i) = i\n", dim_ptr->name_in_file);
+            fortprintf(fd, "         end do\n");
+            fortprintf(fd, "      else\n");
+            fortprintf(fd, "         nullify(send%sList)\n", dim_ptr->name_in_file);
+            fortprintf(fd, "         nullify(recv%sList)\n", dim_ptr->name_in_file);
+            fortprintf(fd, "      end if\n");
+            fortprintf(fd, "\n");
+         }
+         else if (dim_ptr->namelist_defined) {
+            fortprintf(fd, "      %sGlobal = domain %% blocklist %% mesh %% %s\n", dim_ptr->name_in_file, dim_ptr->name_in_file);
+            fortprintf(fd, "      if (domain %% dminfo %% my_proc_id == 0) then\n");
+            fortprintf(fd, "         allocate(send%sList)\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "         allocate(recv%sList)\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "         nullify(send%sList %% next)\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "         nullify(recv%sList %% next)\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "         recv%sList %% procID = 0\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "         send%sList %% procID = 0\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "         recv%sList %% nlist = %sGlobal\n", dim_ptr->name_in_file+1, dim_ptr->name_in_file);
+            fortprintf(fd, "         send%sList %% nlist = %sGlobal\n", dim_ptr->name_in_file+1, dim_ptr->name_in_file);
+            fortprintf(fd, "         allocate(recv%sList %% list(%sGlobal))\n", dim_ptr->name_in_file+1, dim_ptr->name_in_file);
+            fortprintf(fd, "         allocate(send%sList %% list(%sGlobal))\n", dim_ptr->name_in_file+1, dim_ptr->name_in_file);
+            fortprintf(fd, "         do i=1,%sGlobal\n", dim_ptr->name_in_file);
+            fortprintf(fd, "            recv%sList %% list(i) = i\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "            send%sList %% list(i) = i\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "         end do\n");
+            fortprintf(fd, "      else\n");
+            fortprintf(fd, "         nullify(send%sList)\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "         nullify(recv%sList)\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "      end if\n");
+            fortprintf(fd, "\n");
+         }
+         else {
+            fortprintf(fd, "      %sGlobal = domain %% blocklist %% mesh %% %s\n", dim_ptr->name_in_code, dim_ptr->name_in_code);
+            fortprintf(fd, "      if (domain %% dminfo %% my_proc_id == 0) then\n");
+            fortprintf(fd, "         allocate(send%sList)\n", dim_ptr->name_in_code+1);
+            fortprintf(fd, "         allocate(recv%sList)\n", dim_ptr->name_in_code+1);
+            fortprintf(fd, "         nullify(send%sList %% next)\n", dim_ptr->name_in_code+1);
+            fortprintf(fd, "         nullify(recv%sList %% next)\n", dim_ptr->name_in_code+1);
+            fortprintf(fd, "         recv%sList %% procID = 0\n", dim_ptr->name_in_code+1);
+            fortprintf(fd, "         send%sList %% procID = 0\n", dim_ptr->name_in_code+1);
+            fortprintf(fd, "         recv%sList %% nlist = %sGlobal\n", dim_ptr->name_in_code+1, dim_ptr->name_in_code);
+            fortprintf(fd, "         send%sList %% nlist = %sGlobal\n", dim_ptr->name_in_code+1, dim_ptr->name_in_code);
+            fortprintf(fd, "         allocate(recv%sList %% list(%sGlobal))\n", dim_ptr->name_in_code+1, dim_ptr->name_in_code);
+            fortprintf(fd, "         allocate(send%sList %% list(%sGlobal))\n", dim_ptr->name_in_code+1, dim_ptr->name_in_code);
+            fortprintf(fd, "         do i=1,%sGlobal\n", dim_ptr->name_in_code);
+            fortprintf(fd, "            recv%sList %% list(i) = i\n", dim_ptr->name_in_code+1);
+            fortprintf(fd, "            send%sList %% list(i) = i\n", dim_ptr->name_in_code+1);
+            fortprintf(fd, "         end do\n");
+            fortprintf(fd, "      else\n");
+            fortprintf(fd, "         nullify(send%sList)\n", dim_ptr->name_in_code+1);
+            fortprintf(fd, "         nullify(recv%sList)\n", dim_ptr->name_in_code+1);
+            fortprintf(fd, "      end if\n");
+            fortprintf(fd, "\n");
+         }
+
+      }
+
+      dim_ptr = dim_ptr->next;
+   }
+
+   fclose(fd);
+
+
+   /*
+    *  Deallocation of exchange lists for non-decomposed fields
+    */
+   fd = fopen("nondecomp_outputs_dealloc.inc", "w");
+
+   dim_ptr = dims;
+   while (dim_ptr) {
+
+      if (strncmp(dim_ptr->name_in_file,"nCells",1024) != 0 &&
+          strncmp(dim_ptr->name_in_file,"nEdges",1024) != 0 &&
+          strncmp(dim_ptr->name_in_file,"nVertices",1024) != 0 &&
+          strncmp(dim_ptr->name_in_file,"nVertLevels",1024) != 0
+         ) {
+
+         if (is_derived_dim(dim_ptr->name_in_code)) {
+            fortprintf(fd, "      if (domain %% dminfo %% my_proc_id == 0) then\n");
+            fortprintf(fd, "         deallocate(recv%sList %% list)\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "         deallocate(send%sList %% list)\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "         deallocate(send%sList)\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "         deallocate(recv%sList)\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "      end if\n");
+         }
+         else if (dim_ptr->constant_value > 0) {
+            fortprintf(fd, "      if (domain %% dminfo %% my_proc_id == 0) then\n");
+            fortprintf(fd, "         deallocate(recv%sList %% list)\n", dim_ptr->name_in_file);
+            fortprintf(fd, "         deallocate(send%sList %% list)\n", dim_ptr->name_in_file);
+            fortprintf(fd, "         deallocate(send%sList)\n", dim_ptr->name_in_file);
+            fortprintf(fd, "         deallocate(recv%sList)\n", dim_ptr->name_in_file);
+            fortprintf(fd, "      end if\n");
+         }
+         else if (dim_ptr->namelist_defined) {
+            fortprintf(fd, "      if (domain %% dminfo %% my_proc_id == 0) then\n");
+            fortprintf(fd, "         deallocate(recv%sList %% list)\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "         deallocate(send%sList %% list)\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "         deallocate(send%sList)\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "         deallocate(recv%sList)\n", dim_ptr->name_in_file+1);
+            fortprintf(fd, "      end if\n");
+         }
+         else {
+            fortprintf(fd, "      if (domain %% dminfo %% my_proc_id == 0) then\n");
+            fortprintf(fd, "         deallocate(recv%sList %% list)\n", dim_ptr->name_in_code+1);
+            fortprintf(fd, "         deallocate(send%sList %% list)\n", dim_ptr->name_in_code+1);
+            fortprintf(fd, "         deallocate(send%sList)\n", dim_ptr->name_in_code+1);
+            fortprintf(fd, "         deallocate(recv%sList)\n", dim_ptr->name_in_code+1);
+            fortprintf(fd, "      end if\n");
+         }
+
+      }
+
+      dim_ptr = dim_ptr->next;
+   }
+
+   fclose(fd);
    
 
    /*
@@ -842,12 +1242,14 @@ void gen_reads(struct group_list * groups, struct variable * vars, struct dimens
          else if (var_ptr->vtype == CHARACTER) sprintf(vtype, "char"); 
    
          if (strncmp(var_ptr->super_array, "-", 1024) != 0) {
-            fortprintf(fd, "      if ((%s %% %s %% ioinfo %% input .and. .not. config_do_restart) .or. &\n", struct_deref, var_ptr->super_array);
-            fortprintf(fd, "          (%s %% %s %% ioinfo %% restart .and. config_do_restart)) then\n", struct_deref, var_ptr->super_array);
+            fortprintf(fd, "      if ((%s %% %s %% ioinfo %% input .and. input_obj %% stream == STREAM_INPUT) .or. &\n", struct_deref, var_ptr->super_array);
+            fortprintf(fd, "          (%s %% %s %% ioinfo %% sfc .and. input_obj %% stream == STREAM_SFC) .or. &\n", struct_deref, var_ptr->super_array);
+            fortprintf(fd, "          (%s %% %s %% ioinfo %% restart .and. input_obj %% stream == STREAM_RESTART)) then\n", struct_deref, var_ptr->super_array);
          }
          else {
-            fortprintf(fd, "      if ((%s %% %s %% ioinfo %% input .and. .not. config_do_restart) .or. &\n", struct_deref, var_ptr->name_in_code);
-            fortprintf(fd, "          (%s %% %s %% ioinfo %% restart .and. config_do_restart)) then\n", struct_deref, var_ptr->name_in_code);
+            fortprintf(fd, "      if ((%s %% %s %% ioinfo %% input .and. input_obj %% stream == STREAM_INPUT) .or. &\n", struct_deref, var_ptr->name_in_code);
+            fortprintf(fd, "          (%s %% %s %% ioinfo %% sfc .and. input_obj %% stream == STREAM_SFC) .or. &\n", struct_deref, var_ptr->name_in_code);
+            fortprintf(fd, "          (%s %% %s %% ioinfo %% restart .and. input_obj %% stream == STREAM_RESTART)) then\n", struct_deref, var_ptr->name_in_code);
          }
          while (dimlist_ptr) {
                if (i < var_ptr->ndims) {
@@ -860,11 +1262,12 @@ void gen_reads(struct group_list * groups, struct variable * vars, struct dimens
                }
                else {
                   if (is_derived_dim(dimlist_ptr->dim->name_in_code)) {
-                     split_derived_dim_string(dimlist_ptr->dim->name_in_code, &cp1, &cp2);
-                     fortprintf(fd, "      %s%id %% ioinfo %% start(%i) = read%sStart\n", vtype, var_ptr->ndims, i, cp1);
-                     fortprintf(fd, "      %s%id %% ioinfo %% count(%i) = read%sCount%s\n", vtype, var_ptr->ndims, i, cp1, cp2);
-                     free(cp1);
-                     free(cp2);
+                     fortprintf(fd, "      %s%id %% ioinfo %% start(%i) = read%sStart\n", vtype, var_ptr->ndims, i, dimlist_ptr->dim->name_in_file+1);
+                     fortprintf(fd, "      %s%id %% ioinfo %% count(%i) = read%sCount\n", vtype, var_ptr->ndims, i, dimlist_ptr->dim->name_in_file+1);
+                  }
+                  else if (dimlist_ptr->dim->constant_value > 0) {
+                     fortprintf(fd, "      %s%id %% ioinfo %% start(%i) = read%sStart\n", vtype, var_ptr->ndims, i, dimlist_ptr->dim->name_in_file);
+                     fortprintf(fd, "      %s%id %% ioinfo %% count(%i) = read%sCount\n", vtype, var_ptr->ndims, i, dimlist_ptr->dim->name_in_file);
                   }
                   else {
                      if (dimlist_ptr->dim->namelist_defined) {
@@ -894,12 +1297,10 @@ void gen_reads(struct group_list * groups, struct variable * vars, struct dimens
                   fortprintf(fd, "%s", dimlist_ptr->dim->name_in_code);
             }
             else {
-               if (is_derived_dim(dimlist_ptr->dim->name_in_code)) {
-                  split_derived_dim_string(dimlist_ptr->dim->name_in_code, &cp1, &cp2);
-                  fortprintf(fd, "read%sCount%s", cp1, cp2);
-                  free(cp1);
-                  free(cp2);
-               }
+               if (is_derived_dim(dimlist_ptr->dim->name_in_code)) 
+                  fortprintf(fd, "read%sCount", dimlist_ptr->dim->name_in_file+1);
+               else if (dimlist_ptr->dim->constant_value > 0) 
+                  fortprintf(fd, "read%sCount", dimlist_ptr->dim->name_in_file);
                else
                   if (dimlist_ptr->dim->namelist_defined) fortprintf(fd, "read%sCount", dimlist_ptr->dim->name_in_file+1);
                   else fortprintf(fd, "read%sCount", dimlist_ptr->dim->name_in_code+1);
@@ -916,12 +1317,10 @@ void gen_reads(struct group_list * groups, struct variable * vars, struct dimens
                      fortprintf(fd, ", %s", dimlist_ptr->dim->name_in_code);
                }
                else {
-                  if (is_derived_dim(dimlist_ptr->dim->name_in_code)) {
-                     split_derived_dim_string(dimlist_ptr->dim->name_in_code, &cp1, &cp2);
-                     fortprintf(fd, ", read%sCount%s", cp1, cp2);
-                     free(cp1);
-                     free(cp2);
-                  }
+                  if (is_derived_dim(dimlist_ptr->dim->name_in_code))
+                     fortprintf(fd, ", read%sCount", dimlist_ptr->dim->name_in_file+1);
+                  else if (dimlist_ptr->dim->constant_value > 0)
+                     fortprintf(fd, ", read%sCount", dimlist_ptr->dim->name_in_file);
                   else
                      if (!dimlist_ptr->dim->namelist_defined) fortprintf(fd, ", read%sCount", dimlist_ptr->dim->name_in_code+1);
                      else fortprintf(fd, ", read%sCount", dimlist_ptr->dim->name_in_file+1);
@@ -986,10 +1385,10 @@ void gen_reads(struct group_list * groups, struct variable * vars, struct dimens
             else {
                lastdim = dimlist_ptr;
                if (is_derived_dim(dimlist_ptr->dim->name_in_code)) {
-                  split_derived_dim_string(dimlist_ptr->dim->name_in_code, &cp1, &cp2);
-                  fortprintf(fd, "                                read%sCount%s", cp1, cp2);
-                  free(cp1);
-                  free(cp2);
+                  fortprintf(fd, "                                read%sCount", dimlist_ptr->dim->name_in_file+1);
+               }
+               else if (dimlist_ptr->dim->constant_value > 0) {
+                  fortprintf(fd, "                                read%sCount", dimlist_ptr->dim->name_in_file);
                }
                else
                   if (!dimlist_ptr->dim->namelist_defined) fortprintf(fd, "                                read%sCount", dimlist_ptr->dim->name_in_code+1);
@@ -1008,10 +1407,10 @@ void gen_reads(struct group_list * groups, struct variable * vars, struct dimens
                else {
                   lastdim = dimlist_ptr;
                   if (is_derived_dim(dimlist_ptr->dim->name_in_code)) {
-                     split_derived_dim_string(dimlist_ptr->dim->name_in_code, &cp1, &cp2);
-                     fortprintf(fd, ", read%sCount%s", cp1, cp2);
-                     free(cp1);
-                     free(cp2);
+                     fortprintf(fd, ", read%sCount", dimlist_ptr->dim->name_in_file+1);
+                  }
+                  else if (dimlist_ptr->dim->constant_value > 0) {
+                     fortprintf(fd, ", read%sCount", dimlist_ptr->dim->name_in_file);
                   }
                   else
                      if (!dimlist_ptr->dim->namelist_defined) fortprintf(fd, ", read%sCount", dimlist_ptr->dim->name_in_code+1);
@@ -1020,11 +1419,14 @@ void gen_reads(struct group_list * groups, struct variable * vars, struct dimens
                dimlist_ptr = dimlist_ptr->next;
                i++;
             }
-            if (!lastdim->dim->namelist_defined) fortprintf(fd, ", block %% mesh %% %s, &\n", lastdim->dim->name_in_code);
-            else fortprintf(fd, ", block %% mesh %% %s, &\n", lastdim->dim->name_in_file);
+            if (lastdim->dim->namelist_defined) fortprintf(fd, ", block %% mesh %% %s, &\n", lastdim->dim->name_in_file);
+            else if (lastdim->dim->constant_value > 0) fortprintf(fd, ", %s, &\n", lastdim->dim->name_in_code);
+            else fortprintf(fd, ", block %% mesh %% %s, &\n", lastdim->dim->name_in_code);
       
             if (is_derived_dim(lastdim->dim->name_in_code)) 
                fortprintf(fd, "                                send%sList, recv%sList)\n", lastdim->dim->name_in_file+1, lastdim->dim->name_in_file+1);
+            else if (lastdim->dim->constant_value > 0) 
+               fortprintf(fd, "                                send%sList, recv%sList)\n", lastdim->dim->name_in_file, lastdim->dim->name_in_file);
             else
                if (lastdim->dim->namelist_defined) 
                   fortprintf(fd, "                                send%sList, recv%sList)\n", lastdim->dim->name_in_file+1, lastdim->dim->name_in_file+1);
@@ -1186,29 +1588,39 @@ void gen_reads(struct group_list * groups, struct variable * vars, struct dimens
    
    
    /*
-    *  Generate code to read 0d, 1d, 2d, 3d time-varying real fields
+    *  Generate code to read 0d, 1d, 2d, 3d time-varying fields
     */
-   for(i=0; i<=3; i++) { 
-      sprintf(fname, "input_field%idreal_time.inc", i);
-      fd = fopen(fname, "w");
-   
-      var_ptr = vars;
-      while (var_ptr && (var_ptr->ndims != i || var_ptr->vtype != REAL || !var_ptr->timedim)) var_ptr = var_ptr->next;
-      if (var_ptr) {
-         fortprintf(fd, "      if (trim(field %% ioinfo %% fieldName) == \'%s\') then\n", var_ptr->name_in_file);
-         fortprintf(fd, "         varID = input_obj %% rdVarID%s\n", var_ptr->name_in_file);
-         var_ptr = var_ptr->next;
-         while (var_ptr) {
-            if (var_ptr->ndims == i && var_ptr->vtype == REAL && var_ptr->timedim) {
-               fortprintf(fd, "      else if (trim(field %% ioinfo %% fieldName) == \'%s\') then\n", var_ptr->name_in_file);
-               fortprintf(fd, "         varID = input_obj %% rdVarID%s\n", var_ptr->name_in_file);
-            }
-            var_ptr = var_ptr->next;
+   for(j=0; j<2; j++) {
+      for(i=0; i<=3; i++) { 
+         if (j == 0) {
+            sprintf(fname, "input_field%idinteger_time.inc", i);
+            ivtype = INTEGER;
          }
-         fortprintf(fd, "      end if\n");
-      }
+         else {
+            sprintf(fname, "input_field%idreal_time.inc", i);
+            ivtype = REAL;
+         }
+         fd = fopen(fname, "w");
+      
+         var_ptr = vars;
+         while (var_ptr && (var_ptr->ndims != i || var_ptr->vtype != ivtype || !var_ptr->timedim)) var_ptr = var_ptr->next;
+         if (var_ptr) {
+            fortprintf(fd, "      if (trim(field %% ioinfo %% fieldName) == \'%s\') then\n", var_ptr->name_in_file);
+            fortprintf(fd, "         varID = input_obj %% rdVarID%s\n", var_ptr->name_in_file);
+            var_ptr = var_ptr->next;
+            while (var_ptr) {
+               if (var_ptr->ndims == i && var_ptr->vtype == ivtype && var_ptr->timedim) {
+                  fortprintf(fd, "      else if (trim(field %% ioinfo %% fieldName) == \'%s\') then\n", var_ptr->name_in_file);
+                  fortprintf(fd, "         varID = input_obj %% rdVarID%s\n", var_ptr->name_in_file);
+               }
+               var_ptr = var_ptr->next;
    
-      fclose(fd);
+	    }
+	    fortprintf(fd, "      end if\n");
+	 }
+   
+	 fclose(fd);
+      }
    } 
    
    
@@ -1351,6 +1763,7 @@ void gen_writes(struct group_list * groups, struct variable * vars, struct dimen
       fortprintf(fd, "      if (.false. &\n");
       if (var_ptr->iostreams & RESTART0) fortprintf(fd, "          .or. output_obj %% stream == RESTART &\n");
       if (var_ptr->iostreams & OUTPUT0)  fortprintf(fd, "          .or. output_obj %% stream == OUTPUT &\n");
+      if (var_ptr->iostreams & SFC0)     fortprintf(fd, "          .or. output_obj %% stream == SFC &\n");
       fortprintf(fd, "      ) then\n");
       dimlist_ptr = var_ptr->dimlist;
       i = 1;
@@ -1423,11 +1836,13 @@ void gen_writes(struct group_list * groups, struct variable * vars, struct dimen
    
          if (strncmp(var_ptr->super_array, "-", 1024) != 0) {
             fortprintf(fd, "      if ((%s %% %s %% ioinfo %% output .and. output_obj %% stream == OUTPUT) .or. &\n", struct_deref, var_ptr->super_array);
-            fortprintf(fd, "          (%s %% %s %% ioinfo %% restart .and. output_obj %% stream == RESTART)) then\n", struct_deref, var_ptr->super_array);
+            fortprintf(fd, "          (%s %% %s %% ioinfo %% restart .and. output_obj %% stream == RESTART) .or. &\n", struct_deref, var_ptr->super_array);
+            fortprintf(fd, "          (%s %% %s %% ioinfo %% sfc .and. output_obj %% stream == SFC)) then\n", struct_deref, var_ptr->super_array);
          }
          else {
             fortprintf(fd, "      if ((%s %% %s %% ioinfo %% output .and. output_obj %% stream == OUTPUT) .or. &\n", struct_deref, var_ptr->name_in_code);
-            fortprintf(fd, "          (%s %% %s %% ioinfo %% restart .and. output_obj %% stream == RESTART)) then\n", struct_deref, var_ptr->name_in_code);
+            fortprintf(fd, "          (%s %% %s %% ioinfo %% restart .and. output_obj %% stream == RESTART) .or. &\n", struct_deref, var_ptr->name_in_code);
+            fortprintf(fd, "          (%s %% %s %% ioinfo %% sfc .and. output_obj %% stream == SFC)) then\n", struct_deref, var_ptr->name_in_code);
          }
    
          if (var_ptr->ndims > 0) {
@@ -1447,6 +1862,9 @@ void gen_writes(struct group_list * groups, struct variable * vars, struct dimen
                         fortprintf(fd, "      %s%id %% ioinfo %% count(%i) = n%sGlobal%s\n", vtype, var_ptr->ndims, i, cp1, cp2);
                         free(cp1);
                         free(cp2);
+                     }
+                     else if (dimlist_ptr->dim->constant_value > 0) {
+                        fortprintf(fd, "      %s%id %% ioinfo %% count(%i) = %s\n", vtype, var_ptr->ndims, i, dimlist_ptr->dim->name_in_code);
                      }
                      else
                         if (!dimlist_ptr->dim->namelist_defined) fortprintf(fd, "      %s%id %% ioinfo %% count(%i) = %sGlobal\n", vtype, var_ptr->ndims, i, dimlist_ptr->dim->name_in_code);
@@ -1473,6 +1891,9 @@ void gen_writes(struct group_list * groups, struct variable * vars, struct dimen
                   free(cp1);
                   free(cp2);
                }
+               else if (dimlist_ptr->dim->constant_value > 0) {
+                  fortprintf(fd, "%s", dimlist_ptr->dim->name_in_code);
+               }
                else
                   if (!dimlist_ptr->dim->namelist_defined) fortprintf(fd, "%sGlobal", dimlist_ptr->dim->name_in_code);
                   else fortprintf(fd, "%sGlobal", dimlist_ptr->dim->name_in_file);
@@ -1493,6 +1914,9 @@ void gen_writes(struct group_list * groups, struct variable * vars, struct dimen
                      fortprintf(fd, ", n%sGlobal%s", cp1, cp2);
                      free(cp1);
                      free(cp2);
+                  }
+                  else if (dimlist_ptr->dim->constant_value > 0) {
+                     fortprintf(fd, ", %s", dimlist_ptr->dim->name_in_code);
                   }
                   else
                      if (!dimlist_ptr->dim->namelist_defined) fortprintf(fd, ", %sGlobal", dimlist_ptr->dim->name_in_code);
@@ -1586,21 +2010,54 @@ void gen_writes(struct group_list * groups, struct variable * vars, struct dimen
                i++;
             }     
       
-            if (is_derived_dim(lastdim->dim->name_in_code)) {
-               split_derived_dim_string(lastdim->dim->name_in_code, &cp1, &cp2);
-               fortprintf(fd, ", n%sGlobal%s, &\n", cp1, cp2);
-               fortprintf(fd, "                                output_obj %% send%sList, output_obj %% recv%sList)\n", lastdim->dim->name_in_file+1, lastdim->dim->name_in_file+1);
-               free(cp1);
-               free(cp2);
-            }
-            else {
-               if (!lastdim->dim->namelist_defined) {
-                  fortprintf(fd, ", %sGlobal, &\n", lastdim->dim->name_in_code);
-                  fortprintf(fd, "                                output_obj %% send%sList, output_obj %% recv%sList)\n", lastdim->dim->name_in_code+1, lastdim->dim->name_in_code+1);
+            /* 
+             *  Need to avoid output_obj in case this is a non-decomposed dimension, in which case 
+             *   the send/recv lists are local variables 
+             */
+            if (strncmp(lastdim->dim->name_in_file,"nCells",1024) != 0 &&
+                strncmp(lastdim->dim->name_in_file,"nEdges",1024) != 0 &&
+                strncmp(lastdim->dim->name_in_file,"nVertices",1024) != 0 &&
+                strncmp(lastdim->dim->name_in_file,"nVertLevels",1024) != 0
+               ) {
+               if (is_derived_dim(lastdim->dim->name_in_code)) {
+                  split_derived_dim_string(lastdim->dim->name_in_code, &cp1, &cp2);
+                  fortprintf(fd, ", n%sGlobal%s, &\n", cp1, cp2);
+                  fortprintf(fd, "                                send%sList, recv%sList)\n", lastdim->dim->name_in_file+1, lastdim->dim->name_in_file+1);
+                  free(cp1);
+                  free(cp2);
+               }
+               else if (lastdim->dim->constant_value > 0) {
+                  fortprintf(fd, ", %s, &\n", lastdim->dim->name_in_code);
+                  fortprintf(fd, "                                send%sList, recv%sList)\n", lastdim->dim->name_in_file, lastdim->dim->name_in_file);
                }
                else {
-                  fortprintf(fd, ", %sGlobal, &\n", lastdim->dim->name_in_file);
+                  if (!lastdim->dim->namelist_defined) {
+                     fortprintf(fd, ", %sGlobal, &\n", lastdim->dim->name_in_code);
+                     fortprintf(fd, "                                send%sList, recv%sList)\n", lastdim->dim->name_in_code+1, lastdim->dim->name_in_code+1);
+                  }
+                  else {
+                     fortprintf(fd, ", %sGlobal, &\n", lastdim->dim->name_in_file);
+                     fortprintf(fd, "                                send%sList, recv%sList)\n", lastdim->dim->name_in_file+1, lastdim->dim->name_in_file+1);
+                  }
+               }
+            }
+            else {
+               if (is_derived_dim(lastdim->dim->name_in_code)) {
+                  split_derived_dim_string(lastdim->dim->name_in_code, &cp1, &cp2);
+                  fortprintf(fd, ", n%sGlobal%s, &\n", cp1, cp2);
                   fortprintf(fd, "                                output_obj %% send%sList, output_obj %% recv%sList)\n", lastdim->dim->name_in_file+1, lastdim->dim->name_in_file+1);
+                  free(cp1);
+                  free(cp2);
+               }
+               else {
+                  if (!lastdim->dim->namelist_defined) {
+                     fortprintf(fd, ", %sGlobal, &\n", lastdim->dim->name_in_code);
+                     fortprintf(fd, "                                output_obj %% send%sList, output_obj %% recv%sList)\n", lastdim->dim->name_in_code+1, lastdim->dim->name_in_code+1);
+                  }
+                  else {
+                     fortprintf(fd, ", %sGlobal, &\n", lastdim->dim->name_in_file);
+                     fortprintf(fd, "                                output_obj %% send%sList, output_obj %% recv%sList)\n", lastdim->dim->name_in_file+1, lastdim->dim->name_in_file+1);
+                  }
                }
             }
          }
@@ -1669,29 +2126,38 @@ void gen_writes(struct group_list * groups, struct variable * vars, struct dimen
 
    
    /*
-    *  Generate code to write 0d, 1d, 2d, 3d real time-varying fields
+    *  Generate code to write 0d, 1d, 2d, 3d time-varying fields
     */
-   for(i=0; i<=3; i++) {
-      sprintf(fname, "output_field%idreal_time.inc", i);
-      fd = fopen(fname, "w");
-
-      var_ptr = vars;
-      while (var_ptr && (var_ptr->ndims != i || var_ptr->vtype != REAL || !var_ptr->timedim)) var_ptr = var_ptr->next;
-      if (var_ptr) {
-         fortprintf(fd, "      if (trim(field %% ioinfo %% fieldName) == \'%s\') then\n", var_ptr->name_in_file);
-         fortprintf(fd, "         varID = output_obj %% wrVarID%s\n", var_ptr->name_in_file);
-         var_ptr = var_ptr->next;
-         while (var_ptr) {
-            if (var_ptr->ndims == i && var_ptr->vtype == REAL && var_ptr->timedim) {
-               fortprintf(fd, "      else if (trim(field %% ioinfo %% fieldName) == \'%s\') then\n", var_ptr->name_in_file);
-               fortprintf(fd, "         varID = output_obj %% wrVarID%s\n", var_ptr->name_in_file);
-            }
-            var_ptr = var_ptr->next;
+   for(j=0; j<2; j++) {
+      for(i=0; i<=3; i++) {
+         if (j == 0) {
+            sprintf(fname, "output_field%idinteger_time.inc", i);
+            ivtype = INTEGER;
          }
-         fortprintf(fd, "      end if\n");
-      }
+         else {
+            sprintf(fname, "output_field%idreal_time.inc", i);
+            ivtype = REAL;
+         }
+         fd = fopen(fname, "w");
    
-      fclose(fd);
+         var_ptr = vars;
+         while (var_ptr && (var_ptr->ndims != i || var_ptr->vtype != ivtype || !var_ptr->timedim)) var_ptr = var_ptr->next;
+         if (var_ptr) {
+            fortprintf(fd, "      if (trim(field %% ioinfo %% fieldName) == \'%s\') then\n", var_ptr->name_in_file);
+            fortprintf(fd, "         varID = output_obj %% wrVarID%s\n", var_ptr->name_in_file);
+            var_ptr = var_ptr->next;
+            while (var_ptr) {
+               if (var_ptr->ndims == i && var_ptr->vtype == ivtype && var_ptr->timedim) {
+                  fortprintf(fd, "      else if (trim(field %% ioinfo %% fieldName) == \'%s\') then\n", var_ptr->name_in_file);
+                  fortprintf(fd, "         varID = output_obj %% wrVarID%s\n", var_ptr->name_in_file);
+               }
+               var_ptr = var_ptr->next;
+            }
+            fortprintf(fd, "      end if\n");
+         }
+      
+	 fclose(fd);
+      }
    }
 
    

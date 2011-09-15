@@ -12,9 +12,12 @@ module io_input
    use zoltan_interface
 #endif
 
+   integer, parameter :: STREAM_INPUT=1, STREAM_SFC=2, STREAM_RESTART=3
+
    type io_input_object
       character (len=1024) :: filename
       integer :: rd_ncid
+      integer :: stream
 
       integer :: time
 
@@ -38,10 +41,21 @@ module io_input
       module procedure io_input_field1dReal_time
       module procedure io_input_field2dReal_time
       module procedure io_input_field3dReal_time
+      module procedure io_input_field1dInteger_time
       module procedure io_input_field0dChar_time
       module procedure io_input_field1dChar_time
    end interface io_input_field_time
+
+   type (exchange_list), pointer :: sendCellList, recvCellList
+   type (exchange_list), pointer :: sendEdgeList, recvEdgeList
+   type (exchange_list), pointer :: sendVertexList, recvVertexList
+   type (exchange_list), pointer :: sendVertLevelList, recvVertLevelList
  
+   integer :: readCellStart, readCellEnd, nReadCells
+   integer :: readEdgeStart, readEdgeEnd, nReadEdges
+   integer :: readVertexStart, readVertexEnd, nReadVertices
+   integer :: readVertLevelStart, readVertLevelEnd, nReadVertLevels
+   
 
    contains
 
@@ -58,11 +72,6 @@ module io_input
 
       character (len=16) :: c_on_a_sphere
       real (kind=RKIND) :: r_sphere_radius
-   
-      integer :: readCellStart, readCellEnd, nReadCells
-      integer :: readEdgeStart, readEdgeEnd, nReadEdges
-      integer :: readVertexStart, readVertexEnd, nReadVertices
-      integer :: readVertLevelStart, readVertLevelEnd, nReadVertLevels
    
       type (field1dInteger) :: indexToCellIDField
       type (field1dInteger) :: indexToEdgeIDField
@@ -108,11 +117,6 @@ module io_input
       integer, dimension(:), pointer :: local_cell_list, local_edge_list, local_vertex_list
       integer, dimension(:), pointer :: local_vertlevel_list, needed_vertlevel_list
       integer :: nlocal_edges, nlocal_vertices
-      type (exchange_list), pointer :: sendCellList, recvCellList
-      type (exchange_list), pointer :: sendEdgeList, recvEdgeList
-      type (exchange_list), pointer :: sendVertexList, recvVertexList
-      type (exchange_list), pointer :: sendVertLevelList, recvVertLevelList
-      type (exchange_list), pointer :: sendVertLevelP1List, recvVertLevelP1List
       type (exchange_list), pointer :: send1Halo, recv1Halo
       type (exchange_list), pointer :: send2Halo, recv2Halo
       type (graph) :: partial_global_graph_info
@@ -127,8 +131,10 @@ module io_input
 
       if (config_do_restart) then
          input_obj % filename = trim(config_restart_name)
+         input_obj % stream = STREAM_RESTART
       else
          input_obj % filename = trim(config_input_name)
+         input_obj % stream = STREAM_INPUT
       end if
       call io_input_init(input_obj, domain % dminfo)
    
@@ -706,27 +712,6 @@ module io_input
       deallocate(local_vertlevel_list)
       deallocate(needed_vertlevel_list)
 
-      if (domain % dminfo % my_proc_id == 0) then
-         allocate(local_vertlevel_list(nVertLevels+1))
-         do i=1,nVertLevels+1
-            local_vertlevel_list(i) = i
-         end do
-      else
-         allocate(local_vertlevel_list(0))
-      end if
-      allocate(needed_vertlevel_list(nVertLevels+1))
-      do i=1,nVertLevels+1
-         needed_vertlevel_list(i) = i
-      end do
-
-      call dmpar_get_owner_list(domain % dminfo, &
-                                size(local_vertlevel_list), size(needed_vertlevel_list), &
-                                local_vertlevel_list, needed_vertlevel_list, &
-                                sendVertLevelP1List, recvVertLevelP1List)
-
-      deallocate(local_vertlevel_list)
-      deallocate(needed_vertlevel_list)
-
 
       !
       ! Read and distribute all fields given ownership lists and exchange lists (maybe already in block?)
@@ -815,7 +800,7 @@ module io_input
                                       readCellStart, nReadCells, readEdgeStart, nReadEdges, readVertexStart, nReadVertices, &
                                       readVertLevelStart, nReadVertLevels, &
                                       sendCellList, recvCellList, sendEdgeList, recvEdgeList, sendVertexList, recvVertexList, &
-                                      sendVertLevelList, recvVertLevelList, sendVertLevelP1List, recvVertLevelP1List) 
+                                      sendVertLevelList, recvVertLevelList) 
 
 
       call io_input_finalize(input_obj, domain % dminfo)
@@ -1027,8 +1012,7 @@ module io_input
                                      sendCellsList, recvCellsList, &
                                      sendEdgesList, recvEdgesList, &
                                      sendVerticesList, recvVerticesList, &
-                                     sendVertLevelsList, recvVertLevelsList, & 
-                                     sendVertLevelsP1List, recvVertLevelsP1List) 
+                                     sendVertLevelsList, recvVertLevelsList)
       
       implicit none
 
@@ -1041,7 +1025,6 @@ module io_input
       type (exchange_list), pointer :: sendEdgesList, recvEdgesList
       type (exchange_list), pointer :: sendVerticesList, recvVerticesList
       type (exchange_list), pointer :: sendVertLevelsList, recvVertLevelsList
-      type (exchange_list), pointer :: sendVertLevelsP1List, recvVertLevelsP1List
 
       type (field1dInteger) :: int1d
       type (field2dInteger) :: int2d
@@ -1063,7 +1046,9 @@ module io_input
       character (len=64) :: super_char0d
       character (len=64), dimension(:), pointer :: super_char1d
 
-      integer :: k
+      integer :: i, k
+
+#include "nondecomp_dims.inc"
 
       allocate(int1d % ioinfo)
       allocate(int2d % ioinfo)
@@ -1076,6 +1061,8 @@ module io_input
 
 
 #include "io_input_fields.inc"
+
+#include "nondecomp_dims_dealloc.inc"
 
    end subroutine read_and_distribute_fields
 
@@ -1101,10 +1088,12 @@ module io_input
 
       if (nferr /= NF_NOERR) then
          write(0,*) ' '
-         if (config_do_restart) then
+         if (input_obj % stream == STREAM_RESTART) then
             write(0,*) 'Error opening restart file ''', trim(input_obj % filename), ''''
-         else
+         else if (input_obj % stream == STREAM_INPUT) then
             write(0,*) 'Error opening input file ''', trim(input_obj % filename), ''''
+         else if (input_obj % stream == STREAM_SFC) then
+            write(0,*) 'Error opening sfc file ''', trim(input_obj % filename), ''''
          end if
          write(0,*) ' '
          call dmpar_abort(dminfo)
@@ -1470,6 +1459,31 @@ module io_input
       nferr = nf_get_vara_int(input_obj % rd_ncid, varID, start2, count2, field % array)
 
    end subroutine io_input_field2dInteger
+
+
+   subroutine io_input_field1dInteger_time(input_obj, field)
+ 
+      implicit none
+
+      type (io_input_object), intent(in) :: input_obj      
+      type (field1dInteger), intent(inout) :: field
+ 
+      include 'netcdf.inc'
+ 
+      integer :: nferr
+      integer :: varID
+      integer, dimension(2) :: start2, count2
+ 
+      start2(1) = field % ioinfo % start(1)
+      start2(2) = input_obj % time
+      count2(1) = field % ioinfo % count(1)
+      count2(2) = 1
+ 
+#include "input_field1dinteger_time.inc"
+
+      nferr = nf_get_vara_int(input_obj % rd_ncid, varID, start2, count2, field % array)
+
+   end subroutine io_input_field1dInteger_time
 
 
    subroutine io_input_field0dChar_time(input_obj, field)

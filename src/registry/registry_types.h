@@ -9,6 +9,7 @@
 #define INPUT0    0x00000001
 #define RESTART0  0x00000002
 #define OUTPUT0   0x00000004
+#define SFC0      0x00000008
 
 #define NEW_NAMELIST(X) X = (struct namelist *)malloc(sizeof(struct namelist)); X->next = NULL;
 #define NEW_DIMENSION(X) X = (struct dimension *)malloc(sizeof(struct dimension)); X->next = NULL;

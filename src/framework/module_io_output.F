@@ -7,6 +7,7 @@ module io_output
 
    integer, parameter :: OUTPUT = 1
    integer, parameter :: RESTART = 2
+   integer, parameter :: SFC = 3
  
    type io_output_object
       integer :: wr_ncid
@@ -24,7 +25,6 @@ module io_output
       type (exchange_list), pointer :: sendEdgesList, recvEdgesList
       type (exchange_list), pointer :: sendVerticesList, recvVerticesList
       type (exchange_list), pointer :: sendVertLevelsList, recvVertLevelsList
-      type (exchange_list), pointer :: sendVertLevelsP1List, recvVertLevelsP1List
    end type io_output_object
 
 
@@ -44,6 +44,7 @@ module io_output
       module procedure io_output_field1dReal_time
       module procedure io_output_field2dReal_time
       module procedure io_output_field3dReal_time
+      module procedure io_output_field1dInteger_time
       module procedure io_output_field0dChar_time
       module procedure io_output_field1dChar_time
    end interface io_output_field_time
@@ -75,8 +76,6 @@ module io_output
       nullify(output_obj % recvVerticesList)
       nullify(output_obj % sendVertLevelsList)
       nullify(output_obj % recvVertLevelsList)
-      nullify(output_obj % sendVertLevelsP1List)
-      nullify(output_obj % recvVertLevelsP1List)
       output_obj % validExchangeLists = .false.
 
 #include "output_dim_inits.inc"
@@ -97,6 +96,9 @@ module io_output
       else if (trim(stream) == 'RESTART') then
          output_obj % filename = trim(config_restart_name)
          output_obj % stream = RESTART
+      else if (trim(stream) == 'SFC') then
+         ! Keep filename as whatever was set by the user
+         output_obj % stream = SFC
       end if
 
       ! For now, we assume that a domain consists only of one block,
@@ -149,7 +151,6 @@ module io_output
       integer, dimension(:), pointer :: neededEdgeList
       integer, dimension(:), pointer :: neededVertexList
       integer, dimension(:), pointer :: neededVertLevelList
-      integer, dimension(:), pointer :: neededVertLevelP1List
       integer, dimension(:,:), pointer :: cellsOnCell, edgesOnCell, verticesOnCell, &
                                           cellsOnEdge, verticesOnEdge, edgesOnEdge, cellsOnVertex, edgesOnVertex
       integer, dimension(:,:), pointer :: cellsOnCell_save, edgesOnCell_save, verticesOnCell_save, &
@@ -174,6 +175,8 @@ module io_output
       real (kind=RKIND), dimension(:,:,:), pointer :: super_real3d
       character (len=64) :: super_char0d
       character (len=64), dimension(:), pointer :: super_char1d
+
+#include "nondecomp_outputs.inc"
 
       output_obj % time = itime
 
@@ -256,7 +259,6 @@ module io_output
          allocate(neededEdgeList(nEdgesGlobal))
          allocate(neededVertexList(nVerticesGlobal))
          allocate(neededVertLevelList(nVertLevelsGlobal))
-         allocate(neededVertLevelP1List(nVertLevelsGlobal+1))
          do i=1,nCellsGlobal
             neededCellList(i) = i
          end do
@@ -269,15 +271,11 @@ module io_output
          do i=1,nVertLevelsGlobal
             neededVertLevelList(i) = i
          end do
-         do i=1,nVertLevelsGlobal+1
-            neededVertLevelP1List(i) = i
-         end do
       else
          allocate(neededCellList(0))
          allocate(neededEdgeList(0))
          allocate(neededVertexList(0))
          allocate(neededVertLevelList(0))
-         allocate(neededVertLevelP1List(0))
       end if
 
       if (.not. output_obj % validExchangeLists) then
@@ -300,11 +298,6 @@ module io_output
                                    size(neededVertLevelList), size(neededVertLevelList), &
                                    neededVertLevelList, neededVertLevelList, &
                                    output_obj % sendVertLevelsList, output_obj % recvVertLevelsList)
-
-         call dmpar_get_owner_list(domain % dminfo, &
-                                   size(neededVertLevelP1List), size(neededVertLevelP1List), &
-                                   neededVertLevelP1List, neededVertLevelP1List, &
-                                   output_obj % sendVertLevelsP1List, output_obj % recvVertLevelsP1List)
 
          output_obj % validExchangeLists = .true.
       end if
@@ -350,6 +343,8 @@ module io_output
       deallocate(edgesOnEdge)
       deallocate(cellsOnVertex)
       deallocate(edgesOnVertex)
+
+#include "nondecomp_outputs_dealloc.inc"
 
    end subroutine output_state_for_domain
 
@@ -711,6 +706,33 @@ module io_output
       nferr = nf_sync(output_obj % wr_ncid)
 
    end subroutine io_output_field2dInteger
+
+
+   subroutine io_output_field1dInteger_time(output_obj, field)
+
+      implicit none
+
+      type (io_output_object), intent(in) :: output_obj
+      type (field1dInteger), intent(inout) :: field
+
+      include 'netcdf.inc'
+
+      integer :: nferr
+      integer :: varID
+      integer, dimension(2) :: start2, count2
+
+      start2(1) = field % ioinfo % start(1)
+      start2(2) = output_obj % time
+      count2(1) = field % ioinfo % count(1)
+      count2(2) = 1
+
+#include "output_field1dinteger_time.inc"
+
+      nferr = nf_put_vara_int(output_obj % wr_ncid, varID, start2, count2, field % array)
+ 
+      nferr = nf_sync(output_obj % wr_ncid)
+
+   end subroutine io_output_field1dInteger_time
 
 
    subroutine io_output_field0dChar_time(output_obj, field)

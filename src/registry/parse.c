@@ -197,6 +197,7 @@ int parse_reg(FILE * regfile, struct namelist ** nls, struct dimension ** dims, 
           */
          getword(regfile, word);
          if (strchr(word, (int)'i')) var_ptr->iostreams |= INPUT0;
+         if (strchr(word, (int)'s')) var_ptr->iostreams |= SFC0;
          if (strchr(word, (int)'r')) var_ptr->iostreams |= RESTART0;
          if (strchr(word, (int)'o')) var_ptr->iostreams |= OUTPUT0;
 
