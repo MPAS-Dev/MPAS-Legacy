@@ -112,6 +112,8 @@ module ocn_time_integration
 
       integer, intent(out) :: err
 
+      err = 0
+
       rk4On = .false.
       splitOn = .false.
 

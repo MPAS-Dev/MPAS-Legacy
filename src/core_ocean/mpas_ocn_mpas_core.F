@@ -50,24 +50,39 @@ module mpas_core
       type (block_type), pointer :: block
       type (dm_info) :: dminfo
 
-      integer :: err
+      integer :: err, err_tmp
 
       ! Initialize submodules before initializing blocks.
       call ocn_timestep_init(err)
 
-      call ocn_vel_pressure_grad_init(err)
-      call ocn_vel_vadv_init(err)
-      call ocn_vel_hmix_init(err)
-      call ocn_vel_forcing_init(err)
+      call ocn_vel_pressure_grad_init(err_tmp)
+      err = err .or. err_tmp
 
-      call ocn_tracer_hadv_init(err)
-      call ocn_tracer_vadv_init(err)
-      call ocn_tracer_hmix_init(err)
-      call ocn_restoring_init(err)
+      call ocn_vel_vadv_init(err_tmp)
+      err = err .or. err_tmp
+      call ocn_vel_hmix_init(err_tmp)
+      err = err .or. err_tmp
+      call ocn_vel_forcing_init(err_tmp)
+      err = err .or. err_tmp
 
-      call ocn_vmix_init(err)
+      call ocn_tracer_hadv_init(err_tmp)
+      err = err .or. err_tmp
+      call ocn_tracer_vadv_init(err_tmp)
+      err = err .or. err_tmp
+      call ocn_tracer_hmix_init(err_tmp)
+      err = err .or. err_tmp
+      call ocn_restoring_init(err_tmp)
+      err = err .or. err_tmp
 
-      call ocn_equation_of_state_init(err)
+      call ocn_vmix_init(err_tmp)
+      err = err .or. err_tmp
+
+      call ocn_equation_of_state_init(err_tmp)
+      err = err .or. err_tmp
+
+      if(err) then
+          call dmpar_abort(dminfo)
+      endif
 
       if (.not. config_do_restart) call setup_sw_test_case(domain)
 
