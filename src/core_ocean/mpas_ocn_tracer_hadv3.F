@@ -1,0 +1,248 @@
+!|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+!
+!  ocn_tracer_hadv3
+!
+!> \brief MPAS ocean horizontal tracer advection 3rd order
+!> \author Doug Jacobsen
+!> \date   16 September 2011
+!> \version SVN:$Id:$
+!> \details
+!>  This module contains the main driver routine for computing 
+!>  horizontal advection tendencies.  
+!
+!-----------------------------------------------------------------------
+
+module ocn_tracer_hadv3
+
+   use grid_types
+   use configure
+   use timer
+
+   implicit none
+   private
+   save
+
+   !--------------------------------------------------------------------
+   !
+   ! Public parameters
+   !
+   !--------------------------------------------------------------------
+
+   !--------------------------------------------------------------------
+   !
+   ! Public member functions
+   !
+   !--------------------------------------------------------------------
+
+   public :: ocn_tracer_hadv3_tend, &
+             ocn_tracer_hadv3_init
+
+   !--------------------------------------------------------------------
+   !
+   ! Private module variables
+   !
+   !--------------------------------------------------------------------
+
+   logical :: hadv3On !< Flag to turn on/off 3rd order hadv
+   real (kind=RKIND) :: coef_3rd_order !< Coefficient for 3rd order hadv
+
+!***********************************************************************
+
+contains
+
+!***********************************************************************
+!
+!  routine ocn_tracer_hadv3_tend
+!
+!> \brief   Computes tendency term for horizontal tracer advection 3rd order
+!> \author  Phil Jones, Doug Jacobsen
+!> \date    15 September 2011
+!> \version SVN:$Id$
+!> \details 
+!>  This routine computes the horizontal advection tendency for tracer
+!>  based on current state using a 3rd order formulation.
+!
+!-----------------------------------------------------------------------
+
+   subroutine ocn_tracer_hadv3_tend(grid, u, h_edge, tracers , tend, err)!{{{
+
+      !-----------------------------------------------------------------
+      !
+      ! input variables
+      !
+      !-----------------------------------------------------------------
+
+      real (kind=RKIND), dimension(:,:), intent(in) :: &
+         u    !< Input: tracer
+
+      real (kind=RKIND), dimension(:,:), intent(in) :: &
+         h_edge     !< Input: thickness at edge
+
+      real (kind=RKIND), dimension(:,:,:), intent(in) :: &
+        tracers     !< Input: tracers
+
+      type (mesh_type), intent(in) :: &
+         grid          !< Input: grid information
+
+      !-----------------------------------------------------------------
+      !
+      ! input/output variables
+      !
+      !-----------------------------------------------------------------
+
+      real (kind=RKIND), dimension(:,:,:), intent(inout) :: &
+         tend          !< Input/Output: tracer tendency
+
+      !-----------------------------------------------------------------
+      !
+      ! output variables
+      !
+      !-----------------------------------------------------------------
+
+      integer, intent(out) :: err !< Output: error flag
+
+      !-----------------------------------------------------------------
+      !
+      ! local variables
+      !
+      !-----------------------------------------------------------------
+
+      integer :: iEdge, nEdges, cell1, cell2, iTracer, num_tracers, i, k
+
+      integer, dimension(:), pointer :: maxLevelEdgeTop, nEdgesOnCell
+      integer, dimension(:,:), pointer :: cellsOnEdge, cellsOnCell, &
+                                          boundaryCell
+
+      real (kind=RKIND) :: flux, tracer_edge, d2fdx2_cell1, d2fdx2_cell2
+
+      real (kind=RKIND), dimension(:), pointer :: dvEdge, dcEdge, areaCell
+      real (kind=RKIND), dimension(:,:,:), pointer :: deriv_two
+
+      !-----------------------------------------------------------------
+      !
+      ! call relevant routines for computing tendencies
+      ! note that the user can choose multiple options and the 
+      !   tendencies will be added together
+      !
+      !-----------------------------------------------------------------
+
+      err = 0
+
+      if(.not.hadv3On) return
+
+      nEdges = grid % nEdges
+      num_tracers = size(tracers, dim=1)
+      maxLevelEdgeTop => grid % maxLevelEdgeTop % array
+      nEdgesOnCell => grid % nEdgesOnCell % array
+      boundaryCell => grid % boundaryCell % array
+      cellsOnEdge => grid % cellsOnEdge % array
+      cellsOnCell => grid % cellsOnCell % array
+      dvEdge => grid % dvEdge % array
+      dcEdge => grid % dcEdge % array
+      areaCell => grid % areaCell % array
+      deriv_two => grid % deriv_two % array
+
+      call timer_start("compute_scalar_tend-horiz adv 3")
+      do iEdge=1,nEdges
+         cell1 = cellsOnEdge(1,iEdge)
+         cell2 = cellsOnEdge(2,iEdge)
+
+         do k=1,maxLevelEdgeTop(iEdge)
+
+            d2fdx2_cell1 = 0.0
+            d2fdx2_cell2 = 0.0
+
+            do iTracer=1,num_tracers
+
+               !-- if not a boundary cell
+               if(boundaryCell(k,cell1).eq.0.and.boundaryCell(k,cell2).eq.0) then
+
+                  d2fdx2_cell1 = deriv_two(1,1,iEdge) * tracers(iTracer,k,cell1)
+                  d2fdx2_cell2 = deriv_two(1,2,iEdge) * tracers(iTracer,k,cell2)
+
+                  !-- all edges of cell 1
+                  do i=1,nEdgesOnCell(cell1)
+                     d2fdx2_cell1 = d2fdx2_cell1 + &
+                     deriv_two(i+1,1,iEdge) * tracers(iTracer,k,cellsOnCell(i,cell1))
+                  end do
+
+                  !-- all edges of cell 2
+                  do i=1,nEdgesOnCell(cell2)
+                     d2fdx2_cell2 = d2fdx2_cell2 + &
+                     deriv_two(i+1,2,iEdge) * tracers(iTracer,k,cellsOnCell(i,cell2))
+                  end do
+
+               endif
+
+               !-- if u > 0:
+               if (u(k,iEdge) > 0) then
+                  flux = dvEdge(iEdge) * u(k,iEdge) * h_edge(k,iEdge) * (          &
+                       0.5*(tracers(iTracer,k,cell1) + tracers(iTracer,k,cell2))      &
+                       -(dcEdge(iEdge) **2) * (d2fdx2_cell1 + d2fdx2_cell2) / 12.          &
+                       -(dcEdge(iEdge) **2) * coef_3rd_order*(d2fdx2_cell1 - d2fdx2_cell2) / 12. )
+               !-- else u <= 0:
+               else
+                  flux = dvEdge(iEdge) *  u(k,iEdge) * h_edge(k,iEdge) * (          &
+                       0.5*(tracers(iTracer,k,cell1) + tracers(iTracer,k,cell2))      &
+                       -(dcEdge(iEdge) **2) * (d2fdx2_cell1 + d2fdx2_cell2) / 12.          &
+                       +(dcEdge(iEdge) **2) * coef_3rd_order*(d2fdx2_cell1 - d2fdx2_cell2) / 12. )
+               end if
+
+               !-- update tendency
+               tend(iTracer,k,cell1) = tend(iTracer,k,cell1) - flux/areaCell(cell1)
+               tend(iTracer,k,cell2) = tend(iTracer,k,cell2) + flux/areaCell(cell2)
+            enddo
+         end do
+      end do
+      call timer_stop("compute_scalar_tend-horiz adv 3")
+
+   !--------------------------------------------------------------------
+
+   end subroutine ocn_tracer_hadv3_tend!}}}
+
+!***********************************************************************
+!
+!  routine ocn_tracer_hadv3_init
+!
+!> \brief   Initializes ocean tracer horizontal advection quantities
+!> \author  Phil Jones, Doug Jacobsen
+!> \date    15 September 2011
+!> \version SVN:$Id$
+!> \details 
+!>  This routine initializes a variety of quantities related to 
+!>  3rd order horizontal tracer advection in the ocean. 
+!
+!-----------------------------------------------------------------------
+
+   subroutine ocn_tracer_hadv3_init(err)!{{{
+
+   !--------------------------------------------------------------------
+
+      !-----------------------------------------------------------------
+      !
+      ! call individual init routines for each parameterization
+      !
+      !-----------------------------------------------------------------
+
+      integer, intent(out) :: err !< Output: error flag
+
+      err = 0
+      hadv3On = .false.
+
+      if (config_tracer_adv_order == 3) then
+          hadv3On = .true.
+
+          coef_3rd_order = 1.0
+          if (config_monotonic) coef_3rd_order = 0.25
+      end if
+
+   !--------------------------------------------------------------------
+
+   end subroutine ocn_tracer_hadv3_init!}}}
+
+!***********************************************************************
+
+end module ocn_tracer_hadv3
+
+!|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+! vim: foldmethod=marker

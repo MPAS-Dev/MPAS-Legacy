@@ -3,6 +3,7 @@
 #
 namelist integer   sw_model config_test_case           5
 namelist character sw_model config_time_integration    RK4
+namelist logical   sw_model config_rk_filter_btr_mode  false
 namelist real      sw_model config_dt                  172.8
 namelist integer   sw_model config_calendar_type       MPAS_360DAY
 namelist character sw_model config_start_time          0000-01-01_00:00:00
@@ -19,11 +20,31 @@ namelist logical   restart  config_do_restart          false
 namelist character restart  config_restart_interval    none
 namelist character grid     config_vert_grid_type      isopycnal
 namelist real      grid     config_rho0                1028
+namelist integer   split_explicit_ts config_n_ts_iter     2
+namelist integer   split_explicit_ts config_n_bcl_iter_beg   4
+namelist integer   split_explicit_ts config_n_bcl_iter_mid   4
+namelist integer   split_explicit_ts config_n_bcl_iter_end   4
+namelist integer   split_explicit_ts config_n_btr_subcycles  10
+namelist integer   split_explicit_ts config_n_btr_cor_iter  1
+namelist logical   split_explicit_ts config_compute_tr_midstage true
+namelist logical   split_explicit_ts config_u_correction true
+namelist logical   split_explicit_ts config_filter_btr_mode false
+namelist logical   split_explicit_ts config_btr_mom_decay         false 
+namelist real      split_explicit_ts config_btr_mom_decay_time    3600.0
+namelist real      split_explicit_ts config_btr_flux_coef         1.0
+namelist real      split_explicit_ts config_btr_mom_eddy_visc2    0.0
+namelist integer   split_explicit_ts config_btr_subcycle_loop_factor  2
+namelist character split_explicit_ts config_SSH_from  avg_flux
+namelist character split_explicit_ts config_new_btr_variables_from  btr_avg
+namelist logical   sw_model config_h_ScaleWithMesh     false
 namelist real      hmix     config_h_mom_eddy_visc2     0.0
 namelist real      hmix     config_h_mom_eddy_visc4     0.0
+namelist logical   hmix     config_visc_vorticity_term true
 namelist real      hmix     config_h_tracer_eddy_diff2  0.0
 namelist real      hmix     config_h_tracer_eddy_diff4  0.0
 namelist real      hmix     config_apvm_upwinding       0.5
+namelist logical   hmix     config_mom_decay            false 
+namelist real      hmix     config_mom_decay_time       3600.0
 namelist character vmix     config_vert_visc_type       const
 namelist character vmix     config_vert_diff_type       const
 namelist logical   vmix     config_implicit_vertical_mix  .true.
@@ -94,6 +115,10 @@ var persistent real    yVertex ( nVertices ) 0 iro yVertex mesh - -
 var persistent real    zVertex ( nVertices ) 0 iro zVertex mesh - -
 var persistent integer indexToVertexID ( nVertices ) 0 iro indexToVertexID mesh - -
 
+var persistent real    meshDensity ( nCells ) 0 iro meshDensity mesh - -
+var persistent real    meshScalingDel2 ( nEdges ) 0 ro meshScalingDel2 mesh - -
+var persistent real    meshScalingDel4 ( nEdges ) 0 ro meshScalingDel4 mesh - -
+
 var persistent integer cellsOnEdge ( TWO nEdges ) 0 iro cellsOnEdge mesh - -
 var persistent integer nEdgesOnCell ( nCells ) 0 iro nEdgesOnCell mesh - -
 var persistent integer nEdgesOnEdge ( nEdges ) 0 iro nEdgesOnEdge mesh - -
@@ -152,30 +177,44 @@ var persistent real hRatioZLevelKm1 ( nVertLevels ) 0 - hRatioZLevelKm1 mesh - -
 var persistent integer boundaryEdge ( nVertLevels nEdges ) 0 iro boundaryEdge mesh - -
 var persistent integer boundaryVertex ( nVertLevels nVertices ) 0 iro boundaryVertex mesh - -
 var persistent integer boundaryCell ( nVertLevels nCells ) 0 iro boundaryCell mesh - -
-var persistent real    u_src ( nVertLevels nEdges ) 0 iro u_src mesh - -
-var persistent real    temperatureRestore ( nCells ) 0 iro temperatureRestore mesh - -
-var persistent real    salinityRestore ( nCells ) 0 iro salinityRestore mesh - -
+var persistent real    u_src ( nVertLevels nEdges ) 0 ir u_src mesh - -
+var persistent real    temperatureRestore ( nCells ) 0 ir temperatureRestore mesh - -
+var persistent real    salinityRestore ( nCells ) 0 ir salinityRestore mesh - -
 
 # Prognostic variables: read from input, saved in restart, and written to output
-var persistent real    u ( nVertLevels nEdges Time ) 2 iro u state - -
-var persistent real    h ( nVertLevels nCells Time ) 2 iro h state - -
-var persistent real    rho ( nVertLevels nCells Time ) 2 iro rho state - -
+var persistent real    u ( nVertLevels nEdges Time ) 2 ir u state - -
+var persistent real    h ( nVertLevels nCells Time ) 2 ir h state - -
+var persistent real    rho ( nVertLevels nCells Time ) 2 ir rho state - -
 var persistent real    temperature ( nVertLevels nCells Time ) 2 iro temperature state tracers dynamics
-var persistent real    salinity ( nVertLevels nCells Time ) 2 iro salinity state tracers dynamics
-var persistent real    tracer1 ( nVertLevels nCells Time ) 2 iro tracer1 state tracers testing
-var persistent real    tracer2 ( nVertLevels nCells Time ) 2 iro tracer2 state tracers testing
+var persistent real    salinity ( nVertLevels nCells Time ) 2 ir salinity state tracers dynamics
+var persistent real    tracer1 ( nVertLevels nCells Time ) 2 ir tracer1 state tracers testing
+var persistent real    tracer2 ( nVertLevels nCells Time ) 2 ir tracer2 state tracers testing
 
 # Tendency variables: neither read nor written to any files
 var persistent real    tend_u ( nVertLevels nEdges Time ) 1 - u tend - -
 var persistent real    tend_h ( nVertLevels nCells Time ) 1 - h tend - -
+var persistent real    tend_ssh ( nCells Time ) 1 - ssh tend - -
 var persistent real    tend_temperature ( nVertLevels nCells Time ) 1 - temperature tend tracers dynamics
 var persistent real    tend_salinity ( nVertLevels nCells Time ) 1 - salinity tend tracers dynamics
 var persistent real    tend_tracer1 ( nVertLevels nCells Time ) 1 - tracer1 tend tracers testing
 var persistent real    tend_tracer2 ( nVertLevels nCells Time ) 1 - tracer2 tend tracers testing
 
+# state variables for Split Explicit timesplitting
+var persistent real   uBtr ( nEdges Time )         2 -  uBtr state - -
+var persistent real   ssh ( nCells Time )          2 o  ssh state - - 
+var persistent real   uBtrSubcycle ( nEdges Time ) 2 -  uBtrSubcycle state - -
+var persistent real   sshSubcycle ( nCells Time )  2 -  sshSubcycle state - - 
+var persistent real   FBtr ( nEdges Time )         1 -  FBtr state - - 
+var persistent real   GBtrForcing ( nEdges Time )  1 -  GBtrForcing state - -
+var persistent real   uBcl ( nVertLevels nEdges Time )  2 - uBcl state - - 
+var persistent real   circulationBtr ( nVertices Time ) 1 - circulationBtr state - -
+var persistent real   divergenceBtr ( nCells Time ) 1 - divergenceBtr state - -
+var persistent real   vorticityBtr ( nVertices Time ) 1 - vorticityBtr state - -
+var persistent real   u_diffusionBtr ( nEdges Time ) 1 - u_diffusionBtr state - -
+
 # Diagnostic fields: only written to output
 var persistent real    v ( nVertLevels nEdges Time ) 2 - v state - -
-var persistent real    divergence ( nVertLevels nCells Time ) 2 o divergence state - -
+var persistent real    divergence ( nVertLevels nCells Time ) 2 - divergence state - -
 var persistent real    vorticity ( nVertLevels nVertices Time ) 2 - vorticity state - -
 var persistent real    pv_edge ( nVertLevels nEdges Time ) 2 - pv_edge state - -
 var persistent real    h_edge ( nVertLevels nEdges Time ) 2 - h_edge state - -
@@ -183,16 +222,16 @@ var persistent real    h_vertex ( nVertLevels nVertices Time ) 2 - h_vertex stat
 var persistent real    ke ( nVertLevels nCells Time ) 2 o ke state - -
 var persistent real    ke_edge ( nVertLevels nEdges Time ) 2 - ke_edge state - -
 var persistent real    pv_vertex ( nVertLevels nVertices Time ) 2 - pv_vertex state - -
-var persistent real    pv_cell ( nVertLevels nCells Time ) 2 o pv_cell state - -
-var persistent real    uReconstructX ( nVertLevels nCells Time ) 2 o uReconstructX state - -
-var persistent real    uReconstructY ( nVertLevels nCells Time ) 2 o uReconstructY state - -
-var persistent real    uReconstructZ ( nVertLevels nCells Time ) 2 o uReconstructZ state - -
-var persistent real    uReconstructZonal ( nVertLevels nCells Time ) 2 o uReconstructZonal state - -
-var persistent real    uReconstructMeridional ( nVertLevels nCells Time ) 2 o uReconstructMeridional state - -
-var persistent real    MontPot ( nVertLevels nCells Time ) 2 o MontPot state - -
-var persistent real    pressure ( nVertLevels nCells Time ) 2 o pressure state - -
-var persistent real    wTop ( nVertLevelsP1 nCells Time ) 2 o wTop state - -
-var persistent real    rhoDisplaced ( nVertLevels nCells Time ) 2 o rhoDisplaced state - -
+var persistent real    pv_cell ( nVertLevels nCells Time ) 2 - pv_cell state - -
+var persistent real    uReconstructX ( nVertLevels nCells Time ) 2 - uReconstructX state - -
+var persistent real    uReconstructY ( nVertLevels nCells Time ) 2 - uReconstructY state - -
+var persistent real    uReconstructZ ( nVertLevels nCells Time ) 2 - uReconstructZ state - -
+var persistent real    uReconstructZonal ( nVertLevels nCells Time ) 2 - uReconstructZonal state - -
+var persistent real    uReconstructMeridional ( nVertLevels nCells Time ) 2 - uReconstructMeridional state - -
+var persistent real    MontPot ( nVertLevels nCells Time ) 2 - MontPot state - -
+var persistent real    pressure ( nVertLevels nCells Time ) 2 - pressure state - -
+var persistent real    wTop ( nVertLevelsP1 nCells Time ) 2 - wTop state - -
+var persistent real    rhoDisplaced ( nVertLevels nCells Time ) 2 - rhoDisplaced state - -
 
 # Other diagnostic variables: neither read nor written to any files
 var persistent real    vh ( nVertLevels nEdges Time ) 2 - vh state - -
@@ -210,9 +249,7 @@ var persistent real    volumeEdgeGlobal ( Time ) 2 o volumeEdgeGlobal state - -
 var persistent real    CFLNumberGlobal ( Time ) 2 o CFLNumberGlobal state - -
 
 # Diagnostics fields, only one time level required
-var persistent real    RiTopOfCell ( nVertLevelsP1 nCells Time ) 1 o RiTopOfCell diagnostics - -
-var persistent real    RiTopOfEdge ( nVertLevelsP1 nEdges Time ) 1 o RiTopOfEdge diagnostics - -
-var persistent real    vertViscTopOfEdge ( nVertLevelsP1 nEdges Time ) 1 o vertViscTopOfEdge diagnostics - -
-var persistent real    vertDiffTopOfCell ( nVertLevelsP1 nCells Time ) 1 o vertDiffTopOfCell diagnostics - -
-
-
+var persistent real    RiTopOfCell ( nVertLevelsP1 nCells Time ) 1 - RiTopOfCell diagnostics - -
+var persistent real    RiTopOfEdge ( nVertLevelsP1 nEdges Time ) 1 - RiTopOfEdge diagnostics - -
+var persistent real    vertViscTopOfEdge ( nVertLevelsP1 nEdges Time ) 1 - vertViscTopOfEdge diagnostics - -
+var persistent real    vertDiffTopOfCell ( nVertLevelsP1 nCells Time ) 1 - vertDiffTopOfCell diagnostics - -

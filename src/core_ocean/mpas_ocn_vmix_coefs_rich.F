@@ -1,0 +1,601 @@
+!|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+!
+!  ocn_vmix_coefs_rich
+!
+!> \brief MPAS ocean vertical mixing coefficients
+!> \author Doug Jacobsen
+!> \date   19 September 2011
+!> \version SVN:$Id:$
+!> \details
+!>  This module contains the routines for computing 
+!>  richardson vertical mixing coefficients.  
+!>
+!
+!-----------------------------------------------------------------------
+
+module ocn_vmix_coefs_rich
+
+   use grid_types
+   use configure
+   use constants
+   use timer
+
+   use ocn_equation_of_state
+
+   implicit none
+   private
+   save
+
+   !--------------------------------------------------------------------
+   !
+   ! Public parameters
+   !
+   !--------------------------------------------------------------------
+
+   !--------------------------------------------------------------------
+   !
+   ! Public member functions
+   !
+   !--------------------------------------------------------------------
+
+   public :: ocn_vmix_coefs_rich_build, &
+             ocn_vmix_coefs_rich_init
+
+   !--------------------------------------------------------------------
+   !
+   ! Private module variables
+   !
+   !--------------------------------------------------------------------
+
+   logical :: richViscOn, richDiffOn
+
+!***********************************************************************
+
+contains
+
+!***********************************************************************
+!
+!  routine ocn_vmix_coefs_rich_build
+!
+!> \brief   Computes coefficients for vertical mixing
+!> \author  Doug Jacobsen
+!> \date    19 September 2011
+!> \version SVN:$Id$
+!> \details 
+!>  This routine computes the vertical mixing coefficients for momentum
+!>  and tracers based user choices of mixing parameterization.
+!
+!-----------------------------------------------------------------------
+
+   subroutine ocn_vmix_coefs_rich_build(grid, s, d, err)!{{{
+
+      !-----------------------------------------------------------------
+      !
+      ! input variables
+      !
+      !-----------------------------------------------------------------
+
+      type (mesh_type), intent(in) :: &
+         grid          !< Input: grid information
+
+      !-----------------------------------------------------------------
+      !
+      ! input/output variables
+      !
+      !-----------------------------------------------------------------
+
+      type (state_type), intent(inout) :: &
+         s             !< Input/Output: state information
+
+      type (diagnostics_type), intent(inout) :: &
+         d             !< Input/Output: diagnostic information
+
+      !-----------------------------------------------------------------
+      !
+      ! output variables
+      !
+      !-----------------------------------------------------------------
+
+      integer, intent(out) :: err !< Output: error flag
+
+      !-----------------------------------------------------------------
+      !
+      ! local variables
+      !
+      !-----------------------------------------------------------------
+
+      integer :: err1, err2, err3, indexT, indexS
+
+      real (kind=RKIND), dimension(:,:), pointer :: &
+        vertViscTopOfEdge, vertDiffTopOfCell, u, h, h_edge, rho, rhoDisplaced
+
+      real (kind=RKIND), dimension(:,:), pointer :: RiTopOfEdge, RiTopOfCell
+
+      real (kind=RKIND), dimension(:,:,:), pointer :: tracers
+
+      !-----------------------------------------------------------------
+      !
+      ! call relevant routines for computing tendencies
+      ! note that the user can choose multiple options and the 
+      !   tendencies will be added together
+      !
+      !-----------------------------------------------------------------
+
+      err = 0
+      if((.not.richViscOn) .and. (.not.richDiffOn)) return
+
+      indexT = s%index_temperature
+      indexS = s%index_salinity
+
+      vertViscTopOfEdge => d % vertViscTopOfEdge % array
+      vertDiffTopOfCell => d % vertDiffTopOfCell % array
+      RiTopOfEdge => d % RiTopOfEdge % array
+      RiTopOfCell => d % RiTopOfCell % array
+
+      u => s % u % array
+      h => s % h % array
+      h_edge => s % h_edge % array
+      rho => s % rho % array
+      rhoDisplaced => s % rhoDisplaced % array
+      tracers => s % tracers % array
+
+      call ocn_equation_of_state_rho(s, grid, 0, 'relative', err)
+      call ocn_equation_of_state_rho(s, grid, 1, 'relative', err)
+
+      call ocn_vmix_get_rich_numbers(grid, indexT, indexS, u, h, h_edge, & 
+                                  rho, rhoDisplaced, tracers, RiTopOfEdge, RiTopOfCell, err1)
+
+      call ocn_vel_vmix_coefs_rich(grid, RiTopOfEdge, h_edge, vertViscTopOfEdge, err2)
+      call ocn_tracer_vmix_coefs_rich(grid, RiTopOfCell, h, vertDiffTopOfCell, err3)
+
+      err = err1 .or. err2 .or. err3
+
+   !--------------------------------------------------------------------
+
+   end subroutine ocn_vmix_coefs_rich_build!}}}
+
+!***********************************************************************
+!
+!  routine ocn_vel_vmix_coefs_rich
+!
+!> \brief   Computes coefficients for vertical momentum mixing
+!> \author  Doug Jacobsen
+!> \date    19 September 2011
+!> \version SVN:$Id$
+!> \details 
+!>  This routine computes the richardson vertical mixing coefficients for momentum
+!
+!-----------------------------------------------------------------------
+
+   subroutine ocn_vel_vmix_coefs_rich(grid, RiTopOfEdge, h_edge, vertViscTopOfEdge, err)!{{{
+
+      !-----------------------------------------------------------------
+      !
+      ! input variables
+      !
+      !-----------------------------------------------------------------
+
+      type (mesh_type), intent(in) :: &
+         grid          !< Input: grid information
+
+      real (kind=RKIND), dimension(:,:), intent(in) :: &
+         h_edge        !< Input: thickness at edge
+
+      real (kind=RKIND), dimension(:,:), intent(in) :: &
+         RiTopOfEdge   !< Richardson number at top of edge
+
+      !-----------------------------------------------------------------
+      !
+      ! input/output variables
+      !
+      !-----------------------------------------------------------------
+
+      !-----------------------------------------------------------------
+      !
+      ! output variables
+      !
+      !-----------------------------------------------------------------
+
+      real (kind=RKIND), dimension(:,:), intent(out) :: vertViscTopOfEdge !< Output: vertical viscosity
+
+      integer, intent(out) :: err !< Output: error flag
+
+      !-----------------------------------------------------------------
+      !
+      ! local variables
+      !
+      !-----------------------------------------------------------------
+
+      integer :: iEdge, nEdges, k
+
+      integer, dimension(:), pointer :: maxLevelEdgeTop
+
+      err = 0
+
+      if(.not.richViscOn) return
+
+      nEdges = grid % nEdges
+
+      maxLevelEdgeTop => grid % maxLevelEdgeTop % array
+
+      vertViscTopOfEdge = 0.0
+      do iEdge = 1,nEdges
+         do k = 2,maxLevelEdgeTop(iEdge)
+            ! mrp 110324 efficiency note: this if is inside iEdge and k loops.
+            ! Perhaps there is a more efficient way to do this.
+            if (RiTopOfEdge(k,iEdge)>0.0) then
+               vertViscTopOfEdge(k,iEdge) = config_bkrd_vert_visc &
+                  + config_rich_mix / (1.0 + 5.0*RiTopOfEdge(k,iEdge))**2
+            ! maltrud do limiting of coefficient--should not be necessary
+            ! also probably better logic could be found
+               if (vertViscTopOfEdge(k,iEdge) > config_convective_visc) then
+                   if( config_implicit_vertical_mix) then
+                      vertViscTopOfEdge(k,iEdge) = config_convective_visc
+                   else
+                      vertViscTopOfEdge(k,iEdge) = &
+                      ((h_edge(k-1,iEdge)+h_edge(k,iEdge))/2.0)**2/config_dt/4.0
+                   end if
+               end if
+            else
+               ! mrp 110324 efficiency note: this if is inside iCell and k loops.
+               if (config_implicit_vertical_mix) then
+                  ! for Ri<0 and implicit mix, use convective diffusion
+                  vertViscTopOfEdge(k,iEdge) = config_convective_visc
+               else
+                  ! for Ri<0 and explicit vertical mix, 
+                  ! use maximum diffusion allowed by CFL criterion
+                  ! mrp 110324 efficiency note: for z-level, could use fixed
+                  ! grid array hMeanTopZLevel and compute maxdiff on startup.
+                  vertViscTopOfEdge(k,iEdge) = &
+                      ((h_edge(k-1,iEdge)+h_edge(k,iEdge))/2.0)**2/config_dt/4.0
+               end if
+            end if
+         end do
+      end do
+
+
+   !--------------------------------------------------------------------
+
+   end subroutine ocn_vel_vmix_coefs_rich!}}}
+
+!***********************************************************************
+!
+!  routine ocn_tracer_vmix_coefs_rich
+!
+!> \brief   Computes coefficients for vertical tracer mixing
+!> \author  Doug Jacobsen
+!> \date    19 September 2011
+!> \version SVN:$Id$
+!> \details 
+!>  This routine computes the richardson vertical mixing coefficients for tracers
+!
+!-----------------------------------------------------------------------
+
+   subroutine ocn_tracer_vmix_coefs_rich(grid, RiTopOfCell, h, vertDiffTopOfCell, err)!{{{
+
+      !-----------------------------------------------------------------
+      !
+      ! input variables
+      !
+      !-----------------------------------------------------------------
+
+      type (mesh_type), intent(in) :: &
+         grid          !< Input: grid information
+
+      real (kind=RKIND), dimension(:,:), intent(in) :: &
+         h             !< Input: thickness at cell center
+
+      real (kind=RKIND), dimension(:,:), intent(in) :: &
+         RiTopOfCell   !< Input: Richardson number at top of cell
+
+      !-----------------------------------------------------------------
+      !
+      ! input/output variables
+      !
+      !-----------------------------------------------------------------
+
+      !-----------------------------------------------------------------
+      !
+      ! output variables
+      !
+      !-----------------------------------------------------------------
+
+      real (kind=RKIND), dimension(:,:), intent(out) :: vertDiffTopOfCell !< Output: vertical diffusions
+
+      integer, intent(out) :: err !< Output: error flag
+
+      !-----------------------------------------------------------------
+      !
+      ! local variables
+      !
+      !-----------------------------------------------------------------
+
+      integer :: iCell, nCells, k
+
+      integer, dimension(:), pointer :: maxLevelCell
+
+      real (kind=RKIND) :: coef
+
+      err = 0
+
+      if(.not.richDiffOn) return
+
+      nCells = grid % nCells
+
+      maxLevelCell => grid % maxLevelCell % array
+
+      vertDiffTopOfCell = 0.0
+      coef = -gravity/1000.0/2.0
+      do iCell = 1,nCells
+         do k = 2,maxLevelCell(iCell)
+            ! mrp 110324 efficiency note: this if is inside iCell and k loops.
+            ! Perhaps there is a more efficient way to do this.
+            if (RiTopOfCell(k,iCell)>0.0) then
+               vertDiffTopOfCell(k,iCell) = config_bkrd_vert_diff &
+                  + (config_bkrd_vert_visc & 
+                     + config_rich_mix / (1.0 + 5.0*RiTopOfCell(k,iCell))**2) &
+                  / (1.0 + 5.0*RiTopOfCell(k,iCell))
+            ! maltrud do limiting of coefficient--should not be necessary
+            ! also probably better logic could be found
+               if (vertDiffTopOfCell(k,iCell) > config_convective_diff) then
+                  if (config_implicit_vertical_mix) then
+                     vertDiffTopOfCell(k,iCell) = config_convective_diff
+                  else
+                     vertDiffTopOfCell(k,iCell) = &
+                        ((h(k-1,iCell)+h(k,iCell))/2.0)**2/config_dt/4.0
+                  end if
+               end if
+             else
+               ! mrp 110324 efficiency note: this if is inside iCell and k loops.
+               if (config_implicit_vertical_mix) then
+                  ! for Ri<0 and implicit mix, use convective diffusion
+                  vertDiffTopOfCell(k,iCell) = config_convective_diff
+               else
+                  ! for Ri<0 and explicit vertical mix, 
+                  ! use maximum diffusion allowed by CFL criterion
+                  ! mrp 110324 efficiency note: for z-level, could use fixed
+                  ! grid array hMeanTopZLevel and compute maxdiff on startup.
+                  vertDiffTopOfCell(k,iCell) = &
+                     ((h(k-1,iCell)+h(k,iCell))/2.0)**2/config_dt/4.0
+               end if
+            end if
+         end do
+      end do
+
+
+   !--------------------------------------------------------------------
+
+   end subroutine ocn_tracer_vmix_coefs_rich!}}}
+
+!***********************************************************************
+!
+!  routine ocn_vmix_get_rich_numbers
+!
+!> \brief   Build richardson numbers for vertical mixing
+!> \author  Doug Jacobsen
+!> \date    19 September 2011
+!> \version SVN:$Id$
+!> \details 
+!>  This routine builds the arrays needed for richardson number vertical
+!>  mixing coefficients.
+!
+!-----------------------------------------------------------------------
+
+   subroutine ocn_vmix_get_rich_numbers(grid, indexT, indexS, u, h, h_edge, & !{{{
+                                 rho, rhoDisplaced, tracers, RiTopOfEdge, RiTopOfCell, err)
+
+      !-----------------------------------------------------------------
+      !
+      ! input variables
+      !
+      !-----------------------------------------------------------------
+
+      type (mesh_type), intent(in) :: &
+         grid          !< Input: grid information
+
+      integer, intent(in) :: indexT !< Input: index for temperature
+      integer, intent(in) :: indexS !< Input: index for salinity
+
+      real (kind=RKIND), dimension(:,:), intent(in) :: u       !< Input: horizontal velocity
+      real (kind=RKIND), dimension(:,:), intent(in) :: h       !< Input: thickness
+      real (kind=RKIND), dimension(:,:), intent(in) :: h_edge  !< Input: thickness at edge 
+
+      real (kind=RKIND), dimension(:,:,:), intent(in) :: tracers !< Input: tracers
+
+      !-----------------------------------------------------------------
+      !
+      ! input/output variables
+      !
+      !-----------------------------------------------------------------
+
+      !-----------------------------------------------------------------
+      !
+      ! output variables
+      !
+      !-----------------------------------------------------------------
+
+      real (kind=RKIND), dimension(:,:), intent(inout) :: rho    !< Input/output: density
+      real (kind=RKIND), dimension(:,:), intent(inout) :: rhoDisplaced    !< Input/output: displaced density
+      real (kind=RKIND), dimension(:,:), intent(inout) :: RiTopOfEdge     !< Input/output: Richardson number top of cell
+      real (kind=RKIND), dimension(:,:), intent(inout) :: RiTopOfCell     !< Input/output: Richardson number top of cell
+
+      integer, intent(inout) :: err !< Output: error flag
+
+      !-----------------------------------------------------------------
+      !
+      ! local variables
+      !
+      !-----------------------------------------------------------------
+
+      integer :: nVertLevels, nCells, nEdges, iCell, iEdge, k
+      integer :: cell1, cell2
+
+      integer, dimension(:), pointer :: maxLevelCell, maxLevelEdgeTop, maxLevelEdgeBot
+      integer, dimension(:,:), pointer :: cellsOnEdge
+
+      real (kind=RKIND) :: coef
+      real (kind=RKIND), dimension(:), pointer :: dcEdge, dvEdge, areaCell
+      real (kind=RKIND), dimension(:,:), allocatable :: drhoTopOfCell, du2TopOfCell, &
+                                                        drhoTopOfEdge, du2TopOfEdge
+
+      err = 0
+
+      if(.not.richViscOn .and. .not.richDiffOn) return
+
+      nVertLevels = grid % nVertLevels
+      nCells = grid % nCells
+      nEdges = grid % nEdges
+
+      maxLevelCell => grid % maxLevelCell % array
+      maxLevelEdgeTop => grid % maxLevelEdgeTop % array
+      maxLevelEdgeBot => grid % maxLevelEdgeBot % array
+      cellsOnEdge => grid % cellsOnEdge % array
+      dvEdge => grid % dvEdge % array
+      dcEdge => grid % dcEdge % array
+      areaCell => grid % areaCell % array
+
+      allocate( &
+         drhoTopOfCell(nVertLevels+1,nCells+1), drhoTopOfEdge(nVertLevels+1,nEdges+1), &
+         du2TopOfCell(nVertLevels+1,nCells+1), du2TopOfEdge(nVertLevels+1,nEdges+1))
+
+      ! compute density of parcel displaced to next deeper z-level,
+      ! in state % rhoDisplaced
+!maltrud make sure rho is current--check this for redundancy
+!     call OcnEquationOfStateRho(grid, 'relative', 0, indexT, indexS, &
+!              tracers, rho, err) 
+      ! mrp 110324 In order to visualize rhoDisplaced, include the following
+!     call OcnEquationOfStateRho(grid, 'relative', 1, indexT, indexS, &
+!              tracers, rhoDisplaced, err) 
+
+
+      ! drhoTopOfCell(k) = $\rho^*_{k-1}-\rho^*_k$
+      drhoTopOfCell = 0.0
+      do iCell=1,nCells
+         do k=2,maxLevelCell(iCell)
+            drhoTopOfCell(k,iCell) = rho(k-1,iCell) - rhoDisplaced(k-1,iCell)
+          end do
+      end do
+
+      ! interpolate drhoTopOfCell to drhoTopOfEdge
+      drhoTopOfEdge = 0.0
+      do iEdge=1,nEdges
+         cell1 = cellsOnEdge(1,iEdge)
+         cell2 = cellsOnEdge(2,iEdge)
+         do k=2,maxLevelEdgeTop(iEdge)
+            drhoTopOfEdge(k,iEdge) = &
+               (drhoTopOfCell(k,cell1) + &
+                drhoTopOfCell(k,cell2))/2  
+         end do
+       end do
+
+      ! du2TopOfEdge(k) = $u_{k-1}-u_k$
+      du2TopOfEdge=0.0
+      do iEdge=1,nEdges
+         do k=2,maxLevelEdgeTop(iEdge)
+            du2TopOfEdge(k,iEdge) = (u(k-1,iEdge) - u(k,iEdge))**2
+         end do
+      end do
+
+      ! interpolate du2TopOfEdge to du2TopOfCell
+      du2TopOfCell = 0.0
+      do iEdge=1,nEdges
+         cell1 = cellsOnEdge(1,iEdge)
+         cell2 = cellsOnEdge(2,iEdge)
+         do k=2,maxLevelEdgeBot(iEdge)
+            du2TopOfCell(k,cell1) = du2TopOfCell(k,cell1) &
+               + 0.5 * dcEdge(iEdge) * dvEdge(iEdge) * du2TopOfEdge(k,iEdge)
+            du2TopOfCell(k,cell2) = du2TopOfCell(k,cell2) &
+               + 0.5 * dcEdge(iEdge) * dvEdge(iEdge) * du2TopOfEdge(k,iEdge)
+         end do
+      end do
+      do iCell = 1,nCells
+         do k = 2,maxLevelCell(iCell)
+            du2TopOfCell(k,iCell) = du2TopOfCell(k,iCell) / areaCell(iCell)
+         end do
+      end do
+
+      ! compute RiTopOfEdge using drhoTopOfEdge and du2TopOfEdge
+      ! coef = -g/rho_0/2
+      RiTopOfEdge = 0.0
+      coef = -gravity/1000.0/2.0
+      do iEdge = 1,nEdges
+         do k = 2,maxLevelEdgeTop(iEdge)
+            RiTopOfEdge(k,iEdge) = coef*drhoTopOfEdge(k,iEdge) &
+               *(h_edge(k-1,iEdge)+h_edge(k,iEdge)) &
+               / (du2TopOfEdge(k,iEdge) + 1e-20)
+         end do
+      end do
+
+      ! compute RiTopOfCell using drhoTopOfCell and du2TopOfCell
+      ! coef = -g/rho_0/2
+      RiTopOfCell = 0.0
+      coef = -gravity/1000.0/2.0
+      do iCell = 1,nCells
+         do k = 2,maxLevelCell(iCell)
+            RiTopOfCell(k,iCell) = coef*drhoTopOfCell(k,iCell) &
+               *(h(k-1,iCell)+h(k,iCell)) &
+               / (du2TopOfCell(k,iCell) + 1e-20)
+         end do
+      end do
+
+      deallocate(drhoTopOfCell, drhoTopOfEdge, &
+        du2TopOfCell, du2TopOfEdge)
+
+   !--------------------------------------------------------------------
+
+   end subroutine ocn_vmix_get_rich_numbers!}}}
+
+!***********************************************************************
+!
+!  routine ocn_vmix_coefs_rich_init
+!
+!> \brief   Initializes ocean momentum vertical mixing quantities
+!> \author  Doug Jacobsen
+!> \date    19 September 2011
+!> \version SVN:$Id$
+!> \details 
+!>  This routine initializes a variety of quantities related to 
+!>  vertical velocity mixing in the ocean. Since a variety of 
+!>  parameterizations are available, this routine primarily calls the
+!>  individual init routines for each parameterization. 
+!
+!-----------------------------------------------------------------------
+
+
+   subroutine ocn_vmix_coefs_rich_init(err)!{{{
+
+   !--------------------------------------------------------------------
+
+      !-----------------------------------------------------------------
+      !
+      ! call individual init routines for each parameterization
+      !
+      !-----------------------------------------------------------------
+
+      integer, intent(out) :: err !< Output: error flag
+
+      err = 0
+
+      richViscOn = .false.
+      richDiffOn = .false.
+
+      if (config_vert_visc_type.eq.'rich') then
+          richViscOn = .true.
+      endif
+
+      if (config_vert_diff_type.eq.'rich') then
+          richDiffOn = .true.
+      endif
+
+
+   !--------------------------------------------------------------------
+
+   end subroutine ocn_vmix_coefs_rich_init!}}}
+
+!***********************************************************************
+
+end module ocn_vmix_coefs_rich
+
+!|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+
+! vim: foldmethod=marker

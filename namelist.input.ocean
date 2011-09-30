@@ -1,34 +1,53 @@
 &sw_model
    config_test_case = 0
-   config_time_integration = 'RK4'
-   config_dt = 90.0
+   config_time_integration = 'rk4'
+   config_rk_filter_btr_mode = .false.
+   config_dt = 10.0
    config_start_time = '0000-01-01_00:00:00'
    config_run_duration = '2000_00:00:00'
    config_stats_interval = 1920
 /
-
 &io
    config_input_name = 'grid.nc'
    config_output_name = 'output.nc'
    config_restart_name = 'restart.nc'
    config_output_interval = '20_00:00:00'
-   config_frames_per_outfile = 0
+   config_frames_per_outfile = 1000000
 /
-
 &restart
    config_do_restart = .false.
    config_restart_interval = '120_00:00:00'
 /
-
 &grid
    config_vert_grid_type = 'zlevel'
    config_rho0 = 1000
 /
+&split_explicit_ts
+   config_n_ts_iter  =  2 
+   config_n_bcl_iter_beg =  1
+   config_n_bcl_iter_mid =  2
+   config_n_bcl_iter_end =  2
+   config_n_btr_subcycles = 10
+   config_n_btr_cor_iter = 2
+   config_compute_tr_midstage = .true.
+   config_u_correction = .true.
+   config_filter_btr_mode = .false.
+   config_btr_mom_decay  = .false.
+   config_btr_mom_decay_time =   3600.0
+   config_btr_flux_coef = 1.0
+   config_btr_mom_eddy_visc2 =   0.0
+   config_btr_subcycle_loop_factor =  2
+   config_SSH_from =  'avg_flux'
+   config_new_btr_variables_from = 'btr_avg'
+/
 &hmix
    config_h_mom_eddy_visc2 = 1.0e5
    config_h_mom_eddy_visc4 = 0.0
+   config_visc_vorticity_term = .true.
    config_h_tracer_eddy_diff2 = 1.0e4
    config_h_tracer_eddy_diff4 = 0.0
+   config_mom_decay      = .false.
+   config_mom_decay_time = 3600.0
 /
 &vmix
    config_vert_visc_type  = 'rich'
@@ -36,6 +55,7 @@
    config_implicit_vertical_mix = .true.
    config_convective_visc       = 1.0
    config_convective_diff       = 1.0
+   config_bottom_drag_coeff     = 1.0e-3
 /
 &vmix_const
    config_vert_visc       = 2.5e-5
@@ -58,15 +78,15 @@
    config_eos_type = 'jm'
 /
 &advection
-   config_vert_tracer_adv = 'spline'
-   config_vert_tracer_adv_order = 3
+   config_vert_tracer_adv = 'stencil'
+   config_vert_tracer_adv_order = 2
    config_tracer_adv_order = 2
    config_thickness_adv_order = 2
    config_positive_definite = .false.
    config_monotonic = .false.
 /
 &restore
-config_restoreTS = .false.
-config_restoreT_timescale = 90.0
-config_restoreS_timescale = 90.0
+   config_restoreTS = .false.
+   config_restoreT_timescale = 90.0
+   config_restoreS_timescale = 90.0
 /

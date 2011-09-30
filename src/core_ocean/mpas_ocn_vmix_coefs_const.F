@@ -1,0 +1,306 @@
+!|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+!
+!  ocn_vmix_coefs_const
+!
+!> \brief MPAS ocean vertical mixing coefficients
+!> \author Doug Jacobsen
+!> \date   19 September 2011
+!> \version SVN:$Id:$
+!> \details
+!>  This module contains the routines for computing 
+!>  constant vertical mixing coefficients.  
+!>
+!
+!-----------------------------------------------------------------------
+
+module ocn_vmix_coefs_const
+
+   use grid_types
+   use configure
+   use timer
+
+   implicit none
+   private
+   save
+
+   !--------------------------------------------------------------------
+   !
+   ! Public parameters
+   !
+   !--------------------------------------------------------------------
+
+   !--------------------------------------------------------------------
+   !
+   ! Public member functions
+   !
+   !--------------------------------------------------------------------
+
+   private :: ocn_vel_vmix_coefs_const, &
+              ocn_tracer_vmix_coefs_const
+
+   public :: ocn_vmix_coefs_const_build, &
+             ocn_vmix_coefs_const_init
+
+   !--------------------------------------------------------------------
+   !
+   ! Private module variables
+   !
+   !--------------------------------------------------------------------
+
+   logical :: constViscOn, constDiffOn
+
+   real (kind=RKIND) :: constVisc, constDiff
+
+
+!***********************************************************************
+
+contains
+
+!***********************************************************************
+!
+!  routine ocn_vmix_coefs_const_build
+!
+!> \brief   Computes coefficients for vertical mixing
+!> \author  Doug Jacobsen
+!> \date    19 September 2011
+!> \version SVN:$Id$
+!> \details 
+!>  This routine computes the vertical mixing coefficients for momentum
+!>  and tracers based user choices of mixing parameterization.
+!
+!-----------------------------------------------------------------------
+
+   subroutine ocn_vmix_coefs_const_build(grid, s, d, err)!{{{
+
+      !-----------------------------------------------------------------
+      !
+      ! input variables
+      !
+      !-----------------------------------------------------------------
+
+      type (mesh_type), intent(in) :: &
+         grid          !< Input: grid information
+
+      !-----------------------------------------------------------------
+      !
+      ! input/output variables
+      !
+      !-----------------------------------------------------------------
+
+      type (state_type), intent(inout) :: &
+         s             !< Input/Output: state information
+
+      type (diagnostics_type), intent(inout) :: &
+         d             !< Input/Output: diagnostic information
+
+      !-----------------------------------------------------------------
+      !
+      ! output variables
+      !
+      !-----------------------------------------------------------------
+
+      integer, intent(out) :: err !< Output: error flag
+
+      !-----------------------------------------------------------------
+      !
+      ! local variables
+      !
+      !-----------------------------------------------------------------
+
+      integer :: err1, err2
+
+      real (kind=RKIND), dimension(:,:), pointer :: &
+        vertViscTopOfEdge, vertDiffTopOfCell
+
+      !-----------------------------------------------------------------
+      !
+      ! call relevant routines for computing tendencies
+      ! note that the user can choose multiple options and the 
+      !   tendencies will be added together
+      !
+      !-----------------------------------------------------------------
+
+      err = 0
+      if((.not.constViscOn) .and. (.not.constDiffOn)) return
+
+      vertViscTopOfEdge => d % vertViscTopOfEdge % array
+      vertDiffTopOfCell => d % vertDiffTopOfCell % array
+
+      call ocn_vel_vmix_coefs_const(grid, vertViscTopOfEdge, err1)
+      call ocn_tracer_vmix_coefs_const(grid, vertDiffTopOfCell, err2)
+
+      err = err1 .or. err2
+
+   !--------------------------------------------------------------------
+
+   end subroutine ocn_vmix_coefs_const_build!}}}
+
+!***********************************************************************
+!
+!  routine ocn_vel_vmix_coefs_const
+!
+!> \brief   Computes coefficients for vertical momentum mixing
+!> \author  Doug Jacobsen
+!> \date    19 September 2011
+!> \version SVN:$Id$
+!> \details 
+!>  This routine computes the constant vertical mixing coefficients for momentum
+!
+!-----------------------------------------------------------------------
+
+   subroutine ocn_vel_vmix_coefs_const(grid, vertViscTopOfEdge, err)!{{{
+
+      !-----------------------------------------------------------------
+      !
+      ! input variables
+      !
+      !-----------------------------------------------------------------
+
+      type (mesh_type), intent(in) :: &
+         grid          !< Input: grid information
+
+      !-----------------------------------------------------------------
+      !
+      ! input/output variables
+      !
+      !-----------------------------------------------------------------
+
+      !-----------------------------------------------------------------
+      !
+      ! output variables
+      !
+      !-----------------------------------------------------------------
+
+      real (kind=RKIND), dimension(:,:), intent(out) :: vertViscTopOfEdge !< Output: vertical viscosity
+
+      integer, intent(out) :: err !< Output: error flag
+
+      !-----------------------------------------------------------------
+      !
+      ! local variables
+      !
+      !-----------------------------------------------------------------
+
+      err = 0
+
+      if(.not.constViscOn) return
+
+      vertViscTopOfEdge = constVisc
+
+   !--------------------------------------------------------------------
+
+   end subroutine ocn_vel_vmix_coefs_const!}}}
+
+!***********************************************************************
+!
+!  routine ocn_tracer_vmix_coefs_const
+!
+!> \brief   Computes coefficients for vertical tracer mixing
+!> \author  Doug Jacobsen
+!> \date    19 September 2011
+!> \version SVN:$Id$
+!> \details 
+!>  This routine computes the constant vertical mixing coefficients for tracers
+!
+!-----------------------------------------------------------------------
+
+   subroutine ocn_tracer_vmix_coefs_const(grid, vertDiffTopOfCell, err)!{{{
+
+      !-----------------------------------------------------------------
+      !
+      ! input variables
+      !
+      !-----------------------------------------------------------------
+
+      type (mesh_type), intent(in) :: &
+         grid          !< Input: grid information
+
+      !-----------------------------------------------------------------
+      !
+      ! input/output variables
+      !
+      !-----------------------------------------------------------------
+
+      !-----------------------------------------------------------------
+      !
+      ! output variables
+      !
+      !-----------------------------------------------------------------
+
+      real (kind=RKIND), dimension(:,:), intent(out) :: vertDiffTopOfCell !< Output: Vertical diffusion
+
+      integer, intent(out) :: err !< Output: error flag
+
+      !-----------------------------------------------------------------
+      !
+      ! local variables
+      !
+      !-----------------------------------------------------------------
+
+      err = 0
+
+      if(.not.constDiffOn) return
+
+      vertDiffTopOfCell = constDiff
+
+   !--------------------------------------------------------------------
+
+   end subroutine ocn_tracer_vmix_coefs_const!}}}
+
+
+!***********************************************************************
+!
+!  routine ocn_vmix_coefs_const_init
+!
+!> \brief   Initializes ocean momentum vertical mixing quantities
+!> \author  Doug Jacobsen
+!> \date    19 September 2011
+!> \version SVN:$Id$
+!> \details 
+!>  This routine initializes a variety of quantities related to 
+!>  vertical velocity mixing in the ocean. Since a variety of 
+!>  parameterizations are available, this routine primarily calls the
+!>  individual init routines for each parameterization. 
+!
+!-----------------------------------------------------------------------
+
+
+   subroutine ocn_vmix_coefs_const_init(err)!{{{
+
+   !--------------------------------------------------------------------
+
+      !-----------------------------------------------------------------
+      !
+      ! call individual init routines for each parameterization
+      !
+      !-----------------------------------------------------------------
+
+      integer, intent(out) :: err !< Output: error flag
+
+      err = 0
+
+      constViscOn = .false.
+      constDiffOn = .false.
+
+      if (config_vert_visc_type.eq.'const') then
+          constViscOn = .true.
+          constVisc = config_vert_visc
+      endif
+
+      if (config_vert_diff_type.eq.'const') then
+          constDiffOn = .true.
+          constDiff = config_vert_diff
+      endif
+
+
+   !--------------------------------------------------------------------
+
+   end subroutine ocn_vmix_coefs_const_init!}}}
+
+!***********************************************************************
+
+end module ocn_vmix_coefs_const
+
+!|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+
+! vim: foldmethod=marker

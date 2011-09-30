@@ -1,25 +1,178 @@
 .SUFFIXES: .F .o
 
-OBJS = module_mpas_core.o \
-       module_test_cases.o \
-       module_advection.o \
-       module_time_integration.o \
-       module_global_diagnostics.o
+OBJS = mpas_ocn_mpas_core.o \
+       mpas_ocn_test_cases.o \
+       mpas_ocn_advection.o \
+	   mpas_ocn_thick_hadv.o \
+	   mpas_ocn_thick_vadv.o \
+	   mpas_ocn_vel_coriolis.o \
+	   mpas_ocn_vel_vadv.o \
+	   mpas_ocn_vel_hmix.o \
+	   mpas_ocn_vel_hmix_del2.o \
+	   mpas_ocn_vel_hmix_del4.o \
+	   mpas_ocn_vel_forcing.o \
+	   mpas_ocn_vel_forcing_windstress.o \
+	   mpas_ocn_vel_forcing_bottomdrag.o \
+	   mpas_ocn_vel_pressure_grad.o \
+	   mpas_ocn_tracer_vadv.o \
+	   mpas_ocn_tracer_vadv_spline.o \
+	   mpas_ocn_tracer_vadv_spline2.o \
+	   mpas_ocn_tracer_vadv_spline3.o \
+	   mpas_ocn_tracer_vadv_stencil.o \
+	   mpas_ocn_tracer_vadv_stencil2.o \
+	   mpas_ocn_tracer_vadv_stencil3.o \
+	   mpas_ocn_tracer_vadv_stencil4.o \
+	   mpas_ocn_tracer_hadv.o \
+	   mpas_ocn_tracer_hadv2.o \
+	   mpas_ocn_tracer_hadv3.o \
+	   mpas_ocn_tracer_hadv4.o \
+	   mpas_ocn_tracer_hmix.o \
+	   mpas_ocn_tracer_hmix_del2.o \
+	   mpas_ocn_tracer_hmix_del4.o \
+	   mpas_ocn_vmix.o \
+	   mpas_ocn_vmix_coefs_const.o \
+	   mpas_ocn_vmix_coefs_rich.o \
+	   mpas_ocn_vmix_coefs_tanh.o \
+	   mpas_ocn_restoring.o \
+	   mpas_ocn_tendency.o \
+       mpas_ocn_time_integration.o \
+       mpas_ocn_time_integration_rk4.o \
+       mpas_ocn_time_integration_split.o \
+	   mpas_ocn_equation_of_state.o \
+	   mpas_ocn_equation_of_state_jm.o \
+	   mpas_ocn_equation_of_state_linear.o \
+       mpas_ocn_global_diagnostics.o
+
 
 all: core_hyd
 
 core_hyd: $(OBJS)
 	ar -ru libdycore.a $(OBJS)
 
-module_test_cases.o:
+mpas_ocn_test_cases.o:
 
-module_advection.o:
+mpas_ocn_advection.o:
 
-module_time_integration.o: 
+mpas_ocn_time_integration.o: mpas_ocn_time_integration_rk4.o mpas_ocn_time_integration_split.o
 
-module_global_diagnostics.o: 
+mpas_ocn_time_integration_rk4.o:
 
-module_mpas_core.o: module_advection.o module_global_diagnostics.o module_test_cases.o module_time_integration.o
+mpas_ocn_time_integration_split.o:
+
+mpas_ocn_tendency.o:
+
+mpas_ocn_global_diagnostics.o: 
+
+mpas_ocn_thick_hadv.o:
+
+mpas_ocn_thick_vadv.o:
+
+mpas_ocn_vel_pressure_grad.o:
+
+mpas_ocn_vel_vadv.o:
+
+mpas_ocn_vel_hmix.o: mpas_ocn_vel_hmix_del2.o mpas_ocn_vel_hmix_del4.o
+
+mpas_ocn_vel_hmix_del2.o:
+
+mpas_ocn_vel_hmix_del4.o:
+
+mpas_ocn_vel_forcing.o: mpas_ocn_vel_forcing_windstress.o mpas_ocn_vel_forcing_bottomdrag.o
+
+mpas_ocn_vel_forcing_windstress.o:
+
+mpas_ocn_velforcing_bottomdrag.o:
+
+mpas_ocn_vel_coriolis.o:
+
+mpas_ocn_tracer_hadv.o:  mpas_ocn_tracer_hadv2.o  mpas_ocn_tracer_hadv3.o  mpas_ocn_tracer_hadv4.o
+
+mpas_ocn_tracer_hadv2.o:
+
+mpas_ocn_tracer_hadv3.o:
+
+mpas_ocn_tracer_hadv4.o:
+
+mpas_ocn_tracer_vadv.o: mpas_ocn_tracer_vadv_spline.o mpas_ocn_tracer_vadv_stencil.o
+
+mpas_ocn_tracer_vadv_spline.o: mpas_ocn_tracer_vadv_spline2.o  mpas_ocn_tracer_vadv_spline3.o
+
+mpas_ocn_tracer_vadv_spline2.o:
+
+mpas_ocn_tracer_vadv_spline3.o:
+
+mpas_ocn_tracer_vadv_stencil.o: mpas_ocn_tracer_vadv_stencil2.o mpas_ocn_tracer_vadv_stencil3.o  mpas_ocn_tracer_vadv_stencil4.o 
+
+mpas_ocn_tracer_vadv_stencil2.o:
+
+mpas_ocn_tracer_vadv_stencil3.o:
+
+mpas_ocn_tracer_vadv_stencil4.o:
+
+mpas_ocn_tracer_hmix.o: mpas_ocn_tracer_hmix_del2.o mpas_ocn_tracer_hmix_del4.o
+
+mpas_ocn_tracer_hmix_del2.o:
+
+mpas_ocn_tracer_hmix_del4.o:
+
+mpas_ocn_restoring.o:
+
+mpas_ocn_vmix.o: mpas_ocn_vmix_coefs_const.o mpas_ocn_vmix_coefs_rich.o mpas_ocn_vmix_coefs_tanh.o
+
+mpas_ocn_vmix_coefs_const.o:
+
+mpas_ocn_vmix_coefs_rich.o: mpas_ocn_equation_of_state.o
+
+mpas_ocn_vmix_coefs_tanh.o:
+
+mpas_ocn_equation_of_state.o: mpas_ocn_equation_of_state_jm.o mpas_ocn_equation_of_state_linear.o
+
+mpas_ocn_equation_of_state_jm.o:
+
+mpas_ocn_equation_of_state_linear.o:
+
+mpas_ocn_mpas_core.o: mpas_ocn_mpas_core.o \
+			          mpas_ocn_test_cases.o \
+					  mpas_ocn_advection.o \
+					  mpas_ocn_thick_hadv.o \
+					  mpas_ocn_thick_vadv.o \
+					  mpas_ocn_vel_coriolis.o \
+					  mpas_ocn_vel_vadv.o \
+					  mpas_ocn_vel_hmix.o \
+					  mpas_ocn_vel_hmix_del2.o \
+					  mpas_ocn_vel_hmix_del4.o \
+					  mpas_ocn_vel_forcing.o \
+					  mpas_ocn_vel_forcing_windstress.o \
+					  mpas_ocn_vel_forcing_bottomdrag.o \
+					  mpas_ocn_vel_pressure_grad.o \
+					  mpas_ocn_tracer_vadv.o \
+					  mpas_ocn_tracer_vadv_spline.o \
+					  mpas_ocn_tracer_vadv_spline2.o \
+					  mpas_ocn_tracer_vadv_spline3.o \
+					  mpas_ocn_tracer_vadv_stencil.o \
+					  mpas_ocn_tracer_vadv_stencil2.o \
+					  mpas_ocn_tracer_vadv_stencil3.o \
+					  mpas_ocn_tracer_vadv_stencil4.o \
+					  mpas_ocn_tracer_hadv.o \
+					  mpas_ocn_tracer_hadv2.o \
+					  mpas_ocn_tracer_hadv3.o \
+					  mpas_ocn_tracer_hadv4.o \
+					  mpas_ocn_tracer_hmix.o \
+					  mpas_ocn_tracer_hmix_del2.o \
+					  mpas_ocn_tracer_hmix_del4.o \
+					  mpas_ocn_vmix.o \
+					  mpas_ocn_vmix_coefs_const.o \
+					  mpas_ocn_vmix_coefs_rich.o \
+					  mpas_ocn_vmix_coefs_tanh.o \
+					  mpas_ocn_restoring.o \
+					  mpas_ocn_tendency.o \
+					  mpas_ocn_time_integration.o \
+					  mpas_ocn_time_integration_rk4.o \
+					  mpas_ocn_time_integration_split.o \
+					  mpas_ocn_equation_of_state.o \
+					  mpas_ocn_equation_of_state_jm.o \
+					  mpas_ocn_equation_of_state_linear.o \
+					  mpas_ocn_global_diagnostics.o
 
 clean:
 	$(RM) *.o *.mod *.f90 libdycore.a
