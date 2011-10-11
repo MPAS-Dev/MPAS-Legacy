@@ -347,7 +347,13 @@ module ocn_time_integration_rk4
 
          call ocn_diagnostic_solve(dt, block % state % time_levs(2) % state, block % mesh)
 
-         call reconstruct(block % state % time_levs(2) % state, block % mesh)
+         call reconstruct(block % mesh, block % state % time_levs(2) % state % u % array,          &
+                          block % state % time_levs(2) % state % uReconstructX % array,            &
+                          block % state % time_levs(2) % state % uReconstructY % array,            &
+                          block % state % time_levs(2) % state % uReconstructZ % array,            &
+                          block % state % time_levs(2) % state % uReconstructZonal % array,        &
+                          block % state % time_levs(2) % state % uReconstructMeridional % array    &
+                         )
 
          block => block % next
       end do

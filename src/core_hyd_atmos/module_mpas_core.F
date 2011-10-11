@@ -124,7 +124,14 @@ module mpas_core
       call initialize_advection_rk(mesh)
       call rbfInterp_initialize(mesh)
       call init_reconstruct(mesh)
-      call reconstruct(block % state % time_levs(1) % state, mesh)
+      call reconstruct(mesh, block % state % time_levs(1) % state % u % array, &
+                       block % diag % uReconstructX % array,                   &
+                       block % diag % uReconstructY % array,                   &
+                       block % diag % uReconstructZ % array,                   &
+                       block % diag % uReconstructZonal % array,               &
+                       block % diag % uReconstructMeridional % array           &
+                      )
+
   
    end subroutine mpas_init_block
    

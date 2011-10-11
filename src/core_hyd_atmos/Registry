@@ -137,11 +137,11 @@ var persistent real    h_edge ( nVertLevels nEdges Time ) 2 o h_edge state - -
 var persistent real    ke ( nVertLevels nCells Time ) 2 o ke state - -
 var persistent real    pv_vertex ( nVertLevels nVertices Time ) 2 o pv_vertex state - -
 var persistent real    pv_cell ( nVertLevels nCells Time ) 2 o pv_cell state - -
-var persistent real    uReconstructX ( nVertLevels nCells Time ) 2 o uReconstructX state - -
-var persistent real    uReconstructY ( nVertLevels nCells Time ) 2 o uReconstructY state - -
-var persistent real    uReconstructZ ( nVertLevels nCells Time ) 2 o uReconstructZ state - -
-var persistent real    uReconstructZonal ( nVertLevels nCells Time ) 2 o uReconstructZonal state - -
-var persistent real    uReconstructMeridional ( nVertLevels nCells Time ) 2 o uReconstructMeridional state - -
+var persistent real    uReconstructX ( nVertLevels nCells Time ) 1 o uReconstructX diag - -
+var persistent real    uReconstructY ( nVertLevels nCells Time ) 1 o uReconstructY diag - -
+var persistent real    uReconstructZ ( nVertLevels nCells Time ) 1 o uReconstructZ diag - -
+var persistent real    uReconstructZonal ( nVertLevels nCells Time ) 1 o uReconstructZonal diag - -
+var persistent real    uReconstructMeridional ( nVertLevels nCells Time ) 1 o uReconstructMeridional diag - -
 
 # Tendency variables
 var persistent real    tend_h ( nVertLevels nCells Time ) 1 - h tend - -

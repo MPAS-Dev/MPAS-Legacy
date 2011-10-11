@@ -321,7 +321,14 @@ module time_integration
       !
       block => domain % blocklist
       do while (associated(block))
-         call reconstruct(block % state % time_levs(2) % state, block % mesh)
+         call reconstruct(block % mesh, block % state % time_levs(2) % state % u % array, &
+                          block % diag % uReconstructX % array,                           &
+                          block % diag % uReconstructY % array,                           &
+                          block % diag % uReconstructZ % array,                           &
+                          block % diag % uReconstructZonal % array,                       &
+                          block % diag % uReconstructMeridional % array                   &
+                         )
+
          call compute_w(block % state % time_levs(2) % state, block % state % time_levs(1) % state, block % mesh, dt)
          block => block % next
       end do

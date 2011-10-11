@@ -112,7 +112,7 @@ module vector_reconstruction
 
   end subroutine init_reconstruct
 
-  subroutine reconstruct(state, grid)
+  subroutine reconstruct(grid, u, uReconstructX, uReconstructY, uReconstructZ, uReconstructZonal, uReconstructMeridional)
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ! Purpose: reconstruct vector field at cell centers based on radial basis functions
   !
@@ -123,18 +123,17 @@ module vector_reconstruction
 
     implicit none
 
-    type (state_type), intent(inout) :: state 
     type (mesh_type), intent(in) :: grid
+    real (kind=RKIND), dimension(:,:), intent(in) :: u
+    real (kind=RKIND), dimension(:,:), intent(out) :: uReconstructX, uReconstructY, uReconstructZ
+    real (kind=RKIND), dimension(:,:), intent(out) :: uReconstructZonal, uReconstructMeridional
 
     !   temporary arrays needed in the compute procedure
     integer :: nCellsSolve
     integer, dimension(:,:), pointer :: edgesOnCell
     integer, dimension(:), pointer :: nEdgesOnCell
     integer :: iCell,iEdge, i
-    real (kind=RKIND), dimension(:,:), pointer :: u
     real(kind=RKIND), dimension(:), pointer :: latCell, lonCell
-    real (kind=RKIND), dimension(:,:), pointer :: uReconstructX, uReconstructY, uReconstructZ
-    real (kind=RKIND), dimension(:,:), pointer :: uReconstructZonal, uReconstructMeridional
 
     real (kind=RKIND), dimension(:,:,:), pointer :: coeffs_reconstruct
 
@@ -150,15 +149,9 @@ module vector_reconstruction
     edgesOnCell => grid % edgesOnCell % array
     nEdgesOnCell=> grid % nEdgesOnCell % array
     nCellsSolve = grid % nCellsSolve
-    u => state % u % array
-    uReconstructX => state % uReconstructX % array
-    uReconstructY => state % uReconstructY % array
-    uReconstructZ => state % uReconstructZ % array
 
     latCell       => grid % latCell % array
     lonCell       => grid % lonCell % array
-    uReconstructZonal => state % uReconstructZonal % array
-    uReconstructMeridional => state % uReconstructMeridional % array
     on_a_sphere = grid % on_a_sphere
 
     ! init the intent(out)
