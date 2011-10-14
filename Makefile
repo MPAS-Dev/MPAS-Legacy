@@ -1,3 +1,4 @@
+CORE=ocean
 #MODEL_FORMULATION = -DNCAR_FORMULATION
 MODEL_FORMULATION = -DLANL_FORMULATION
 
@@ -80,6 +81,44 @@ pgi-serial:
 	"CORE = $(CORE)" \
 	"CPPFLAGS = -DRKIND=8 $(MODEL_FORMULATION) -DUNDERSCORE $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
 
+ifort-serial:
+	( make all \
+	"FC = ifort" \
+	"CC = gcc" \
+	"SFC = ifort" \
+	"SCC = gcc" \
+	"FFLAGS = -real-size 64 -O3 -convert big_endian -FR" \
+	"CFLAGS = -O3 -m64" \
+	"LDFLAGS = -O3" \
+	"CORE = $(CORE)" \
+	"CPPFLAGS = -DRKIND=8 $(MODEL_FORMULATION) -DUNDERSCORE -m64 $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
+
+ifort-papi:
+	( make all \
+	"FC = mpif90" \
+	"CC = gcc" \
+	"SFC = ifort" \
+	"SCC = gcc" \
+	"FFLAGS = -real-size 64 -O3 -convert big_endian -FR" \
+	"CFLAGS = -O3 -m64" \
+	"LDFLAGS = -O3" \
+	"CORE = $(CORE)" \
+	"CPPFLAGS = -DRKIND=8 $(MODEL_FORMULATION) -D_PAPI -D_MPI -DUNDERSCORE -m64 $(FILE_OFFSET) $(ZOLTAN_DEFINE)" \
+	"PAPILIBS = -L$(PAPI)/lib -lpapi" )
+
+ifort-papi-serial:
+	( make all \
+	"FC = ifort" \
+	"CC = gcc" \
+	"SFC = ifort" \
+	"SCC = gcc" \
+	"FFLAGS = -real-size 64 -O3 -convert big_endian -FR" \
+	"CFLAGS = -O3 -m64" \
+	"LDFLAGS = -O3" \
+	"CORE = $(CORE)" \
+	"CPPFLAGS = -DRKIND=8 $(MODEL_FORMULATION) -D_PAPI -DUNDERSCORE -m64 $(FILE_OFFSET) $(ZOLTAN_DEFINE)" \
+	"PAPILIBS = -L$(PAPI)/lib -lpapi" )
+
 ifort:
 	( make all \
 	"FC = mpif90" \
@@ -141,9 +180,9 @@ g95-serial:
 	"CPPFLAGS = -DRKIND=8 $(MODEL_FORMULATION) -DUNDERSCORE $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
 
 
-CPPINCLUDES = -I../inc -I$(NETCDF)/include
-FCINCLUDES = -I../inc -I$(NETCDF)/include
-LIBS = -L$(NETCDF)/lib -lnetcdf
+CPPINCLUDES = -I../inc -I$(NETCDF)/include -I$(PAPI)/include
+FCINCLUDES = -I../inc -I$(NETCDF)/include -I$(PAPI)/include
+LIBS = -L$(NETCDF)/lib -lnetcdf $(PAPILIBS)
 
 RM = rm -f
 CPP = cpp -C -P -traditional

@@ -1,406 +1,293 @@
-      MODULE timer
-!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-! This module contains utilities for timing individual blocks of code.
-!
-! The module is comprised of three subroutines.  These are discussed below:
-!
-! 1) timer_start.  This subroutine starts a timer.
-!
-!    input:   event_name   CHARACTER (LEN=72)  name of event
-!             clear_timer  LOGICAL,OPTIONAL    clear accumulated times
-!
-!      The block of code being timed is associated with an event.  
-!      The subroutine argument is a character string called event_name.  
-!      The character string provides a name for the event (or block of code)
-!      to be timed.   A timer event has a logical attribute called "running" 
-!      to indicate if the timer is "on" or "off".  This is analogous to 
-!      a stopwatch being "on" or "off".
-!
-!      If the event does not already exist, its start time is initialized 
-!      to the current time, and the timer is turned on.  On the other hand, 
-!      if the event already exists and the timer is off, then the start 
-!      time is re-initialized to the current time, and the timer is turned 
-!      on.  If it already exists and is on, nothing happens.
-!
-!      The optional argument, clear_timer, allows the accumulated times 
-!      associated with the event to be cleared.
-!
-! 2) timer_stop.   this subroutine stops a timer.
-!
-!    input:   event_name   CHARACTER (LEN=72) name of event
-!
-!      This subroutine records the current time and turns the timer off.
-!      It subtracts the start time of the input event from the current time 
-!      and records accumulated time for the event.
-!
-! 3) timer_write.  this subroutine writes a list of the timings.
-!
-!    input:   event_name   CHARACTER (LEN=72) name of event
-!
-!      This subroutine writes a list of times for each event.
-!     
-!      If an event called "total time" has been initiated, then
-!      the subroutine writes the fractional time of the total time 
-!      for each event.
-!
-! For example...
-!
-!     CALL timer_start ("total time")
-!     DO i = 1,100
-!     
-!        CALL timer_start ("event 1")
-!            < code block 1 >
-!        CALL timer_stop  ("event 1")
-!
-!        CALL timer_start ("event 2")
-!            < code block 2 >
-!        CALL timer_stop  ("event 2")
-!     ENDDO
-!
-!     CALL timer_stop ("total_time")
-!     CALL timer_write ()
-!
-!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      IMPLICIT NONE
-      SAVE
-      PRIVATE
+      module timer
 
-#ifdef _MPI
-      include 'mpif.h'
+        implicit none
+        save
+!       private
+
+#ifdef _PAPI
+        include 'f90papi.h'
 #endif
 
-      TYPE timer_node
-         CHARACTER (LEN=72) :: event_name
-         LOGICAL  :: running
-         REAL  ::  cpu_start, cpu_stop, cpu_total
-         REAL  :: wall_start,wall_stop,wall_total
-         TYPE (timer_node), POINTER :: next
-      END TYPE timer_node
+#ifdef _MPI
+        include 'mpif.h'
+#endif
 
-      TYPE (timer_node), POINTER :: timer_events
+        type timer_node
+          character (len=72) :: timer_name
+          logical :: running, printable
+          integer :: levels, calls
+          real (kind=RKIND) :: start_time, end_time, total_time
+          real (kind=RKIND) :: max_time, min_time, avg_time
+          type (timer_node), pointer :: next
+        end type timer_node
 
-! public member functions
-      PUBLIC ::                                                      &
-         timer_start,                                                &
-         timer_stop,                                                 &
-         timer_write
-      CONTAINS
-!cccccccc1ccccccccc2ccccccccc3ccccccccc4ccccccccc5cccgtgccc6ccccccccc7cc
-      SUBROUTINE timer_start (event_name,clear_timer)
-! 19 SEPTEMBER 2002   
-      CHARACTER (LEN=*),INTENT (IN) :: event_name
-      LOGICAL ,OPTIONAL,INTENT (IN) :: clear_timer
-      LOGICAL  :: event_added,event_found,string_equal
-      INTEGER  :: clock,hz
-      TYPE (timer_node), POINTER :: current,temp
+        type (timer_node), pointer :: all_timers
+        integer :: levels
 
-      event_added = .FALSE.
-      event_found = .FALSE.
-!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-! THE FIRST TIME timer_start IS CALLED, INITIALIZE LIST
-!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      IF (.NOT.ASSOCIATED (timer_events)) THEN
-         event_added = .TRUE.
-         ALLOCATE (timer_events); ALLOCATE (timer_events%next)
-         timer_events%event_name = ' '
-         current => timer_events%next
-         NULLIFY (current%next)
-      ELSE
-!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-! LOOK THROUGH THE LIST OF EVENTS TO FIND EVENTS WHICH ALREADY EXIST
-!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-         current => timer_events
-         DO WHILE ((.NOT.event_found).AND.(ASSOCIATED (current)))
-!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-! IF AN EVENTS NAME IS ALREADY ON THE LIST, THEN IT ALREADY EXISTS.
-!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            string_equal = (TRIM (current%event_name)==TRIM (event_name))
-            IF (string_equal) THEN
-               event_found = .TRUE.
-            ENDIF
-!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-! IF NOT FOUND, THEN KEEP LOOKING
-!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            IF (.NOT.event_found) THEN
-               current => current%next
-            ENDIF
-         ENDDO
-!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-! IF NOT FOUND, THEN LOOK THROUGH LIST TO FIND POSITION TO ADD NEW EVENT
-!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-         IF (.NOT.event_found) THEN
-            current => timer_events
-            DO WHILE ((.NOT.event_added).AND.(ASSOCIATED (current%next)))
-!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-! ADD A NEW NODE IN THE MIDDLE OF THE LIST
-!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-               IF (LLT (TRIM (current%event_name),TRIM (event_name)).AND.    &
-                   LLT (TRIM (event_name),TRIM (current%next%event_name))) THEN
-                  event_added = .TRUE.
-                  temp => current%next
-                  NULLIFY (current%next); ALLOCATE (current%next)
-                  current => current%next
-                  current%next => temp
-               ENDIF
-!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-! IF NOT ADDED, THEN KEEP LOOKING
-!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-               IF (.NOT.event_added) THEN
-                  current => current%next
-               ENDIF
-            ENDDO
-         ENDIF
-!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-! IF THE END OF THE LIST IS REACHED AND NOT ADDED 
-! AND NOT DOES NOT ALREADY EXIST THEN ADD TO END OF LIST
-!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-         IF ((.NOT.event_added).AND.(.NOT.event_found)) THEN
-            event_added = .TRUE.
-            ALLOCATE (current%next)
+        public :: timer_start, &
+                  timer_stop, &
+                  timer_write
+
+        contains
+
+        subroutine timer_start(timer_name, clear_timer, timer_ptr)!{{{
+          character (len=*), intent (in) :: timer_name !< Input: name of timer, stored as name of timer
+          logical, optional, intent(in) :: clear_timer !< Input: flag to clear timer
+          type (timer_node), optional, pointer, intent(out) :: timer_ptr !< Output: pointer to store timer in module
+
+          logical :: timer_added, timer_found, string_equal, check_flag
+          type (timer_node), pointer :: current, temp
+
+          integer :: clock, hz, usecs
+
+          timer_added = .false.
+          timer_found = .false.
+
+          if(.not.associated(all_timers)) then
+            timer_added = .true.
+            allocate(all_timers)
+            allocate(all_timers%next)
+            levels = 0
+
+            all_timers%timer_name = ''
+            current => all_timers%next
+            nullify(current%next)
+          else
+            current => all_timers%next
+            timer_search: do while ((.not.timer_found) .and. associated(current))
+              string_equal = (trim(current%timer_name) == trim(timer_name))
+              if(string_equal) then
+                timer_found = .true.
+              else
+                current => current%next
+              endif
+            end do timer_search
+          endif
+
+          if(present(timer_ptr)) then
+            timer_found = .true.
+            if(.not.associated(timer_ptr)) then
+              current => all_timers
+              find_end_ptr: do while((.not.timer_added) .and. (associated(current%next)))
+                current => current%next
+              end do find_end_ptr
+
+              allocate(timer_ptr)
+
+              current%next => timer_ptr
+              current => timer_ptr
+              nullify(timer_ptr%next)
+              current%levels = levels
+              current%timer_name = timer_name
+              current%running = .false.
+              current%total_time = 0.0
+              current%max_time = 0.0
+              current%min_time = 100000000.0
+              current%avg_time = 0.0
+              current%calls = 0
+            endif
+          endif
+
+          if(.not.timer_found) then
+            current => all_timers
+            find_end: do while((.not.timer_added) .and. (associated(current%next)))
+              current => current%next
+            end do find_end
+
+            allocate(current%next)
             current => current%next
-            NULLIFY (current%next)
-         ENDIF
-      ENDIF
-!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-! IF NEW EVENT ADDED, THEN INITIALIZE STUFF
-!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      IF (event_added) THEN
-         current%event_name = event_name
-         current%running    = .FALSE.
-         current% cpu_total = 0.0
-         current%wall_total = 0.0
-      ENDIF
-!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-! If (NEW EVENT ADDED) OR (THE EVENT WAS FOUND ON THE LIST BUT IS NOT
-! CURRENTLY running) THEN TURN TIMER ON AND GET THE BEGINNING TIME
-!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      IF ((event_added).OR.((event_found).AND.(.NOT.current%running))) THEN
-         current%running   = .TRUE.
 
-         current% cpu_start = 0.0 ! figure this out later
+            nullify(current%next)
+            timer_added = .true.
+          endif
 
-         CALL system_clock (count=clock)
-         CALL system_clock (count_rate=hz)
-         current%wall_start = REAL (clock)/REAL (hz)
+          if(timer_added .and. (.not.timer_found)) then
+            current%levels = levels
+            current%timer_name = timer_name
+            current%running = .false.
+            current%total_time = 0.0
+            current%max_time = 0.0
+            current%min_time = 100000000.0
+            current%avg_time = 0.0
+            current%calls = 0
+          endif
 
-      ENDIF
+          if((timer_added .or. timer_found) .and. (.not.current%running)) then
+            current%running = .true.
+            levels = levels + 1
 
-      IF (PRESENT (clear_timer)) THEN
-         IF (clear_timer) THEN
-            current% cpu_start = 0.0
-            current% cpu_stop  = 0.0
-            current% cpu_total = 0.0
-            current%wall_start = 0.0
-            current%wall_stop  = 0.0
-            current%wall_total = 0.0
-         ENDIF
-      ENDIF
-
-      END SUBROUTINE timer_start
-!cccccccc1ccccccccc2ccccccccc3ccccccccc4ccccccccc5cccgtgccc6ccccccccc7cc
-      SUBROUTINE timer_stop (event_name)
-! 19 SEPTEMBER 2002    
-      LOGICAL  :: event_found,string_equal
-      INTEGER :: clock,hz
-      CHARACTER (LEN=*), intent(in) :: event_name
-      TYPE (timer_node), POINTER :: current
-
-      event_found = .FALSE.
-
-      IF (.NOT.ASSOCIATED (timer_events)) THEN
-         PRINT *,' timer_stop :: timer_stop called with no events initiated '
-         STOP
-      ELSE
-         current => timer_events
-         DO WHILE ((.NOT.event_found).AND.(ASSOCIATED (current)))
-!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-! THE EVENT IS FOUND
-!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            string_equal = (TRIM (current%event_name)==TRIM (event_name))
-            IF (string_equal) THEN
-               event_found = .TRUE.
-            ENDIF
-!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-! IF NOT FOUND THEN KEEP LOOKING
-!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            IF (.NOT.event_found) THEN
-               current => current%next
-            ENDIF
-         ENDDO
-!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-! IF THE END OF THE LIST IS REACHED AND EVENT NOT FOUND THEN ERROR
-!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-         IF (.NOT.event_found) THEN
-            PRINT *,' timer_stop :: timer_stop called with event_name = "',  &
-                                                           event_name,'"'
-            PRINT *,'               this event has not been initiated  '
-            STOP
-         ENDIF
-      ENDIF
-!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-! IF THE TIMER IS CURRENTLY running, THEN TURN THE TIMER OFF, 
-! GET THE STOPPING TIME AND TOTAL ACCUMULATED TIME
-!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      IF (current%running) THEN
-        current%running   = .FALSE.
-
-        current% cpu_stop = 0.0 ! figure this out later
-
-        CALL system_clock (count=clock)
-        CALL system_clock (count_rate=hz)
-        current%wall_stop = REAL (clock)/REAL (hz)
-
-      current% cpu_total = current% cpu_total +                              &
-                                  (current% cpu_stop-current% cpu_start)
-      current%wall_total = current%wall_total +                              &
-                                  (current%wall_stop-current%wall_start)
-      ENDIF
-
-      END SUBROUTINE timer_stop
-!cccccccc1ccccccccc2ccccccccc3ccccccccc4ccccccccc5cccgtgccc6ccccccccc7cc
-      SUBROUTINE timer_write ( component_name )
-! 19 SEPTEMBER 2002   
-      CHARACTER(len=*), intent(in), optional :: component_name
-
-      LOGICAL  :: total_found,string_equal
-      INTEGER  :: task, my_task, npe
-      INTEGER  :: ierr
-      INTEGER  :: clock,hz
-      REAL  ::  cpu_now, cpu_save, cpu_temp
-      REAL  :: wall_now,wall_save,wall_temp
-      REAL  :: frac
-
-      TYPE (timer_node), POINTER :: current
-!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-! GET THE CURRENT TIME
-!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      cpu_now = 0.0 ! figure this out later
-
-      CALL system_clock (count=clock)
-      CALL system_clock (count_rate=hz)
-      wall_now = REAL (clock)/REAL (hz)
-
-#ifdef _MPI
-      CALL MPI_BARRIER (MPI_COMM_WORLD,ierr)
+#ifdef _PAPI
+            call PAPIF_get_real_usec(usecs, check_flag)
+            current%start_time = usecs/1.0e6
+#elif _MPI
+            current%start_time = MPI_Wtime()
+#else
+            call system_clock (count=clock)
+            call system_clock (count_rate=hz)
+            current%start_time = real(clock,kind=RKIND)/real(hz,kind=RKIND)
 #endif
+          endif
 
-      IF (.NOT.ASSOCIATED (timer_events)) THEN
-         PRINT *,' timer_write :: timer_write called with no events initiated '
-         STOP
-      ELSE
-!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-! LOOK FOR AN EVENT CALLED 'total time'
-!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-         total_found = .FALSE.
-         current => timer_events%next
-         DO WHILE ((.NOT.total_found).AND.(ASSOCIATED (current)))
-            string_equal = (TRIM (current%event_name)=='total time')
-            IF (string_equal) THEN
-               total_found = .TRUE.
-               IF (current%running) THEN
-                   cpu_save = current% cpu_total +                           &
-                                           ( cpu_now-current% cpu_start)
-                  wall_save = current%wall_total +                           &
-                                           (wall_now-current%wall_start)
-               ELSE
-                   cpu_save = current% cpu_total
-                  wall_save = current%wall_total
-               ENDIF
-            ENDIF
-            IF (.NOT.total_found) THEN
-               current => current%next
-            ENDIF
-         ENDDO
+          if(present(clear_timer)) then
+            if(clear_timer) then
+              current%start_time = 0.0
+              current%end_time = 0.0
+              current%total_time = 0.0
+              current%max_time = 0.0
+              current%min_time = 0.0
+              current%avg_time = 0.0
+              current%calls = 0
+              current%running = .false.
+            endif
+          endif
 
-! tdr -- need to link to POP MPI
-!        my_task = get_my_task(component_name)
-!        npe = get_my_npe(component_name)
-         my_task = 0
-         npe = 1
+          if(present(timer_ptr)) then
+              timer_ptr => current
+          endif
+          
+        end subroutine timer_start!}}}
+       
+        subroutine timer_stop(timer_name, timer_ptr)!{{{
+          character (len=*), intent(in) :: timer_name !< Input: name of timer to stop
+          type (timer_node), pointer, intent(in), optional :: timer_ptr !< Input: pointer to timer, for stopping
 
-         DO task = 0,npe-1
-            IF (task==my_task) THEN
-               PRINT  *,' '
-               IF (total_found) THEN
-                  IF (my_task==0) THEN
-                     PRINT  *,' TIMINGS (process:event,running,',            &
-                                       'cpu,wall,100*(wall/total wall))'
-                  ENDIF
-                  PRINT 20,task,current%event_name,current%running,          &
-                                                      cpu_save,wall_save
-                  PRINT  *,' '
-               ELSE
-                  IF (my_task==0) THEN
-                     PRINT  *,' TIMINGS (process:event,running,',            &
-                                                             'cpu,wall)'
-                  ENDIF
-               ENDIF
+          type (timer_node), pointer :: current
+          
+          real (kind=RKIND) :: time_temp
+          logical :: timer_found, string_equal, check_flag
+          integer :: clock, hz, usecs
+ 
+          timer_found = .false.
+ 
+          if(present(timer_ptr)) then
+            timer_found = .true.
+            current => timer_ptr
+          endif
+ 
+          if(.not.associated(all_timers)) then
+            print *,' timer_stop :: timer_stop called with no timers initialized'
+          else if(.not. timer_found) then
+            current => all_timers
+            timer_find: do while(.not.timer_found .and. associated(current))
+              string_equal = (trim(current%timer_name) == trim(timer_name))
 
-               current => timer_events%next
-               DO WHILE (ASSOCIATED (current))
-!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-! IF THE TIMER IS RUNNING, COMPUTE THE ACCUMULATED TIME USING THE CURRENT TIME
-!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-                  IF (current%running) THEN
-                      cpu_temp = current% cpu_total +                        &
-                                           ( cpu_now-current% cpu_start)
-                     wall_temp = current%wall_total +                        &
-                                           (wall_now-current%wall_start)
-                  ELSE
-                      cpu_temp = current% cpu_total
-                     wall_temp = current%wall_total
-                  ENDIF
-!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-! IF 'total time' EVENT EXISTS, THEN COMPUTE WALL TIME FRACTION
-! USING TOTAL TIME
-!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-                  IF (total_found) THEN 
-                     string_equal = (TRIM (current%event_name)=='total time')
-                     IF (.NOT.string_equal) THEN
-                        frac = 100.*wall_temp/(wall_save+1.E-5)
-                        PRINT 10, task,current%event_name,current%running,   &
-                                                 cpu_temp,wall_temp,frac
-                     ENDIF
-                  ELSE
-                     PRINT 20, task,current%event_name,current%running,      &
-                                                 cpu_temp,wall_temp
-                  ENDIF
-                  current => current%next
-               ENDDO
-            ENDIF
+              if(string_equal) then
+                timer_found = .true.
+              else
+                current => current%next
+              endif
+            end do timer_find
+          endif
 
-#ifdef _MPI
-            CALL MPI_BARRIER (MPI_COMM_WORLD,ierr)
+          if(.not.timer_found) then
+            print *,' timer_stop :: timer_stop called with timer_name =', timer_name,' when timer has not been started.'
+            stop
+          endif
+
+          if(current%running) then
+            current%running = .false.
+            levels = levels - 1
+
+#ifdef _PAPI
+            call PAPIF_get_real_usec(usecs, check_flag)
+            current%end_time = usecs/1.0e6
+#elif _MPI
+            current%end_time = MPI_Wtime()
+#else
+            call system_clock(count=clock)
+            call system_clock(count_rate=hz)
+            current%end_time = real(clock,kind=RKIND)/real(hz,kind=RKIND)
 #endif
+            
+            time_temp = current%end_time - current%start_time
+            current%total_time = current%total_time + time_temp
 
-         ENDDO
-      ENDIF
+            if(time_temp > current%max_time) then
+              current%max_time = time_temp
+            endif
 
-#ifdef _MPI
-      CALL MPI_BARRIER (MPI_COMM_WORLD,ierr)
-#endif
+            if(time_temp < current%min_time) then
+              current%min_time = time_temp
+            endif
 
-   10 FORMAT (1x,i5,' : ',a20,l1,2f15.5,f8.2)
-   20 FORMAT (1x,i5,' : ',a20,l1,2f15.5     )
+            current%avg_time = current%avg_time + time_temp
+            current%calls = current%calls + 1
+          endif
 
-      END SUBROUTINE timer_write
-!cccccccc1ccccccccc2ccccccccc3ccccccccc4ccccccccc5cccgtgccc6ccccccccc7cc
-      CHARACTER*03 FUNCTION integer_to_string (i) RESULT (string)
-      INTEGER :: i,n
-      REAL*8 :: xi
-      CHARACTER*01 :: char_i(3)
-      CHARACTER*01 :: integers(12)
+        end subroutine timer_stop!}}}
 
-      integers = (/'0','1','2','3','4','5','6','7','8','9','0','1'/)
+        recursive subroutine timer_write(timer_ptr, total_ptr)!{{{
+          type (timer_node), pointer, intent(inout), optional :: timer_ptr
+          type (timer_node), pointer, intent(in), optional :: total_ptr
+          character (len=10) :: tname
 
-      xi = FLOAT (i)/1000.0
-      DO n = 1,3
-         char_i(n) = integers(INT (10.*xi+0.00001)+1)
-         xi = 10.*xi - FLOAT (INT (10.*xi)) + 0.00001
-      ENDDO
-      string = char_i(1)//char_i(2)//char_i(3)
+          logical :: total_found, string_equals
+          type (timer_node), pointer :: current, total
+          real (kind=RKIND) :: percent
+          integer :: i
 
-      END FUNCTION integer_to_string
-!cccccccc1ccccccccc2ccccccccc3ccccccccc4ccccccccc5cccgtgccc6ccccccccc7cc 
-      END MODULE timer
-!cccccccc1ccccccccc2ccccccccc3ccccccccc4ccccccccc5cccgtgccc6ccccccccc7cc
+          total_found = .false.
+
+          if(present(timer_ptr) .and. (.not.present(total_ptr))) then
+            print *,'timer_write :: timer_ptr valid, but total_ptr is not assigned.'
+            stop
+          else if(present(timer_ptr)) then
+            tname = ''
+            do i=0,timer_ptr%levels+2
+              tname = tname//' '
+!             write(*,'(a,$)') ' '
+            end do
+!           tname = tname//timer_ptr%timer_name
+
+            if(timer_ptr%total_time == 0.0d0) then
+              timer_ptr%min_time = 0.0d0
+              timer_ptr%max_time = 0.0d0
+              timer_ptr%avg_time = 0.0d0
+              percent = 0.0d0
+            else
+              timer_ptr%avg_time = timer_ptr%avg_time/timer_ptr%calls
+              percent = timer_ptr%total_time/total_ptr%total_time
+            endif
+
+            write(*,'(i2, 1x, a35, f15.5, i10, 3f15.5, f8.2)') timer_ptr%levels, tname(1:timer_ptr%levels)//timer_ptr%timer_name, timer_ptr%total_time, timer_ptr%calls, timer_ptr%min_time, timer_ptr%max_time, timer_ptr%avg_time, percent
+            return
+          endif
+
+          total => all_timers
+
+          find_total: do while((.not.total_found) .and. associated(total))
+            string_equals = (trim(total%timer_name) == trim("total time"))
+            if(string_equals) then
+              total_found = .true.
+            else
+              total => total%next
+            endif
+          end do find_total
+
+          if(.not.total_found) then
+            print *,' timer_write :: no timer named "total time" found.'
+            stop
+          end if
+
+          write(*,'(3x, a10, 24x, a15, a10, a13, a15, a15, a15)') 'timer_name', 'total', 'calls', 'min', 'max', 'avg', 'percent'
+          write(*,'(i2, 1x, a35, f15.5, i10, 3f15.5)') total%levels, total%timer_name, total%total_time, total%calls, total%min_time, total%max_time, total%avg_time
+
+          current => all_timers
+
+          print_timers: do while(associated(current))
+            string_equals = (trim(current%timer_name) == trim("total time"))
+            string_equals = string_equals .or. (trim(current%timer_name) == trim(" "))
+
+            if(.not.string_equals) then
+              call timer_write(current, total)
+              current => current%next
+            else
+              current => current%next
+            endif
+          end do print_timers
+
+        end subroutine timer_write!}}}
+
+      end module timer
+
+! vim: foldmethod=marker et ts=2
