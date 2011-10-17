@@ -26,16 +26,18 @@ namelist integer   split_explicit_ts config_n_bcl_iter_mid   4
 namelist integer   split_explicit_ts config_n_bcl_iter_end   4
 namelist integer   split_explicit_ts config_n_btr_subcycles  10
 namelist integer   split_explicit_ts config_n_btr_cor_iter  1
-namelist logical   split_explicit_ts config_compute_tr_midstage true
 namelist logical   split_explicit_ts config_u_correction true
 namelist logical   split_explicit_ts config_filter_btr_mode false
 namelist logical   split_explicit_ts config_btr_mom_decay         false 
 namelist real      split_explicit_ts config_btr_mom_decay_time    3600.0
-namelist real      split_explicit_ts config_btr_flux_coef         1.0
 namelist real      split_explicit_ts config_btr_mom_eddy_visc2    0.0
 namelist integer   split_explicit_ts config_btr_subcycle_loop_factor  2
 namelist character split_explicit_ts config_SSH_from  avg_flux
 namelist character split_explicit_ts config_new_btr_variables_from  btr_avg
+namelist real      split_explicit_ts config_btr_gam1_uWt1    0.5
+namelist real      split_explicit_ts config_btr_gam2_SSHWt1  1.0
+namelist real      split_explicit_ts config_btr_gam3_uWt2    1.0
+namelist logical   split_explicit_ts config_btr_solve_SSH2   false
 namelist logical   sw_model config_h_ScaleWithMesh     false
 namelist real      hmix     config_h_mom_eddy_visc2     0.0
 namelist real      hmix     config_h_mom_eddy_visc4     0.0
@@ -186,9 +188,9 @@ var persistent real    u ( nVertLevels nEdges Time ) 2 ir u state - -
 var persistent real    h ( nVertLevels nCells Time ) 2 ir h state - -
 var persistent real    rho ( nVertLevels nCells Time ) 2 ir rho state - -
 var persistent real    temperature ( nVertLevels nCells Time ) 2 iro temperature state tracers dynamics
-var persistent real    salinity ( nVertLevels nCells Time ) 2 ir salinity state tracers dynamics
-var persistent real    tracer1 ( nVertLevels nCells Time ) 2 ir tracer1 state tracers testing
-var persistent real    tracer2 ( nVertLevels nCells Time ) 2 ir tracer2 state tracers testing
+var persistent real    salinity ( nVertLevels nCells Time ) 2 iro salinity state tracers dynamics
+var persistent real    tracer1 ( nVertLevels nCells Time ) 2 iro tracer1 state tracers testing
+var persistent real    tracer2 ( nVertLevels nCells Time ) 2 iro tracer2 state tracers testing
 
 # Tendency variables: neither read nor written to any files
 var persistent real    tend_u ( nVertLevels nEdges Time ) 1 - u tend - -

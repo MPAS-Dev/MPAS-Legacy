@@ -168,7 +168,7 @@ contains
       if(config_vert_tracer_adv.eq.'spline') then
          splineOn = .true.
 
-         call ocn_tracer_vadv_spline2_init(err2)
+         call ocn_tracer_vadv_spline2_init(err1)
          call ocn_tracer_vadv_spline3_init(err2)
 
          err = err1 .or. err2

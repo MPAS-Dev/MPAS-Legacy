@@ -29,17 +29,18 @@
    config_n_bcl_iter_end =  2
    config_n_btr_subcycles = 10
    config_n_btr_cor_iter = 2
-   config_compute_tr_midstage = .true.
    config_u_correction = .true.
    config_filter_btr_mode = .false.
    config_btr_mom_decay  = .false.
    config_btr_mom_decay_time =   3600.0
-   config_btr_flux_coef = 1.0
    config_btr_mom_eddy_visc2 =   0.0
    config_btr_subcycle_loop_factor =  2
    config_SSH_from =  'avg_flux'
    config_new_btr_variables_from = 'btr_avg'
-/
+   config_btr_gam1_uWt1   = 0.5
+   config_btr_gam2_SSHWt1 = 1.0
+   config_btr_gam3_uWt2   = 1.0
+   config_btr_solve_SSH2  = .false.
 &hmix
    config_h_mom_eddy_visc2 = 1.0e5
    config_h_mom_eddy_visc4 = 0.0

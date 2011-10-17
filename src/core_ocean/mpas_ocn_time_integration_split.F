@@ -87,7 +87,7 @@ subroutine ocn_time_integrator_split(domain, dt)!{{{
 
       type (block_type), pointer :: block
       real (kind=RKIND) :: uhSum, hSum, sshEdge, flux, &
-         uPerp, uCorr, tracerTemp, coef
+         uPerp, uCorr, tracerTemp, coef, FBtr_coeff, sshCell1, sshCell2
       real (kind=RKIND), dimension(:), pointer :: sshNew
 
       integer :: num_tracers, ucorr_coef, err
@@ -159,7 +159,7 @@ subroutine ocn_time_integrator_split(domain, dt)!{{{
 
         block => domain % blocklist
         do while (associated(block))
-! mrp 110512 not sure if I need the following three.  Leave be, assume I need it.
+
            call dmpar_exch_halo_field2dReal(domain % dminfo, block % state % time_levs(2) % state % pv_edge % array(:,:), &
                                             block % mesh % nVertLevels, block % mesh % nEdges, &
                                             block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
@@ -350,6 +350,7 @@ subroutine ocn_time_integrator_split(domain, dt)!{{{
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             ! Barotropic subcycle: initial solve for velecity
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+          if (config_btr_gam1_uWt1>1.0e-12) then  ! only do this part if it is needed in next SSH solve
             uPerpTime = oldBtrSubcycleTime
 
             block => domain % blocklist
@@ -423,19 +424,30 @@ subroutine ocn_time_integrator_split(domain, dt)!{{{
                block => block % next
             end do  ! block
 
+          endif ! config_btr_gam1_uWt1>1.0e-12
+
 
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            ! Barotropic subcycle: Compute thickness flux and new SSH
+            ! Barotropic subcycle: Compute thickness flux and new SSH: PREDICTOR
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             block => domain % blocklist
             do while (associated(block))
 
            block % tend % ssh % array(:) = 0.0
 
-           ! config_btr_flux_coef sets the forward weighting of velocity in the SSH computation
-           ! config_btr_flux_coef=  1     flux = uBtrNew*H
-           ! config_btr_flux_coef=0.5     flux = 1/2*(uBtrNew+uBtrOld)*H
-           ! config_btr_flux_coef=  0     flux = uBtrOld*H
+           if (config_btr_solve_SSH2) then
+             ! If config_btr_solve_SSH2=.true., then do NOT accumulate FBtr in this SSH predictor 
+             ! section, because it will be accumulated in the SSH corrector section.
+             FBtr_coeff = 0.0
+           else
+             ! otherwise, DO accumulate FBtr in this SSH predictor section
+             FBtr_coeff = 1.0
+           endif
+
+           ! config_btr_gam1_uWt1 sets the forward weighting of velocity in the SSH computation
+           ! config_btr_gam1_uWt1=  1     flux = uBtrNew*H
+           ! config_btr_gam1_uWt1=0.5     flux = 1/2*(uBtrNew+uBtrOld)*H
+           ! config_btr_gam1_uWt1=  0     flux = uBtrOld*H
            do iEdge=1,block % mesh % nEdges
               cell1 = block % mesh % cellsOnEdge % array(1,iEdge)
               cell2 = block % mesh % cellsOnEdge % array(2,iEdge)
@@ -445,19 +457,20 @@ subroutine ocn_time_integrator_split(domain, dt)!{{{
                    + block % state % time_levs(oldBtrSubcycleTime) % state % sshSubcycle % array(cell2) )
               hSum = sum(block % mesh % hZLevel % array (1:block % mesh % maxLevelEdgeTop % array(iEdge)))
 
-              flux = ((1.0-config_btr_flux_coef) & 
+              flux = ((1.0-config_btr_gam1_uWt1) & 
                         * block % state % time_levs(oldBtrSubcycleTime) % state % uBtrSubcycle % array(iEdge) &
-                       + config_btr_flux_coef &
+                       + config_btr_gam1_uWt1 &
                         * block % state % time_levs(newBtrSubcycleTime) % state % uBtrSubcycle % array(iEdge)) &
-                    * block % mesh % dvEdge % array(iEdge) &
                     * (sshEdge + hSum)
 
-               block % tend % ssh % array(cell1) = block % tend % ssh % array(cell1) - flux
-               block % tend % ssh % array(cell2) = block % tend % ssh % array(cell2) + flux
+               block % tend % ssh % array(cell1) = block % tend % ssh % array(cell1) &
+                 - flux * block % mesh % dvEdge % array(iEdge) 
+               block % tend % ssh % array(cell2) = block % tend % ssh % array(cell2) &
+                 + flux * block % mesh % dvEdge % array(iEdge) 
 
                block % state % time_levs(1) % state % FBtr % array(iEdge) &
              = block % state % time_levs(1) % state % FBtr % array(iEdge) &
-             + flux
+             + FBtr_coeff*flux
          end do
  
          ! SSHnew = SSHold + dt/J*(-div(Flux))
@@ -473,7 +486,7 @@ subroutine ocn_time_integrator_split(domain, dt)!{{{
                block => block % next
             end do  ! block
 
-            !   boundary update on SSNnew
+            !   boundary update on SSHnew
             block => domain % blocklist
             do while (associated(block))
 
@@ -487,20 +500,6 @@ subroutine ocn_time_integrator_split(domain, dt)!{{{
                block => block % next
             end do  ! block
 
-            block => domain % blocklist
-            do while (associated(block))
-
-         do iCell=1,block % mesh % nCells 
-
-         ! Accumulate SSH in running sum over the subcycles.
-                block % state % time_levs(2) % state % ssh % array(iCell) & 
-              = block % state % time_levs(2) % state % ssh % array(iCell) & 
-              + block % state % time_levs(newBtrSubcycleTime) % state % sshSubcycle % array(iCell)  
-
-         end do
-
-               block => block % next
-            end do  ! block
 
 ! mrp 110801 begin
 ! This whole section, bounded by 'mrp 110801', may be deleted later if it is found
@@ -612,13 +611,22 @@ subroutine ocn_time_integrator_split(domain, dt)!{{{
           else
 
              ! uBtrNew = uBtrOld + dt*(-f*uBtroldPerp - g*grad(SSH) + G)
+
+             sshCell1 = &
+               (1-config_btr_gam2_SSHWt1)*block % state % time_levs(oldBtrSubcycleTime) % state % sshSubcycle % array(cell1) &
+                + config_btr_gam2_SSHWt1 *block % state % time_levs(newBtrSubcycleTime) % state % sshSubcycle % array(cell1)
+
+             sshCell2 = &
+               (1-config_btr_gam2_SSHWt1)*block % state % time_levs(oldBtrSubcycleTime) % state % sshSubcycle % array(cell2) &
+                + config_btr_gam2_SSHWt1 *block % state % time_levs(newBtrSubcycleTime) % state % sshSubcycle % array(cell2)
+
                 block % state % time_levs(newBtrSubcycleTime) % state % uBtrSubcycle % array(iEdge) & 
               = block % state % time_levs(oldBtrSubcycleTime) % state % uBtrSubcycle % array(iEdge) & 
               + dt/config_n_btr_subcycles *( &
                         uPerp &
                       - gravity &
-                        *(  block % state % time_levs(newBtrSubcycleTime) % state % sshSubcycle % array(cell2) &
-                          - block % state % time_levs(newBtrSubcycleTime) % state % sshSubcycle % array(cell1) ) &
+                        *(  sshCell2 &
+                          - sshCell1 )&
                           /block % mesh % dcEdge % array(iEdge) &
                       + block % state % time_levs(1) % state % GBtrForcing % array(iEdge) &
                       + block % state % time_levs(1) % state % u_diffusionBtr % array(iEdge))
@@ -662,13 +670,93 @@ subroutine ocn_time_integrator_split(domain, dt)!{{{
 
        end do !do BtrCorIter=1,config_n_btr_cor_iter
 
+            !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            ! Barotropic subcycle: Compute thickness flux and new SSH: CORRECTOR
+            !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        if (config_btr_solve_SSH2) then
+
+            block => domain % blocklist
+            do while (associated(block))
+
+           block % tend % ssh % array(:) = 0.0
+
+           ! config_btr_gam3_uWt2 sets the forward weighting of velocity in the SSH computation
+           ! config_btr_gam3_uWt2=  1     flux = uBtrNew*H
+           ! config_btr_gam3_uWt2=0.5     flux = 1/2*(uBtrNew+uBtrOld)*H
+           ! config_btr_gam3_uWt2=  0     flux = uBtrOld*H
+
+           do iEdge=1,block % mesh % nEdges
+              cell1 = block % mesh % cellsOnEdge % array(1,iEdge)
+              cell2 = block % mesh % cellsOnEdge % array(2,iEdge)
+
+              sshEdge = 0.5 &
+                 *(  block % state % time_levs(oldBtrSubcycleTime) % state % sshSubcycle % array(cell1) &
+                   + block % state % time_levs(oldBtrSubcycleTime) % state % sshSubcycle % array(cell2) )
+              hSum = sum(block % mesh % hZLevel % array (1:block % mesh % maxLevelEdgeTop % array(iEdge)))
+
+              flux = ((1.0-config_btr_gam3_uWt2) & 
+                        * block % state % time_levs(oldBtrSubcycleTime) % state % uBtrSubcycle % array(iEdge) &
+                       + config_btr_gam3_uWt2 &
+                        * block % state % time_levs(newBtrSubcycleTime) % state % uBtrSubcycle % array(iEdge)) &
+                    * (sshEdge + hSum)
+
+               block % tend % ssh % array(cell1) = block % tend % ssh % array(cell1) &
+                 - flux * block % mesh % dvEdge % array(iEdge) 
+               block % tend % ssh % array(cell2) = block % tend % ssh % array(cell2) &
+                 + flux * block % mesh % dvEdge % array(iEdge) 
+
+               block % state % time_levs(1) % state % FBtr % array(iEdge) &
+             = block % state % time_levs(1) % state % FBtr % array(iEdge) &
+             + flux
+
+
+         end do
+ 
+         ! SSHnew = SSHold + dt/J*(-div(Flux))
+         do iCell=1,block % mesh % nCells 
+
+                block % state % time_levs(newBtrSubcycleTime) % state % sshSubcycle % array(iCell) & 
+              = block % state % time_levs(oldBtrSubcycleTime) % state % sshSubcycle % array(iCell) & 
+              + dt/config_n_btr_subcycles &
+                * block % tend % ssh % array(iCell) / block % mesh % areaCell % array (iCell)
+
+         end do
+
+               block => block % next
+            end do  ! block
+
+            !   boundary update on SSHnew
+            block => domain % blocklist
+            do while (associated(block))
+
+           call dmpar_exch_halo_field1dReal(domain % dminfo, &
+              block % state % time_levs(newBtrSubcycleTime) % state % sshSubcycle % array(:), &
+              block % mesh % nCells, &
+              block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
+
+               block => block % next
+            end do  ! block
+
+        endif ! config_btr_solve_SSH2
+
+            !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            ! Barotropic subcycle: Accumulate running sums, advance timestep pointers
+            !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+            block => domain % blocklist
+            do while (associated(block))
+
+         ! Accumulate SSH in running sum over the subcycles.
+         do iCell=1,block % mesh % nCells 
+                block % state % time_levs(2) % state % ssh % array(iCell) & 
+              = block % state % time_levs(2) % state % ssh % array(iCell) & 
+              + block % state % time_levs(newBtrSubcycleTime) % state % sshSubcycle % array(iCell)  
+         end do
 
             ! uBtrNew = uBtrNew + uBtrSubcycleNEW
             ! This accumulates the sum.
             ! If the Barotropic Coriolis iteration is limited to one, this could 
             ! be merged with the above code.
-            block => domain % blocklist
-            do while (associated(block))
          do iEdge=1,block % mesh % nEdges 
 
                 block % state % time_levs(2) % state % uBtr % array(iEdge) & 
@@ -752,11 +840,14 @@ subroutine ocn_time_integrator_split(domain, dt)!{{{
 
                  block % tend % ssh % array(cell1) &
                = block % tend % ssh % array(cell1) &
-               - block % state % time_levs(1) % state % FBtr % array(iEdge)
+               - block % state % time_levs(1) % state % FBtr % array(iEdge) &
+                    * block % mesh % dvEdge % array(iEdge)
+
 
                  block % tend % ssh % array(cell2) &
                = block % tend % ssh % array(cell2) &
-               + block % state % time_levs(1) % state % FBtr % array(iEdge)
+               + block % state % time_levs(1) % state % FBtr % array(iEdge) &
+                    * block % mesh % dvEdge % array(iEdge)
 
           end do
 
@@ -769,12 +860,6 @@ subroutine ocn_time_integrator_split(domain, dt)!{{{
                 * block % tend % ssh % array(iCell) / block % mesh % areaCell % array (iCell)
          end do
        endif
-         ! Now can compare sshSubcycleNEW (big step using summed fluxes) with
-         ! sshSubcycleOLD (individual steps to get there)
-!print *, 'ssh, by substeps',minval(block % state % time_levs(oldBtrSubcycleTime) % state % sshSubcycle % array(1:block % mesh % nCellsSolve)), &
-!                            maxval(block % state % time_levs(oldBtrSubcycleTime) % state % sshSubcycle % array(1:block % mesh % nCellsSolve))
-!print *, 'ssh, by 1 step  ',minval(block % state % time_levs(newBtrSubcycleTime) % state % sshSubcycle % array(1:block % mesh % nCellsSolve)), &
-!                            maxval(block % state % time_levs(newBtrSubcycleTime) % state % sshSubcycle % array(1:block % mesh % nCellsSolve))
 
          ! Correction velocity    uCorr = (Flux - Sum(h u*))/H
          ! or, for the full latex version:
@@ -810,7 +895,6 @@ subroutine ocn_time_integrator_split(domain, dt)!{{{
               enddo
 
             uCorr =   ucorr_coef*(( block % state % time_levs(1) % state % FBtr % array(iEdge) &
-                       /block % mesh % dvEdge % array(iEdge) &
                       - uhSum)/hSum)
 
               ! put u^{tr}, the velocity for tracer transport, in uNew
@@ -818,7 +902,12 @@ subroutine ocn_time_integrator_split(domain, dt)!{{{
           if (block % mesh % boundaryEdge % array(1,iEdge).eq.1) then
               block % state % time_levs(2) % state % u % array(:,iEdge) = 0.0
           else
-              block % state % time_levs(2) % state % u % array(:,iEdge) = uTemp(:) + uCorr
+            do k=1,block % mesh % maxLevelEdgeTop % array(iEdge)
+              block % state % time_levs(2) % state % u % array(k,iEdge) = uTemp(k) + uCorr
+            enddo
+            do k=block % mesh % maxLevelEdgeTop % array(iEdge)+1,block % mesh % nVertLevels
+              block % state % time_levs(2) % state % u % array(k,iEdge) = 0.0
+            enddo
           endif
 
          ! Put new sshEdge values in h_edge array, for the OcnTendScalar call below.

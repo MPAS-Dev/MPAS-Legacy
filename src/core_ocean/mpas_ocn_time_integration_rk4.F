@@ -148,10 +148,10 @@ module ocn_time_integration_rk4
                                             block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
 
            if (config_h_mom_eddy_visc4 > 0.0) then
-              call dmpar_exch_halo_field2dReal(domain % dminfo, block % state % time_levs(2) % state % divergence % array(:,:), &
+              call dmpar_exch_halo_field2dReal(domain % dminfo, provis % divergence % array(:,:), &
                                                block % mesh % nVertLevels, block % mesh % nCells, &
                                                block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-              call dmpar_exch_halo_field2dReal(domain % dminfo, block % state % time_levs(2) % state % vorticity % array(:,:), &
+              call dmpar_exch_halo_field2dReal(domain % dminfo, provis % vorticity % array(:,:), &
                                                block % mesh % nVertLevels, block % mesh % nVertices, &
                                                block % parinfo % verticesToSend, block % parinfo % verticesToRecv)
            end if

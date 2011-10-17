@@ -249,7 +249,7 @@ module mpas_core
 ! mrp changed to 0
 !              :block % mesh % nVertLevels,iCell) =  -1e34
 
-! mrp 110516 temp, added just to test for conservation of tracers
+! mrp 110516, added just to test for conservation of tracers
          block % state % time_levs(1) % state % tracers % array(3,:,iCell) = 1.0
 
       end do
