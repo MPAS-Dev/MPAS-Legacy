@@ -1,4 +1,4 @@
-module zoltan_interface
+module mpas_zoltan_interface
    use zoltan
 
    implicit none
@@ -36,7 +36,7 @@ module zoltan_interface
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    !! Perhaps not necessary, but implemented in case it helps
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   subroutine zoltanStart()  
+   subroutine mpas_zoltan_start()  
 
       integer(Zoltan_INT) :: error
       real(Zoltan_FLOAT) :: version
@@ -52,7 +52,7 @@ module zoltan_interface
 
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   subroutine zoltanOrderLocHSFC_Cells(in_numcells,in_cellIDs,in_geomDim,in_cellX, &
+   subroutine mpas_zoltan_order_loc_hsfc_cells(in_numcells,in_cellIDs,in_geomDim,in_cellX, &
                                        in_cellY, in_cellZ)
       implicit none
 
@@ -150,7 +150,7 @@ module zoltan_interface
       call Zoltan_Destroy(zz_obj)
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-   end subroutine zoltanOrderLocHSFC_Cells
+   end subroutine mpas_zoltan_order_loc_hsfc_cells
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -174,7 +174,7 @@ module zoltan_interface
    !! zoltan query function: 
    !!    Returns lists of Cell IDs
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   subroutine zqfGetCells (data, num_gid_entries, num_lid_entries, global_ids, &
+   subroutine mpas_zqf_get_cells (data, num_gid_entries, num_lid_entries, global_ids, &
                            local_ids, wgt_dim, obj_wgts, ierr)
      integer(ZOLTAN_INT), intent(in) :: data(*)
      integer(ZOLTAN_INT), intent(in) :: num_gid_entries, num_lid_entries
@@ -194,7 +194,7 @@ module zoltan_interface
 
      ierr = ZOLTAN_OK
      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   end subroutine zqfGetCells
+   end subroutine mpas_zqf_get_cells
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -216,7 +216,7 @@ module zoltan_interface
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    !! Zoltan Query Function:
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   subroutine zqfGetCellGeom(data, num_gid_entries, num_lid_entries, global_id, &
+   subroutine mpas_zqf_get_cell_geom(data, num_gid_entries, num_lid_entries, global_id, &
                              local_id, geom_vec, ierr)
       !use zoltan
       implicit none
@@ -235,7 +235,7 @@ module zoltan_interface
 
       ierr = ZOLTAN_OK
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   end subroutine zqfGetCellGeom
+   end subroutine mpas_zqf_get_cell_geom
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -244,7 +244,7 @@ module zoltan_interface
    !! Not sure if this is worth it with the additional conditionals that would 
    !! be required. 
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   subroutine zoltanOrderLocHSFC_Edges(in_numedges,in_edgeIDs,in_geomDim,in_edgeX, &
+   subroutine mpas_zoltan_order_loc_hsfc_edges(in_numedges,in_edgeIDs,in_geomDim,in_edgeX, &
                                        in_edgeY, in_edgeZ)
       implicit none
 
@@ -336,7 +336,7 @@ module zoltan_interface
 
       call Zoltan_Destroy(zz_obj)
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   end subroutine zoltanOrderLocHSFC_Edges
+   end subroutine mpas_zoltan_order_loc_hsfc_edges
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -359,7 +359,7 @@ module zoltan_interface
    !! zoltan query function: 
    !!    Returns lists of Edge IDs
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   subroutine zqfGetEdges (data, num_gid_entries, num_lid_entries, global_ids, &
+   subroutine mpas_zqf_get_edges (data, num_gid_entries, num_lid_entries, global_ids, &
                            local_ids, wgt_dim, obj_wgts, ierr)
      integer(ZOLTAN_INT), intent(in) :: data(*)
      integer(ZOLTAN_INT), intent(in) :: num_gid_entries, num_lid_entries
@@ -379,13 +379,13 @@ module zoltan_interface
 
      ierr = ZOLTAN_OK
      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   end subroutine zqfGetEdges
+   end subroutine mpas_zqf_get_edges
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    !! Zoltan Query Function:
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   subroutine zqfGetEdgeGeom(data, num_gid_entries, num_lid_entries, global_id, &
+   subroutine mpas_zqf_get_edge_geom(data, num_gid_entries, num_lid_entries, global_id, &
                              local_id, geom_vec, ierr)
       !use zoltan
       implicit none
@@ -404,12 +404,12 @@ module zoltan_interface
 
       ierr = ZOLTAN_OK
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   end subroutine zqfGetEdgeGeom
+   end subroutine mpas_zqf_get_edge_geom
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   subroutine zoltanOrderLocHSFC_Verts(in_numverts,in_vertIDs,in_geomDim,in_vertX, &
+   subroutine mpas_zoltan_order_loc_hsfc_verts(in_numverts,in_vertIDs,in_geomDim,in_vertX, &
                                        in_vertY, in_vertZ)
       implicit none
 
@@ -502,7 +502,7 @@ module zoltan_interface
       call Zoltan_Destroy(zz_obj)
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-   end subroutine zoltanOrderLocHSFC_Verts
+   end subroutine mpas_zoltan_order_loc_hsfc_verts
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -526,7 +526,7 @@ module zoltan_interface
    !! zoltan query function: 
    !!    Returns lists of Vert IDs
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   subroutine zqfGetVerts (data, num_gid_entries, num_lid_entries, global_ids, &
+   subroutine mpas_zqf_get_verts (data, num_gid_entries, num_lid_entries, global_ids, &
                            local_ids, wgt_dim, obj_wgts, ierr)
 
      integer(ZOLTAN_INT), intent(in) :: data(*)
@@ -547,13 +547,13 @@ module zoltan_interface
 
      ierr = ZOLTAN_OK
      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   end subroutine zqfGetVerts
+   end subroutine mpas_zqf_get_verts
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    !! Zoltan Query Function:
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   subroutine zqfGetVertGeom(data, num_gid_entries, num_lid_entries, global_id, &
+   subroutine mpas_zqf_get_vert_geom(data, num_gid_entries, num_lid_entries, global_id, &
                              local_id, geom_vec, ierr)
       !use zoltan
       implicit none
@@ -572,10 +572,10 @@ module zoltan_interface
 
       ierr = ZOLTAN_OK
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   end subroutine zqfGetVertGeom
+   end subroutine mpas_zqf_get_vert_geom
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
 
 
-end module zoltan_interface
+end module mpas_zoltan_interface

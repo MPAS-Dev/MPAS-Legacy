@@ -1,14 +1,14 @@
-module test_cases
+module atmh_test_cases
 
-   use grid_types
-   use configure
-   use constants
+   use mpas_grid_types
+   use mpas_configure
+   use mpas_constants
 
 
    contains
 
 
-   subroutine setup_hyd_test_case(domain)
+   subroutine atmh_setup_test_case(domain)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! Configure grid metadata and model state for the hydrostatic test case
    !   specified in the namelist
@@ -35,9 +35,9 @@ module test_cases
          if (config_test_case == 3) write(0,*) ' normal-mode perturbation included '
          block_ptr => domain % blocklist
          do while (associated(block_ptr))
-            call hyd_test_case_1(block_ptr % mesh, block_ptr % state % time_levs(1) % state, config_test_case)
+            call atmh_test_case_1(block_ptr % mesh, block_ptr % state % time_levs(1) % state, config_test_case)
             do i=2,nTimeLevs
-               call copy_state(block_ptr % state % time_levs(i) % state, block_ptr % state % time_levs(1) % state)
+               call mpas_copy_state(block_ptr % state % time_levs(i) % state, block_ptr % state % time_levs(1) % state)
             end do
 
             block_ptr => block_ptr % next
@@ -48,11 +48,11 @@ module test_cases
          stop
       end if
 
-   end subroutine setup_hyd_test_case
+   end subroutine atmh_setup_test_case
 
 !----------------------------------------------------------------------------------------------------------
 
-   subroutine hyd_test_case_1(grid, state, test_case)
+   subroutine atmh_test_case_1(grid, state, test_case)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! Setup baroclinic wave test case from Jablonowski and Williamson 2008 (QJRMS)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -465,7 +465,7 @@ module test_cases
 !      if (num_scalars >= 4) scalars(4,:,:) = theta + 200.  ! transport test
 !      if (num_scalars >= 5) scalars(5,:,:) = theta + 300.  ! transport test
 
-   end subroutine hyd_test_case_1
+   end subroutine atmh_test_case_1
 
 
    real function sphere_distance(lat1, lon1, lat2, lon2, radius)
@@ -541,4 +541,4 @@ module test_cases
 
    end function CC
 
-end module test_cases
+end module atmh_test_cases

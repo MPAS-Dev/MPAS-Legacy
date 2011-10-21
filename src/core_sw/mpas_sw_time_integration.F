@@ -1,16 +1,16 @@
-module time_integration
+module sw_time_integration
 
-   use vector_reconstruction
-   use grid_types
-   use configure
-   use constants
-   use dmpar
+   use mpas_vector_reconstruction
+   use mpas_grid_types
+   use mpas_configure
+   use mpas_constants
+   use mpas_dmpar
 
 
    contains
 
 
-   subroutine timestep(domain, dt, timeStamp)
+   subroutine sw_timestep(domain, dt, timeStamp)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
    ! Advance model state forward in time by the specified time step
    !
@@ -29,7 +29,7 @@ module time_integration
       type (block_type), pointer :: block
 
       if (trim(config_time_integration) == 'RK4') then
-         call rk4(domain, dt)
+         call sw_rk4(domain, dt)
       else
          write(0,*) 'Unknown time integration option '//trim(config_time_integration)
          write(0,*) 'Currently, only ''RK4'' is supported.'
@@ -42,10 +42,10 @@ module time_integration
          block => block % next
       end do
 
-   end subroutine timestep
+   end subroutine sw_timestep
 
 
-   subroutine rk4(domain, dt)
+   subroutine sw_rk4(domain, dt)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
    ! Advance model state forward in time by the specified time step using 
    !   4th order Runge-Kutta
@@ -70,7 +70,7 @@ module time_integration
       real (kind=RKIND), dimension(4) :: rk_weights, rk_substep_weights
 
       block => domain % blocklist
-      call allocate_state(provis, &
+      call mpas_allocate_state(provis, &
                           block % mesh % nCells, block % mesh % nEdges, block % mesh % maxEdges, block % mesh % maxEdges2, &
                           block % mesh % nVertices, block % mesh % vertexDegree, block % mesh % nVertLevels, &
                           block % mesh % nTracers)
@@ -93,7 +93,7 @@ module time_integration
             end do
          end do
 
-         call copy_state(provis, block % state % time_levs(1) % state)
+         call mpas_copy_state(provis, block % state % time_levs(1) % state)
 
          block => block % next
       end do
@@ -118,15 +118,15 @@ module time_integration
 
         block => domain % blocklist
         do while (associated(block))
-           call dmpar_exch_halo_field2dReal(domain % dminfo, provis % pv_edge % array(:,:), &
+           call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, provis % pv_edge % array(:,:), &
                                             block % mesh % nVertLevels, block % mesh % nEdges, &
                                             block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
 
            if (config_h_mom_eddy_visc4 > 0.0) then
-              call dmpar_exch_halo_field2dReal(domain % dminfo, block % state % time_levs(2) % state % divergence % array(:,:), &
+              call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % state % time_levs(2) % state % divergence % array(:,:), &
                                                block % mesh % nVertLevels, block % mesh % nCells, &
                                                block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-              call dmpar_exch_halo_field2dReal(domain % dminfo, block % state % time_levs(2) % state % vorticity % array(:,:), &
+              call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % state % time_levs(2) % state % vorticity % array(:,:), &
                                                block % mesh % nVertLevels, block % mesh % nVertices, &
                                                block % parinfo % verticesToSend, block % parinfo % verticesToRecv)
            end if
@@ -138,9 +138,9 @@ module time_integration
 
         block => domain % blocklist
         do while (associated(block))
-           call compute_tend(block % tend, provis, block % mesh)
-           call compute_scalar_tend(block % tend, provis, block % mesh)
-           call enforce_boundaryEdge(block % tend, block % mesh)
+           call sw_compute_tend(block % tend, provis, block % mesh)
+           call sw_compute_scalar_tend(block % tend, provis, block % mesh)
+           call sw_enforce_boundary_edge(block % tend, block % mesh)
            block => block % next
         end do
 
@@ -148,13 +148,13 @@ module time_integration
 
         block => domain % blocklist
         do while (associated(block))
-           call dmpar_exch_halo_field2dReal(domain % dminfo, block % tend % u % array(:,:), &
+           call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % tend % u % array(:,:), &
                                             block % mesh % nVertLevels, block % mesh % nEdges, &
                                             block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
-           call dmpar_exch_halo_field2dReal(domain % dminfo, block % tend % h % array(:,:), &
+           call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % tend % h % array(:,:), &
                                             block % mesh % nVertLevels, block % mesh % nCells, &
                                             block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-           call dmpar_exch_halo_field3dReal(domain % dminfo, block % tend % tracers % array(:,:,:), &
+           call mpas_dmpar_exch_halo_field3d_real(domain % dminfo, block % tend % tracers % array(:,:,:), &
                                             block % mesh % nTracers, block % mesh % nVertLevels, block % mesh % nCells, &
                                             block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
            block => block % next
@@ -181,7 +181,7 @@ module time_integration
               if (config_test_case == 1) then    ! For case 1, wind field should be fixed
                  provis % u % array(:,:) = block % state % time_levs(1) % state % u % array(:,:)
               end if
-              call compute_solve_diagnostics(dt, provis, block % mesh)
+              call sw_compute_solve_diagnostics(dt, provis, block % mesh)
               block => block % next
            end do
         end if
@@ -227,9 +227,9 @@ module time_integration
             block % state % time_levs(2) % state % u % array(:,:) = block % state % time_levs(1) % state % u % array(:,:)
          end if
 
-         call compute_solve_diagnostics(dt, block % state % time_levs(2) % state, block % mesh)
+         call sw_compute_solve_diagnostics(dt, block % state % time_levs(2) % state, block % mesh)
 
-         call reconstruct(block % mesh, block % state % time_levs(2) % state % u % array,          &
+         call mpas_reconstruct(block % mesh, block % state % time_levs(2) % state % u % array,          &
                           block % state % time_levs(2) % state % uReconstructX % array,            &
                           block % state % time_levs(2) % state % uReconstructY % array,            &
                           block % state % time_levs(2) % state % uReconstructZ % array,            &
@@ -240,12 +240,12 @@ module time_integration
          block => block % next
       end do
 
-      call deallocate_state(provis)
+      call mpas_deallocate_state(provis)
 
-   end subroutine rk4
+   end subroutine sw_rk4
 
 
-   subroutine compute_tend(tend, s, grid)
+   subroutine sw_compute_tend(tend, s, grid)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
    ! Compute height and normal wind tendencies, as well as diagnostic variables
    !
@@ -535,10 +535,10 @@ module time_integration
          end do
      endif
  
-   end subroutine compute_tend
+   end subroutine sw_compute_tend
 
 
-   subroutine compute_scalar_tend(tend, s, grid)
+   subroutine sw_compute_scalar_tend(tend, s, grid)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
    !
    ! Input: s - current model state
@@ -814,10 +814,10 @@ module time_integration
 
       end if
 
-   end subroutine compute_scalar_tend
+   end subroutine sw_compute_scalar_tend
 
 
-   subroutine compute_solve_diagnostics(dt, s, grid)
+   subroutine sw_compute_solve_diagnostics(dt, s, grid)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
    ! Compute diagnostic fields used in the tendency computations
    !
@@ -1238,10 +1238,10 @@ module time_integration
    !  endif
 
 
-   end subroutine compute_solve_diagnostics
+   end subroutine sw_compute_solve_diagnostics
 
 
-   subroutine enforce_boundaryEdge(tend, grid)
+   subroutine sw_enforce_boundary_edge(tend, grid)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! Enforce any boundary conditions on the normal velocity at each edge
    !
@@ -1281,7 +1281,7 @@ module time_integration
         enddo
        enddo
 
-   end subroutine enforce_boundaryEdge
+   end subroutine sw_enforce_boundary_edge
 
 
-end module time_integration
+end module sw_time_integration

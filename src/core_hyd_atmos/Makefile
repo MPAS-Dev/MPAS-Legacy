@@ -1,22 +1,22 @@
 .SUFFIXES: .F .o
 
-OBJS = module_mpas_core.o \
-       module_test_cases.o \
-       module_time_integration.o \
-       module_advection.o
+OBJS = mpas_atmh_mpas_core.o \
+       mpas_atmh_test_cases.o \
+       mpas_atmh_time_integration.o \
+       mpas_atmh_advection.o
 
 all: core_hyd
 
 core_hyd: $(OBJS)
 	ar -ru libdycore.a $(OBJS)
 
-module_test_cases.o: 
+mpas_atmh_test_cases.o: 
 
-module_time_integration.o: 
+mpas_atmh_time_integration.o: 
 
-module_advection.o: 
+mpas_atmh_advection.o: 
 
-module_mpas_core.o: module_advection.o module_test_cases.o module_time_integration.o
+mpas_atmh_mpas_core.o: mpas_atmh_advection.o mpas_atmh_test_cases.o mpas_atmh_time_integration.o
 
 clean:
 	$(RM) *.o *.mod *.f90 libdycore.a

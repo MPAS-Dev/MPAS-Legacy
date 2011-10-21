@@ -1,17 +1,17 @@
-module vector_reconstruction
+module mpas_vector_reconstruction
 
-  use grid_types
-  use configure
-  use constants
-  use RBF_interpolation
+  use mpas_grid_types
+  use mpas_configure
+  use mpas_constants
+  use mpas_rbf_interpolation
 
   implicit none
 
-  public :: init_reconstruct, reconstruct
+  public :: mpas_init_reconstruct, mpas_reconstruct
 
   contains
 
-  subroutine init_reconstruct(grid)
+  subroutine mpas_init_reconstruct(grid)
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
   ! Purpose: pre-compute coefficients used by the reconstruct() routine
   !
@@ -95,7 +95,7 @@ module vector_reconstruction
       tangentPlane(1,:) = cellTangentPlane(:,1,iCell)
       tangentPlane(2,:) = cellTangentPlane(:,2,iCell)
 
-      call rbfInterp_func_3DPlane_vec_const_dir_compCoeffs(pointCount, &
+      call mpas_rbf_interp_func_3D_plane_vec_const_dir_comp_coeffs(pointCount, &
         edgeOnCellLocations(1:pointCount,:), &
         edgeOnCellNormals(1:pointCount,:), &
         cellCenter, alpha, tangentPlane, coeffs(1:pointCount,:))
@@ -110,9 +110,9 @@ module vector_reconstruction
     deallocate(edgeOnCellNormals)
     deallocate(coeffs)
 
-  end subroutine init_reconstruct
+  end subroutine mpas_init_reconstruct
 
-  subroutine reconstruct(grid, u, uReconstructX, uReconstructY, uReconstructZ, uReconstructZonal, uReconstructMeridional)
+  subroutine mpas_reconstruct(grid, u, uReconstructX, uReconstructY, uReconstructZ, uReconstructZonal, uReconstructMeridional)
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ! Purpose: reconstruct vector field at cell centers based on radial basis functions
   !
@@ -191,6 +191,6 @@ module vector_reconstruction
       uReconstructMeridional = uReconstructY
     end if
 
-  end subroutine reconstruct
+  end subroutine mpas_reconstruct
 
-end module vector_reconstruction
+end module mpas_vector_reconstruction

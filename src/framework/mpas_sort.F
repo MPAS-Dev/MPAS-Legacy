@@ -1,15 +1,15 @@
-module sort
+module mpas_sort
 
    interface quicksort
-      module procedure quicksort_int
-      module procedure quicksort_real
+      module procedure mpas_quicksort_int
+      module procedure mpas_quicksort_real
    end interface
 
 
    contains
 
 
-   recursive subroutine mergesort(array, d1, n1, n2)
+   recursive subroutine mpas_mergesort(array, d1, n1, n2)
    
       implicit none
    
@@ -35,8 +35,8 @@ module sort
         return
       end if
    
-      call mergesort(array(1:d1,n1:n1+(n2-n1+1)/2), d1, n1, n1+(n2-n1+1)/2)
-      call mergesort(array(1:d1,n1+((n2-n1+1)/2)+1:n2), d1, n1+((n2-n1+1)/2)+1, n2)
+      call mpas_mergesort(array(1:d1,n1:n1+(n2-n1+1)/2), d1, n1, n1+(n2-n1+1)/2)
+      call mpas_mergesort(array(1:d1,n1+((n2-n1+1)/2)+1:n2), d1, n1+((n2-n1+1)/2)+1, n2)
    
       i = n1
       j = n1 + ((n2-n1+1)/2) + 1
@@ -69,10 +69,10 @@ module sort
    
       array(1:d1,n1:n2) = temp(1:d1,1:k-1)
    
-   end subroutine mergesort
+   end subroutine mpas_mergesort
 
 
-   subroutine quicksort_int(nArray, array)
+   subroutine mpas_quicksort_int(nArray, array)
 
       implicit none
 
@@ -132,10 +132,10 @@ if (top > 1000) write(0,*) 'Error: Quicksort exhausted its stack.'
          end if
       end do
 
-   end subroutine quicksort_int
+   end subroutine mpas_quicksort_int
 
 
-   subroutine quicksort_real(nArray, array)
+   subroutine mpas_quicksort_real(nArray, array)
 
       implicit none
 
@@ -195,10 +195,10 @@ if (top > 1000) write(0,*) 'Error: Quicksort exhausted its stack.'
          end if
       end do
 
-   end subroutine quicksort_real
+   end subroutine mpas_quicksort_real
 
 
-   integer function binary_search(array, d1, n1, n2, key)
+   integer function mpas_binary_search(array, d1, n1, n2, key)
 
       implicit none
 
@@ -207,14 +207,14 @@ if (top > 1000) write(0,*) 'Error: Quicksort exhausted its stack.'
 
       integer :: l, u, k
 
-      binary_search = n2+1
+      mpas_binary_search = n2+1
 
       l = n1
       u = n2
       k = (l+u)/2
       do while (u >= l)
          if (array(1,k) == key) then
-            binary_search = k
+            mpas_binary_search = k
             exit   
          else if (array(1,k) < key) then
             l = k + 1
@@ -225,6 +225,6 @@ if (top > 1000) write(0,*) 'Error: Quicksort exhausted its stack.'
          end if 
       end do 
 
-   end function binary_search
+   end function mpas_binary_search
 
-end module sort
+end module mpas_sort

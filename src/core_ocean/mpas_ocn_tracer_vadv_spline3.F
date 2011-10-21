@@ -14,10 +14,10 @@
 
 module ocn_tracer_vadv_spline3
 
-   use grid_types
-   use configure
-   use timer
-   use spline_interpolation
+   use mpas_grid_types
+   use mpas_configure
+   use mpas_timer
+   use mpas_spline_interpolation
 
    implicit none
    private
@@ -129,7 +129,7 @@ contains
       if(.not.spline3On) return
       ! Compute tracerTop using linear interpolation.
 
-      call timer_start("compute_scalar_tend-vert adv spline 3")
+      call mpas_timer_start("compute_scalar_tend-vert adv spline 3")
 
       nCells = grid % nCells
       nCellsSolve = grid % nCellsSolve
@@ -165,10 +165,10 @@ contains
             ! subroutine call.  
             tracersIn(1:maxLevelCell(iCell))=tracers(iTracer,1:maxLevelCell(iCell),iCell)
 
-            call CubicSplineCoefficients(posZMidZLevel, &
+            call mpas_cubic_spline_coefficients(posZMidZLevel, &
                tracersIn, maxLevelCell(iCell), tracer2ndDer)
 
-            call InterpolateCubicSpline( &
+            call mpas_interpolate_cubic_spline( &
                posZMidZLevel, tracersIn, tracer2ndDer, maxLevelCell(iCell), &
                posZTopZLevel, tracersOut, maxLevelCell(iCell)-1 )
 
@@ -191,7 +191,7 @@ contains
       deallocate(tracersIn,tracersOut, posZMidZLevel, posZTopZLevel)
       deallocate(tracerTop)
 
-      call timer_stop("compute_scalar_tend-vert adv spline 3")
+      call mpas_timer_stop("compute_scalar_tend-vert adv spline 3")
    !--------------------------------------------------------------------
 
    end subroutine ocn_tracer_vadv_spline3_tend!}}}

@@ -1,10 +1,10 @@
 &sw_model
-   config_test_case = 0
-   config_time_integration = 'rk4'
+   config_test_case = 5
+   config_time_integration = 'RK4'
    config_rk_filter_btr_mode = .false.
    config_dt = 10.0
    config_start_time = '0000-01-01_00:00:00'
-   config_run_duration = '2000_00:00:00'
+   config_run_duration = '-000_00:30:00'
    config_stats_interval = 1920
 /
 &io
@@ -19,7 +19,7 @@
    config_restart_interval = '120_00:00:00'
 /
 &grid
-   config_vert_grid_type = 'zlevel'
+   config_vert_grid_type = 'isopycnal'
    config_rho0 = 1000
 /
 &split_explicit_ts

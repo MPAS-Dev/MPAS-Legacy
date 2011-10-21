@@ -13,13 +13,13 @@
 
 module ocn_time_integration_rk4
 
-   use grid_types
-   use configure
-   use constants
-   use dmpar
-   use vector_reconstruction
-   use spline_interpolation
-   use timer
+   use mpas_grid_types
+   use mpas_configure
+   use mpas_constants
+   use mpas_dmpar
+   use mpas_vector_reconstruction
+   use mpas_spline_interpolation
+   use mpas_timer
 
    use ocn_tendency
 
@@ -95,7 +95,7 @@ module ocn_time_integration_rk4
 
 
       block => domain % blocklist
-      call allocate_state(provis, &
+      call mpas_allocate_state(provis, &
                           block % mesh % nCells, block % mesh % nEdges, block % mesh % maxEdges, block % mesh % maxEdges2, &
                           block % mesh % nVertices, block % mesh % vertexDegree, block % mesh % nVertLevels )
 
@@ -117,7 +117,7 @@ module ocn_time_integration_rk4
             end do
          end do
 
-         call copy_state(provis, block % state % time_levs(1) % state)
+         call mpas_copy_state(provis, block % state % time_levs(1) % state)
 
          block => block % next
       end do
@@ -133,36 +133,36 @@ module ocn_time_integration_rk4
       rk_substep_weights(4) = 0.
 
 
-      call timer_start("RK4-main loop")
+      call mpas_timer_start("RK4-main loop")
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       ! BEGIN RK loop 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       do rk_step = 1, 4
 ! ---  update halos for diagnostic variables
 
-        call timer_start("RK4-diagnostic halo update")
+        call mpas_timer_start("RK4-diagnostic halo update")
         block => domain % blocklist
         do while (associated(block))
-           call dmpar_exch_halo_field2dReal(domain % dminfo, provis % pv_edge % array(:,:), &
+           call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, provis % pv_edge % array(:,:), &
                                             block % mesh % nVertLevels, block % mesh % nEdges, &
                                             block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
 
            if (config_h_mom_eddy_visc4 > 0.0) then
-              call dmpar_exch_halo_field2dReal(domain % dminfo, provis % divergence % array(:,:), &
+              call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % state % time_levs(2) % state % divergence % array(:,:), &
                                                block % mesh % nVertLevels, block % mesh % nCells, &
                                                block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-              call dmpar_exch_halo_field2dReal(domain % dminfo, provis % vorticity % array(:,:), &
+              call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % state % time_levs(2) % state % vorticity % array(:,:), &
                                                block % mesh % nVertLevels, block % mesh % nVertices, &
                                                block % parinfo % verticesToSend, block % parinfo % verticesToRecv)
            end if
 
            block => block % next
         end do
-        call timer_stop("RK4-diagnostic halo update")
+        call mpas_timer_stop("RK4-diagnostic halo update")
 
 ! ---  compute tendencies
 
-        call timer_start("RK4-tendency computations")
+        call mpas_timer_start("RK4-tendency computations")
         block => domain % blocklist
         do while (associated(block))
            if (.not.config_implicit_vertical_mix) then
@@ -181,29 +181,29 @@ module ocn_time_integration_rk4
            call enforce_boundaryEdge(block % tend, block % mesh)
            block => block % next
         end do
-        call timer_stop("RK4-tendency computations")
+        call mpas_timer_stop("RK4-tendency computations")
 
 ! ---  update halos for prognostic variables
 
-        call timer_start("RK4-pronostic halo update")
+        call mpas_timer_start("RK4-pronostic halo update")
         block => domain % blocklist
         do while (associated(block))
-           call dmpar_exch_halo_field2dReal(domain % dminfo, block % tend % u % array(:,:), &
+           call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % tend % u % array(:,:), &
                                             block % mesh % nVertLevels, block % mesh % nEdges, &
                                             block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
-           call dmpar_exch_halo_field2dReal(domain % dminfo, block % tend % h % array(:,:), &
+           call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % tend % h % array(:,:), &
                                             block % mesh % nVertLevels, block % mesh % nCells, &
                                             block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-           call dmpar_exch_halo_field3dReal(domain % dminfo, block % tend % tracers % array(:,:,:), &
+           call mpas_dmpar_exch_halo_field3d_real(domain % dminfo, block % tend % tracers % array(:,:,:), &
                                             block % tend % num_tracers, block % mesh % nVertLevels, block % mesh % nCells, &
                                             block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
            block => block % next
         end do
-        call timer_stop("RK4-pronostic halo update")
+        call mpas_timer_stop("RK4-pronostic halo update")
 
 ! ---  compute next substep state
 
-        call timer_start("RK4-update diagnostic variables")
+        call mpas_timer_start("RK4-update diagnostic variables")
         if (rk_step < 4) then
            block => domain % blocklist
            do while (associated(block))
@@ -232,13 +232,13 @@ module ocn_time_integration_rk4
               block => block % next
            end do
         end if
-        call timer_stop("RK4-update diagnostic variables")
+        call mpas_timer_stop("RK4-update diagnostic variables")
 
 
 
 !--- accumulate update (for RK4)
 
-        call timer_start("RK4-RK4 accumulate update")
+        call mpas_timer_start("RK4-RK4 accumulate update")
         block => domain % blocklist
         do while (associated(block))
            block % state % time_levs(2) % state % u % array(:,:) = block % state % time_levs(2) % state % u % array(:,:) &
@@ -257,18 +257,18 @@ module ocn_time_integration_rk4
 
            block => block % next
         end do
-        call timer_stop("RK4-RK4 accumulate update")
+        call mpas_timer_stop("RK4-RK4 accumulate update")
 
       end do
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       ! END RK loop 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      call timer_stop("RK4-main loop")
+      call mpas_timer_stop("RK4-main loop")
 
       !
       !  A little clean up at the end: decouple new scalar fields and compute diagnostics for new state
       !
-      call timer_start("RK4-cleaup phase")
+      call mpas_timer_start("RK4-cleaup phase")
       block => domain % blocklist
       do while (associated(block))
 
@@ -294,7 +294,7 @@ module ocn_time_integration_rk4
          end do
 
          if (config_implicit_vertical_mix) then
-            call timer_start("RK4-implicit vert mix")
+            call mpas_timer_start("RK4-implicit vert mix")
             allocate(A(nVertLevels),C(nVertLevels),uTemp(nVertLevels), &
                tracersTemp(num_tracers,nVertLevels))
 
@@ -320,7 +320,7 @@ module ocn_time_integration_rk4
 
          ! mrp 110725 momentum decay term
          if (config_mom_decay) then
-             call timer_start("RK4-momentum decay")
+             call mpas_timer_start("RK4-momentum decay")
 
             !
             !  Implicit solve for momentum decay
@@ -337,7 +337,7 @@ module ocn_time_integration_rk4
                end do
             end do
 
-            call timer_stop("RK4-momentum decay")
+            call mpas_timer_stop("RK4-momentum decay")
          end if
 
 
@@ -347,7 +347,7 @@ module ocn_time_integration_rk4
 
          call ocn_diagnostic_solve(dt, block % state % time_levs(2) % state, block % mesh)
 
-         call reconstruct(block % mesh, block % state % time_levs(2) % state % u % array,          &
+         call mpas_reconstruct(block % mesh, block % state % time_levs(2) % state % u % array,          &
                           block % state % time_levs(2) % state % uReconstructX % array,            &
                           block % state % time_levs(2) % state % uReconstructY % array,            &
                           block % state % time_levs(2) % state % uReconstructZ % array,            &
@@ -357,9 +357,9 @@ module ocn_time_integration_rk4
 
          block => block % next
       end do
-      call timer_stop("RK4-cleaup phase")
+      call mpas_timer_stop("RK4-cleaup phase")
 
-      call deallocate_state(provis)
+      call mpas_deallocate_state(provis)
 
    end subroutine ocn_time_integrator_rk4!}}}
 
@@ -412,7 +412,7 @@ module ocn_time_integration_rk4
       real (kind=RKIND), dimension(:,:), pointer :: u_src
       real (kind=RKIND), parameter :: rho_ref = 1000.0
 
-      call timer_start("filter_btr_mode_tend_u")
+      call mpas_timer_start("filter_btr_mode_tend_u")
 
       h           => s % h % array
       u           => s % u % array
@@ -484,7 +484,7 @@ module ocn_time_integration_rk4
 
            enddo ! iEdge
 
-      call timer_stop("filter_btr_mode_tend_u")
+      call mpas_timer_stop("filter_btr_mode_tend_u")
 
    end subroutine filter_btr_mode_tend_u!}}}
 
@@ -535,7 +535,7 @@ module ocn_time_integration_rk4
       real (kind=RKIND), dimension(:,:), pointer :: u_src
       real (kind=RKIND), parameter :: rho_ref = 1000.0
 
-      call timer_start("filter_btr_mode_u")
+      call mpas_timer_start("filter_btr_mode_u")
 
       h           => s % h % array
       u           => s % u % array
@@ -603,7 +603,7 @@ module ocn_time_integration_rk4
 
            enddo ! iEdge
 
-      call timer_stop("filter_btr_mode_u")
+      call mpas_timer_stop("filter_btr_mode_u")
 
    end subroutine filter_btr_mode_u!}}}
 
@@ -627,7 +627,7 @@ module ocn_time_integration_rk4
       integer :: nCells, nEdges, nVertices, nVertLevels
       integer :: iEdge, k
 
-      call timer_start("enforce_boundaryEdge")
+      call mpas_timer_start("enforce_boundaryEdge")
 
       nCells      = grid % nCells
       nEdges      = grid % nEdges
@@ -648,7 +648,7 @@ module ocn_time_integration_rk4
 
         enddo
        enddo
-      call timer_stop("enforce_boundaryEdge")
+      call mpas_timer_stop("enforce_boundaryEdge")
 
    end subroutine enforce_boundaryEdge!}}}
 

@@ -16,10 +16,10 @@
 
 module ocn_tendency
 
-   use grid_types
-   use configure
-   use constants
-   use timer
+   use mpas_grid_types
+   use mpas_configure
+   use mpas_constants
+   use mpas_timer
 
    use ocn_thick_hadv
    use ocn_thick_vadv
@@ -131,7 +131,7 @@ contains
       real (kind=RKIND), allocatable, dimension(:,:) :: delsq_u
       real (kind=RKIND), allocatable, dimension(:,:) :: delsq_circulation, delsq_vorticity
 
-      call timer_start("ocn_tend_h")
+      call mpas_timer_start("ocn_tend_h")
 
       h           => s % h % array
       u           => s % u % array
@@ -192,22 +192,22 @@ contains
       !
       ! for z-level, only compute height tendency for top layer.
 
-      call timer_start("ocn_tend_h-horiz adv")
+      call mpas_timer_start("ocn_tend_h-horiz adv")
 
       call ocn_thick_hadv_tend(grid, u, h_edge, tend_h, err)
 
-      call timer_stop("ocn_tend_h-horiz adv")
+      call mpas_timer_stop("ocn_tend_h-horiz adv")
 
       !
       ! height tendency: vertical advection term -d/dz(hw)
       !
       ! Vertical advection computed for top layer of a z grid only.
-      call timer_start("ocn_tend_h-vert adv")
+      call mpas_timer_start("ocn_tend_h-vert adv")
 
       call ocn_thick_vadv_tend(grid, wtop, tend_h, err)
 
-      call timer_stop("ocn_tend_h-vert adv")
-      call timer_stop("ocn_tend_h")
+      call mpas_timer_stop("ocn_tend_h-vert adv")
+      call mpas_timer_stop("ocn_tend_h")
    
    end subroutine ocn_tend_h!}}}
 
@@ -274,7 +274,7 @@ contains
       real (kind=RKIND), dimension(:,:), pointer :: u_src
       real (kind=RKIND), parameter :: rho_ref = 1000.0
 
-      call timer_start("ocn_tend_u")
+      call mpas_timer_start("ocn_tend_u")
 
       h           => s % h % array
       u           => s % u % array
@@ -338,25 +338,25 @@ contains
       ! velocity tendency: nonlinear Coriolis term and grad of kinetic energy
       !
 
-      call timer_start("ocn_tend_u-coriolis")
+      call mpas_timer_start("ocn_tend_u-coriolis")
 
       call ocn_vel_coriolis_tend(grid, pv_edge, h_edge, u, ke, tend_u, err)
 
-      call timer_stop("ocn_tend_u-coriolis")
+      call mpas_timer_stop("ocn_tend_u-coriolis")
 
       !
       ! velocity tendency: vertical advection term -w du/dz
       !
-      call timer_start("ocn_tend_u-vert adv")
+      call mpas_timer_start("ocn_tend_u-vert adv")
 
       call ocn_vel_vadv_tend(grid, u, wtop, tend_u, err)
 
-      call timer_stop("ocn_tend_u-vert adv")
+      call mpas_timer_stop("ocn_tend_u-vert adv")
 
       !
       ! velocity tendency: pressure gradient
       !
-      call timer_start("ocn_tend_u-pressure grad")
+      call mpas_timer_start("ocn_tend_u-pressure grad")
 
       if (config_vert_grid_type.eq.'isopycnal') then
           call ocn_vel_pressure_grad_tend(grid, MontPot, tend_u, err)
@@ -364,18 +364,18 @@ contains
           call ocn_vel_pressure_grad_tend(grid, pressure, tend_u, err)
       end if
 
-      call timer_stop("ocn_tend_u-pressure grad")
+      call mpas_timer_stop("ocn_tend_u-pressure grad")
 
       !
       ! velocity tendency: del2 dissipation, \nu_2 \nabla^2 u
       !   computed as \nu( \nabla divergence + k \times \nabla vorticity )
       !   strictly only valid for config_h_mom_eddy_visc2 == constant
       !
-      call timer_start("ocn_tend_u-horiz mix")
+      call mpas_timer_start("ocn_tend_u-horiz mix")
 
       call ocn_vel_hmix_tend(grid, divergence, vorticity, tend_u, err)
 
-      call timer_stop("ocn_tend_u-horiz mix")
+      call mpas_timer_stop("ocn_tend_u-horiz mix")
 
       !
       ! velocity tendency: forcing and bottom drag
@@ -383,23 +383,23 @@ contains
       ! mrp 101115 note: in order to include flux boundary conditions, we will need to 
       ! know the bottom edge with nonzero velocity and place the drag there.
 
-      call timer_start("ocn_tend_u-forcings")
+      call mpas_timer_start("ocn_tend_u-forcings")
 
       call ocn_vel_forcing_tend(grid, u, u_src, ke_edge, h_edge, tend_u, err)
 
-      call timer_stop("ocn_tend_u-forcings")
+      call mpas_timer_stop("ocn_tend_u-forcings")
 
       !
       ! velocity tendency: vertical mixing d/dz( nu_v du/dz))
       !
       if (.not.config_implicit_vertical_mix) then
-          call timer_start("ocn_tend_u-explicit vert mix")
+          call mpas_timer_start("ocn_tend_u-explicit vert mix")
 
           call ocn_vel_vmix_tend_explicit(grid, u, h_edge, vertvisctopofedge, tend_u, err)
 
-          call timer_stop("ocn_tend_u-explicit vert mix")
+          call mpas_timer_stop("ocn_tend_u-explicit vert mix")
       endif
-      call timer_stop("ocn_tend_u")
+      call mpas_timer_stop("ocn_tend_u")
 
    end subroutine ocn_tend_u!}}}
 
@@ -465,7 +465,7 @@ contains
       integer :: index_temperature, index_salinity, rrr
       real (kind=RKIND), dimension(:), pointer :: temperatureRestore, salinityRestore
 
-      call timer_start("ocn_tend_scalar")
+      call mpas_timer_start("ocn_tend_scalar")
 
       u           => s % u % array
       h           => s % h % array
@@ -515,31 +515,31 @@ contains
       ! and then change maxLevelEdgeTop to maxLevelEdgeBot in the following section.
       ! tracer_edge at the boundary will also need to be defined for flux boundaries.
 
-      call timer_start("ocn_tend_scalar-horiz adv")
+      call mpas_timer_start("ocn_tend_scalar-horiz adv")
 
       call ocn_tracer_hadv_tend(grid, u, h_edge, tracers, tend_tr, err)
 
-      call timer_stop("ocn_tend_scalar-horiz adv")
+      call mpas_timer_stop("ocn_tend_scalar-horiz adv")
 
 
       !
       ! tracer tendency: vertical advection term -d/dz( h \phi w)
       !
 
-      call timer_start("ocn_tend_scalar-vert adv")
+      call mpas_timer_start("ocn_tend_scalar-vert adv")
 
       call ocn_tracer_vadv_tend(grid, wtop, tracers, tend_tr, err)
 
-      call timer_stop("ocn_tend_scalar-vert adv")
+      call mpas_timer_stop("ocn_tend_scalar-vert adv")
 
       !
       ! tracer tendency: del2 horizontal tracer diffusion, div(h \kappa_2 \nabla \phi)
       !
-      call timer_start("ocn_tend_scalar-horiz diff")
+      call mpas_timer_start("ocn_tend_scalar-horiz diff")
 
       call ocn_tracer_hmix_tend(grid, h_edge, tracers, tend_tr, err)
 
-      call timer_stop("ocn_tend_scalar-horiz diff")
+      call mpas_timer_stop("ocn_tend_scalar-horiz diff")
 
 ! mrp 110516 printing
 !print *, 'tend_tr 1',minval(tend_tr(3,1,1:nCells)),&
@@ -552,11 +552,11 @@ contains
       ! tracer tendency: vertical diffusion h d/dz( \kappa_v d\phi/dz)
       !
       if (.not.config_implicit_vertical_mix) then
-         call timer_start("ocn_tend_scalar-explicit vert diff")
+         call mpas_timer_start("ocn_tend_scalar-explicit vert diff")
 
          call ocn_tracer_vmix_tend_explicit(grid, h, vertdifftopofcell, tracers, tend_tr, err)
 
-         call timer_stop("ocn_tend_scalar-explicit vert diff")
+         call mpas_timer_stop("ocn_tend_scalar-explicit vert diff")
       endif
 
 ! mrp 110516 printing
@@ -567,14 +567,14 @@ contains
       !
       ! add restoring to T and S in top model layer
       !
-      call timer_start("ocn_tend_scalar-restoring")
+      call mpas_timer_start("ocn_tend_scalar-restoring")
 
       call ocn_restoring_tend(grid, h, s%index_temperature, s%index_salinity, tracers, tend_tr, err)
 
-      call timer_stop("ocn_tend_scalar-restoring")
+      call mpas_timer_stop("ocn_tend_scalar-restoring")
 
  10   format(2i8,10e20.10)
-      call timer_stop("ocn_tend_scalar")
+      call mpas_timer_stop("ocn_tend_scalar")
 
    end subroutine ocn_tend_scalar!}}}
 
@@ -637,7 +637,7 @@ contains
       real (kind=RKIND) :: coef_3rd_order
       real (kind=RKIND) :: r, h1, h2
 
-      call timer_start("ocn_diagnostic_solve")
+      call mpas_timer_start("ocn_diagnostic_solve")
 
       h           => s % h % array
       u           => s % u % array
@@ -703,14 +703,14 @@ contains
       ! mrp 110516 efficiency note: For z-level, only do this on level 1.  h_edge for all
       ! lower levels is defined by hZlevel.
 
-      call timer_start("ocn_diagnostic_solve-hEdge")
+      call mpas_timer_start("ocn_diagnostic_solve-hEdge")
 
       coef_3rd_order = 0.
       if (config_thickness_adv_order == 3) coef_3rd_order = 1.0
       if (config_thickness_adv_order == 3 .and. config_monotonic) coef_3rd_order = 0.25
 
       if (config_thickness_adv_order == 2) then
-          call timer_start("ocn_diagnostic_solve-hEdge 2")
+          call mpas_timer_start("ocn_diagnostic_solve-hEdge 2")
 
          do iEdge=1,nEdges
             cell1 = cellsOnEdge(1,iEdge)
@@ -719,10 +719,10 @@ contains
                h_edge(k,iEdge) = 0.5 * (h(k,cell1) + h(k,cell2))
             end do
          end do
-          call timer_stop("ocn_diagnostic_solve-hEdge 2")
+          call mpas_timer_stop("ocn_diagnostic_solve-hEdge 2")
 
       else if (config_thickness_adv_order == 3) then
-          call timer_start("ocn_diagnostic_solve-hEdge 3")
+          call mpas_timer_start("ocn_diagnostic_solve-hEdge 3")
 
          do iEdge=1,nEdges
             cell1 = cellsOnEdge(1,iEdge)
@@ -770,9 +770,9 @@ contains
             end do   ! do k
          end do         ! do iEdge
 
-          call timer_stop("ocn_diagnostic_solve-hEdge 3")
+          call mpas_timer_stop("ocn_diagnostic_solve-hEdge 3")
       else  if (config_thickness_adv_order == 4) then
-          call timer_start("ocn_diagnostic_solve-hEdge 4")
+          call mpas_timer_start("ocn_diagnostic_solve-hEdge 4")
 
          do iEdge=1,nEdges
             cell1 = cellsOnEdge(1,iEdge)
@@ -810,9 +810,9 @@ contains
             end do   ! do k
          end do         ! do iEdge
 
-         call timer_stop("ocn_diagnostic_solve-hEdge 4")
+         call mpas_timer_stop("ocn_diagnostic_solve-hEdge 4")
       endif   ! if(config_thickness_adv_order == 2)
-      call timer_stop("ocn_diagnostic_solve-hEdge")
+      call mpas_timer_stop("ocn_diagnostic_solve-hEdge")
 
       !
       ! set the velocity and height at dummy address
@@ -1070,7 +1070,7 @@ contains
 
       call ocn_wtop(s,grid)
 
-      call timer_stop("ocn_diagnostic_solve")
+      call mpas_timer_stop("ocn_diagnostic_solve")
 
    end subroutine ocn_diagnostic_solve!}}}
 
@@ -1121,7 +1121,7 @@ contains
         maxLevelCell, maxLevelEdgeTop, maxLevelEdgeBot, &
         maxLevelVertexBot,  maxLevelVertexTop
 
-        call timer_start("wTop")
+        call mpas_timer_start("wTop")
 
       u           => s % u % array
       wTop        => s % wTop % array
@@ -1176,7 +1176,7 @@ contains
 
       endif
 
-      call timer_stop("wTop")
+      call mpas_timer_stop("wTop")
 
    end subroutine ocn_wtop!}}}
 
@@ -1241,7 +1241,7 @@ contains
       real (kind=RKIND), dimension(:,:), pointer :: u_src
       real (kind=RKIND), parameter :: rho_ref = 1000.0
 
-      call timer_start("ocn_fuperp")
+      call mpas_timer_start("ocn_fuperp")
 
       h           => s % h % array
       u           => s % u % array
@@ -1305,7 +1305,7 @@ contains
          end do
       end do
 
-      call timer_stop("ocn_fuperp")
+      call mpas_timer_stop("ocn_fuperp")
 
    end subroutine ocn_fuperp!}}}
 

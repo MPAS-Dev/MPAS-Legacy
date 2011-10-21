@@ -1,4 +1,4 @@
-module constants
+module mpas_constants
 
    real (kind=RKIND), parameter :: pii     = 3.141592653589793   
    real (kind=RKIND), parameter :: a       = 6371229.0
@@ -17,4 +17,4 @@ module constants
 
    end subroutine dummy
 
-end module constants
+end module mpas_constants

@@ -1,8 +1,8 @@
-module test_cases
+module sw_test_cases
 
-   use grid_types
-   use configure
-   use constants
+   use mpas_grid_types
+   use mpas_configure
+   use mpas_constants
 
 
    contains
@@ -35,7 +35,7 @@ module test_cases
          do while (associated(block_ptr))
             call sw_test_case_1(block_ptr % mesh, block_ptr % state % time_levs(1) % state)
             do i=2,nTimeLevs
-               call copy_state(block_ptr % state % time_levs(i) % state, block_ptr % state % time_levs(1) % state)
+               call mpas_copy_state(block_ptr % state % time_levs(i) % state, block_ptr % state % time_levs(1) % state)
             end do
 
             block_ptr => block_ptr % next
@@ -49,7 +49,7 @@ module test_cases
          do while (associated(block_ptr))
             call sw_test_case_2(block_ptr % mesh, block_ptr % state % time_levs(1) % state)
             do i=2,nTimeLevs
-               call copy_state(block_ptr % state % time_levs(i) % state, block_ptr % state % time_levs(1) % state)
+               call mpas_copy_state(block_ptr % state % time_levs(i) % state, block_ptr % state % time_levs(1) % state)
             end do
 
             block_ptr => block_ptr % next
@@ -63,7 +63,7 @@ module test_cases
          do while (associated(block_ptr))
             call sw_test_case_5(block_ptr % mesh, block_ptr % state % time_levs(1) % state)
             do i=2,nTimeLevs
-               call copy_state(block_ptr % state % time_levs(i) % state, block_ptr % state % time_levs(1) % state)
+               call mpas_copy_state(block_ptr % state % time_levs(i) % state, block_ptr % state % time_levs(1) % state)
             end do
 
             block_ptr => block_ptr % next
@@ -77,7 +77,7 @@ module test_cases
          do while (associated(block_ptr))
             call sw_test_case_6(block_ptr % mesh, block_ptr % state % time_levs(1) % state)
             do i=2,nTimeLevs
-               call copy_state(block_ptr % state % time_levs(i) % state, block_ptr % state % time_levs(1) % state)
+               call mpas_copy_state(block_ptr % state % time_levs(i) % state, block_ptr % state % time_levs(1) % state)
             end do
 
             block_ptr => block_ptr % next
@@ -442,9 +442,9 @@ module test_cases
       ! Initialize height field (actually, fluid thickness field)
       !
       do iCell=1,grid % nCells
-         state % h % array(1,iCell) = (gravity * h0 + a*a*AA(grid%latCell%array(iCell)) + &
-                                                      a*a*BB(grid%latCell%array(iCell)) * cos(R*grid%lonCell%array(iCell)) + &
-                                                      a*a*CC(grid%latCell%array(iCell)) * cos(2.0*R*grid%lonCell%array(iCell)) &
+         state % h % array(1,iCell) = (gravity * h0 + a*a*aa(grid%latCell%array(iCell)) + &
+                                                      a*a*bb(grid%latCell%array(iCell)) * cos(R*grid%lonCell%array(iCell)) + &
+                                                      a*a*cc(grid%latCell%array(iCell)) * cos(2.0*R*grid%lonCell%array(iCell)) &
                                       ) / gravity
       end do
 
@@ -470,7 +470,7 @@ module test_cases
    end function sphere_distance
 
 
-   real function AA(theta)
+   real function aa(theta)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! A, used in height field computation for Rossby-Haurwitz wave
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -483,13 +483,13 @@ module test_cases
 
       real (kind=RKIND), intent(in) :: theta
 
-      AA = 0.5 * w * (2.0 * omega + w) * cos(theta)**2.0 + &
+      aa = 0.5 * w * (2.0 * omega + w) * cos(theta)**2.0 + &
           0.25 * K**2.0 * cos(theta)**(2.0*R) * ((R+1.0)*cos(theta)**2.0 + 2.0*R**2.0 - R - 2.0 - 2.0*R**2.0 * cos(theta)**(-2.0))
 
-   end function AA
+   end function aa
 
    
-   real function BB(theta)
+   real function bb(theta)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! B, used in height field computation for Rossby-Haurwitz wave
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -502,12 +502,12 @@ module test_cases
 
       real (kind=RKIND), intent(in) :: theta
 
-      BB = (2.0*(omega + w)*K / ((R+1.0)*(R+2.0))) * cos(theta)**R * ((R**2.0 + 2.0*R + 2.0) - ((R+1.0)*cos(theta))**2.0)
+      bb = (2.0*(omega + w)*K / ((R+1.0)*(R+2.0))) * cos(theta)**R * ((R**2.0 + 2.0*R + 2.0) - ((R+1.0)*cos(theta))**2.0)
 
-   end function BB
+   end function bb
 
 
-   real function CC(theta)
+   real function cc(theta)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! C, used in height field computation for Rossby-Haurwitz wave
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -520,8 +520,8 @@ module test_cases
 
       real (kind=RKIND), intent(in) :: theta
 
-      CC = 0.25 * K**2.0 * cos(theta)**(2.0*R) * ((R+1.0)*cos(theta)**2.0 - R - 2.0)
+      cc = 0.25 * K**2.0 * cos(theta)**(2.0*R) * ((R+1.0)*cos(theta)**2.0 - R - 2.0)
 
-   end function CC
+   end function cc
 
-end module test_cases
+end module sw_test_cases

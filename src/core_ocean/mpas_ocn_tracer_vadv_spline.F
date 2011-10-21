@@ -14,8 +14,8 @@
 
 module ocn_tracer_vadv_spline
 
-   use grid_types
-   use configure
+   use mpas_grid_types
+   use mpas_configure
 
    use ocn_tracer_vadv_spline2
    use ocn_tracer_vadv_spline3

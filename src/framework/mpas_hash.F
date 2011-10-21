@@ -4,7 +4,7 @@
 ! Purpose: This module provides a dictionary/hashtable with insert, search, and
 !   remove routines. 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-module hash
+module mpas_hash
 
    ! Parameters
    integer, parameter :: TABLESIZE=27183     ! Number of spaces in the table (the
@@ -33,7 +33,7 @@ module hash
    !
    ! Purpose: To initialize a hashtable
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-   subroutine hash_init(h)
+   subroutine mpas_hash_init(h)
    
      implicit none
  
@@ -49,7 +49,7 @@ module hash
         nullify(h%table(i)%p)
      end do
  
-   end subroutine hash_init
+   end subroutine mpas_hash_init
  
  
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
@@ -61,7 +61,7 @@ module hash
    ! NOTE: If the key already exists in the table, a second copy of the
    !   key is added to the table
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-   subroutine hash_insert(h, key)
+   subroutine mpas_hash_insert(h, key)
    
      implicit none
  
@@ -82,7 +82,7 @@ module hash
 
      h%size = h%size + 1
  
-   end subroutine hash_insert
+   end subroutine mpas_hash_insert
  
  
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
@@ -91,7 +91,7 @@ module hash
    ! Purpose: This function returns TRUE if the specified key was found in the
    !   hashtable h, and FALSE otherwise.
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-   logical function hash_search(h, key)
+   logical function mpas_hash_search(h, key)
    
       implicit none
   
@@ -103,14 +103,14 @@ module hash
       integer :: hashval, i
       type (hashnode), pointer :: cursor 
   
-      hash_search = .false.
+      mpas_hash_search = .false.
   
       hashval = mod(key, TABLESIZE) + 1  
      
       cursor => h%table(hashval)%p
       do while(associated(cursor))
          if (cursor%key == key) then
-            hash_search = .true.
+            mpas_hash_search = .true.
             return 
          else
             cursor => cursor%next 
@@ -119,7 +119,7 @@ module hash
     
       return
  
-   end function hash_search
+   end function mpas_hash_search
 
 
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
@@ -127,18 +127,18 @@ module hash
    !
    ! Purpose: Returns the number of items in the hash table h.
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-   integer function hash_size(h)
+   integer function mpas_hash_size(h)
 
       implicit none
 
       ! Arguments
       type (hashtable) :: h
 
-      hash_size = h%size
+      mpas_hash_size = h%size
 
       return
 
-   end function hash_size
+   end function mpas_hash_size
  
  
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
@@ -147,7 +147,7 @@ module hash
    ! Purpose: Frees all memory associated with hashtable h. This routine may be
    !   used to remove all entries from a hashtable.
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-   subroutine hash_destroy(h)
+   subroutine mpas_hash_destroy(h)
    
       implicit none
   
@@ -170,6 +170,6 @@ module hash
 
       h%size = 0
  
-   end subroutine hash_destroy
+   end subroutine mpas_hash_destroy
  
-end module hash
+end module mpas_hash

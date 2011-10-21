@@ -1,6 +1,6 @@
-module RBF_interpolation
-   use dmpar
-   use grid_types
+module mpas_rbf_interpolation
+   use mpas_dmpar
+   use mpas_grid_types
 
    implicit none
    private
@@ -12,7 +12,7 @@ module RBF_interpolation
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
 
    ! Initialize the geometry that will be useful from interpolation
-  public :: rbfInterp_initialize
+  public :: mpas_rbf_interp_initialize
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
   ! Routines for perofrming interpolation in 2D (including Jacobian and Hessian)
@@ -20,10 +20,10 @@ module RBF_interpolation
   !  for finding the location on the the RBF reconstruction of a function
   !  (e.g., a height field) that minimizes the distance to a point in 3D space
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  public :: rbfInterp_loc_2D_sca_const_compCoeffs, &
-    rbfInterp_loc_2D_sca_lin_compCoeffs, &
-    rbfInterp_loc_2D_sca_const_evalWithDerivs, &
-    rbfInterp_loc_2D_sca_lin_evalWithDerivs
+  public :: mpas_rbf_interp_loc_2D_sca_const_comp_coeffs, &
+    mpas_rbf_interp_loc_2D_sca_lin_comp_coeffs, &
+    mpas_rbf_interp_loc_2D_sca_const_eval_with_derivs, &
+    mpas_rbf_interp_loc_2D_sca_lin_eval_with_derivs
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
   ! Routines for computing scalar interpolaiton coefficients in 3D (coplanar points
@@ -40,12 +40,12 @@ module RBF_interpolation
   !    where functionOrDerivAtSource = functionAtSources where .not.(isInterface)
   !                                  = functionNormalDerivAtSources where isInterface
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  public :: rbfInterp_func_3D_sca_const_dir_compCoeffs, &
-    rbfInterp_func_3DPlane_sca_lin_dir_compCoeffs, &
-    rbfInterp_func_3D_sca_lin_dir_compCoeffs, &
-    rbfInterp_func_3D_sca_const_dirNeu_compCoeffs, &
-    rbfInterp_func_3DPlane_sca_lin_dirNeu_compCoeffs, &
-    rbfInterp_func_3D_sca_lin_dirNeu_compCoeffs
+  public :: mpas_rbf_interp_func_3D_sca_const_dir_comp_coeffs, &
+    mpas_rbf_interp_func_3D_plane_sca_lin_dir_comp_coeffs, &
+    mpas_rbf_interp_func_3D_sca_lin_dir_comp_coeffs, &
+    mpas_rbf_interp_func_3D_sca_const_dir_neu_comp_coeffs, &
+    mpas_rbf_interp_func_3D_plane_sca_lin_dir_neu_comp_coeffs, &
+    mpas_rbf_interp_func_3D_sca_lin_dir_neu_comp_coeffs
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
   ! Routines for computing vector interpolaiton coefficients in 3D (coplanar points
@@ -86,14 +86,14 @@ module RBF_interpolation
   !    + sum_(j where isTangent) ((dFunction/dn dot UnitVector)_j*coefficients_j,i)
   !    for i = x,y,z
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  public :: rbfInterp_func_3D_vec_const_dir_compCoeffs, &
-    rbfInterp_func_3DPlane_vec_const_dir_compCoeffs!, &
-    !rbfInterp_func_3D_vec_const_tanNeu_compCoeffs, &
-    !rbfInterp_func_3DPlane_vec_const_tanNeu_compCoeffs
+  public :: mpas_rbf_interp_func_3D_vec_const_dir_comp_coeffs, &
+    mpas_rbf_interp_func_3D_plane_vec_const_dir_comp_coeffs!, &
+    !mpas_rbf_interp_func_3D_vec_const_tan_neu_comp_coeffs, &
+    !mpas_rbf_interp_func_3D_plane_vec_const_tan_neu_comp_coeffs
 
   contains
 
-  subroutine rbfInterp_initialize(grid)
+  subroutine mpas_rbf_interp_initialize(grid)
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
   ! Purpose: compute geometric fields that will be potentially useful for calling
   !          the interpolation routines
@@ -150,7 +150,7 @@ module RBF_interpolation
         localVerticalUnitVectors(1,iCell) = xCell(iCell)
         localVerticalUnitVectors(2,iCell) = yCell(iCell)
         localVerticalUnitVectors(3,iCell) = zCell(iCell)
-        call unit_vec_in_R3(localVerticalUnitVectors(:,iCell))
+        call mpas_unit_vec_in_r3(localVerticalUnitVectors(:,iCell))
       else ! on a plane
         localVerticalUnitVectors(:,iCell) = (/ 0., 0., 1. /)
       end if
@@ -167,7 +167,7 @@ module RBF_interpolation
       edgeNormalVectors(1,iEdge) = xEdge(iEdge) - xCell(iCell)
       edgeNormalVectors(2,iEdge) = yEdge(iEdge) - yCell(iCell)
       edgeNormalVectors(3,iEdge) = zEdge(iEdge) - zCell(iCell)
-      call unit_vec_in_R3(edgeNormalVectors(:,iEdge))
+      call mpas_unit_vec_in_r3(edgeNormalVectors(:,iEdge))
     end do
 
     do iCell=1,nCells
@@ -177,15 +177,15 @@ module RBF_interpolation
       rHat = localVerticalUnitVectors(:,iCell)
       normalDotRHat = sum(edgeNormalVectors(:,iEdge)*rHat)
       xHatPlane = edgeNormalVectors(:,iEdge) - normalDotRHat*rHat
-      call unit_vec_in_R3(xHatPlane)
+      call mpas_unit_vec_in_r3(xHatPlane)
 
-      call cross_product_in_R3(rHat, xHatPlane, yHatPlane)
-      call unit_vec_in_R3(yHatPlane) ! just to be sure...
+      call mpas_cross_product_in_r3(rHat, xHatPlane, yHatPlane)
+      call mpas_unit_vec_in_r3(yHatPlane) ! just to be sure...
       cellTangentPlane(:,1,iCell) = xHatPlane
       cellTangentPlane(:,2,iCell) = yHatPlane
     end do
 
-  end subroutine rbfInterp_initialize
+  end subroutine mpas_rbf_interp_initialize
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
   ! Purpose: Compute interpolation coefficients in 2D that can be used to
@@ -205,7 +205,7 @@ module RBF_interpolation
   !  coefficients - the coefficients needed to perform interpolation of the funciton
   !    at destination points yet to be specified
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  subroutine rbfInterp_loc_2D_sca_const_compCoeffs(pointCount, coeffCount, &
+  subroutine mpas_rbf_interp_loc_2D_sca_const_comp_coeffs(pointCount, coeffCount, &
     points, fieldValues, alpha, coefficients)
  
     integer, intent(in) :: pointCount, coeffCount
@@ -230,7 +230,7 @@ module RBF_interpolation
     do j=1,pointCount
       do i=j,pointCount
         rSquared = sum((points(j,:) - points(i,:))**2)/alpha**2
-        matrix(i,j) = evaluateRBF(rSquared)
+        matrix(i,j) = evaluate_rbf(rSquared)
         matrix(j,i) = matrix(i,j)
       end do
     end do
@@ -239,10 +239,10 @@ module RBF_interpolation
       matrix(j,pointCount+1) = 1.0
     end do
 
-    call LEGS(matrix(1:matrixSize,1:matrixSize), matrixSize, rhs(1:matrixSize), &
+    call mpas_legs(matrix(1:matrixSize,1:matrixSize), matrixSize, rhs(1:matrixSize), &
       coefficients(1:matrixSize), pivotIndices(1:matrixSize))
 
-  end subroutine rbfInterp_loc_2D_sca_const_compCoeffs
+  end subroutine mpas_rbf_interp_loc_2D_sca_const_comp_coeffs
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
   ! Purpose: Compute interpolation coefficients in 2D that can be used to
@@ -263,7 +263,7 @@ module RBF_interpolation
   !  coefficients - the coefficients needed to perform interpolation of the funciton
   !    at destination points yet to be specified
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  subroutine rbfInterp_loc_2D_sca_lin_compCoeffs(pointCount, coeffCount, &
+  subroutine mpas_rbf_interp_loc_2D_sca_lin_comp_coeffs(pointCount, coeffCount, &
     points, fieldValues, alpha, coefficients)
  
     integer, intent(in) :: pointCount, coeffCount
@@ -287,7 +287,7 @@ module RBF_interpolation
     do j=1,pointCount
       do i=j,pointCount
         rSquared = sum((points(j,:) - points(i,:))**2)/alpha**2
-        matrix(i,j) = evaluateRBF(rSquared)
+        matrix(i,j) = evaluate_rbf(rSquared)
         matrix(j,i) = matrix(i,j)
       end do
     end do
@@ -298,10 +298,10 @@ module RBF_interpolation
       matrix(pointCount+3,j) = points(j,2)
       matrix(j,pointCount+1:pointCount+3) = matrix(pointCount+1:pointCount+3, j)
     end do
-    call LEGS(matrix(1:matrixSize,1:matrixSize), matrixSize, rhs(1:matrixSize), &
+    call mpas_legs(matrix(1:matrixSize,1:matrixSize), matrixSize, rhs(1:matrixSize), &
       coefficients(1:matrixSize), pivotIndices(1:matrixSize))
 
-  end subroutine rbfInterp_loc_2D_sca_lin_compCoeffs
+  end subroutine mpas_rbf_interp_loc_2D_sca_lin_comp_coeffs
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
   ! Purpose: Evalute a scalar function in 2D using coefficients computed in
@@ -329,7 +329,7 @@ module RBF_interpolation
   !  derivs - the value of the function, the 2 components of its Jacobian and
   !    the 3 unique components of its Hessian at the evaluationPoint
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  subroutine rbfInterp_loc_2D_sca_const_evalWithDerivs(fieldCount, coeffCount, &
+  subroutine mpas_rbf_interp_loc_2D_sca_const_eval_with_derivs(fieldCount, coeffCount, &
     pointCount, coefficients, evaluationPoint, points, alpha, derivs)
     integer, intent(in) :: fieldCount, coeffCount, pointCount
     real(kind=RKIND), dimension(coeffCount, fieldCount), intent(in) :: coefficients
@@ -347,7 +347,7 @@ module RBF_interpolation
       x = (evaluationPoint(1) - points(pointIndex,1))
       y = (evaluationPoint(2) - points(pointIndex,2))
       rSquared = x**2 + y**2
-      call evaluateRBFAndDerivs(rSquared/alpha**2,  rbfValue, rbfDerivOverR, rbfSecondDeriv)
+      call mpas_evaluate_rbf_and_derivs(rSquared/alpha**2,  rbfValue, rbfDerivOverR, rbfSecondDeriv)
       rbfDerivOverR = rbfDerivOverR/alpha**2
       rbfSecondDeriv = rbfSecondDeriv/alpha**2
       if(rSquared/alpha**2 < 1e-7) then
@@ -356,7 +356,7 @@ module RBF_interpolation
         derivs(4,:) = derivs(4,:) + coefficients(pointIndex,:)*rbfSecondDeriv
         derivs(6,:) = derivs(6,:) + coefficients(pointIndex,:)*rbfSecondDeriv
       else
-        call evaluateRBFAndDerivs(rSquared,  rbfValue, rbfDerivOverR, rbfSecondDeriv)
+        call mpas_evaluate_rbf_and_derivs(rSquared,  rbfValue, rbfDerivOverR, rbfSecondDeriv)
         derivs(1,:) = derivs(1,:) + coefficients(pointIndex,:)*rbfValue
         derivs(2,:) = derivs(2,:) + coefficients(pointIndex,:)*rbfDerivOverR*x
         derivs(3,:) = derivs(3,:) + coefficients(pointIndex,:)*rbfDerivOverR*y
@@ -369,7 +369,7 @@ module RBF_interpolation
       end if
     end do
     derivs(1,:) = derivs(1,:) + coefficients(pointCount+1,:)
-  end subroutine rbfInterp_loc_2D_sca_const_evalWithDerivs
+  end subroutine mpas_rbf_interp_loc_2D_sca_const_eval_with_derivs
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
   ! Purpose: Evalute a scalar function in 2D using coefficients computed in
@@ -397,7 +397,7 @@ module RBF_interpolation
   !  derivs - the value of the function, the 2 components of its Jacobian and
   !    the 3 unique components of its Hessian at the evaluationPoint
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  subroutine rbfInterp_loc_2D_sca_lin_evalWithDerivs(fieldCount, coeffCount, &
+  subroutine mpas_rbf_interp_loc_2D_sca_lin_eval_with_derivs(fieldCount, coeffCount, &
     pointCount, coefficients, evaluationPoint, points, alpha, derivs)
     integer, intent(in) :: fieldCount, coeffCount, pointCount
     real(kind=RKIND), dimension(coeffCount, fieldCount), intent(in) :: coefficients
@@ -415,7 +415,7 @@ module RBF_interpolation
       x = (evaluationPoint(1) - points(pointIndex,1))
       y = (evaluationPoint(2) - points(pointIndex,2))
       rSquared = x**2 + y**2
-      call evaluateRBFAndDerivs(rSquared/alpha**2,  rbfValue, rbfDerivOverR, rbfSecondDeriv)
+      call mpas_evaluate_rbf_and_derivs(rSquared/alpha**2,  rbfValue, rbfDerivOverR, rbfSecondDeriv)
       rbfDerivOverR = rbfDerivOverR/alpha**2
       rbfSecondDeriv = rbfSecondDeriv/alpha**2
       if(rSquared/alpha**2 < 1e-7) then
@@ -424,7 +424,7 @@ module RBF_interpolation
         derivs(4,:) = derivs(4,:) + coefficients(pointIndex,:)*rbfSecondDeriv
         derivs(6,:) = derivs(6,:) + coefficients(pointIndex,:)*rbfSecondDeriv
       else
-        call evaluateRBFAndDerivs(rSquared,  rbfValue, rbfDerivOverR, rbfSecondDeriv)
+        call mpas_evaluate_rbf_and_derivs(rSquared,  rbfValue, rbfDerivOverR, rbfSecondDeriv)
         derivs(1,:) = derivs(1,:) + coefficients(pointIndex,:)*rbfValue
         derivs(2,:) = derivs(2,:) + coefficients(pointIndex,:)*rbfDerivOverR*x
         derivs(3,:) = derivs(3,:) + coefficients(pointIndex,:)*rbfDerivOverR*y
@@ -442,7 +442,7 @@ module RBF_interpolation
     derivs(2,:) = derivs(2,:) + coefficients(pointCount+2,:)
     derivs(3,:) = derivs(3,:) + coefficients(pointCount+3,:)
 
-  end subroutine rbfInterp_loc_2D_sca_lin_evalWithDerivs
+  end subroutine mpas_rbf_interp_loc_2D_sca_lin_eval_with_derivs
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
   ! Purpose: Compute interpolation coefficients in 3D that can be used to
@@ -467,7 +467,7 @@ module RBF_interpolation
   !  coefficients - the coefficients used to interpolate a function with Dirichlet
   !    boundary conditions to the specified destinationPoint
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  subroutine rbfInterp_func_3D_sca_const_dir_compCoeffs( &
+  subroutine mpas_rbf_interp_func_3D_sca_const_dir_comp_coeffs( &
     pointCount, sourcePoints, destinationPoint, alpha, coefficients)
 
     integer, intent(in) :: pointCount
@@ -494,7 +494,7 @@ module RBF_interpolation
     rhs = 0.0
     coeffs = 0.0
 
-    call setUpScalarRBFDirichletMatrixAndRHS(pointCount, sourcePoints, destinationPoint, &
+    call mpas_set_up_scalar_rbf_dirichlet_matrix_and_rhs(pointCount, sourcePoints, destinationPoint, &
       alpha, dirichletMatrix(1:pointCount,1:pointCount), rhs(1:pointCount))
 
     do i = 1, pointCount
@@ -505,7 +505,7 @@ module RBF_interpolation
     rhs(pointCount+1) = 1.0
 
     ! solve each linear system
-    call LEGS(dirichletMatrix, matrixSize, rhs, coeffs, pivotIndices)
+    call mpas_legs(dirichletMatrix, matrixSize, rhs, coeffs, pivotIndices)
     coefficients = coeffs(1:pointCount)
 
     deallocate(dirichletMatrix)  
@@ -513,7 +513,7 @@ module RBF_interpolation
     deallocate(coeffs)  
     deallocate(pivotIndices) 
 
-  end subroutine rbfInterp_func_3D_sca_const_dir_compCoeffs
+  end subroutine mpas_rbf_interp_func_3D_sca_const_dir_comp_coeffs
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
   ! Purpose: Compute interpolation coefficients in a plane in 3D that can be used to
@@ -543,7 +543,7 @@ module RBF_interpolation
   !  coefficients - the coefficients used to interpolate a function with Dirichlet
   !    boundary conditions to the specified destinationPoint
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  subroutine rbfInterp_func_3DPlane_sca_lin_dir_compCoeffs( &
+  subroutine mpas_rbf_interp_func_3D_plane_sca_lin_dir_comp_coeffs( &
     pointCount, sourcePoints, destinationPoint, &
     alpha, planeBasisVectors, coefficients)
 
@@ -572,7 +572,7 @@ module RBF_interpolation
     rhs = 0.0
     coeffs = 0.0
 
-    call setUpScalarRBFDirichletMatrixAndRHS(pointCount, sourcePoints, destinationPoint, &
+    call mpas_set_up_scalar_rbf_dirichlet_matrix_and_rhs(pointCount, sourcePoints, destinationPoint, &
       alpha, dirichletMatrix(1:pointCount,1:pointCount), rhs(1:pointCount))
 
     do i = 1, pointCount
@@ -588,7 +588,7 @@ module RBF_interpolation
     rhs(pointCount+3) = sum(destinationPoint(1:3)*planeBasisVectors(2,:))
 
     ! solve each linear system
-    call LEGS(dirichletMatrix, matrixSize, rhs, coeffs, pivotIndices)
+    call mpas_legs(dirichletMatrix, matrixSize, rhs, coeffs, pivotIndices)
     coefficients = coeffs(1:pointCount)
 
     deallocate(dirichletMatrix)  
@@ -596,7 +596,7 @@ module RBF_interpolation
     deallocate(coeffs)  
     deallocate(pivotIndices) 
 
-  end subroutine rbfInterp_func_3DPlane_sca_lin_dir_compCoeffs
+  end subroutine mpas_rbf_interp_func_3D_plane_sca_lin_dir_comp_coeffs
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
   ! Purpose: Compute interpolation coefficients in 3D that can be used to
@@ -621,7 +621,7 @@ module RBF_interpolation
   !  coefficients - the coefficients used to interpolate a function with Dirichlet
   !    boundary conditions to the specified destinationPoint
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  subroutine rbfInterp_func_3D_sca_lin_dir_compCoeffs(pointCount, &
+  subroutine mpas_rbf_interp_func_3D_sca_lin_dir_comp_coeffs(pointCount, &
     sourcePoints, destinationPoint, alpha, coefficients)
 
     integer, intent(in) :: pointCount
@@ -648,7 +648,7 @@ module RBF_interpolation
     rhs = 0.0
     coeffs = 0.0
 
-    call setUpScalarRBFDirichletMatrixAndRHS(pointCount, sourcePoints, destinationPoint, &
+    call mpas_set_up_scalar_rbf_dirichlet_matrix_and_rhs(pointCount, sourcePoints, destinationPoint, &
       alpha, dirichletMatrix(1:pointCount,1:pointCount), rhs(1:pointCount))
 
     do i = 1, pointCount
@@ -662,7 +662,7 @@ module RBF_interpolation
     rhs(pointCount+2:pointCount+4) = destinationPoint(1:3)
 
     ! solve each linear system
-    call LEGS(dirichletMatrix, matrixSize, rhs, coeffs, pivotIndices)
+    call mpas_legs(dirichletMatrix, matrixSize, rhs, coeffs, pivotIndices)
     coefficients = coeffs(1:pointCount)
 
     deallocate(dirichletMatrix)  
@@ -670,7 +670,7 @@ module RBF_interpolation
     deallocate(coeffs)  
     deallocate(pivotIndices) 
 
-  end subroutine rbfInterp_func_3D_sca_lin_dir_compCoeffs
+  end subroutine mpas_rbf_interp_func_3D_sca_lin_dir_comp_coeffs
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
   ! Purpose: Compute interpolation coefficients in 3D that can be used to
@@ -704,7 +704,7 @@ module RBF_interpolation
   !  neumannCoefficients - the coefficients used to interpolate a function with Neumann
   !    boundary conditions to the specified destinationPoint
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  subroutine rbfInterp_func_3D_sca_const_dirNeu_compCoeffs( &
+  subroutine mpas_rbf_interp_func_3D_sca_const_dir_neu_comp_coeffs( &
     pointCount, sourcePoints, isInterface, interfaceNormals, destinationPoint, &
     alpha, dirichletCoefficients, neumannCoefficients)
 
@@ -739,7 +739,7 @@ module RBF_interpolation
     rhsCopy = 0.0
     coeffs = 0.0
 
-    call setUpScalarRBFMatrixAndRHS(pointCount, &
+    call mpas_set_up_scalar_rbf_matrix_and_rhs(pointCount, &
       sourcePoints, isInterface, interfaceNormals, destinationPoint, &
       alpha, dirichletMatrix(1:pointCount,1:pointCount), &
       neumannMatrix(1:pointCount,1:pointCount), rhs(1:pointCount))
@@ -759,10 +759,10 @@ module RBF_interpolation
 
     ! solve each linear system
     rhsCopy = rhs
-    call LEGS(dirichletMatrix, matrixSize, rhs, coeffs, pivotIndices)
+    call mpas_legs(dirichletMatrix, matrixSize, rhs, coeffs, pivotIndices)
     dirichletCoefficients = coeffs(1:pointCount)
 
-    call LEGS(neumannMatrix, matrixSize, rhsCopy, coeffs, pivotIndices)
+    call mpas_legs(neumannMatrix, matrixSize, rhsCopy, coeffs, pivotIndices)
     neumannCoefficients = coeffs(1:pointCount)
 
     deallocate(dirichletMatrix)  
@@ -772,7 +772,7 @@ module RBF_interpolation
     deallocate(coeffs)  
     deallocate(pivotIndices) 
 
-  end subroutine rbfInterp_func_3D_sca_const_dirNeu_compCoeffs
+  end subroutine mpas_rbf_interp_func_3D_sca_const_dir_neu_comp_coeffs
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
   ! Purpose: Compute interpolation coefficients in a plane in 3D that can be used to
@@ -811,7 +811,7 @@ module RBF_interpolation
   !  neumannCoefficients - the coefficients used to interpolate a function with Neumann
   !    boundary conditions to the specified destinationPoint
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  subroutine rbfInterp_func_3DPlane_sca_lin_dirNeu_compCoeffs( &
+  subroutine mpas_rbf_interp_func_3D_plane_sca_lin_dir_neu_comp_coeffs( &
     pointCount, sourcePoints, isInterface, interfaceNormals, destinationPoint, &
     alpha, planeBasisVectors, dirichletCoefficients, neumannCoefficients)
 
@@ -847,7 +847,7 @@ module RBF_interpolation
     rhsCopy = 0.0
     coeffs = 0.0
 
-    call setUpScalarRBFMatrixAndRHS(pointCount, &
+    call mpas_set_up_scalar_rbf_matrix_and_rhs(pointCount, &
       sourcePoints, isInterface, interfaceNormals, destinationPoint, &
       alpha, dirichletMatrix(1:pointCount,1:pointCount), &
       neumannMatrix(1:pointCount,1:pointCount), rhs(1:pointCount))
@@ -876,10 +876,10 @@ module RBF_interpolation
 
     ! solve each linear system
     rhsCopy = rhs
-    call LEGS(dirichletMatrix, matrixSize, rhs, coeffs, pivotIndices)
+    call mpas_legs(dirichletMatrix, matrixSize, rhs, coeffs, pivotIndices)
     dirichletCoefficients = coeffs(1:pointCount)
 
-    call LEGS(neumannMatrix, matrixSize, rhsCopy, coeffs, pivotIndices)
+    call mpas_legs(neumannMatrix, matrixSize, rhsCopy, coeffs, pivotIndices)
     neumannCoefficients = coeffs(1:pointCount)
 
     deallocate(dirichletMatrix)  
@@ -889,7 +889,7 @@ module RBF_interpolation
     deallocate(coeffs)  
     deallocate(pivotIndices) 
 
-  end subroutine rbfInterp_func_3DPlane_sca_lin_dirNeu_compCoeffs
+  end subroutine mpas_rbf_interp_func_3D_plane_sca_lin_dir_neu_comp_coeffs
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
   ! Purpose: Compute interpolation coefficients in 3D that can be used to
@@ -923,7 +923,7 @@ module RBF_interpolation
   !  neumannCoefficients - the coefficients used to interpolate a function with Neumann
   !    boundary conditions to the specified destinationPoint
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  subroutine rbfInterp_func_3D_sca_lin_dirNeu_compCoeffs(pointCount, &
+  subroutine mpas_rbf_interp_func_3D_sca_lin_dir_neu_comp_coeffs(pointCount, &
     sourcePoints, isInterface, interfaceNormals, destinationPoint, &
     alpha, dirichletCoefficients, neumannCoefficients)
 
@@ -958,7 +958,7 @@ module RBF_interpolation
     rhsCopy = 0.0
     coeffs = 0.0
 
-    call setUpScalarRBFMatrixAndRHS(pointCount, &
+    call mpas_set_up_scalar_rbf_matrix_and_rhs(pointCount, &
       sourcePoints, isInterface, interfaceNormals, destinationPoint, &
       alpha, dirichletMatrix(1:pointCount,1:pointCount), &
       neumannMatrix(1:pointCount,1:pointCount), rhs(1:pointCount))
@@ -984,10 +984,10 @@ module RBF_interpolation
 
     ! solve each linear system
     rhsCopy = rhs
-    call LEGS(dirichletMatrix, matrixSize, rhs, coeffs, pivotIndices)
+    call mpas_legs(dirichletMatrix, matrixSize, rhs, coeffs, pivotIndices)
     dirichletCoefficients = coeffs(1:pointCount)
 
-    call LEGS(neumannMatrix, matrixSize, rhsCopy, coeffs, pivotIndices)
+    call mpas_legs(neumannMatrix, matrixSize, rhsCopy, coeffs, pivotIndices)
     neumannCoefficients = coeffs(1:pointCount)
 
     deallocate(dirichletMatrix)  
@@ -997,7 +997,7 @@ module RBF_interpolation
     deallocate(coeffs)  
     deallocate(pivotIndices) 
 
-  end subroutine rbfInterp_func_3D_sca_lin_dirNeu_compCoeffs
+  end subroutine mpas_rbf_interp_func_3D_sca_lin_dir_neu_comp_coeffs
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
   ! Purpose: Compute interpolation coefficients in 3D that can be used to
@@ -1026,7 +1026,7 @@ module RBF_interpolation
   !  coefficients - the coefficients used to interpolate a function with Dirichlet
   !    boundary conditions to the specified destinationPoint
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  subroutine rbfInterp_func_3D_vec_const_dir_compCoeffs(pointCount, &
+  subroutine mpas_rbf_interp_func_3D_vec_const_dir_comp_coeffs(pointCount, &
     sourcePoints, unitVectors, destinationPoint, &
     alpha, coefficients)
 
@@ -1056,7 +1056,7 @@ module RBF_interpolation
     rhs = 0.0
     coeffs = 0.0
 
-    call setUpVectorDirichletRBFMatrixAndRHS(pointCount, 3, &
+    call mpas_set_up_vector_dirichlet_rbf_matrix_and_rhs(pointCount, 3, &
       sourcePoints, unitVectors, destinationPoint, &
       alpha, matrix(1:pointCount,1:pointCount), rhs(1:pointCount,:))
 
@@ -1072,7 +1072,7 @@ module RBF_interpolation
     ! solve each linear system
     do i = 1, 3
       matrixCopy = matrix
-      call LEGS(matrixCopy, matrixSize, rhs(:,i), coeffs(:,i), pivotIndices)
+      call mpas_legs(matrixCopy, matrixSize, rhs(:,i), coeffs(:,i), pivotIndices)
     end do
     coefficients = coeffs(1:pointCount,:)
 
@@ -1082,7 +1082,7 @@ module RBF_interpolation
     deallocate(coeffs)  
     deallocate(pivotIndices) 
 
-  end subroutine rbfInterp_func_3D_vec_const_dir_compCoeffs 
+  end subroutine mpas_rbf_interp_func_3D_vec_const_dir_comp_coeffs 
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
   ! Purpose: Compute interpolation coefficients in 3D that can be used to
@@ -1116,7 +1116,7 @@ module RBF_interpolation
   !  coefficients - the coefficients used to interpolate a function with Dirichlet
   !    boundary conditions to the specified destinationPoint
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  subroutine rbfInterp_func_3DPlane_vec_const_dir_compCoeffs(pointCount, &
+  subroutine mpas_rbf_interp_func_3D_plane_vec_const_dir_comp_coeffs(pointCount, &
     sourcePoints, unitVectors, destinationPoint, &
     alpha, planeBasisVectors, coefficients)
 
@@ -1162,7 +1162,7 @@ module RBF_interpolation
     planarDestinationPoint(1) = sum(destinationPoint*planeBasisVectors(1,:)) 
     planarDestinationPoint(2) = sum(destinationPoint*planeBasisVectors(2,:)) 
 
-    call setUpVectorDirichletRBFMatrixAndRHS(pointCount, 2, &
+    call mpas_set_up_vector_dirichlet_rbf_matrix_and_rhs(pointCount, 2, &
       planarSourcePoints, planarUnitVectors, planarDestinationPoint, &
       alpha, matrix(1:pointCount,1:pointCount), rhs(1:pointCount,:))
 
@@ -1176,8 +1176,8 @@ module RBF_interpolation
 
     ! solve each linear system
     matrixCopy = matrix
-    call LEGS(matrix, matrixSize, rhs(:,1), coeffs(:,1), pivotIndices)
-    call LEGS(matrixCopy, matrixSize, rhs(:,2), coeffs(:,2), pivotIndices)
+    call mpas_legs(matrix, matrixSize, rhs(:,1), coeffs(:,1), pivotIndices)
+    call mpas_legs(matrixCopy, matrixSize, rhs(:,2), coeffs(:,2), pivotIndices)
 
 
     do i = 1,3 
@@ -1191,7 +1191,7 @@ module RBF_interpolation
     deallocate(coeffs)  
     deallocate(pivotIndices)
 
-  end subroutine rbfInterp_func_3DPlane_vec_const_dir_compCoeffs 
+  end subroutine mpas_rbf_interp_func_3D_plane_vec_const_dir_comp_coeffs 
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
   ! Purpose: Compute interpolation coefficients in 3D that can be used to
@@ -1228,7 +1228,7 @@ module RBF_interpolation
   !  coefficients - the coefficients used to interpolate a function with Dirichlet
   !    boundary conditions to the specified destinationPoint
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  subroutine rbfInterp_func_3D_vec_const_tanNeu_compCoeffs(pointCount, &
+  subroutine mpas_rbf_interp_func_3D_vec_const_tan_neu_comp_coeffs(pointCount, &
     sourcePoints, isTangentToInterface, normalVectorIndex, unitVectors, destinationPoint, &
     alpha, coefficients)
 
@@ -1260,7 +1260,7 @@ module RBF_interpolation
     rhs = 0.0
     coeffs = 0.0
 
-    call setUpVectorFreeSlipRBFMatrixAndRHS(pointCount, 3, &
+    call mpas_set_up_vector_free_slip_rbf_matrix_and_rhs(pointCount, 3, &
       sourcePoints, isTangentToInterface, normalVectorIndex, unitVectors, destinationPoint, &
       alpha, matrix(1:pointCount,1:pointCount), rhs(1:pointCount,:))
 
@@ -1277,7 +1277,7 @@ module RBF_interpolation
     ! solve each linear system
     do i = 1, 3
       matrixCopy = matrix
-      call LEGS(matrixCopy, matrixSize, rhs(:,i), coeffs(:,i), pivotIndices)
+      call mpas_legs(matrixCopy, matrixSize, rhs(:,i), coeffs(:,i), pivotIndices)
     end do
     coefficients = coeffs(1:pointCount,:)
 
@@ -1287,7 +1287,7 @@ module RBF_interpolation
     deallocate(coeffs)  
     deallocate(pivotIndices)
 
-  end subroutine rbfInterp_func_3D_vec_const_tanNeu_compCoeffs 
+  end subroutine mpas_rbf_interp_func_3D_vec_const_tan_neu_comp_coeffs 
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
   ! Purpose: Compute interpolation coefficients in 3D that can be used to
@@ -1329,7 +1329,7 @@ module RBF_interpolation
   !  coefficients - the coefficients used to interpolate a function with Dirichlet
   !    boundary conditions to the specified destinationPoint
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  subroutine rbfInterp_func_3DPlane_vec_const_tanNeu_compCoeffs(&
+  subroutine mpas_rbf_interp_func_3D_plane_vec_const_tan_neu_comp_coeffs(&
     pointCount, sourcePoints, isTangentToInterface, normalVectorIndex, unitVectors, &
     destinationPoint, alpha, planeBasisVectors, coefficients)
 
@@ -1374,7 +1374,7 @@ module RBF_interpolation
     end do
     planarDestinationPoint(1) = sum(destinationPoint*planeBasisVectors(1,:)) 
     planarDestinationPoint(2) = sum(destinationPoint*planeBasisVectors(2,:)) 
-    call setUpVectorFreeSlipRBFMatrixAndRHS(pointCount, 2, &
+    call mpas_set_up_vector_free_slip_rbf_matrix_and_rhs(pointCount, 2, &
       planarSourcePoints, isTangentToInterface, normalVectorIndex, planarUnitVectors, &
       planarDestinationPoint, alpha, matrix(1:pointCount,1:pointCount), rhs(1:pointCount,:))
 
@@ -1391,8 +1391,8 @@ module RBF_interpolation
 
     ! solve each linear system
     matrixCopy = matrix
-    call LEGS(matrix, matrixSize, rhs(:,1), coeffs(:,1), pivotIndices)
-    call LEGS(matrixCopy, matrixSize, rhs(:,2), coeffs(:,2), pivotIndices)
+    call mpas_legs(matrix, matrixSize, rhs(:,1), coeffs(:,1), pivotIndices)
+    call mpas_legs(matrixCopy, matrixSize, rhs(:,2), coeffs(:,2), pivotIndices)
 
     coefficients(:,1) = planeBasisVectors(1,1)*coeffs(1:pointCount,1) &
       + planeBasisVectors(2,1)*coeffs(1:pointCount,2) 
@@ -1407,23 +1407,23 @@ module RBF_interpolation
     deallocate(coeffs)  
     deallocate(pivotIndices)
 
-   end subroutine rbfInterp_func_3DPlane_vec_const_tanNeu_compCoeffs 
+   end subroutine mpas_rbf_interp_func_3D_plane_vec_const_tan_neu_comp_coeffs 
 
 
 !!!!!!!!!!!!!!!!!!!!!
 ! private subroutines
 !!!!!!!!!!!!!!!!!!!!!
 
-  function evaluateRBF(rSquared) result(rbfValue)
+  function evaluate_rbf(rSquared) result(rbfValue)
     real(kind=RKIND), intent(in) :: rSquared
     real(kind=RKIND) :: rbfValue
 
     ! inverse multiquadratic
     rbfValue = 1/sqrt(1 + rSquared)
 
-  end function evaluateRBF
+  end function evaluate_rbf
 
-  subroutine evaluateRBFAndDeriv(rSquared, rbfValue, rbfDerivOverR)
+  subroutine mpas_evaluate_rbf_and_deriv(rSquared, rbfValue, rbfDerivOverR)
     real(kind=RKIND), intent(in) :: rSquared
     real(kind=RKIND), intent(out) :: rbfValue, rbfDerivOverR
 
@@ -1431,9 +1431,9 @@ module RBF_interpolation
     rbfValue = 1/sqrt(1 + rSquared)
     rbfDerivOverR = -rbfValue**3
 
-  end subroutine evaluateRBFAndDeriv
+  end subroutine mpas_evaluate_rbf_and_deriv
 
-  subroutine evaluateRBFAndDerivs(rSquared, rbfValue, rbfDerivOverR, rbfSecondDeriv)
+  subroutine mpas_evaluate_rbf_and_derivs(rSquared, rbfValue, rbfDerivOverR, rbfSecondDeriv)
     real(kind=RKIND), intent(in) :: rSquared
     real(kind=RKIND), intent(out) :: rbfValue, rbfDerivOverR, rbfSecondDeriv
 
@@ -1442,9 +1442,9 @@ module RBF_interpolation
     rbfDerivOverR = -rbfValue**3
     rbfSecondDeriv = (2*rSquared-1)*rbfValue**5
 
-  end subroutine evaluateRBFAndDerivs
+  end subroutine mpas_evaluate_rbf_and_derivs
 
-  subroutine setUpScalarRBFDirichletMatrixAndRHS(pointCount, sourcePoints, destinationPoint, &
+  subroutine mpas_set_up_scalar_rbf_dirichlet_matrix_and_rhs(pointCount, sourcePoints, destinationPoint, &
     alpha, dirichletMatrix, rhs)
 
     integer, intent(in) :: pointCount
@@ -1461,19 +1461,19 @@ module RBF_interpolation
     do j = 1, pointCount
       do i = 1, pointCount
         rSquared = sum((sourcePoints(i,:)-sourcePoints(j,:))**2)/alpha**2
-        rbfValue = evaluateRBF(rSquared)
+        rbfValue = evaluate_rbf(rSquared)
         dirichletMatrix(i,j) = rbfValue
       end do
     end do
 
     do j = 1, pointCount
       rSquared = sum((destinationPoint-sourcePoints(j,:))**2)/alpha**2
-      rhs(j) = evaluateRBF(rSquared)
+      rhs(j) = evaluate_rbf(rSquared)
     end do
 
-  end subroutine setUpScalarRBFDirichletMatrixAndRHS
+  end subroutine mpas_set_up_scalar_rbf_dirichlet_matrix_and_rhs
 
-  subroutine setUpScalarRBFMatrixAndRHS(pointCount, &
+  subroutine mpas_set_up_scalar_rbf_matrix_and_rhs(pointCount, &
     sourcePoints, isInterface, interfaceNormals, destinationPoint, &
     alpha, dirichletMatrix, neumannMatrix, rhs)
 
@@ -1497,7 +1497,7 @@ module RBF_interpolation
           rSquared = sum((sourcePoints(i,:)-sourcePoints(j,:))**2)/alpha**2
           normalDotX = sum(interfaceNormals(j,:) &
             * (sourcePoints(j,:)-sourcePoints(i,:)))
-          call evaluateRBFAndDeriv(rSquared, rbfValue, rbfDerivOverR)
+          call mpas_evaluate_rbf_and_deriv(rSquared, rbfValue, rbfDerivOverR)
           rbfDerivOverR = rbfDerivOverR/alpha**2
           dirichletMatrix(i,j) = rbfValue
           neumannMatrix(i,j) = rbfDerivOverR*normalDotX
@@ -1505,7 +1505,7 @@ module RBF_interpolation
       else
         do i = 1, pointCount
           rSquared = sum((sourcePoints(i,:)-sourcePoints(j,:))**2)/alpha**2
-          rbfValue = evaluateRBF(rSquared)
+          rbfValue = evaluate_rbf(rSquared)
           dirichletMatrix(i,j) = rbfValue
           neumannMatrix(i,j) = rbfValue
         end do
@@ -1514,12 +1514,12 @@ module RBF_interpolation
 
     do j = 1, pointCount
       rSquared = sum((destinationPoint-sourcePoints(j,:))**2)/alpha**2
-      rhs(j) = evaluateRBF(rSquared)
+      rhs(j) = evaluate_rbf(rSquared)
     end do
 
-  end subroutine setUpScalarRBFMatrixAndRHS
+  end subroutine mpas_set_up_scalar_rbf_matrix_and_rhs
 
-  subroutine setUpVectorDirichletRBFMatrixAndRHS(pointCount, dimensions, &
+  subroutine mpas_set_up_vector_dirichlet_rbf_matrix_and_rhs(pointCount, dimensions, &
     sourcePoints, unitVectors, destinationPoint, &
     alpha, matrix, rhs)
 
@@ -1538,7 +1538,7 @@ module RBF_interpolation
     do j = 1, pointCount
       do i = j, pointCount
         rSquared = sum((sourcePoints(i,:)-sourcePoints(j,:))**2)/alpha**2
-        rbfValue = evaluateRBF(rSquared)
+        rbfValue = evaluate_rbf(rSquared)
         unitVectorDotProduct = sum(unitVectors(i,:)*unitVectors(j,:))
         matrix(i,j) = rbfValue*unitVectorDotProduct
         matrix(j,i) = matrix(i,j)
@@ -1547,12 +1547,12 @@ module RBF_interpolation
 
     do j = 1, pointCount
       rSquared = sum((destinationPoint-sourcePoints(j,:))**2)/alpha**2
-      rhs(j,:) = evaluateRBF(rSquared)*unitVectors(j,:)
+      rhs(j,:) = evaluate_rbf(rSquared)*unitVectors(j,:)
     end do
 
-  end subroutine setUpVectorDirichletRBFMatrixAndRHS
+  end subroutine mpas_set_up_vector_dirichlet_rbf_matrix_and_rhs
 
-  subroutine setUpVectorFreeSlipRBFMatrixAndRHS(pointCount, dimensions, &
+  subroutine mpas_set_up_vector_free_slip_rbf_matrix_and_rhs(pointCount, dimensions, &
     sourcePoints, isTangentToInterface, normalVectorIndex, unitVectors, destinationPoint, &
     alpha, matrix, rhs)
 
@@ -1577,7 +1577,7 @@ module RBF_interpolation
           rSquared = sum((sourcePoints(i,:)-sourcePoints(j,:))**2)/alpha**2
           normalVector = unitVectors(normalVectorIndex(j),:) 
           normalDotX = sum(normalVector * (sourcePoints(j,:)-sourcePoints(i,:)))
-          call evaluateRBFAndDeriv(rSquared, rbfValue, rbfDerivOverR)
+          call mpas_evaluate_rbf_and_deriv(rSquared, rbfValue, rbfDerivOverR)
           rbfDerivOverR = rbfDerivOverR/alpha**2
           unitVectorDotProduct = sum(unitVectors(i,:)*unitVectors(j,:))
           matrix(i,j) = rbfDerivOverR*normalDotX*unitVectorDotProduct
@@ -1585,7 +1585,7 @@ module RBF_interpolation
       else
         do i = 1, pointCount
           rSquared = sum((sourcePoints(i,:)-sourcePoints(j,:))**2)/alpha**2
-          rbfValue = evaluateRBF(rSquared)
+          rbfValue = evaluate_rbf(rSquared)
           unitVectorDotProduct = sum(unitVectors(i,:)*unitVectors(j,:))
           matrix(i,j) = rbfValue*unitVectorDotProduct
         end do
@@ -1594,27 +1594,27 @@ module RBF_interpolation
 
     do j = 1, pointCount
       rSquared = sum((destinationPoint-sourcePoints(j,:))**2)/alpha**2
-      rhs(j,:) = evaluateRBF(rSquared)*unitVectors(j,:)
+      rhs(j,:) = evaluate_rbf(rSquared)*unitVectors(j,:)
     end do
 
-  end subroutine setUpVectorFreeSlipRBFMatrixAndRHS
+  end subroutine mpas_set_up_vector_free_slip_rbf_matrix_and_rhs
 
-  subroutine unit_vec_in_R3(xin)
+  subroutine mpas_unit_vec_in_r3(xin)
     implicit none
     real (kind=RKIND), intent(inout) :: xin(3)
     real (kind=RKIND) :: mag
     mag = sqrt(xin(1)**2+xin(2)**2+xin(3)**2)
     xin(:) = xin(:) / mag
-  end subroutine unit_vec_in_R3
+  end subroutine mpas_unit_vec_in_r3
 
-  subroutine cross_product_in_R3(p_1,p_2,p_out)
+  subroutine mpas_cross_product_in_r3(p_1,p_2,p_out)
     real (kind=RKIND), intent(in) :: p_1 (3), p_2 (3)
     real (kind=RKIND), intent(out) :: p_out (3)
 
     p_out(1) = p_1(2)*p_2(3)-p_1(3)*p_2(2)
     p_out(2) = p_1(3)*p_2(1)-p_1(1)*p_2(3)
     p_out(3) = p_1(1)*p_2(2)-p_1(2)*p_2(1)
-  end subroutine cross_product_in_R3
+  end subroutine mpas_cross_product_in_r3
 
 ! Updated 10/24/2001.
 !
@@ -1651,15 +1651,15 @@ module RBF_interpolation
 !       ((A(I,J), J=1,N),I=1,N) /100.0,100.0,100.0,-100.0, &
 !                         300.0,-100.0,-100.0,-100.0, 300.0/
 !
-!  CALL LEGS (A,N,B,X,INDX)
+!  call mpas_legs (A,N,B,X,INDX)
 !
 !  WRITE (6, "(F16.8)") (X(I), I=1,N)
 !END PROGRAM EX43
 
 
-SUBROUTINE LEGS (A,N,B,X,INDX)
+subroutine mpas_legs (A,N,B,X,INDX)
 !
-! Subroutine to solve the equation A(N,N)*X(N) = B(N) with the
+! subroutine to solve the equation A(N,N)*X(N) = B(N) with the
 ! partial-pivoting Gaussian elimination scheme.
 ! Copyright (c) Tao Pang 2001.
 !
@@ -1671,7 +1671,7 @@ SUBROUTINE LEGS (A,N,B,X,INDX)
   real(kind=RKIND), INTENT (INOUT), DIMENSION (N) :: B
   real(kind=RKIND), INTENT (OUT), DIMENSION (N) :: X
 !
-  CALL ELGS (A,N,INDX)
+  CALL elgs (A,N,INDX)
 !
   DO I = 1, N-1
     DO J = I+1, N
@@ -1688,7 +1688,7 @@ SUBROUTINE LEGS (A,N,B,X,INDX)
     X(I) =  X(I)/A(INDX(I),I)
   END DO
 !
-END SUBROUTINE LEGS
+END subroutine mpas_legs
 !
 
 
@@ -1709,9 +1709,9 @@ END SUBROUTINE LEGS
 !                                                                       !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-SUBROUTINE MIGS (A,N,X,INDX)
+subroutine migs (A,N,X,INDX)
 !
-! Subroutine to invert matrix A(N,N) with the inverse stored
+! subroutine to invert matrix A(N,N) with the inverse stored
 ! in X(N,N) in the output.  Copyright (c) Tao Pang 2001.
 !
   IMPLICIT NONE
@@ -1731,7 +1731,7 @@ SUBROUTINE MIGS (A,N,X,INDX)
     B(I,I) = 1.0
   END DO
 !
-  CALL ELGS (A,N,INDX)
+  CALL elgs (A,N,INDX)
 !
   DO I = 1, N-1
     DO J = I+1, N
@@ -1751,12 +1751,12 @@ SUBROUTINE MIGS (A,N,X,INDX)
       X(J,I) =  X(J,I)/A(INDX(J),J)
     END DO
   END DO
-END SUBROUTINE MIGS
+END subroutine migs
 
 
-SUBROUTINE ELGS (A,N,INDX)
+subroutine elgs (A,N,INDX)
 !
-! Subroutine to perform the partial-pivoting Gaussian elimination.
+! subroutine to perform the partial-pivoting Gaussian elimination.
 ! A(N,N) is the original matrix in the input and transformed matrix
 ! plus the pivoting element ratios below the diagonal in the output.
 ! INDX(N) records the pivoting order.  Copyright (c) Tao Pang 2001.
@@ -1818,7 +1818,7 @@ SUBROUTINE ELGS (A,N,INDX)
     END DO
   END DO
 !
-END SUBROUTINE ELGS
+END subroutine elgs
 
-end module RBF_interpolation
+end module mpas_rbf_interpolation
 

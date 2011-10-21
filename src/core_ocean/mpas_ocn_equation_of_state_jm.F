@@ -14,9 +14,9 @@
 
 module ocn_equation_of_state_jm
 
-   use grid_types
-   use configure
-   use timer
+   use mpas_grid_types
+   use mpas_configure
+   use mpas_timer
 
    implicit none
    private
@@ -194,7 +194,7 @@ contains
 
       err = 0
 
-      call timer_start("equation_of_state_jm")
+      call mpas_timer_start("equation_of_state_jm")
 
       nCells      = grid % nCells
       maxLevelCell      => grid % maxLevelCell % array
@@ -239,7 +239,7 @@ contains
       write(0,*) 'Abort: In equation_of_state_jm', &
          ' k_displaced must be between 1 and nVertLevels for ', &
          'displacement_type = absolute'
-      call dmpar_abort(dminfo)
+      call mpas_dmpar_abort(dminfo)
    endif
 
    if (k_displaced == 0) then
@@ -309,7 +309,7 @@ contains
 
    deallocate(pRefEOS,p,p2)
 
-   call timer_stop("equation_of_state_jm")
+   call mpas_timer_stop("equation_of_state_jm")
 
    end subroutine ocn_equation_of_state_jm_rho!}}}
 

@@ -14,9 +14,9 @@
 
 module ocn_tracer_vadv_spline2
 
-   use grid_types
-   use configure
-   use timer
+   use mpas_grid_types
+   use mpas_configure
+   use mpas_timer
 
    implicit none
    private
@@ -125,7 +125,7 @@ contains
       if(.not.spline2On) return
       ! Compute tracerTop using linear interpolation.
 
-      call timer_start("compute_scalar_tend-vert adv spline 2")
+      call mpas_timer_start("compute_scalar_tend-vert adv spline 2")
 
       nCells = grid % nCells
       nCellsSolve = grid % nCellsSolve
@@ -162,7 +162,7 @@ contains
 
       deallocate(tracerTop)
 
-      call timer_stop("compute_scalar_tend-vert adv spline 2")
+      call mpas_timer_stop("compute_scalar_tend-vert adv spline 2")
    !--------------------------------------------------------------------
 
    end subroutine ocn_tracer_vadv_spline2_tend!}}}

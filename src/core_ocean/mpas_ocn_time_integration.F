@@ -14,13 +14,13 @@
 
 module ocn_time_integration
 
-   use grid_types
-   use configure
-   use constants
-   use dmpar
-   use vector_reconstruction
-   use spline_interpolation
-   use timer
+   use mpas_grid_types
+   use mpas_configure
+   use mpas_constants
+   use mpas_dmpar
+   use mpas_vector_reconstruction
+   use mpas_spline_interpolation
+   use mpas_timer
 
    use ocn_time_integration_rk4
    use ocn_time_integration_split
@@ -100,7 +100,7 @@ module ocn_time_integration
 
         if (isNaN(sum(block % state % time_levs(2) % state % u % array))) then
            write(0,*) 'Abort: NaN detected'
-           call dmpar_abort(dminfo)
+           call mpas_dmpar_abort(dminfo)
         endif
 
         block => block % next

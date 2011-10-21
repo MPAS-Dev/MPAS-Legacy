@@ -1,6 +1,6 @@
-module grid_types
+module mpas_grid_types
 
-   use dmpar
+   use mpas_dmpar
 
    integer, parameter :: nTimeLevs = 2
 
@@ -133,7 +133,7 @@ module grid_types
    contains
 
 
-   subroutine allocate_domain(dom, dminfo)
+   subroutine mpas_allocate_domain(dom, dminfo)
 
       implicit none
 
@@ -144,10 +144,10 @@ module grid_types
       nullify(dom % blocklist)
       dom % dminfo => dminfo
 
-   end subroutine allocate_domain
+   end subroutine mpas_allocate_domain
 
 
-   subroutine allocate_block(b, dom, &
+   subroutine mpas_allocate_block(b, dom, &
 #include "dim_dummy_args.inc"
                             )
 
@@ -168,13 +168,13 @@ module grid_types
 
 #include "block_allocs.inc"
 
-   end subroutine allocate_block
+   end subroutine mpas_allocate_block
 
 
 #include "group_alloc_routines.inc"
 
 
-   subroutine deallocate_domain(dom)
+   subroutine mpas_deallocate_domain(dom)
 
       implicit none
 
@@ -184,16 +184,16 @@ module grid_types
 
       block_ptr => dom % blocklist
       do while (associated(block_ptr))
-         call deallocate_block(block_ptr)
+         call mpas_deallocate_block(block_ptr)
          block_ptr => block_ptr % next
       end do
 
       deallocate(dom) 
 
-   end subroutine deallocate_domain
+   end subroutine mpas_deallocate_domain
 
 
-   subroutine deallocate_block(b)
+   subroutine mpas_deallocate_block(b)
  
       implicit none
 
@@ -205,7 +205,7 @@ module grid_types
 
 #include "block_deallocs.inc"
 
-   end subroutine deallocate_block
+   end subroutine mpas_deallocate_block
 
 
 #include "group_dealloc_routines.inc"
@@ -216,4 +216,4 @@ module grid_types
 
 #include "group_shift_level_routines.inc"
 
-end module grid_types
+end module mpas_grid_types

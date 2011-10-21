@@ -19,8 +19,8 @@ module mpas_subdriver
       real (kind=RKIND) :: dt
       character(len=32) :: timeStamp
 
-      call timer_start("total time")
-      call timer_start("initialize")
+      call mpas_timer_start("total time")
+      call mpas_timer_start("initialize")
 
 
       !
@@ -29,7 +29,7 @@ module mpas_subdriver
       call mpas_framework_init(dminfo, domain)
 
 
-      call input_state_for_domain(domain)
+      call mpas_input_state_for_domain(domain)
 
 
       !
@@ -37,7 +37,7 @@ module mpas_subdriver
       !
       call mpas_core_init(domain, timeStamp)
 
-      call timer_stop("initialize")
+      call mpas_timer_stop("initialize")
 
 
       !
@@ -46,9 +46,9 @@ module mpas_subdriver
       output_frame = 1
 
       if(config_frames_per_outfile > 0) then
-         call output_state_init(output_obj, domain, "OUTPUT", trim(timeStamp))
+         call mpas_output_state_init(output_obj, domain, "OUTPUT", trim(timeStamp))
       else
-         call output_state_init(output_obj, domain, "OUTPUT")         
+         call mpas_output_state_init(output_obj, domain, "OUTPUT")         
       end if
 
 
@@ -71,7 +71,7 @@ module mpas_subdriver
       !
       ! Finalize output streams
       !
-      call output_state_finalize(output_obj, domain % dminfo)
+      call mpas_output_state_finalize(output_obj, domain % dminfo)
 
 
       !
@@ -79,8 +79,8 @@ module mpas_subdriver
       !
       call mpas_core_finalize(domain)
 
-      call timer_stop("total time")
-      call timer_write()
+      call mpas_timer_stop("total time")
+      call mpas_timer_write()
 
 
       !

@@ -1,7 +1,7 @@
-module block_decomp
+module mpas_block_decomp
 
-   use dmpar
-   use hash
+   use mpas_dmpar
+   use mpas_hash
 
    type graph
       integer :: nVerticesTotal
@@ -16,9 +16,9 @@ module block_decomp
    contains
 
 
-   subroutine block_decomp_cells_for_proc(dminfo, partial_global_graph_info, local_cell_list)
+   subroutine mpas_block_decomp_cells_for_proc(dminfo, partial_global_graph_info, local_cell_list)
 
-      use configure
+      use mpas_configure
 
       implicit none
 
@@ -59,7 +59,7 @@ module block_decomp
             if (istatus /= 0) then
                write(0,*) 'Could not open block decomposition file for ',dminfo % nprocs,' tasks.'
                write(0,*) 'Filename: ',trim(filename)
-               call dmpar_abort(dminfo)
+               call mpas_dmpar_abort(dminfo)
             end if
       
             local_nvertices(:) = 0
@@ -90,18 +90,18 @@ module block_decomp
 
             close(unit=iunit)
 
-            call dmpar_bcast_ints(dminfo, dminfo % nprocs, local_nvertices)
+            call mpas_dmpar_bcast_ints(dminfo, dminfo % nprocs, local_nvertices)
             allocate(local_cell_list(local_nvertices(dminfo % my_proc_id + 1)))
 
-            call dmpar_scatter_ints(dminfo, dminfo % nprocs, local_nvertices(dminfo % my_proc_id + 1), &
+            call mpas_dmpar_scatter_ints(dminfo, dminfo % nprocs, local_nvertices(dminfo % my_proc_id + 1), &
                                     global_start, local_nvertices, global_cell_list, local_cell_list)
 
          else
 
-            call dmpar_bcast_ints(dminfo, dminfo % nprocs, local_nvertices)
+            call mpas_dmpar_bcast_ints(dminfo, dminfo % nprocs, local_nvertices)
             allocate(local_cell_list(local_nvertices(dminfo % my_proc_id + 1)))
 
-            call dmpar_scatter_ints(dminfo, dminfo % nprocs, local_nvertices(dminfo % my_proc_id + 1), &
+            call mpas_dmpar_scatter_ints(dminfo, dminfo % nprocs, local_nvertices(dminfo % my_proc_id + 1), &
                                     global_start, local_nvertices, global_cell_list, local_cell_list)
 
          end if
@@ -116,10 +116,10 @@ module block_decomp
          end do
       endif
 
-   end subroutine block_decomp_cells_for_proc
+   end subroutine mpas_block_decomp_cells_for_proc
 
 
-   subroutine block_decomp_partitioned_edge_list(nCells, cellIDList, maxCells, nEdges, cellsOnEdge, edgeIDList, ghostEdgeStart)
+   subroutine mpas_block_decomp_partitioned_edge_list(nCells, cellIDList, maxCells, nEdges, cellsOnEdge, edgeIDList, ghostEdgeStart)
 
       implicit none
 
@@ -133,11 +133,11 @@ module block_decomp
       integer, dimension(nEdges) :: edgeIDListLocal
       type (hashtable) :: h
 
-      call hash_init(h)
+      call mpas_hash_init(h)
 
       do i=1,nCells
          ! OPTIMIZATION: Actually, if we can assume that all cellIDs are unique, the if-test is unnecessary
-         if (.not. hash_search(h, cellIDList(i))) call hash_insert(h, cellIDList(i))
+         if (.not. mpas_hash_search(h, cellIDList(i))) call mpas_hash_insert(h, cellIDList(i))
       end do
 
       lastEdge = 0
@@ -152,7 +152,7 @@ module block_decomp
          if (j > maxCells) &
             write(0,*) 'Error in block_decomp_partitioned_edge_list: ',&
                'edge/vertex is not adjacent to any valid cells'
-         if (hash_search(h, cellsOnEdge(j,i))) then
+         if (mpas_hash_search(h, cellsOnEdge(j,i))) then
             lastEdge = lastEdge + 1
             edgeIDList(lastEdge) = edgeIDListLocal(i)
          else
@@ -170,12 +170,12 @@ module block_decomp
             ' Somehow we didn''t have enough edges to fill edgeIDList.'
       end if
 
-      call hash_destroy(h)
+      call mpas_hash_destroy(h)
 
-   end subroutine block_decomp_partitioned_edge_list
+   end subroutine mpas_block_decomp_partitioned_edge_list
 
 
-   subroutine block_decomp_all_edges_in_block(maxEdges, nCells, nEdgesOnCell, edgesOnCell, nEdges, edgeList)
+   subroutine mpas_block_decomp_all_edges_in_block(maxEdges, nCells, nEdgesOnCell, edgesOnCell, nEdges, edgeList)
 
       implicit none
 
@@ -188,25 +188,25 @@ module block_decomp
       integer :: i, j, k
       type (hashtable) :: h
 
-      call hash_init(h)
+      call mpas_hash_init(h)
 
       do i=1,nCells
          do j=1,nEdgesOnCell(i)
-            if (.not. hash_search(h, edgesOnCell(j,i))) call hash_insert(h, edgesOnCell(j,i)) 
+            if (.not. mpas_hash_search(h, edgesOnCell(j,i))) call mpas_hash_insert(h, edgesOnCell(j,i)) 
          end do
       end do
 
-      nEdges = hash_size(h)
+      nEdges = mpas_hash_size(h)
       allocate(edgeList(nEdges))
 
-      call hash_destroy(h)
+      call mpas_hash_destroy(h)
 
-      call hash_init(h)
+      call mpas_hash_init(h)
 
       k = 0
       do i=1,nCells
          do j=1,nEdgesOnCell(i)
-            if (.not. hash_search(h, edgesOnCell(j,i))) then
+            if (.not. mpas_hash_search(h, edgesOnCell(j,i))) then
                k = k + 1
                if (k > nEdges) then
                  write(0,*) 'block_decomp_all_edges_in_block: ',&
@@ -214,22 +214,22 @@ module block_decomp
                  return
                end if
                edgeList(k) = edgesOnCell(j,i)
-               call hash_insert(h, edgesOnCell(j,i)) 
+               call mpas_hash_insert(h, edgesOnCell(j,i)) 
             end if
          end do
       end do
 
-      call hash_destroy(h)
+      call mpas_hash_destroy(h)
 
       if (k < nEdges) then
          write(0,*) 'block_decomp_all_edges_in_block: ',&
             'Listed fewer edges than expected.'
       end if
 
-   end subroutine block_decomp_all_edges_in_block
+   end subroutine mpas_block_decomp_all_edges_in_block
 
 
-   subroutine block_decomp_add_halo(dminfo, local_graph_info, local_graph_with_halo)
+   subroutine mpas_block_decomp_add_halo(dminfo, local_graph_info, local_graph_with_halo)
 
       implicit none
 
@@ -241,17 +241,17 @@ module block_decomp
       type (hashtable) :: h
 
 
-      call hash_init(h)
+      call mpas_hash_init(h)
 
       do i=1,local_graph_info % nVertices
-         call hash_insert(h, local_graph_info % vertexID(i))
+         call mpas_hash_insert(h, local_graph_info % vertexID(i))
       end do
 
       do i=1,local_graph_info % nVertices
          do j=1,local_graph_info % nAdjacent(i)
             if (local_graph_info % adjacencyList(j,i) /= 0) then
-               if (.not. hash_search(h, local_graph_info % adjacencyList(j,i))) then
-                  call hash_insert(h, local_graph_info % adjacencyList(j,i))
+               if (.not. mpas_hash_search(h, local_graph_info % adjacencyList(j,i))) then
+                  call mpas_hash_insert(h, local_graph_info % adjacencyList(j,i))
                end if
             end if
          end do
@@ -260,35 +260,35 @@ module block_decomp
 
       local_graph_with_halo % nVertices = local_graph_info % nVertices
       local_graph_with_halo % maxDegree = local_graph_info % maxDegree
-      local_graph_with_halo % nVerticesTotal = hash_size(h)
+      local_graph_with_halo % nVerticesTotal = mpas_hash_size(h)
       local_graph_with_halo % ghostStart = local_graph_with_halo % nVertices + 1
       allocate(local_graph_with_halo % vertexID(local_graph_with_halo % nVerticesTotal))
       allocate(local_graph_with_halo % nAdjacent(local_graph_with_halo % nVerticesTotal))
       allocate(local_graph_with_halo % adjacencyList(local_graph_with_halo % maxDegree, local_graph_with_halo % nVerticesTotal))
 
-      call hash_destroy(h)
+      call mpas_hash_destroy(h)
 
-      call hash_init(h)
+      call mpas_hash_init(h)
 
       do i=1,local_graph_info % nVertices
-         if (hash_search(h, local_graph_info % vertexID(i))) &
+         if (mpas_hash_search(h, local_graph_info % vertexID(i))) &
            write(0,*) 'block_decomp_add_halo: ', &
              'There appear to be duplicates in vertexID list.'
-         call hash_insert(h, local_graph_info % vertexID(i)) 
+         call mpas_hash_insert(h, local_graph_info % vertexID(i)) 
          local_graph_with_halo % vertexID(i) = local_graph_info % vertexID(i) 
          local_graph_with_halo % nAdjacent(i) = local_graph_info % nAdjacent(i) 
          local_graph_with_halo % adjacencyList(:,i) = local_graph_info % adjacencyList(:,i) 
       end do
 
       k = local_graph_with_halo % ghostStart
-      if (hash_size(h) /= k-1) &
+      if (mpas_hash_size(h) /= k-1) &
          write(0,*) 'block_decomp_add_halo: ',&
            'Somehow we don''t have the right number of non-ghost cells.'
       do i=1,local_graph_info % nVertices
          do j=1,local_graph_info % nAdjacent(i)
             if (local_graph_info % adjacencyList(j,i) /= 0) then
-               if (.not. hash_search(h, local_graph_info % adjacencyList(j,i))) then
-                  call hash_insert(h, local_graph_info % adjacencyList(j,i))
+               if (.not. mpas_hash_search(h, local_graph_info % adjacencyList(j,i))) then
+                  call mpas_hash_insert(h, local_graph_info % adjacencyList(j,i))
                   local_graph_with_halo % vertexID(k) = local_graph_info % adjacencyList(j,i)
                   k = k + 1
                end if
@@ -299,8 +299,8 @@ module block_decomp
          write(0,*) 'block_decomp_add_halo: ',& 
            'Somehow we don''t have the right number of total cells.'
 
-      call hash_destroy(h)
+      call mpas_hash_destroy(h)
 
-   end subroutine block_decomp_add_halo
+   end subroutine mpas_block_decomp_add_halo
 
-end module block_decomp
+end module mpas_block_decomp

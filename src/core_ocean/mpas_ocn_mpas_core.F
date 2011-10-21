@@ -2,7 +2,7 @@ module mpas_core
 
    use mpas_framework
    use mpas_timekeeping
-   use dmpar
+   use mpas_dmpar
    use test_cases
 
    use ocn_time_integration
@@ -38,8 +38,8 @@ module mpas_core
 
    subroutine mpas_core_init(domain, startTimeStamp)!{{{
 
-      use configure
-      use grid_types
+      use mpas_configure
+      use mpas_grid_types
 
       implicit none
 
@@ -81,7 +81,7 @@ module mpas_core
       err = err .or. err_tmp
 
       if(err) then
-          call dmpar_abort(dminfo)
+          call mpas_dmpar_abort(dminfo)
       endif
 
       if (.not. config_do_restart) call setup_sw_test_case(domain)
@@ -96,14 +96,14 @@ module mpas_core
       else 
          print *, ' Incorrect choice of config_vert_grid_type:',&
            config_vert_grid_type
-         call dmpar_abort(dminfo)
+         call mpas_dmpar_abort(dminfo)
       endif
 
       if (trim(config_new_btr_variables_from) == 'btr_avg' &
            .and.trim(config_time_integration) == 'unsplit_explicit') then
          print *, ' unsplit_explicit option must use',&
            ' config_new_btr_variables_from==last_subcycle'
-         call dmpar_abort(dminfo)
+         call mpas_dmpar_abort(dminfo)
       endif
 
       !
@@ -127,10 +127,10 @@ module mpas_core
    ! input arguement into mpas_init.  Ask about that later.  For now, there will be
    ! no initial statistics write.
    
-   !   call timer_start("global diagnostics")
+   !   call mpas_timer_start("global diagnostics")
    !   call computeGlobalDiagnostics(domain % dminfo, block % state % time_levs(1) % state, mesh, 0, dt)
-   !   call timer_stop("global diagnostics")
-   !   call output_state_init(output_obj, domain, "OUTPUT")
+   !   call mpas_timer_stop("global diagnostics")
+   !   call mpas_output_state_init(output_obj, domain, "OUTPUT")
    !   call write_output_frame(output_obj, domain)
 
       restart_frame = 1
@@ -150,57 +150,57 @@ module mpas_core
       type (MPAS_TimeInterval_type) :: runDuration, timeStep, alarmTimeStep
       integer :: ierr
 
-      call MPAS_setTime(curr_time=startTime, dateTimeString=config_start_time, ierr=ierr)
-      call MPAS_setTimeInterval(timeStep, dt=dt, ierr=ierr)
+      call mpas_set_time(curr_time=startTime, dateTimeString=config_start_time, ierr=ierr)
+      call mpas_set_timeInterval(timeStep, dt=dt, ierr=ierr)
 
       if (trim(config_run_duration) /= "none") then
-         call MPAS_setTimeInterval(runDuration, timeString=config_run_duration, ierr=ierr)
-         call MPAS_createClock(clock, startTime=startTime, timeStep=timeStep, runDuration=runDuration, ierr=ierr)
+         call mpas_set_timeInterval(runDuration, timeString=config_run_duration, ierr=ierr)
+         call mpas_create_clock(clock, startTime=startTime, timeStep=timeStep, runDuration=runDuration, ierr=ierr)
 
          if (trim(config_stop_time) /= "none") then
-            call MPAS_setTime(curr_time=stopTime, dateTimeString=config_stop_time, ierr=ierr)
+            call mpas_set_time(curr_time=stopTime, dateTimeString=config_stop_time, ierr=ierr)
             if(startTime + runduration /= stopTime) then
                write(0,*) 'Warning: config_run_duration and config_stop_time are inconsitent: using config_run_duration.'
             end if
          end if
       else if (trim(config_stop_time) /= "none") then
-         call MPAS_setTime(curr_time=stopTime, dateTimeString=config_stop_time, ierr=ierr)
-         call MPAS_createClock(clock, startTime=startTime, timeStep=timeStep, stopTime=stopTime, ierr=ierr)
+         call mpas_set_time(curr_time=stopTime, dateTimeString=config_stop_time, ierr=ierr)
+         call mpas_create_clock(clock, startTime=startTime, timeStep=timeStep, stopTime=stopTime, ierr=ierr)
       else
           write(0,*) 'Error: Neither config_run_duration nor config_stop_time were specified.'
-          call dmpar_finalize(domain % dminfo)
+          call mpas_dmpar_finalize(domain % dminfo)
       end if
 
       ! set output alarm
-      call MPAS_setTimeInterval(alarmTimeStep, timeString=config_output_interval, ierr=ierr)
+      call mpas_set_timeInterval(alarmTimeStep, timeString=config_output_interval, ierr=ierr)
       alarmStartTime = startTime + alarmTimeStep
-      call MPAS_addClockAlarm(clock, outputAlarmID, alarmStartTime, alarmTimeStep, ierr=ierr)
+      call mpas_add_clock_alarm(clock, outputAlarmID, alarmStartTime, alarmTimeStep, ierr=ierr)
 
       ! set restart alarm, if necessary
       if (trim(config_restart_interval) /= "none") then
-         call MPAS_setTimeInterval(alarmTimeStep, timeString=config_restart_interval, ierr=ierr)
+         call mpas_set_timeInterval(alarmTimeStep, timeString=config_restart_interval, ierr=ierr)
          alarmStartTime = startTime + alarmTimeStep
-         call MPAS_addClockAlarm(clock, restartAlarmID, alarmStartTime, alarmTimeStep, ierr=ierr)
+         call mpas_add_clock_alarm(clock, restartAlarmID, alarmStartTime, alarmTimeStep, ierr=ierr)
       end if
 
       !TODO: use this code if we desire to convert config_stats_interval to alarms 
       !(must also change config_stats_interval type to character) 
       ! set stats alarm, if necessary
       !if (trim(config_stats_interval) /= "none") then      
-      !   call MPAS_setTimeInterval(alarmTimeStep, timeString=config_stats_interval, ierr=ierr)
+      !   call mpas_set_timeInterval(alarmTimeStep, timeString=config_stats_interval, ierr=ierr)
       !   alarmStartTime = startTime + alarmTimeStep
-      !   call MPAS_addClockAlarm(clock, statsAlarmID, alarmStartTime, alarmTimeStep, ierr=ierr)
+      !   call mpas_add_clock_alarm(clock, statsAlarmID, alarmStartTime, alarmTimeStep, ierr=ierr)
       !end if
 
-      call MPAS_getTime(curr_time=startTime, dateTimeString=startTimeStamp, ierr=ierr)
+      call mpas_get_time(curr_time=startTime, dateTimeString=startTimeStamp, ierr=ierr)
 
    end subroutine simulation_clock_init!}}}
 
    subroutine mpas_init_block(block, mesh, dt)!{{{
    
-      use grid_types
-      use RBF_interpolation
-      use vector_reconstruction
+      use mpas_grid_types
+      use mpas_rbf_interpolation
+      use mpas_vector_reconstruction
    
       implicit none
    
@@ -214,9 +214,9 @@ module mpas_core
 
       call compute_mesh_scaling(mesh)
  
-      call rbfInterp_initialize(mesh)
-      call init_reconstruct(mesh)
-      call reconstruct(mesh, block % state % time_levs(1) % state % u % array,                  &
+      call mpas_rbf_interp_initialize(mesh)
+      call mpas_init_reconstruct(mesh)
+      call mpas_reconstruct(mesh, block % state % time_levs(1) % state % u % array,                  &
                        block % state % time_levs(1) % state % uReconstructX % array,            &
                        block % state % time_levs(1) % state % uReconstructY % array,            &
                        block % state % time_levs(1) % state % uReconstructZ % array,            &
@@ -258,7 +258,7 @@ module mpas_core
 
 ! mrp 110808 add, so that variables are copied to * variables for split explicit
           do i=2,nTimeLevs
-             call copy_state(block % state % time_levs(i) % state, &
+             call mpas_copy_state(block % state % time_levs(i) % state, &
                              block % state % time_levs(1) % state)
           end do
 ! mrp 110808 add end
@@ -266,7 +266,7 @@ module mpas_core
 
       else
           do i=2,nTimeLevs
-             call copy_state(block % state % time_levs(i) % state, &
+             call mpas_copy_state(block % state % time_levs(i) % state, &
                              block % state % time_levs(1) % state)
           end do
       endif
@@ -275,9 +275,9 @@ module mpas_core
    
    subroutine mpas_core_run(domain, output_obj, output_frame)!{{{
    
-      use grid_types
-      use io_output
-      use timer
+      use mpas_grid_types
+      use mpas_io_output
+      use mpas_timer
    
       implicit none
    
@@ -296,8 +296,8 @@ module mpas_core
       ! Eventually, dt should be domain specific
       dt = config_dt
 
-      currTime = MPAS_getClockTime(clock, MPAS_NOW, ierr)
-      call MPAS_getTime(curr_time=currTime, dateTimeString=timeStamp, ierr=ierr)
+      currTime = mpas_get_clock_time(clock, MPAS_NOW, ierr)
+      call mpas_get_time(curr_time=currTime, dateTimeString=timeStamp, ierr=ierr)
       write(0,*) 'Initial time ', timeStamp
 
       call write_output_frame(output_obj, output_frame, domain)
@@ -305,32 +305,32 @@ module mpas_core
       ! During integration, time level 1 stores the model state at the beginning of the
       !   time step, and time level 2 stores the state advanced dt in time by timestep(...)
       itimestep = 0
-      do while (.not. MPAS_isClockStopTime(clock))
+      do while (.not. mpas_is_clock_stop_time(clock))
 
          itimestep = itimestep + 1
-         call MPAS_advanceClock(clock)
+         call mpas_advance_clock(clock)
 
-         currTime = MPAS_getClockTime(clock, MPAS_NOW, ierr)
-         call MPAS_getTime(curr_time=currTime, dateTimeString=timeStamp, ierr=ierr)
+         currTime = mpas_get_clock_time(clock, MPAS_NOW, ierr)
+         call mpas_get_time(curr_time=currTime, dateTimeString=timeStamp, ierr=ierr)
          write(0,*) 'Doing timestep ', timeStamp
 
-         call timer_start("time integration")
+         call mpas_timer_start("time integration")
          call mpas_timestep(domain, itimestep, dt, timeStamp)
-         call timer_stop("time integration")
+         call mpas_timer_stop("time integration")
    
          ! Move time level 2 fields back into time level 1 for next time step
-         call shift_time_levels_state(domain % blocklist % state)
+         call mpas_shift_time_levels_state(domain % blocklist % state)
       
-         if (MPAS_isAlarmRinging(clock, outputAlarmID, ierr=ierr)) then
-            call MPAS_resetClockAlarm(clock, outputAlarmID, ierr=ierr)
-            if(output_frame == 1) call output_state_init(output_obj, domain, "OUTPUT", trim(timeStamp)) ! output_frame will always be > 1 here unless it is reset after the output file is finalized
+         if (mpas_is_alarm_ringing(clock, outputAlarmID, ierr=ierr)) then
+            call mpas_reset_clock_alarm(clock, outputAlarmID, ierr=ierr)
+            if(output_frame == 1) call mpas_output_state_init(output_obj, domain, "OUTPUT", trim(timeStamp)) ! output_frame will always be > 1 here unless it is reset after the output file is finalized
             call write_output_frame(output_obj, output_frame, domain)
          end if
 
-         if (MPAS_isAlarmRinging(clock, restartAlarmID, ierr=ierr)) then
-            call MPAS_resetClockAlarm(clock, restartAlarmID, ierr=ierr)
-            if (restart_frame == 1) call output_state_init(restart_obj, domain, "RESTART")
-            call output_state_for_domain(restart_obj, domain, restart_frame)
+         if (mpas_is_alarm_ringing(clock, restartAlarmID, ierr=ierr)) then
+            call mpas_reset_clock_alarm(clock, restartAlarmID, ierr=ierr)
+            if (restart_frame == 1) call mpas_output_state_init(restart_obj, domain, "RESTART")
+            call mpas_output_state_for_domain(restart_obj, domain, restart_frame)
             restart_frame = restart_frame + 1
          end if
 
@@ -346,8 +346,8 @@ module mpas_core
    !                        before returning
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    
-      use grid_types
-      use io_output
+      use mpas_grid_types
+      use mpas_io_output
    
       implicit none
    
@@ -365,7 +365,7 @@ module mpas_core
          block_ptr => block_ptr % next
       end do
    
-      call output_state_for_domain(output_obj, domain, output_frame)
+      call mpas_output_state_for_domain(output_obj, domain, output_frame)
       output_frame = output_frame + 1
 
       ! if the maximum number of frames per outfile has been reached, finalize outfile and reset frame
@@ -373,7 +373,7 @@ module mpas_core
          current_outfile_frames = current_outfile_frames + 1            
          if(current_outfile_frames >= config_frames_per_outfile) then
             current_outfile_frames = 0
-            call output_state_finalize(output_obj, domain % dminfo)
+            call mpas_output_state_finalize(output_obj, domain % dminfo)
             output_frame = 1
          end if
       end if
@@ -390,7 +390,7 @@ module mpas_core
    ! Output: state - upon returning, diagnostic fields will have be computed
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    
-      use grid_types
+      use mpas_grid_types
    
       implicit none
    
@@ -404,8 +404,8 @@ module mpas_core
    
    subroutine mpas_timestep(domain, itimestep, dt, timeStamp)!{{{
    
-      use grid_types
-      use timer
+      use mpas_grid_types
+      use mpas_timer
       use global_diagnostics
    
       implicit none
@@ -428,17 +428,17 @@ module mpas_core
                      'that there is only one block per processor.'
               end if
 
-          call timer_start("global diagnostics")
+          call mpas_timer_start("global diagnostics")
           call computeGlobalDiagnostics(domain % dminfo, &
              block_ptr % state % time_levs(2) % state, block_ptr % mesh, &
              itimestep, dt)
-          call timer_stop("global diagnostics")
+          call mpas_timer_stop("global diagnostics")
           end if
       end if
 
       !TODO: replace the above code block with this if we desire to convert config_stats_interval to use alarms
-      !if (MPAS_isAlarmRinging(clock, statsAlarmID, ierr=ierr)) then
-      !   call MPAS_resetClockAlarm(clock, statsAlarmID, ierr=ierr)
+      !if (mpas_is_alarm_ringing(clock, statsAlarmID, ierr=ierr)) then
+      !   call mpas_reset_clock_alarm(clock, statsAlarmID, ierr=ierr)
 
       !   block_ptr => domain % blocklist
       !   if (associated(block_ptr % next)) then
@@ -446,11 +446,11 @@ module mpas_core
       !                 'that there is only one block per processor.'
       !   end if
    
-      !   call timer_start("global diagnostics")
+      !   call mpas_timer_start("global diagnostics")
       !   call computeGlobalDiagnostics(domain % dminfo, &
       !            block_ptr % state % time_levs(2) % state, block_ptr % mesh, &
       !            timeStamp, dt)
-      !   call timer_stop("global diagnostics")
+      !   call mpas_timer_stop("global diagnostics")
       !end if
 
    end subroutine mpas_timestep!}}}
@@ -458,8 +458,8 @@ module mpas_core
 subroutine init_ZLevel(domain)!{{{
 ! Initialize maxLevel and bouncary grid variables.
 
-   use grid_types
-   use configure
+   use mpas_grid_types
+   use mpas_configure
 
    implicit none
 
@@ -622,9 +622,9 @@ end subroutine init_ZLevel!}}}
 subroutine compute_maxLevel(domain)!{{{
 ! Initialize maxLevel and bouncary grid variables.
 
-   use grid_types
-   use configure
-   use constants
+   use mpas_grid_types
+   use mpas_configure
+   use mpas_constants
 
    implicit none
 
@@ -744,7 +744,7 @@ end subroutine compute_maxLevel!}}}
    
    subroutine mpas_core_finalize(domain)!{{{
    
-      use grid_types
+      use mpas_grid_types
    
       implicit none
 
@@ -752,16 +752,16 @@ end subroutine compute_maxLevel!}}}
 
       type (domain_type), intent(inout) :: domain 
 
-      if (restart_frame > 1) call output_state_finalize(restart_obj, domain % dminfo)
+      if (restart_frame > 1) call mpas_output_state_finalize(restart_obj, domain % dminfo)
 
-      call MPAS_destroyClock(clock, ierr)
+      call mpas_destroy_clock(clock, ierr)
 
    end subroutine mpas_core_finalize!}}}
 
    subroutine compute_mesh_scaling(mesh)!{{{
 
-      use grid_types
-      use configure
+      use mpas_grid_types
+      use mpas_configure
 
       implicit none
 

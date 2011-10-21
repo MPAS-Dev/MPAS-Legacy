@@ -1,16 +1,16 @@
-module time_integration
+module atmh_time_integration
 
-   use grid_types
-   use configure
-   use constants
-   use dmpar
-   use vector_reconstruction
+   use mpas_grid_types
+   use mpas_configure
+   use mpas_constants
+   use mpas_dmpar
+   use mpas_vector_reconstruction
 
 
    contains
 
 
-   subroutine timestep(domain, dt, timeStamp)
+   subroutine atmh_timestep(domain, dt, timeStamp)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
    ! Advance model state forward in time by the specified time step
    !
@@ -29,7 +29,7 @@ module time_integration
       type (block_type), pointer :: block
 
       if (trim(config_time_integration) == 'SRK3') then
-         call srk3(domain, dt)
+         call atmh_srk3(domain, dt)
       else
          write(0,*) 'Unknown time integration option '//trim(config_time_integration)
          write(0,*) 'Currently, only ''SRK3'' is supported.'
@@ -42,10 +42,10 @@ module time_integration
          block => block % next
       end do
 
-   end subroutine timestep
+   end subroutine atmh_timestep
 
 
-   subroutine srk3(domain, dt)
+   subroutine atmh_srk3(domain, dt)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
    ! Advance model state forward in time by the specified time step using 
    !   time-split RK3 scheme
@@ -101,7 +101,7 @@ module time_integration
 
       block => domain % blocklist
       do while (associated(block))
-         call copy_state( block % state % time_levs(2) % state, block % state % time_levs(1) % state )
+         call mpas_copy_state( block % state % time_levs(2) % state, block % state % time_levs(1) % state )
          block => block % next
       end do
 
@@ -116,32 +116,32 @@ module time_integration
 
         block => domain % blocklist
         do while (associated(block))
-           call dmpar_exch_halo_field2dReal(domain % dminfo, block % mesh % qtot % array(:,:), &
+           call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % mesh % qtot % array(:,:), &
                                             block % mesh % nVertLevels, block % mesh % nCells, &
                                             block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-           call dmpar_exch_halo_field2dReal(domain % dminfo, block % mesh % cqu % array(:,:), &
+           call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % mesh % cqu % array(:,:), &
                                             block % mesh % nVertLevels, block % mesh % nEdges, &
                                             block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
-           call dmpar_exch_halo_field2dReal(domain % dminfo, block % state % time_levs(2) % state % h % array(:,:), &
+           call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % state % time_levs(2) % state % h % array(:,:), &
                                             block % mesh % nVertLevels, block % mesh % nCells, &
                                             block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-           call dmpar_exch_halo_field2dReal(domain % dminfo, block % state % time_levs(2) % state % pressure % array(:,:), &
+           call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % state % time_levs(2) % state % pressure % array(:,:), &
                                             block % mesh % nVertLevels+1, block % mesh % nCells, &
                                             block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-           call dmpar_exch_halo_field2dReal(domain % dminfo, block % state % time_levs(2) % state % geopotential % array(:,:), &
+           call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % state % time_levs(2) % state % geopotential % array(:,:), &
                                             block % mesh % nVertLevels+1, block % mesh % nCells, &
                                             block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-           call dmpar_exch_halo_field2dReal(domain % dminfo, block % state % time_levs(2) % state % alpha % array(:,:), &
+           call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % state % time_levs(2) % state % alpha % array(:,:), &
                                             block % mesh % nVertLevels, block % mesh % nCells, &
                                             block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-           call dmpar_exch_halo_field2dReal(domain % dminfo, block % state % time_levs(2) % state % pv_edge % array(:,:), &
+           call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % state % time_levs(2) % state % pv_edge % array(:,:), &
                                             block % mesh % nVertLevels, block % mesh % nEdges, &
                                             block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
            if (config_h_mom_eddy_visc4 > 0.0) then
-              call dmpar_exch_halo_field2dReal(domain % dminfo, block % state % time_levs(2) % state % divergence % array(:,:), &
+              call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % state % time_levs(2) % state % divergence % array(:,:), &
                                                block % mesh % nVertLevels, block % mesh % nCells, &
                                                block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-              call dmpar_exch_halo_field2dReal(domain % dminfo, block % state % time_levs(2) % state % vorticity % array(:,:), &
+              call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % state % time_levs(2) % state % vorticity % array(:,:), &
                                                block % mesh % nVertLevels, block % mesh % nVertices, &
                                                block % parinfo % verticesToSend, block % parinfo % verticesToRecv)
            end if
@@ -152,7 +152,7 @@ module time_integration
 
         block => domain % blocklist
         do while (associated(block))
-           call compute_dyn_tend( block % tend, block % state % time_levs(2) % state, block % mesh )
+           call atmh_compute_dyn_tend( block % tend, block % state % time_levs(2) % state, block % mesh )
            block => block % next
         end do
 
@@ -163,10 +163,10 @@ module time_integration
         !
         block => domain % blocklist
         do while (associated(block))
-           call dmpar_exch_halo_field2dReal(domain % dminfo, block % tend % u % array(:,:), &
+           call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % tend % u % array(:,:), &
                                             block % mesh % nVertLevels, block % mesh % nEdges, &
                                             block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
-           call dmpar_exch_halo_field2dReal(domain % dminfo, block % tend % theta % array(:,:), &
+           call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % tend % theta % array(:,:), &
                                             block % mesh % nVertLevels, block % mesh % nCells, &
                                             block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
            block => block % next
@@ -183,7 +183,7 @@ module time_integration
            !    A cleaner way of preserving scalars should be added in future.
            !
            block % mesh % scalars_old % array(:,:,:) = block % state % time_levs(2) % state % scalars % array(:,:,:)
-           call copy_state( block % state % time_levs(2) % state, block % state % time_levs(1) % state )
+           call mpas_copy_state( block % state % time_levs(2) % state, block % state % time_levs(1) % state )
            block % state % time_levs(2) % state % scalars % array(:,:,:) = block % mesh % scalars_old % array(:,:,:)
            block => block % next
         end do
@@ -196,7 +196,7 @@ module time_integration
       
            block => domain % blocklist
            do while (associated(block))
-              call advance_dynamics( block % tend, block % state % time_levs(2) % state,  &
+              call atmh_advance_dynamics( block % tend, block % state % time_levs(2) % state,  &
                                      block % mesh,                                                           &
                                      small_step, number_sub_steps(rk_step), rk_sub_timestep(rk_step) )
               block => block % next
@@ -210,46 +210,46 @@ module time_integration
            !
            block => domain % blocklist
            do while (associated(block))
-!!              call dmpar_exch_halo_field2dReal(domain % dminfo, block % state % time_levs(2) % state % u % array(:,:), &
+!!              call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % state % time_levs(2) % state % u % array(:,:), &
 !!                                               block % mesh % nVertLevels, block % mesh % nEdges, &
 !!                                               block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
-              call dmpar_exch_halo_field2dReal(domain % dminfo, block % state % time_levs(2) % state % h_edge % array(:,:), &
+              call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % state % time_levs(2) % state % h_edge % array(:,:), &
                                                block % mesh % nVertLevels, block % mesh % nEdges, &
                                                block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
-!!              call dmpar_exch_halo_field2dReal(domain % dminfo, block % mesh % uhAvg % array(:,:), &
+!!              call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % mesh % uhAvg % array(:,:), &
 !!                                               block % mesh % nVertLevels, block % mesh % nEdges, &
 !!                                               block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
-!!              call dmpar_exch_halo_field2dReal(domain % dminfo, block % mesh % wwAvg % array(:,:), &
+!!              call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % mesh % wwAvg % array(:,:), &
 !!                                               block % mesh % nVertLevels+1, block % mesh % nCells, &
 !!                                               block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-              call dmpar_exch_halo_field2dReal(domain % dminfo, block % state % time_levs(2) % state % theta % array(:,:), &
+              call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % state % time_levs(2) % state % theta % array(:,:), &
                                                block % mesh % nVertLevels, block % mesh % nCells, &
                                                block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-!!              call dmpar_exch_halo_field2dReal(domain % dminfo, block % state % time_levs(2) % state % h % array(:,:), &
+!!              call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % state % time_levs(2) % state % h % array(:,:), &
 !!                                               block % mesh % nVertLevels, block % mesh % nCells, &
 !!                                               block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-!!              call dmpar_exch_halo_field2dReal(domain % dminfo, block % tend % h % array(:,:), &
+!!              call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % tend % h % array(:,:), &
 !!                                               block % mesh % nVertLevels, block % mesh % nCells, &
 !!                                               block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-              call dmpar_exch_halo_field1dReal(domain % dminfo, block % mesh % dpsdt % array(:), &
+              call mpas_dmpar_exch_halo_field1d_real(domain % dminfo, block % mesh % dpsdt % array(:), &
                                                block % mesh % nCells, &
                                                block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-              call dmpar_exch_halo_field1dReal(domain % dminfo, block % state % time_levs(2) % state % surface_pressure % array(:), &
+              call mpas_dmpar_exch_halo_field1d_real(domain % dminfo, block % state % time_levs(2) % state % surface_pressure % array(:), &
                                                block % mesh % nCells, &
                                                block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-              call dmpar_exch_halo_field2dReal(domain % dminfo, block % state % time_levs(2) % state % alpha % array(:,:), &
+              call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % state % time_levs(2) % state % alpha % array(:,:), &
                                                block % mesh % nVertLevels, block % mesh % nCells, &
                                                block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-              call dmpar_exch_halo_field2dReal(domain % dminfo, block % state % time_levs(2) % state % ww % array(:,:), &
+              call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % state % time_levs(2) % state % ww % array(:,:), &
                                                block % mesh % nVertLevels+1, block % mesh % nCells, &
                                                block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-              call dmpar_exch_halo_field2dReal(domain % dminfo, block % state % time_levs(2) % state % pressure % array(:,:), &
+              call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % state % time_levs(2) % state % pressure % array(:,:), &
                                                block % mesh % nVertLevels+1, block % mesh % nCells, &
                                                block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-!!              call dmpar_exch_halo_field2dReal(domain % dminfo, block % mesh % pressure_old % array(:,:), &
+!!              call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % mesh % pressure_old % array(:,:), &
 !!                                               block % mesh % nVertLevels+1, block % mesh % nCells, &
 !!                                               block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-              call dmpar_exch_halo_field2dReal(domain % dminfo, block % state % time_levs(2) % state % geopotential % array(:,:), &
+              call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % state % time_levs(2) % state % geopotential % array(:,:), &
                                                block % mesh % nVertLevels+1, block % mesh % nCells, &
                                                block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
               block => block % next
@@ -270,11 +270,11 @@ module time_integration
            !       so we keep the advance_scalars routine as well
            !
            if (rk_step < 3 .or. (.not. config_monotonic .and. .not. config_positive_definite)) then
-              call advance_scalars( block % tend,                                                               &
+              call atmh_advance_scalars( block % tend,                                                               &
                                     block % state % time_levs(1) % state, block % state % time_levs(2) % state, &
                                     block % mesh, rk_timestep(rk_step) )
            else
-              call advance_scalars_mono( block % tend,                                                               &
+              call atmh_advance_scalars_mono( block % tend,                                                               &
                                          block % state % time_levs(1) % state, block % state % time_levs(2) % state, &
                                          block % mesh, rk_timestep(rk_step), rk_step, 3,                             &
                                          domain % dminfo, block % parinfo % cellsToSend, block % parinfo % cellsToRecv )
@@ -284,10 +284,10 @@ module time_integration
 
         block => domain % blocklist
         do while (associated(block))
-           call dmpar_exch_halo_field3dReal(domain % dminfo, block % tend % scalars % array(:,:,:), &
+           call mpas_dmpar_exch_halo_field3d_real(domain % dminfo, block % tend % scalars % array(:,:,:), &
                                             block % tend % num_scalars, block % mesh % nVertLevels, block % mesh % nCells, &
                                             block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-           call dmpar_exch_halo_field3dReal(domain % dminfo, block % state % time_levs(2) % state % scalars % array(:,:,:), &
+           call mpas_dmpar_exch_halo_field3d_real(domain % dminfo, block % state % time_levs(2) % state % scalars % array(:,:,:), &
                                             block % tend % num_scalars, block % mesh % nVertLevels, block % mesh % nCells, &
                                             block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
            block => block % next
@@ -300,9 +300,9 @@ module time_integration
 
         block => domain % blocklist
         do while (associated(block))
-           call compute_solver_constants( block % state % time_levs(2) % state, block % mesh )
-           call compute_state_diagnostics( block % state % time_levs(2) % state, block % mesh )
-           call compute_solve_diagnostics( dt, block % state % time_levs(2) % state, block % mesh )
+           call atmh_compute_solver_constants( block % state % time_levs(2) % state, block % mesh )
+           call atmh_compute_state_diagnostics( block % state % time_levs(2) % state, block % mesh )
+           call atmh_compute_solve_diagnostics( dt, block % state % time_levs(2) % state, block % mesh )
            block => block % next
         end do
 
@@ -321,7 +321,7 @@ module time_integration
       !
       block => domain % blocklist
       do while (associated(block))
-         call reconstruct(block % mesh, block % state % time_levs(2) % state % u % array, &
+         call mpas_reconstruct(block % mesh, block % state % time_levs(2) % state % u % array, &
                           block % diag % uReconstructX % array,                           &
                           block % diag % uReconstructY % array,                           &
                           block % diag % uReconstructZ % array,                           &
@@ -329,7 +329,7 @@ module time_integration
                           block % diag % uReconstructMeridional % array                   &
                          )
 
-         call compute_w(block % state % time_levs(2) % state, block % state % time_levs(1) % state, block % mesh, dt)
+         call atmh_compute_w(block % state % time_levs(2) % state, block % state % time_levs(1) % state, block % mesh, dt)
          block => block % next
       end do
 
@@ -358,21 +358,21 @@ module time_integration
            end do
            block => block % next
          end do
-         call dmpar_sum_real(domain % dminfo, domain_mass, global_domain_mass)
-         call dmpar_sum_real(domain % dminfo, scalar_mass, global_scalar_mass)
-         call dmpar_min_real(domain % dminfo, scalar_min, global_scalar_min)
-         call dmpar_max_real(domain % dminfo, scalar_max, global_scalar_max)
+         call mpas_dmpar_sum_real(domain % dminfo, domain_mass, global_domain_mass)
+         call mpas_dmpar_sum_real(domain % dminfo, scalar_mass, global_scalar_mass)
+         call mpas_dmpar_min_real(domain % dminfo, scalar_min, global_scalar_min)
+         call mpas_dmpar_max_real(domain % dminfo, scalar_max, global_scalar_max)
          write(0,*) ' mass in the domain = ',global_domain_mass
          write(0,*) ' scalar mass in the domain = ',global_scalar_mass
          write(0,*) ' scalar_min, scalar_max ',global_scalar_min, global_scalar_max
       end if
 
 
-   end subroutine srk3
+   end subroutine atmh_srk3
 
 !------------------------------------------------------------------------------------------------------------------
 
-   subroutine compute_solver_constants(s, grid)
+   subroutine atmh_compute_solver_constants(s, grid)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
    ! Compute height and normal wind tendencies, as well as diagnostic variables
    !
@@ -420,11 +420,11 @@ module time_integration
 
       end if
 
-      end subroutine compute_solver_constants
+      end subroutine atmh_compute_solver_constants
 
 !------------------------------------------------------------------------------------------------------------------
 
-   subroutine compute_state_diagnostics(s, grid)
+   subroutine atmh_compute_state_diagnostics(s, grid)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
    ! Compute diagnostic variables
    !
@@ -511,11 +511,11 @@ module time_integration
       h_edge_old(:,:) = h_edge(:,:)
       h_old(:,:) = h(:,:)
 
-      end subroutine compute_state_diagnostics
+      end subroutine atmh_compute_state_diagnostics
 
 !------------------------------------------------------------------------------------------
 
-   subroutine compute_dyn_tend(tend, s, grid)
+   subroutine atmh_compute_dyn_tend(tend, s, grid)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
    ! Compute height and normal wind tendencies, as well as diagnostic variables
    !
@@ -1012,11 +1012,11 @@ module time_integration
 
       end if
 
-   end subroutine compute_dyn_tend
+   end subroutine atmh_compute_dyn_tend
 
 !---------------------------------------------------------------------------------------------------------
 
-   subroutine advance_dynamics(tend, s, grid, small_step, number_small_steps, dt)
+   subroutine atmh_advance_dynamics(tend, s, grid, small_step, number_small_steps, dt)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
    ! Advance the dry dynamics a small timestep (forward-backward integration)
    !
@@ -1269,10 +1269,10 @@ module time_integration
         wwAvg = wwAvg/real(number_small_steps)
       end if
 
-   end subroutine advance_dynamics
+   end subroutine atmh_advance_dynamics
 
 
-   subroutine advance_scalars( tend, s_old, s_new, grid, dt)
+   subroutine atmh_advance_scalars( tend, s_old, s_new, grid, dt)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
    !
    ! Input: s - current model state
@@ -1458,10 +1458,10 @@ module time_integration
          end do
       end do
 
-   end subroutine advance_scalars
+   end subroutine atmh_advance_scalars
 
 
-   subroutine advance_scalars_mono( tend, s_old, s_new, grid, dt, rk_step, rk_order, dminfo, cellsToSend, cellsToRecv)
+   subroutine atmh_advance_scalars_mono( tend, s_old, s_new, grid, dt, rk_step, rk_order, dminfo, cellsToSend, cellsToRecv)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
    !
    ! Input: s - current model state
@@ -1695,16 +1695,16 @@ module time_integration
             end do ! end loop over cells to compute scale factor
 
 
-            call dmpar_exch_halo_field2dReal(dminfo, scale_out(:,:,1), &
+            call mpas_dmpar_exch_halo_field2d_real(dminfo, scale_out(:,:,1), &
                                              num_scalars, grid % nCells, &
                                              cellsToSend, cellsToRecv)
-            call dmpar_exch_halo_field2dReal(dminfo, scale_out(:,:,2), &
+            call mpas_dmpar_exch_halo_field2d_real(dminfo, scale_out(:,:,2), &
                                              num_scalars, grid % nCells, &
                                              cellsToSend, cellsToRecv)
-            call dmpar_exch_halo_field2dReal(dminfo, scale_in(:,:,1), &
+            call mpas_dmpar_exch_halo_field2d_real(dminfo, scale_in(:,:,1), &
                                              num_scalars, grid % nCells, &
                                              cellsToSend, cellsToRecv)
-            call dmpar_exch_halo_field2dReal(dminfo, scale_in(:,:,2), &
+            call mpas_dmpar_exch_halo_field2d_real(dminfo, scale_in(:,:,2), &
                                              num_scalars, grid % nCells, &
                                              cellsToSend, cellsToRecv)
 
@@ -1791,10 +1791,10 @@ module time_integration
          end do
       end do
 
-   end subroutine advance_scalars_mono
+   end subroutine atmh_advance_scalars_mono
 
 
-   subroutine compute_solve_diagnostics(dt, s, grid)
+   subroutine atmh_compute_solve_diagnostics(dt, s, grid)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
    ! Compute diagnostic fields used in the tendency computations
    !
@@ -2037,10 +2037,10 @@ module time_integration
      end do
 
 
-   end subroutine compute_solve_diagnostics
+   end subroutine atmh_compute_solve_diagnostics
 
 
-   subroutine compute_w (s_new, s_old, grid, dt )
+   subroutine atmh_compute_w (s_new, s_old, grid, dt )
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
    ! Compute (diagnose) vertical velocity (used by physics)
    !
@@ -2117,6 +2117,6 @@ module time_integration
         end if
       end do
 
-   end subroutine compute_w
+   end subroutine atmh_compute_w
 
-end module time_integration
+end module atmh_time_integration

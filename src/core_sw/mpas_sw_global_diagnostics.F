@@ -1,9 +1,9 @@
-module global_diagnostics
+module sw_global_diagnostics
 
-   use grid_types
-   use configure
-   use constants
-   use dmpar
+   use mpas_grid_types
+   use mpas_configure
+   use mpas_constants
+   use mpas_dmpar
 
    implicit none
    save
@@ -11,7 +11,7 @@ module global_diagnostics
 
    contains
 
-   subroutine computeGlobalDiagnostics(dminfo, state, grid, timeIndex, dt)
+   subroutine sw_compute_global_diagnostics(dminfo, state, grid, timeIndex, dt)
 
       ! Note: this routine assumes that there is only one block per processor. No looping
       ! is preformed over blocks.
@@ -206,12 +206,12 @@ module global_diagnostics
       ! Step 4
       ! 4. Call Function to compute Global Stat that you want.
       ! Computing Kinetic and Potential Energy Tendency Terms
-      call computeGlobalSum(dminfo, nVertLevels, nEdgesSolve, keTend_PressureGradient, globalKineticEnergyTendency)
-      call computeGlobalSum(dminfo, nVertLevels, nCells, peTend_DivThickness, globalPotentialEnergyTendency)
+      call sw_compute_global_sum(dminfo, nVertLevels, nEdgesSolve, keTend_PressureGradient, globalKineticEnergyTendency)
+      call sw_compute_global_sum(dminfo, nVertLevels, nCells, peTend_DivThickness, globalPotentialEnergyTendency)
 
       ! Computing top and bottom of global mass integral
-      call computeGlobalSum(dminfo, nVertLevels, nCellsSolve, cellVolume, sumCellVolume)
-      call computeGlobalSum(dminfo, nVertLevels, nCellsSolve, cellArea, sumCellArea)
+      call sw_compute_global_sum(dminfo, nVertLevels, nCellsSolve, cellVolume, sumCellVolume)
+      call sw_compute_global_sum(dminfo, nVertLevels, nCellsSolve, cellArea, sumCellArea)
 
       globalKineticEnergyTendency = globalKineticEnergyTendency / sumCellVolume
       globalPotentialEnergyTendency = globalPotentialEnergyTendency / sumCellVolume
@@ -222,38 +222,38 @@ module global_diagnostics
 
       ! Compute Average Sea Surface Height for Potential Energy and Enstrophy
       ! Reservoir computations
-      call computeGlobalSum(dminfo, nVertLevels, nCellsSolve, refAreaWeightedSurfaceHeight, sumrefAreaWeightedSurfaceHeight)
+      call sw_compute_global_sum(dminfo, nVertLevels, nCellsSolve, refAreaWeightedSurfaceHeight, sumrefAreaWeightedSurfaceHeight)
 
       averageThickness(:) = (sumrefAreaWeightedSurfaceHeight/sumCellArea)-h_s(1:nCellsSolve)
 
       ! Compute Volume Weighted Averages of Potential Vorticity and Potential Enstrophy
-      call computeGlobalSum(dminfo, nVertLevels, nVerticesSolve, volumeWeightedPotentialVorticity, globalPotentialVorticity)
-      call computeGlobalSum(dminfo, nVertLevels, nVerticesSolve, volumeWeightedPotentialEnstrophy, globalPotentialEnstrophy)
-      call computeGlobalSum(dminfo, nVertLevels, nVerticesSolve, vertexVolume, sumVertexVolume)
+      call sw_compute_global_sum(dminfo, nVertLevels, nVerticesSolve, volumeWeightedPotentialVorticity, globalPotentialVorticity)
+      call sw_compute_global_sum(dminfo, nVertLevels, nVerticesSolve, volumeWeightedPotentialEnstrophy, globalPotentialEnstrophy)
+      call sw_compute_global_sum(dminfo, nVertLevels, nVerticesSolve, vertexVolume, sumVertexVolume)
 
       globalPotentialVorticity = globalPotentialVorticity/sumVertexVolume
       globalPotentialEnstrophy = globalPotentialEnstrophy/sumVertexVolume
 
       ! Compte Potential Enstrophy Reservior
       potentialEnstrophyReservior(:) = areaCell(:)*fCell(:)*fCell(:)/averageThickness
-      call computeGlobalSum(dminfo, 1, nCellsSolve, potentialEnstrophyReservior, globalPotentialEnstrophyReservoir)
+      call sw_compute_global_sum(dminfo, 1, nCellsSolve, potentialEnstrophyReservior, globalPotentialEnstrophyReservoir)
       globalPotentialEnstrophyReservoir = globalPotentialEnstrophyReservoir/sumCellVolume
 
       globalPotentialEnstrophy = globalPotentialEnstrophy - globalPotentialEnstrophyReservoir
 
       ! Compute Kinetic and Potential Energy terms to be combined into total energy
-      call computeGlobalSum(dminfo, nVertLevels, nEdgesSolve, volumeWeightedKineticEnergy, globalKineticEnergy)
-      call computeGlobalSum(dminfo, nVertLevels, nCellsSolve, volumeWeightedPotentialEnergy, globalPotentialEnergy)
-      call computeGlobalSum(dminfo, nVertLevels, nCellsSolve, volumeWeightedPotentialEnergyTopography, global_temp)
+      call sw_compute_global_sum(dminfo, nVertLevels, nEdgesSolve, volumeWeightedKineticEnergy, globalKineticEnergy)
+      call sw_compute_global_sum(dminfo, nVertLevels, nCellsSolve, volumeWeightedPotentialEnergy, globalPotentialEnergy)
+      call sw_compute_global_sum(dminfo, nVertLevels, nCellsSolve, volumeWeightedPotentialEnergyTopography, global_temp)
 
       globalKineticEnergy = globalKineticEnergy/sumCellVolume
       globalPotentialEnergy = (globalPotentialEnergy + global_temp)/sumCellVolume
 
       ! Compute Potential energy reservoir to be subtracted from potential energy term
       volumeWeightedPotentialEnergyReservoir(1:nCellsSolve) = areaCell(1:nCellsSolve)*averageThickness*averageThickness*gravity*0.5
-      call computeGlobalSum(dminfo, nVertLevels, nCellsSolve, volumeWeightedPotentialEnergyReservoir, globalPotentialEnergyReservoir)
+      call sw_compute_global_sum(dminfo, nVertLevels, nCellsSolve, volumeWeightedPotentialEnergyReservoir, globalPotentialEnergyReservoir)
       volumeWeightedPotentialEnergyReservoir(1:nCellsSolve) = areaCell(1:nCellsSolve)*averageThickness*h_s(1:nCellsSolve)*gravity
-      call computeGlobalSum(dminfo, nVertLevels, nCellsSolve, volumeWeightedPotentialEnergyReservoir, global_temp)
+      call sw_compute_global_sum(dminfo, nVertLevels, nCellsSolve, volumeWeightedPotentialEnergyReservoir, global_temp)
 
       globalPotentialEnergyReservoir = (globalPotentialEnergyReservoir + global_temp)/sumCellVolume
 
@@ -261,13 +261,13 @@ module global_diagnostics
       globalEnergy = globalKineticEnergy + globalPotentialEnergy
 
       ! Compute Coriolis energy tendency term
-      call computeGlobalSum(dminfo, nVertLevels, nEdgesSolve, keTend_CoriolisForce, globalCoriolisEnergyTendency)
+      call sw_compute_global_sum(dminfo, nVertLevels, nEdgesSolve, keTend_CoriolisForce, globalCoriolisEnergyTendency)
       globalCoriolisEnergyTendency = globalCoriolisEnergyTendency/sumCellVolume
 
       ! Step 6
       ! 6. Write out your global stat to the file
       if (dminfo % my_proc_id == IO_NODE) then
-         fileID = getFreeUnit()
+         fileID = sw_get_free_unit()
 
          if (timeIndex/config_stats_interval == 1) then
              open(fileID, file='GlobalIntegrals.txt',STATUS='unknown')
@@ -281,27 +281,27 @@ module global_diagnostics
       end if
 
       deallocate(areaEdge)
-   end subroutine computeGlobalDiagnostics
+   end subroutine sw_compute_global_diagnostics
 
-   integer function getFreeUnit()
+   integer function sw_get_free_unit()
       implicit none
 
       integer :: index
       logical :: isOpened
 
-      getFreeUnit = 0
+      sw_get_free_unit = 0
       do index = 1,99
          if((index /= 5) .and. (index /= 6)) then
             inquire(unit = index, opened = isOpened)
             if( .not. isOpened) then
-               getFreeUnit = index
+               sw_get_free_unit = index
                return
             end if
          end if
       end do
-   end function getFreeUnit
+   end function sw_get_free_unit
 
-   subroutine computeGlobalSum(dminfo, nVertLevels, nElements, field, globalSum)
+   subroutine sw_compute_global_sum(dminfo, nVertLevels, nElements, field, globalSum)
 
       implicit none
 
@@ -313,11 +313,11 @@ module global_diagnostics
       real (kind=RKIND) :: localSum
 
       localSum = sum(field)
-      call dmpar_sum_real(dminfo, localSum, globalSum)
+      call mpas_dmpar_sum_real(dminfo, localSum, globalSum)
 
-   end subroutine computeGlobalSum
+   end subroutine sw_compute_global_sum
 
-   subroutine computeGlobalMin(dminfo, nVertLevels, nElements, field, globalMin)
+   subroutine sw_compute_global_min(dminfo, nVertLevels, nElements, field, globalMin)
 
       implicit none
 
@@ -329,11 +329,11 @@ module global_diagnostics
       real (kind=RKIND) :: localMin
 
       localMin = minval(field)
-      call dmpar_min_real(dminfo, localMin, globalMin)
+      call mpas_dmpar_min_real(dminfo, localMin, globalMin)
 
-   end subroutine computeGlobalMin
+   end subroutine sw_compute_global_min
 
-   subroutine computeGlobalMax(dminfo, nVertLevels, nElements, field, globalMax)
+   subroutine sw_compute_global_max(dminfo, nVertLevels, nElements, field, globalMax)
 
       implicit none
 
@@ -345,11 +345,11 @@ module global_diagnostics
       real (kind=RKIND) :: localMax
 
       localMax = maxval(field)
-      call dmpar_max_real(dminfo, localMax, globalMax)
+      call mpas_dmpar_max_real(dminfo, localMax, globalMax)
 
-   end subroutine computeGlobalMax
+   end subroutine sw_compute_global_max
 
-   subroutine computeGlobalVertSumHorizMin(dminfo, nVertLevels, nElements, field, globalMin)
+   subroutine compute_global_vert_sum_horiz_min(dminfo, nVertLevels, nElements, field, globalMin)
 
       implicit none
 
@@ -361,11 +361,11 @@ module global_diagnostics
       real (kind=RKIND) :: localMin
 
       localMin = minval(sum(field,1))
-      call dmpar_min_real(dminfo, localMin, globalMin)
+      call mpas_dmpar_min_real(dminfo, localMin, globalMin)
 
-   end subroutine computeGlobalVertSumHorizMin
+   end subroutine compute_global_vert_sum_horiz_min
 
-   subroutine computeGlobalVertSumHorizMax(dminfo, nVertLevels, nElements, field, globalMax)
+   subroutine sw_compute_global_vert_sum_horiz_max(dminfo, nVertLevels, nElements, field, globalMax)
 
       implicit none
 
@@ -377,8 +377,8 @@ module global_diagnostics
       real (kind=RKIND) :: localMax
 
       localMax = maxval(sum(field,1))
-      call dmpar_max_real(dminfo, localMax, globalMax)
+      call mpas_dmpar_max_real(dminfo, localMax, globalMax)
 
-   end subroutine computeGlobalVertSumHorizMax
+   end subroutine sw_compute_global_vert_sum_horiz_max
 
-end module global_diagnostics
+end module sw_global_diagnostics

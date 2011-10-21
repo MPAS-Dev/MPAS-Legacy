@@ -1,13 +1,13 @@
-module configure
+module mpas_configure
 
-   use dmpar
+   use mpas_dmpar
 
 #include "config_defs.inc"
 
    contains
 
 
-   subroutine read_namelist(dminfo)
+   subroutine mpas_read_namelist(dminfo)
 
       implicit none
 
@@ -31,6 +31,6 @@ module configure
 
 #include "config_bcast_namelist.inc"
 
-   end subroutine read_namelist
+   end subroutine mpas_read_namelist
 
-end module configure
+end module mpas_configure

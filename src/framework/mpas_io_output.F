@@ -1,9 +1,9 @@
-module io_output
+module mpas_io_output
 
-   use grid_types
-   use dmpar
-   use sort
-   use configure
+   use mpas_grid_types
+   use mpas_dmpar
+   use mpas_sort
+   use mpas_configure
 
    integer, parameter :: OUTPUT = 1
    integer, parameter :: RESTART = 2
@@ -28,32 +28,32 @@ module io_output
    end type io_output_object
 
 
-   interface io_output_field
-      module procedure io_output_field0dReal
-      module procedure io_output_field1dReal
-      module procedure io_output_field2dReal
-      module procedure io_output_field3dReal
-      module procedure io_output_field1dInteger
-      module procedure io_output_field2dInteger
-      module procedure io_output_field0dChar
-      module procedure io_output_field1dChar
-   end interface io_output_field
+   interface mpas_io_output_field
+      module procedure mpas_io_output_field0d_real
+      module procedure mpas_io_output_field1d_real
+      module procedure mpas_io_output_field2d_real
+      module procedure mpas_io_output_field3d_real
+      module procedure mpas_io_output_field1d_integer
+      module procedure mpas_io_output_field2d_integer
+      module procedure mpas_io_output_field0d_char
+      module procedure mpas_io_output_field1d_char
+   end interface mpas_io_output_field
 
-   interface io_output_field_time
-      module procedure io_output_field0dReal_time
-      module procedure io_output_field1dReal_time
-      module procedure io_output_field2dReal_time
-      module procedure io_output_field3dReal_time
-      module procedure io_output_field1dInteger_time
-      module procedure io_output_field0dChar_time
-      module procedure io_output_field1dChar_time
-   end interface io_output_field_time
+   interface mpas_io_output_field_time
+      module procedure mpas_io_output_field0d_real_time
+      module procedure mpas_io_output_field1d_real_time
+      module procedure mpas_io_output_field2d_real_time
+      module procedure mpas_io_output_field3d_real_time
+      module procedure mpas_io_output_field1d_integer_time
+      module procedure mpas_io_output_field0d_char_time
+      module procedure mpas_io_output_field1d_char_time
+   end interface mpas_io_output_field_time
  
 
    contains
 
  
-   subroutine output_state_init(output_obj, domain, stream, outputSuffix)
+   subroutine mpas_output_state_init(output_obj, domain, stream, outputSuffix)
 
       implicit none
 
@@ -80,14 +80,14 @@ module io_output
 
 #include "output_dim_inits.inc"
 
-      call dmpar_sum_int(domain % dminfo, block_ptr % mesh % nCellsSolve, nCellsGlobal) 
-      call dmpar_sum_int(domain % dminfo, block_ptr % mesh % nEdgesSolve, nEdgesGlobal) 
-      call dmpar_sum_int(domain % dminfo, block_ptr % mesh % nVerticesSolve, nVerticesGlobal) 
+      call mpas_dmpar_sum_int(domain % dminfo, block_ptr % mesh % nCellsSolve, nCellsGlobal) 
+      call mpas_dmpar_sum_int(domain % dminfo, block_ptr % mesh % nEdgesSolve, nEdgesGlobal) 
+      call mpas_dmpar_sum_int(domain % dminfo, block_ptr % mesh % nVerticesSolve, nVerticesGlobal) 
       nVertLevelsGlobal = block_ptr % mesh % nVertLevels
 
       if (trim(stream) == 'OUTPUT') then
          if(present(outputSuffix)) then
-            call insert_string_suffix(config_output_name, outputSuffix, tempfilename)
+            call mpas_insert_string_suffix(config_output_name, outputSuffix, tempfilename)
          else
             tempfilename = config_output_name
          end if
@@ -104,15 +104,15 @@ module io_output
       ! For now, we assume that a domain consists only of one block,
       !   although in future, work needs to be done to write model state
       !   from many distributed blocks
-      call io_output_init(output_obj, domain % dminfo, &
+      call mpas_io_output_init(output_obj, domain % dminfo, &
                           block_ptr % mesh, &
 #include "output_dim_actual_args.inc"
                          )
 
-   end subroutine output_state_init
+   end subroutine mpas_output_state_init
 
 
-   subroutine insert_string_suffix(stream, suffix, filename)
+   subroutine mpas_insert_string_suffix(stream, suffix, filename)
 
       implicit none
 
@@ -131,10 +131,10 @@ module io_output
          end if
       end do
 
-   end subroutine  insert_string_suffix
+   end subroutine mpas_insert_string_suffix
 
 
-   subroutine output_state_for_domain(output_obj, domain, itime)
+   subroutine mpas_output_state_for_domain(output_obj, domain, itime)
    
       implicit none
    
@@ -189,9 +189,9 @@ module io_output
       allocate(char0d % ioinfo)
       allocate(char1d % ioinfo)
 
-      call dmpar_sum_int(domain % dminfo, domain % blocklist % mesh % nCellsSolve, nCellsGlobal)
-      call dmpar_sum_int(domain % dminfo, domain % blocklist % mesh % nEdgesSolve, nEdgesGlobal)
-      call dmpar_sum_int(domain % dminfo, domain % blocklist % mesh % nVerticesSolve, nVerticesGlobal)
+      call mpas_dmpar_sum_int(domain % dminfo, domain % blocklist % mesh % nCellsSolve, nCellsGlobal)
+      call mpas_dmpar_sum_int(domain % dminfo, domain % blocklist % mesh % nEdgesSolve, nEdgesGlobal)
+      call mpas_dmpar_sum_int(domain % dminfo, domain % blocklist % mesh % nVerticesSolve, nVerticesGlobal)
       nVertLevelsGlobal = domain % blocklist % mesh % nVertLevels
 
       allocate(cellsOnCell(domain % blocklist % mesh % maxEdges, domain % blocklist % mesh % nCellsSolve))
@@ -279,22 +279,22 @@ module io_output
       end if
 
       if (.not. output_obj % validExchangeLists) then
-         call dmpar_get_owner_list(domain % dminfo, &
+         call mpas_dmpar_get_owner_list(domain % dminfo, &
                                    domain % blocklist % mesh % nCellsSolve, size(neededCellList), &
                                    domain % blocklist % mesh % indexToCellID % array, neededCellList, &
                                    output_obj % sendCellsList, output_obj % recvCellsList)
 
-         call dmpar_get_owner_list(domain % dminfo, &
+         call mpas_dmpar_get_owner_list(domain % dminfo, &
                                    domain % blocklist % mesh % nEdgesSolve, size(neededEdgeList), &
                                    domain % blocklist % mesh % indexToEdgeID % array, neededEdgeList, &
                                    output_obj % sendEdgesList, output_obj % recvEdgesList)
 
-         call dmpar_get_owner_list(domain % dminfo, &
+         call mpas_dmpar_get_owner_list(domain % dminfo, &
                                    domain % blocklist % mesh % nVerticesSolve, size(neededVertexList), &
                                    domain % blocklist % mesh % indexToVertexID % array, neededVertexList, &
                                    output_obj % sendVerticesList, output_obj % recvVerticesList)
 
-         call dmpar_get_owner_list(domain % dminfo, &
+         call mpas_dmpar_get_owner_list(domain % dminfo, &
                                    size(neededVertLevelList), size(neededVertLevelList), &
                                    neededVertLevelList, neededVertLevelList, &
                                    output_obj % sendVertLevelsList, output_obj % recvVertLevelsList)
@@ -346,22 +346,22 @@ module io_output
 
 #include "nondecomp_outputs_dealloc.inc"
 
-   end subroutine output_state_for_domain
+   end subroutine mpas_output_state_for_domain
 
 
-   subroutine output_state_finalize(output_obj, dminfo)
+   subroutine mpas_output_state_finalize(output_obj, dminfo)
 
       implicit none
 
       type (io_output_object), intent(inout) :: output_obj
       type (dm_info), intent(in) :: dminfo
 
-      call io_output_finalize(output_obj, dminfo)
+      call mpas_io_output_finalize(output_obj, dminfo)
 
-   end subroutine output_state_finalize
+   end subroutine mpas_output_state_finalize
 
 
-   subroutine io_output_init( output_obj, &
+   subroutine mpas_io_output_init( output_obj, &
                               dminfo, &
                               mesh, &
 #include "dim_dummy_args.inc"
@@ -403,10 +403,10 @@ module io_output
       nferr = nf_enddef(output_obj % wr_ncid)
       end if
  
-   end subroutine io_output_init
+   end subroutine mpas_io_output_init
 
 
-   subroutine io_output_field0dReal(output_obj, field)
+   subroutine mpas_io_output_field0d_real(output_obj, field)
 
       implicit none
 
@@ -432,10 +432,10 @@ module io_output
  
       nferr = nf_sync(output_obj % wr_ncid)
 
-   end subroutine io_output_field0dReal
+   end subroutine mpas_io_output_field0d_real
 
 
-   subroutine io_output_field1dReal(output_obj, field)
+   subroutine mpas_io_output_field1d_real(output_obj, field)
 
       implicit none
 
@@ -461,10 +461,10 @@ module io_output
  
       nferr = nf_sync(output_obj % wr_ncid)
 
-   end subroutine io_output_field1dReal
+   end subroutine mpas_io_output_field1d_real
  
  
-   subroutine io_output_field2dReal(output_obj, field)
+   subroutine mpas_io_output_field2d_real(output_obj, field)
 
       implicit none
 
@@ -492,10 +492,10 @@ module io_output
  
       nferr = nf_sync(output_obj % wr_ncid)
 
-   end subroutine io_output_field2dReal
+   end subroutine mpas_io_output_field2d_real
  
  
-   subroutine io_output_field3dReal(output_obj, field)
+   subroutine mpas_io_output_field3d_real(output_obj, field)
 
       implicit none
 
@@ -525,10 +525,10 @@ module io_output
  
       nferr = nf_sync(output_obj % wr_ncid)
 
-   end subroutine io_output_field3dReal
+   end subroutine mpas_io_output_field3d_real
 
 
-   subroutine io_output_field0dReal_time(output_obj, field)
+   subroutine mpas_io_output_field0d_real_time(output_obj, field)
 
       implicit none
 
@@ -554,10 +554,10 @@ module io_output
  
       nferr = nf_sync(output_obj % wr_ncid)
 
-   end subroutine io_output_field0dReal_time
+   end subroutine mpas_io_output_field0d_real_time
 
 
-   subroutine io_output_field1dReal_time(output_obj, field)
+   subroutine mpas_io_output_field1d_real_time(output_obj, field)
 
       implicit none
 
@@ -585,10 +585,10 @@ module io_output
  
       nferr = nf_sync(output_obj % wr_ncid)
 
-   end subroutine io_output_field1dReal_time
+   end subroutine mpas_io_output_field1d_real_time
 
 
-   subroutine io_output_field2dReal_time(output_obj, field)
+   subroutine mpas_io_output_field2d_real_time(output_obj, field)
 
       implicit none
 
@@ -618,10 +618,10 @@ module io_output
  
       nferr = nf_sync(output_obj % wr_ncid)
 
-   end subroutine io_output_field2dReal_time
+   end subroutine mpas_io_output_field2d_real_time
 
 
-   subroutine io_output_field3dReal_time(output_obj, field)
+   subroutine mpas_io_output_field3d_real_time(output_obj, field)
 
       implicit none
 
@@ -653,10 +653,10 @@ module io_output
  
       nferr = nf_sync(output_obj % wr_ncid)
 
-   end subroutine io_output_field3dReal_time
+   end subroutine mpas_io_output_field3d_real_time
 
 
-   subroutine io_output_field1dInteger(output_obj, field)
+   subroutine mpas_io_output_field1d_integer(output_obj, field)
 
       implicit none
 
@@ -678,10 +678,10 @@ module io_output
  
       nferr = nf_sync(output_obj % wr_ncid)
 
-   end subroutine io_output_field1dInteger
+   end subroutine mpas_io_output_field1d_integer
 
 
-   subroutine io_output_field2dInteger(output_obj, field)
+   subroutine mpas_io_output_field2d_integer(output_obj, field)
 
       implicit none
 
@@ -705,10 +705,10 @@ module io_output
  
       nferr = nf_sync(output_obj % wr_ncid)
 
-   end subroutine io_output_field2dInteger
+   end subroutine mpas_io_output_field2d_integer
 
 
-   subroutine io_output_field1dInteger_time(output_obj, field)
+   subroutine mpas_io_output_field1d_integer_time(output_obj, field)
 
       implicit none
 
@@ -732,10 +732,10 @@ module io_output
  
       nferr = nf_sync(output_obj % wr_ncid)
 
-   end subroutine io_output_field1dInteger_time
+   end subroutine mpas_io_output_field1d_integer_time
 
 
-   subroutine io_output_field0dChar_time(output_obj, field)
+   subroutine mpas_io_output_field0d_char_time(output_obj, field)
 
       implicit none
 
@@ -759,10 +759,10 @@ module io_output
  
       nferr = nf_sync(output_obj % wr_ncid)
 
-   end subroutine io_output_field0dChar_time
+   end subroutine mpas_io_output_field0d_char_time
 
 
-   subroutine io_output_field1dChar_time(output_obj, field)
+   subroutine mpas_io_output_field1d_char_time(output_obj, field)
 
       implicit none
 
@@ -788,10 +788,10 @@ module io_output
  
       nferr = nf_sync(output_obj % wr_ncid)
 
-   end subroutine io_output_field1dChar_time
+   end subroutine mpas_io_output_field1d_char_time
 
 
-   subroutine io_output_field0dChar(output_obj, field)
+   subroutine mpas_io_output_field0d_char(output_obj, field)
 
       implicit none
 
@@ -815,10 +815,10 @@ module io_output
  
       nferr = nf_sync(output_obj % wr_ncid)
 
-   end subroutine io_output_field0dChar
+   end subroutine mpas_io_output_field0d_char
 
 
-   subroutine io_output_field1dChar(output_obj, field)
+   subroutine mpas_io_output_field1d_char(output_obj, field)
 
       implicit none
 
@@ -842,10 +842,10 @@ module io_output
  
       nferr = nf_sync(output_obj % wr_ncid)
 
-   end subroutine io_output_field1dChar
+   end subroutine mpas_io_output_field1d_char
 
 
-   subroutine io_output_finalize(output_obj, dminfo)
+   subroutine mpas_io_output_finalize(output_obj, dminfo)
  
       implicit none
  
@@ -860,7 +860,6 @@ module io_output
       nferr = nf_close(output_obj % wr_ncid)
       end if
  
-   end subroutine io_output_finalize
+   end subroutine mpas_io_output_finalize
  
-end module io_output
- 
+end module mpas_io_output

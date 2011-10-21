@@ -1,4 +1,4 @@
-      module timer
+      module mpas_timer
 
         implicit none
         save
@@ -24,13 +24,13 @@
         type (timer_node), pointer :: all_timers
         integer :: levels
 
-        public :: timer_start, &
-                  timer_stop, &
-                  timer_write
+        public :: mpas_timer_start, &
+                  mpas_timer_stop, &
+                  mpas_timer_write
 
         contains
 
-        subroutine timer_start(timer_name, clear_timer, timer_ptr)!{{{
+        subroutine mpas_timer_start(timer_name, clear_timer, timer_ptr)!{{{
           character (len=*), intent (in) :: timer_name !< Input: name of timer, stored as name of timer
           logical, optional, intent(in) :: clear_timer !< Input: flag to clear timer
           type (timer_node), optional, pointer, intent(out) :: timer_ptr !< Output: pointer to store timer in module
@@ -145,9 +145,9 @@
               timer_ptr => current
           endif
           
-        end subroutine timer_start!}}}
+        end subroutine mpas_timer_start!}}}
        
-        subroutine timer_stop(timer_name, timer_ptr)!{{{
+        subroutine mpas_timer_stop(timer_name, timer_ptr)!{{{
           character (len=*), intent(in) :: timer_name !< Input: name of timer to stop
           type (timer_node), pointer, intent(in), optional :: timer_ptr !< Input: pointer to timer, for stopping
 
@@ -214,9 +214,9 @@
             current%calls = current%calls + 1
           endif
 
-        end subroutine timer_stop!}}}
+        end subroutine mpas_timer_stop!}}}
 
-        recursive subroutine timer_write(timer_ptr, total_ptr)!{{{
+        recursive subroutine mpas_timer_write(timer_ptr, total_ptr)!{{{
           type (timer_node), pointer, intent(inout), optional :: timer_ptr
           type (timer_node), pointer, intent(in), optional :: total_ptr
           character (len=10) :: tname
@@ -279,15 +279,15 @@
             string_equals = string_equals .or. (trim(current%timer_name) == trim(" "))
 
             if(.not.string_equals) then
-              call timer_write(current, total)
+              call mpas_timer_write(current, total)
               current => current%next
             else
               current => current%next
             endif
           end do print_timers
 
-        end subroutine timer_write!}}}
+        end subroutine mpas_timer_write!}}}
 
-      end module timer
+      end module mpas_timer
 
 ! vim: foldmethod=marker et ts=2

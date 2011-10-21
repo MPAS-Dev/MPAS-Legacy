@@ -1,9 +1,9 @@
 module global_diagnostics
 
-   use grid_types
-   use configure
-   use constants
-   use dmpar
+   use mpas_grid_types
+   use mpas_configure
+   use mpas_constants
+   use mpas_dmpar
 
    implicit none
    save
@@ -218,7 +218,7 @@ module global_diagnostics
       nMaxes = nMaxes + nVariables
 
       ! global reduction of the 5 arrays (packed into 3 to minimize global communication)
-      call dmpar_sum_real_array(dminfo, nSums, sums(1:nSums), reductions(1:nSums))
+      call mpas_dmpar_sum_real_array(dminfo, nSums, sums(1:nSums), reductions(1:nSums))
       sums(1:nVariables) = reductions(1:nVariables)
       areaCellGlobal = reductions(nVariables+1)
       areaEdgeGlobal = reductions(nVariables+2)
@@ -227,11 +227,11 @@ module global_diagnostics
       nEdgesGlobal = int(reductions(nVariables+5))
       nVerticesGlobal = int(reductions(nVariables+6))
 
-      call dmpar_min_real_array(dminfo, nMins, mins(1:nMins), reductions(1:nMins))
+      call mpas_dmpar_min_real_array(dminfo, nMins, mins(1:nMins), reductions(1:nMins))
       mins(1:nVariables) = reductions(1:nVariables)
       verticalSumMins(1:nVariables) = reductions(nMins-nVariables+1:nMins)
 
-      call dmpar_max_real_array(dminfo, nMaxes, maxes(1:nMaxes), reductions(1:nMaxes))
+      call mpas_dmpar_max_real_array(dminfo, nMaxes, maxes(1:nMaxes), reductions(1:nMaxes))
       maxes(1:nVariables) = reductions(1:nVariables)
       CFLNumberGlobal = reductions(nVariables+1)
       verticalSumMaxes(1:nVariables) = reductions(nMaxes-nVariables+1:nMaxes)
@@ -474,7 +474,7 @@ module global_diagnostics
       real (kind=RKIND) :: localSum
 
       localSum = sum(field)
-      call dmpar_sum_real(dminfo, localSum, globalSum)
+      call mpas_dmpar_sum_real(dminfo, localSum, globalSum)
 
    end subroutine computeGlobalSum
 
@@ -496,7 +496,7 @@ module global_diagnostics
         localSum = localSum + areas(elementIndex) * sum(field(:,elementIndex))
       end do
    
-      call dmpar_sum_real(dminfo, localSum, globalSum)
+      call mpas_dmpar_sum_real(dminfo, localSum, globalSum)
        
    end subroutine computeAreaWeightedGlobalSum
 
@@ -531,7 +531,7 @@ module global_diagnostics
       real (kind=RKIND) :: localMin
 
       localMin = minval(field)
-      call dmpar_min_real(dminfo, localMin, globalMin)
+      call mpas_dmpar_min_real(dminfo, localMin, globalMin)
 
    end subroutine computeGlobalMin
 
@@ -547,7 +547,7 @@ module global_diagnostics
       real (kind=RKIND) :: localMax
 
       localMax = maxval(field)
-      call dmpar_max_real(dminfo, localMax, globalMax)
+      call mpas_dmpar_max_real(dminfo, localMax, globalMax)
 
    end subroutine computeGlobalMax
 
@@ -563,7 +563,7 @@ module global_diagnostics
       real (kind=RKIND) :: localMin
 
       localMin = minval(sum(field,1))
-      call dmpar_min_real(dminfo, localMin, globalMin)
+      call mpas_dmpar_min_real(dminfo, localMin, globalMin)
 
    end subroutine computeGlobalVertSumHorizMin
 
@@ -579,7 +579,7 @@ module global_diagnostics
       real (kind=RKIND) :: localMax
 
       localMax = maxval(sum(field,1))
-      call dmpar_max_real(dminfo, localMax, globalMax)
+      call mpas_dmpar_max_real(dminfo, localMax, globalMax)
 
    end subroutine computeGlobalVertSumHorizMax
 
@@ -595,7 +595,7 @@ module global_diagnostics
       real (kind=RKIND) :: localMin
 
       localMin = minval(sum(h*field,1))
-      call dmpar_min_real(dminfo, localMin, globalMin)
+      call mpas_dmpar_min_real(dminfo, localMin, globalMin)
 
    end subroutine computeGlobalVertThicknessWeightedSumHorizMin
 
@@ -611,7 +611,7 @@ module global_diagnostics
       real (kind=RKIND) :: localMax
 
       localMax = maxval(sum(h*field,1))
-      call dmpar_max_real(dminfo, localMax, globalMax)
+      call mpas_dmpar_max_real(dminfo, localMax, globalMax)
 
    end subroutine computeGlobalVertThicknessWeightedSumHorizMax
 

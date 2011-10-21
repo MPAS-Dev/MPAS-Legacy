@@ -14,9 +14,9 @@
 
 module ocn_vel_hmix_del2
 
-   use grid_types
-   use configure
-   use timer
+   use mpas_grid_types
+   use mpas_configure
+   use mpas_timer
 
    implicit none
    private
@@ -132,7 +132,7 @@ contains
 
       if(.not.hmixDel2On) return
 
-      call timer_start("compute_tend_u-horiz mix-del2")
+      call mpas_timer_start("compute_tend_u-horiz mix-del2")
       
       nEdgesSolve = grid % nEdgesSolve
       maxLevelEdgeTop => grid % maxLevelEdgeTop % array
@@ -165,7 +165,7 @@ contains
          end do
       end do
 
-      call timer_stop("compute_tend_u-horiz mix-del2")
+      call mpas_timer_stop("compute_tend_u-horiz mix-del2")
 
    !--------------------------------------------------------------------
 

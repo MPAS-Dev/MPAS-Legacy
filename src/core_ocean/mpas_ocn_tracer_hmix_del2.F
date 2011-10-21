@@ -16,9 +16,9 @@
 
 module ocn_tracer_hmix_del2
 
-   use grid_types
-   use configure
-   use timer
+   use mpas_grid_types
+   use mpas_configure
+   use mpas_timer
 
    implicit none
    private
@@ -134,7 +134,7 @@ contains
 
       if (.not.del2On) return
 
-      call timer_start("compute_scalar_tend-horiz diff 2")
+      call mpas_timer_start("compute_scalar_tend-horiz diff 2")
 
       nEdges = grid % nEdges
       nVertLevels = grid % nVertLevels
@@ -179,7 +179,7 @@ contains
       end do
 
       deallocate(boundaryMask)
-      call timer_stop("compute_scalar_tend-horiz diff 2")
+      call mpas_timer_stop("compute_scalar_tend-horiz diff 2")
 
    !--------------------------------------------------------------------
 

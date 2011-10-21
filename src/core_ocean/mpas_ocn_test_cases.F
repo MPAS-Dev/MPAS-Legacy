@@ -1,8 +1,8 @@
  module test_cases
 
-   use grid_types
-   use configure
-   use constants
+   use mpas_grid_types
+   use mpas_configure
+   use mpas_constants
 
 
    contains
@@ -72,14 +72,14 @@
          write(0,*) 'Abort: config_test_case=',config_test_case
          write(0,*) 'Only test case 1, 2, 5, and 6 ', &
            'are currently supported.  '
-           call dmpar_abort(dminfo)
+           call mpas_dmpar_abort(dminfo)
       end if
 
       block_ptr => domain % blocklist
       do while (associated(block_ptr))
 
         do i=2,nTimeLevs
-           call copy_state(block_ptr % state % time_levs(i) % state, &
+           call mpas_copy_state(block_ptr % state % time_levs(i) % state, &
                            block_ptr % state % time_levs(1) % state)
         end do
 

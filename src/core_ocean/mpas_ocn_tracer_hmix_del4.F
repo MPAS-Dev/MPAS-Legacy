@@ -16,9 +16,9 @@
 
 module ocn_tracer_hmix_del4
 
-   use grid_types
-   use configure
-   use timer
+   use mpas_grid_types
+   use mpas_configure
+   use mpas_timer
 
    implicit none
    private
@@ -135,7 +135,7 @@ contains
 
       if (.not.Del4On) return
 
-      call timer_start("compute_scalar_tend-horiz diff 4")
+      call mpas_timer_start("compute_scalar_tend-horiz diff 4")
 
       nEdges = grid % nEdges
       nCells = grid % nCells
@@ -212,7 +212,7 @@ contains
       end do
 
       deallocate(delsq_tracer)
-      call timer_stop("compute_scalar_tend-horiz diff 4")
+      call mpas_timer_stop("compute_scalar_tend-horiz diff 4")
    !--------------------------------------------------------------------
 
    end subroutine ocn_tracer_hmix_del4_tend!}}}

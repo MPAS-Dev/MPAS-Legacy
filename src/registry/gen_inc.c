@@ -139,10 +139,10 @@ void gen_namelists(struct namelist * nls)
    fd = fopen("config_bcast_namelist.inc", "w");
    nls_ptr = nls;
    while (nls_ptr) {
-      if (nls_ptr->vtype == INTEGER)   fortprintf(fd, "      call dmpar_bcast_int(dminfo, %s)\n", nls_ptr->name);
-      if (nls_ptr->vtype == REAL)      fortprintf(fd, "      call dmpar_bcast_real(dminfo, %s)\n", nls_ptr->name);
-      if (nls_ptr->vtype == LOGICAL)   fortprintf(fd, "      call dmpar_bcast_logical(dminfo, %s)\n", nls_ptr->name);
-      if (nls_ptr->vtype == CHARACTER) fortprintf(fd, "      call dmpar_bcast_char(dminfo, %s)\n", nls_ptr->name);
+      if (nls_ptr->vtype == INTEGER)   fortprintf(fd, "      call mpas_dmpar_bcast_int(dminfo, %s)\n", nls_ptr->name);
+      if (nls_ptr->vtype == REAL)      fortprintf(fd, "      call mpas_dmpar_bcast_real(dminfo, %s)\n", nls_ptr->name);
+      if (nls_ptr->vtype == LOGICAL)   fortprintf(fd, "      call mpas_dmpar_bcast_logical(dminfo, %s)\n", nls_ptr->name);
+      if (nls_ptr->vtype == CHARACTER) fortprintf(fd, "      call mpas_dmpar_bcast_char(dminfo, %s)\n", nls_ptr->name);
       nls_ptr = nls_ptr->next;
    }
    fortprintf(fd, "\n");
@@ -253,8 +253,8 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
    fd = fopen("read_dims.inc", "w");
    dim_ptr = dims;
    while (dim_ptr) {
-      if (dim_ptr->constant_value < 0 && !dim_ptr->namelist_defined && !is_derived_dim(dim_ptr->name_in_code)) fortprintf(fd, "      call io_input_get_dimension(input_obj, \'%s\', %s)\n", dim_ptr->name_in_file, dim_ptr->name_in_code);
-      else if (dim_ptr->constant_value < 0 && dim_ptr->namelist_defined && !is_derived_dim(dim_ptr->name_in_code)) fortprintf(fd, "      call io_input_get_dimension(input_obj, \'%s\', %s)\n", dim_ptr->name_in_file, dim_ptr->name_in_file);
+      if (dim_ptr->constant_value < 0 && !dim_ptr->namelist_defined && !is_derived_dim(dim_ptr->name_in_code)) fortprintf(fd, "      call mpas_io_input_get_dimension(input_obj, \'%s\', %s)\n", dim_ptr->name_in_file, dim_ptr->name_in_code);
+      else if (dim_ptr->constant_value < 0 && dim_ptr->namelist_defined && !is_derived_dim(dim_ptr->name_in_code)) fortprintf(fd, "      call mpas_io_input_get_dimension(input_obj, \'%s\', %s)\n", dim_ptr->name_in_file, dim_ptr->name_in_file);
       dim_ptr = dim_ptr->next;
    }
 
@@ -474,13 +474,13 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
          fortprintf(fd, "      allocate(b %% %s %% time_levs(%i))\n", group_ptr->name, group_ptr->vlist->var->ntime_levs);
          fortprintf(fd, "      do i=1,b %% %s %% nTimeLevels\n", group_ptr->name);
          fortprintf(fd, "         allocate(b %% %s %% time_levs(i) %% %s)\n", group_ptr->name, group_ptr->name);
-         fortprintf(fd, "         call allocate_%s(b %% %s %% time_levs(i) %% %s, &\n", group_ptr->name, group_ptr->name, group_ptr->name);
+         fortprintf(fd, "         call mpas_allocate_%s(b %% %s %% time_levs(i) %% %s, &\n", group_ptr->name, group_ptr->name, group_ptr->name);
          fortprintf(fd, "#include \"dim_dummy_args.inc\"\n");
          fortprintf(fd, "                         )\n");
          fortprintf(fd, "      end do\n\n");
       }
       else {
-         fortprintf(fd, "      call allocate_%s(b %% %s, &\n", group_ptr->name, group_ptr->name);
+         fortprintf(fd, "      call mpas_allocate_%s(b %% %s, &\n", group_ptr->name, group_ptr->name);
          fortprintf(fd, "#include \"dim_dummy_args.inc\"\n");
          fortprintf(fd, "                      )\n\n");
       }
@@ -495,13 +495,13 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
    while (group_ptr) {
       if (group_ptr->vlist->var->ntime_levs > 1) {
          fortprintf(fd, "      do i=1,b %% %s %% nTimeLevels\n", group_ptr->name);
-         fortprintf(fd, "         call deallocate_%s(b %% %s %% time_levs(i) %% %s)\n", group_ptr->name, group_ptr->name, group_ptr->name);
+         fortprintf(fd, "         call mpas_deallocate_%s(b %% %s %% time_levs(i) %% %s)\n", group_ptr->name, group_ptr->name, group_ptr->name);
          fortprintf(fd, "         deallocate(b %% %s %% time_levs(i) %% %s)\n", group_ptr->name, group_ptr->name);
          fortprintf(fd, "      end do\n");
          fortprintf(fd, "      deallocate(b %% %s %% time_levs)\n", group_ptr->name);
       }
       else {
-         fortprintf(fd, "      call deallocate_%s(b %% %s)\n", group_ptr->name, group_ptr->name);
+         fortprintf(fd, "      call mpas_deallocate_%s(b %% %s)\n", group_ptr->name, group_ptr->name);
       }
       fortprintf(fd, "      deallocate(b %% %s)\n\n", group_ptr->name);
       group_ptr = group_ptr->next;
@@ -512,7 +512,7 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
    fd = fopen("group_alloc_routines.inc", "w");
    group_ptr = groups;
    while (group_ptr) {
-      fortprintf(fd, "   subroutine allocate_%s(%s, &\n", group_ptr->name, group_ptr->name);
+      fortprintf(fd, "   subroutine mpas_allocate_%s(%s, &\n", group_ptr->name, group_ptr->name);
       fortprintf(fd, "#include \"dim_dummy_args.inc\"\n");
       fortprintf(fd, "                         )\n");
       fortprintf(fd, "\n");
@@ -659,7 +659,7 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
          }
       }
 
-      fortprintf(fd, "   end subroutine allocate_%s\n\n\n", group_ptr->name);
+      fortprintf(fd, "   end subroutine mpas_allocate_%s\n\n\n", group_ptr->name);
       group_ptr = group_ptr->next;
    }
    fclose(fd);
@@ -668,7 +668,7 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
    fd = fopen("group_dealloc_routines.inc", "w");
    group_ptr = groups;
    while (group_ptr) {
-      fortprintf(fd, "   subroutine deallocate_%s(%s)\n", group_ptr->name, group_ptr->name);
+      fortprintf(fd, "   subroutine mpas_deallocate_%s(%s)\n", group_ptr->name, group_ptr->name);
       fortprintf(fd, "\n");
       fortprintf(fd, "      implicit none\n");
       fortprintf(fd, "\n");
@@ -705,7 +705,7 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
          }
       }
 
-      fortprintf(fd, "   end subroutine deallocate_%s\n\n\n", group_ptr->name);
+      fortprintf(fd, "   end subroutine mpas_deallocate_%s\n\n\n", group_ptr->name);
       group_ptr = group_ptr->next;
    }
    fclose(fd);
@@ -714,7 +714,7 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
    fd = fopen("group_copy_routines.inc", "w");
    group_ptr = groups;
    while (group_ptr) {
-      fortprintf(fd, "   subroutine copy_%s(dest, src)\n", group_ptr->name);
+      fortprintf(fd, "   subroutine mpas_copy_%s(dest, src)\n", group_ptr->name);
       fortprintf(fd, "\n");
       fortprintf(fd, "      implicit none\n");
       fortprintf(fd, "\n");
@@ -748,7 +748,7 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
          }
       }
       fortprintf(fd, "\n");
-      fortprintf(fd, "   end subroutine copy_%s\n\n\n", group_ptr->name);
+      fortprintf(fd, "   end subroutine mpas_copy_%s\n\n\n", group_ptr->name);
       group_ptr = group_ptr->next;
    }
    fclose(fd);
@@ -758,7 +758,7 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
    group_ptr = groups;
    while (group_ptr) {
       if (group_ptr->vlist->var->ntime_levs > 1) {
-         fortprintf(fd, "   subroutine shift_time_levels_%s(%s)\n", group_ptr->name, group_ptr->name);
+         fortprintf(fd, "   subroutine mpas_shift_time_levels_%s(%s)\n", group_ptr->name, group_ptr->name);
          fortprintf(fd, "\n");
          fortprintf(fd, "      implicit none\n");
          fortprintf(fd, "\n");
@@ -773,7 +773,7 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
          fortprintf(fd, "      end do\n");
          fortprintf(fd, "      %s %% time_levs(%s %% nTimeLevels) %% %s => sptr\n", group_ptr->name, group_ptr->name, group_ptr->name);
          fortprintf(fd, "\n");
-         fortprintf(fd, "   end subroutine shift_time_levels_%s\n\n\n", group_ptr->name);
+         fortprintf(fd, "   end subroutine mpas_shift_time_levels_%s\n\n\n", group_ptr->name);
       }
       group_ptr = group_ptr->next;
    }
@@ -1362,12 +1362,12 @@ void gen_reads(struct group_list * groups, struct variable * vars, struct dimens
    
          fortprintf(fd, "      %s%id %% ioinfo %% fieldName = \'%s\'\n", vtype, var_ptr->ndims, var_ptr->name_in_file);
          if (var_ptr->timedim)
-            fortprintf(fd, "      call io_input_field_time(input_obj, %s%id)\n", vtype, var_ptr->ndims);
+            fortprintf(fd, "      call mpas_io_input_field_time(input_obj, %s%id)\n", vtype, var_ptr->ndims);
          else
-            fortprintf(fd, "      call io_input_field(input_obj, %s%id)\n", vtype, var_ptr->ndims);
+            fortprintf(fd, "      call mpas_io_input_field(input_obj, %s%id)\n", vtype, var_ptr->ndims);
    
          if (var_ptr->ndims > 0) {
-            fortprintf(fd, "      call dmpar_alltoall_field(dminfo, &\n");
+            fortprintf(fd, "      call mpas_dmpar_alltoall_field(dminfo, &\n");
             if (strncmp(var_ptr->super_array, "-", 1024) != 0)
                fortprintf(fd, "                                %s%id %% array, super_%s%id, &\n", vtype, var_ptr->ndims, vtype, var_ptr->ndims);
             else
@@ -1982,7 +1982,7 @@ void gen_writes(struct group_list * groups, struct variable * vars, struct dimen
             }
    
             fortprintf(fd, "      %s%id %% ioinfo %% fieldName = \'%s\'\n", vtype, var_ptr->ndims, var_ptr->name_in_file);
-            fortprintf(fd, "      call dmpar_alltoall_field(domain %% dminfo, &\n");
+            fortprintf(fd, "      call mpas_dmpar_alltoall_field(domain %% dminfo, &\n");
             if (strncmp(var_ptr->super_array, "-", 1024) != 0)
                fortprintf(fd, "                                super_%s%id, %s%id %% array, &\n", vtype, var_ptr->ndims, vtype, var_ptr->ndims);
             else
@@ -2067,9 +2067,9 @@ void gen_writes(struct group_list * groups, struct variable * vars, struct dimen
          }
    
          if (var_ptr->timedim)
-            fortprintf(fd, "      if (domain %% dminfo %% my_proc_id == IO_NODE) call io_output_field_time(output_obj, %s%id)\n", vtype, var_ptr->ndims);
+            fortprintf(fd, "      if (domain %% dminfo %% my_proc_id == IO_NODE) call mpas_io_output_field_time(output_obj, %s%id)\n", vtype, var_ptr->ndims);
          else
-            fortprintf(fd, "      if (domain %% dminfo %% my_proc_id == IO_NODE) call io_output_field(output_obj, %s%id)\n", vtype, var_ptr->ndims);
+            fortprintf(fd, "      if (domain %% dminfo %% my_proc_id == IO_NODE) call mpas_io_output_field(output_obj, %s%id)\n", vtype, var_ptr->ndims);
          if (var_ptr->ndims > 0) {
             fortprintf(fd, "      deallocate(%s%id %% array)\n", vtype, var_ptr->ndims);
             if (strncmp(var_ptr->super_array, "-", 1024) != 0)

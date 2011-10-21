@@ -15,13 +15,13 @@
 
 module ocn_time_integration_split
 
-   use grid_types
-   use configure
-   use constants
-   use dmpar
-   use vector_reconstruction
-   use spline_interpolation
-   use timer
+   use mpas_grid_types
+   use mpas_configure
+   use mpas_constants
+   use mpas_dmpar
+   use mpas_vector_reconstruction
+   use mpas_spline_interpolation
+   use mpas_timer
 
    use ocn_tendency
 
@@ -99,7 +99,7 @@ subroutine ocn_time_integrator_split(domain, dt)!{{{
       real (kind=RKIND), dimension(:), allocatable:: A,C,uTemp, hNew
       real (kind=RKIND), dimension(:,:), allocatable:: tracersTemp
 
-      call timer_start("split_explicit_timestep")
+      call mpas_timer_start("split_explicit_timestep")
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       !
@@ -160,15 +160,15 @@ subroutine ocn_time_integrator_split(domain, dt)!{{{
         block => domain % blocklist
         do while (associated(block))
 
-           call dmpar_exch_halo_field2dReal(domain % dminfo, block % state % time_levs(2) % state % pv_edge % array(:,:), &
+           call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % state % time_levs(2) % state % pv_edge % array(:,:), &
                                             block % mesh % nVertLevels, block % mesh % nEdges, &
                                             block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
 
            if (config_h_mom_eddy_visc4 > 0.0) then
-              call dmpar_exch_halo_field2dReal(domain % dminfo, block % state % time_levs(2) % state % divergence % array(:,:), &
+              call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % state % time_levs(2) % state % divergence % array(:,:), &
                                                block % mesh % nVertLevels, block % mesh % nCells, &
                                                block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-              call dmpar_exch_halo_field2dReal(domain % dminfo, block % state % time_levs(2) % state % vorticity % array(:,:), &
+              call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % state % time_levs(2) % state % vorticity % array(:,:), &
                                                block % mesh % nVertLevels, block % mesh % nVertices, &
                                                block % parinfo % verticesToSend, block % parinfo % verticesToRecv)
            end if
@@ -267,7 +267,7 @@ subroutine ocn_time_integrator_split(domain, dt)!{{{
 
         block => domain % blocklist
         do while (associated(block))
-           call dmpar_exch_halo_field2dReal(domain % dminfo, block % state % time_levs(2) % state % uBcl % array(:,:), &
+           call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % state % time_levs(2) % state % uBcl % array(:,:), &
                                             block % mesh % nVertLevels, block % mesh % nEdges, &
                                             block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
 
@@ -416,7 +416,7 @@ subroutine ocn_time_integrator_split(domain, dt)!{{{
             block => domain % blocklist
             do while (associated(block))
 
-           call dmpar_exch_halo_field1dReal(domain % dminfo, &
+           call mpas_dmpar_exch_halo_field1d_real(domain % dminfo, &
               block % state % time_levs(newBtrSubcycleTime) % state % uBtrSubcycle % array(:), &
               block % mesh % nEdges, &
               block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
@@ -492,7 +492,7 @@ subroutine ocn_time_integrator_split(domain, dt)!{{{
 
 !              block % state % time_levs(newBtrSubcycleTime) % state % sshSubcycle % array(:), &
 
-           call dmpar_exch_halo_field1dReal(domain % dminfo, &
+           call mpas_dmpar_exch_halo_field1d_real(domain % dminfo, &
               block % state % time_levs(newBtrSubcycleTime) % state % sshSubcycle % array(:), &
               block % mesh % nCells, &
               block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
@@ -660,7 +660,7 @@ subroutine ocn_time_integrator_split(domain, dt)!{{{
             block => domain % blocklist
             do while (associated(block))
 
-               call dmpar_exch_halo_field1dReal(domain % dminfo, &
+               call mpas_dmpar_exch_halo_field1d_real(domain % dminfo, &
                   block % state % time_levs(newBtrSubcycleTime) % state % uBtrSubcycle % array(:), &
                   block % mesh % nEdges, &
                   block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
@@ -729,7 +729,7 @@ subroutine ocn_time_integrator_split(domain, dt)!{{{
             block => domain % blocklist
             do while (associated(block))
 
-           call dmpar_exch_halo_field1dReal(domain % dminfo, &
+           call mpas_dmpar_exch_halo_field1d_real(domain % dminfo, &
               block % state % time_levs(newBtrSubcycleTime) % state % sshSubcycle % array(:), &
               block % mesh % nCells, &
               block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
@@ -802,7 +802,7 @@ subroutine ocn_time_integrator_split(domain, dt)!{{{
         else
          write(0,*) 'Abort: Unknown config_SSH_from option: '&
            //trim(config_SSH_from)
-         call dmpar_abort(dminfo)
+         call mpas_dmpar_abort(dminfo)
         endif
 
                block => block % next
@@ -813,7 +813,7 @@ subroutine ocn_time_integrator_split(domain, dt)!{{{
             block => domain % blocklist
             do while (associated(block))
 
-           call dmpar_exch_halo_field1dReal(domain % dminfo, &
+           call mpas_dmpar_exch_halo_field1d_real(domain % dminfo, &
               block % state % time_levs(1) % state % FBtr % array(:), &
               block % mesh % nEdges, &
               block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
@@ -967,10 +967,10 @@ subroutine ocn_time_integrator_split(domain, dt)!{{{
 
         block => domain % blocklist
         do while (associated(block))
-           call dmpar_exch_halo_field2dReal(domain % dminfo, block % tend % h % array(:,:), &
+           call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % tend % h % array(:,:), &
                                             block % mesh % nVertLevels, block % mesh % nCells, &
                                             block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-           call dmpar_exch_halo_field3dReal(domain % dminfo, block % tend % tracers % array(:,:,:), &
+           call mpas_dmpar_exch_halo_field3d_real(domain % dminfo, block % tend % tracers % array(:,:,:), &
                                             block % tend % num_tracers, block % mesh % nVertLevels, block % mesh % nCells, &
                                             block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
            block => block % next
@@ -1110,7 +1110,7 @@ subroutine ocn_time_integrator_split(domain, dt)!{{{
         else
          write(0,*) 'Abort: Unknown config_new_btr_variables_from: '&
            //trim(config_time_integration)
-         call dmpar_abort(dminfo)
+         call mpas_dmpar_abort(dminfo)
        endif
 
          ! Recompute final u to go on to next step.
@@ -1226,7 +1226,7 @@ subroutine ocn_time_integrator_split(domain, dt)!{{{
 
          call ocn_diagnostic_solve(dt, block % state % time_levs(2) % state, block % mesh)
 
-         call reconstruct(block % mesh, block % state % time_levs(2) % state % u % array,          &
+         call mpas_reconstruct(block % mesh, block % state % time_levs(2) % state % u % array,          &
                           block % state % time_levs(2) % state % uReconstructX % array,            &
                           block % state % time_levs(2) % state % uReconstructY % array,            &
                           block % state % time_levs(2) % state % uReconstructZ % array,            &
@@ -1236,7 +1236,7 @@ subroutine ocn_time_integrator_split(domain, dt)!{{{
 
          block => block % next
       end do
-      call timer_stop("split_explicit_timestep")
+      call mpas_timer_stop("split_explicit_timestep")
 
    end subroutine ocn_time_integrator_split!}}}
 
@@ -1289,7 +1289,7 @@ subroutine ocn_time_integrator_split(domain, dt)!{{{
       real (kind=RKIND), dimension(:,:), pointer :: u_src
       real (kind=RKIND), parameter :: rho_ref = 1000.0
 
-      call timer_start("filter_btr_mode_tend_u")
+      call mpas_timer_start("filter_btr_mode_tend_u")
 
       h           => s % h % array
       u           => s % u % array
@@ -1361,7 +1361,7 @@ subroutine ocn_time_integrator_split(domain, dt)!{{{
 
            enddo ! iEdge
 
-      call timer_stop("filter_btr_mode_tend_u")
+      call mpas_timer_stop("filter_btr_mode_tend_u")
 
    end subroutine filter_btr_mode_tend_u!}}}
 
@@ -1412,7 +1412,7 @@ subroutine ocn_time_integrator_split(domain, dt)!{{{
       real (kind=RKIND), dimension(:,:), pointer :: u_src
       real (kind=RKIND), parameter :: rho_ref = 1000.0
 
-      call timer_start("filter_btr_mode_u")
+      call mpas_timer_start("filter_btr_mode_u")
 
       h           => s % h % array
       u           => s % u % array
@@ -1480,7 +1480,7 @@ subroutine ocn_time_integrator_split(domain, dt)!{{{
 
            enddo ! iEdge
 
-      call timer_stop("filter_btr_mode_u")
+      call mpas_timer_stop("filter_btr_mode_u")
 
    end subroutine filter_btr_mode_u!}}}
 
@@ -1504,7 +1504,7 @@ subroutine ocn_time_integrator_split(domain, dt)!{{{
       integer :: nCells, nEdges, nVertices, nVertLevels
       integer :: iEdge, k
 
-      call timer_start("enforce_boundaryEdge")
+      call mpas_timer_start("enforce_boundaryEdge")
 
       nCells      = grid % nCells
       nEdges      = grid % nEdges
@@ -1525,7 +1525,7 @@ subroutine ocn_time_integrator_split(domain, dt)!{{{
 
         enddo
        enddo
-      call timer_stop("enforce_boundaryEdge")
+      call mpas_timer_stop("enforce_boundaryEdge")
 
    end subroutine enforce_boundaryEdge!}}}
 

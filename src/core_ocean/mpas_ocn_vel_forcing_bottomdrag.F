@@ -14,8 +14,8 @@
 
 module ocn_vel_forcing_bottomdrag
 
-   use grid_types
-   use configure
+   use mpas_grid_types
+   use mpas_configure
 
    implicit none
    private

@@ -15,9 +15,9 @@
 
 module ocn_vmix_coefs_const
 
-   use grid_types
-   use configure
-   use timer
+   use mpas_grid_types
+   use mpas_configure
+   use mpas_timer
 
    implicit none
    private

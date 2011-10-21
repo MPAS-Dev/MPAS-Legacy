@@ -15,9 +15,9 @@
 
 module ocn_vmix
 
-   use grid_types
-   use configure
-   use timer
+   use mpas_grid_types
+   use mpas_configure
+   use mpas_timer
 
    use ocn_vmix_coefs_const
    use ocn_vmix_coefs_tanh
@@ -199,7 +199,7 @@ contains
 
       if(implicitOn) return
 
-      call timer_start("compute_tend_u-explicit vert mix")
+      call mpas_timer_start("compute_tend_u-explicit vert mix")
 
       nEdgessolve = grid % nEdgesSolve
       nVertLevels = grid % nVertLevels
@@ -224,7 +224,7 @@ contains
       end do
       deallocate(fluxVertTop)
 
-      call timer_stop("compute_tend_u-explicit vert mix")
+      call mpas_timer_stop("compute_tend_u-explicit vert mix")
 
    !--------------------------------------------------------------------
 
@@ -418,7 +418,7 @@ contains
 
       if(implicitOn) return
 
-      call timer_start("compute_scalar_tend-explicit vert diff")
+      call mpas_timer_start("compute_scalar_tend-explicit vert diff")
 
       nCellsSolve = grid % nCellsSolve
       nVertLevels = grid % nVertLevels
@@ -455,7 +455,7 @@ contains
       enddo ! iCell loop
       deallocate(fluxVertTop)
 
-      call timer_stop("compute_scalar_tend-explicit vert diff")
+      call mpas_timer_stop("compute_scalar_tend-explicit vert diff")
 
    !--------------------------------------------------------------------
 
@@ -637,7 +637,7 @@ subroutine tridiagonal_solve(a,b,c,r,x,n)!{{{
    real (KIND=RKIND) :: m
    integer i
 
-   call timer_start("tridiagonal_solve")
+   call mpas_timer_start("tridiagonal_solve")
  
    ! Use work variables for b and r
    bTemp(1) = b(1)
@@ -656,7 +656,7 @@ subroutine tridiagonal_solve(a,b,c,r,x,n)!{{{
       x(i) = (rTemp(i) - c(i)*x(i+1))/bTemp(i)
    end do
 
-   call timer_stop("tridiagonal_solve")
+   call mpas_timer_stop("tridiagonal_solve")
  
 end subroutine tridiagonal_solve!}}}
 
@@ -684,7 +684,7 @@ subroutine tridiagonal_solve_mult(a,b,c,r,x,n,nDim,nSystems)!{{{
    real (KIND=RKIND) :: m
    integer i,j
 
-   call timer_start("tridiagonal_solve_mult")
+   call mpas_timer_start("tridiagonal_solve_mult")
  
    ! Use work variables for b and r
    bTemp(1) = b(1)
@@ -711,7 +711,7 @@ subroutine tridiagonal_solve_mult(a,b,c,r,x,n,nDim,nSystems)!{{{
       end do
    end do
  
-   call timer_stop("tridiagonal_solve_mult")
+   call mpas_timer_stop("tridiagonal_solve_mult")
 
 end subroutine tridiagonal_solve_mult!}}}
 

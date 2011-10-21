@@ -1,21 +1,21 @@
 .SUFFIXES: .F .o
 
 ifdef ZOLTAN_HOME
-   ZOLTANOBJ = module_zoltan_interface.o
+   ZOLTANOBJ = mpas_zoltan_interface.o
 endif
 
-OBJS = module_mpas_framework.o \
-       module_timer.o \
-       module_mpas_timekeeping.o \
-       module_configure.o \
-       module_constants.o \
-       module_grid_types.o \
-       module_hash.o \
-       module_sort.o \
-       module_block_decomp.o \
-       module_dmpar.o \
-       module_io_input.o \
-       module_io_output.o \
+OBJS = mpas_framework.o \
+       mpas_timer.o \
+       mpas_timekeeping.o \
+       mpas_configure.o \
+       mpas_constants.o \
+       mpas_grid_types.o \
+       mpas_hash.o \
+       mpas_sort.o \
+       mpas_block_decomp.o \
+       mpas_dmpar.o \
+       mpas_io_input.o \
+       mpas_io_output.o \
        $(ZOLTANOBJ) \
        streams.o
 
@@ -24,19 +24,19 @@ all: framework
 framework: $(OBJS)
 	ar -ru libframework.a $(OBJS)
 
-module_mpas_framework.o: module_dmpar.o module_io_input.o module_io_output.o module_grid_types.o module_configure.o module_timer.o
+mpas_framework.o: mpas_dmpar.o mpas_io_input.o mpas_io_output.o mpas_grid_types.o mpas_configure.o mpas_timer.o
 
-module_configure.o: module_dmpar.o
+mpas_configure.o: mpas_dmpar.o
 
-module_grid_types.o: module_dmpar.o
+mpas_grid_types.o: mpas_dmpar.o
 
-module_dmpar.o: module_sort.o streams.o
+mpas_dmpar.o: mpas_sort.o streams.o
 
-module_block_decomp.o: module_grid_types.o module_hash.o module_configure.o
+mpas_block_decomp.o: mpas_grid_types.o mpas_hash.o mpas_configure.o
 
-module_io_input.o: module_grid_types.o module_dmpar.o module_block_decomp.o module_sort.o module_configure.o module_mpas_timekeeping.o $(ZOLTANOBJ)
+mpas_io_input.o: mpas_grid_types.o mpas_dmpar.o mpas_block_decomp.o mpas_sort.o mpas_configure.o mpas_timekeeping.o $(ZOLTANOBJ)
 
-module_io_output.o: module_grid_types.o module_dmpar.o module_sort.o module_configure.o
+mpas_io_output.o: mpas_grid_types.o mpas_dmpar.o mpas_sort.o mpas_configure.o
 
 clean:
 	$(RM) *.o *.mod *.f90 libframework.a

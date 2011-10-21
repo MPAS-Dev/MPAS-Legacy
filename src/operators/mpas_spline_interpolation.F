@@ -1,31 +1,34 @@
-module spline_interpolation
+module mpas_spline_interpolation
 
   implicit none
 
   private
 
-  public ::   CubicSplineCoefficients, InterpolateCubicSpline, &
-    IntegrateCubicSpline, IntegrateColumnCubicSpline, InterpolateLinear, &
-    TestInterpolate
+  public ::   mpas_cubic_spline_coefficients, &
+              mpas_interpolate_cubic_spline, &
+              mpas_integrate_cubic_spline, &
+              mpas_integrate_column_cubic_spline, &
+              mpas_interpolate_linear, &
+              mpas_test_interpolate
 
 ! Short Descriptions:
 
-!   CubicSplineCoefficients: Compute second derivatives at nodes.  
+!   mpas_cubic_spline_coefficients: Compute second derivatives at nodes.  
 !      This must be run before any of the other cubic spine functions.
 
-!   InterpolateCubicSpline: Compute cubic spline interpolation. 
+!   mpas_interpolate_cubic_spline: Compute cubic spline interpolation. 
 
-!   IntegrateCubicSpline:  Compute a single integral from spline data.
+!   mpas_integrate_cubic_spline:  Compute a single integral from spline data.
 
-!   IntegrateColumnCubicSpline:  Compute multiple integrals from spline data.
+!   mpas_integrate_column_cubic_spline:  Compute multiple integrals from spline data.
 
-!   InterpolateLinear:  Compute linear interpolation.
+!   mpas_interpolate_linear:  Compute linear interpolation.
 
-!   TestInterpolate:  Test spline interpolation subroutines.
+!   mpas_test_interpolate:  Test spline interpolation subroutines.
 
   contains
 
- subroutine CubicSplineCoefficients(x,y,n,y2ndDer)  
+ subroutine mpas_cubic_spline_coefficients(x,y,n,y2ndDer)  
 
 !  Given arrays x(1:n) and y(1:n) containing a function,
 !  i.e., y(i) = f(x(i)), with x monotonically increasing
@@ -70,10 +73,10 @@ module spline_interpolation
       y2ndDer(i)=y2ndDer(i)*y2ndDer(i+1)+a(i)  
    enddo
 
-  end subroutine CubicSplineCoefficients
+  end subroutine mpas_cubic_spline_coefficients
 
 
-  subroutine InterpolateCubicSpline( &
+  subroutine mpas_interpolate_cubic_spline( &
                 x,y,y2ndDer,n, &
                 xOut,yOut,nOut)  
 
@@ -134,10 +137,10 @@ module spline_interpolation
   
   enddo kInLoop
 
-end subroutine InterpolateCubicSpline
+end subroutine mpas_interpolate_cubic_spline
 
 
-subroutine IntegrateCubicSpline(x,y,y2ndDer,n,x1,x2,y_integral)  
+subroutine mpas_integrate_cubic_spline(x,y,y2ndDer,n,x1,x2,y_integral)  
 
 !  Given the arrays x(1:n) and y(1:n), which tabulate a function,
 !  and given the array y2ndDer(1:n), which is the output from 
@@ -210,10 +213,10 @@ subroutine IntegrateCubicSpline(x,y,y2ndDer,n,x1,x2,y_integral)
 
   enddo ! j
 
-  end subroutine IntegrateCubicSpline
+  end subroutine mpas_integrate_cubic_spline
 
 
-  subroutine IntegrateColumnCubicSpline( &
+  subroutine mpas_integrate_column_cubic_spline( &
                x,y,y2ndDer,n, &
                xOut,y_integral, nOut)  
 
@@ -290,10 +293,10 @@ subroutine IntegrateCubicSpline(x,y,y2ndDer,n,x1,x2,y_integral)
 
   enddo k_loop
 
- end subroutine IntegrateColumnCubicSpline
+ end subroutine mpas_integrate_column_cubic_spline
 
 
- subroutine InterpolateLinear( &
+ subroutine mpas_interpolate_linear( &
                 x,y,n, &
                 xOut,yOut,nOut)  
 
@@ -350,10 +353,10 @@ subroutine IntegrateCubicSpline(x,y,y2ndDer,n,x1,x2,y_integral)
   
   enddo kInLoop
 
-  end subroutine InterpolateLinear
+  end subroutine mpas_interpolate_linear
 
 
-  subroutine TestInterpolate
+  subroutine mpas_test_interpolate
 
 !  Test function to show how to operate the cubic spline subroutines
 
@@ -393,10 +396,10 @@ subroutine IntegrateCubicSpline(x,y,y2ndDer,n,x1,x2,y_integral)
 !-----------------------------------------------------------------------
 
    ! First, compute second derivative values at each node, y2ndDer.
-   call CubicSplineCoefficients(x,y,n,y2ndDer)
+   call mpas_cubic_spline_coefficients(x,y,n,y2ndDer)
 
    ! Compute interpolated values yOut.
-   call InterpolateCubicSpline( &
+   call mpas_interpolate_cubic_spline( &
       x,y,y2ndDer,n, &
       xOut,yOut,nOut)
 
@@ -409,7 +412,7 @@ subroutine IntegrateCubicSpline(x,y,y2ndDer,n,x1,x2,y_integral)
    print *, "plot(x,y,'-*r',xOut,yOut,'x')"
 
    ! Compute interpolated values yOut.
-   call IntegrateColumnCubicSpline( &
+   call mpas_integrate_column_cubic_spline( &
       x,y,y2ndDer,n, &
       xOut,yOut,nOut)  
 
@@ -421,7 +424,7 @@ subroutine IntegrateCubicSpline(x,y,y2ndDer,n,x1,x2,y_integral)
    print '(a,100f8.4,a)', 'yOut = [',yOut,'];'
    print *, "plot(x,y,'-*r',xOut,yOut,'x')"
 
-  end subroutine TestInterpolate
+  end subroutine mpas_test_interpolate
 
-end module spline_interpolation
+end module mpas_spline_interpolation
 

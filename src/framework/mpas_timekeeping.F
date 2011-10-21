@@ -7,8 +7,8 @@ module mpas_timekeeping
    use ESMF_TimeMod
    use ESMF_TimeIntervalMod
 
-   private :: MPAS_CalibrateAlarms
-   private :: MPAS_inRingingEnvelope
+   private :: mpas_calibrate_alarms
+   private :: mpas_in_ringing_envelope
 
    integer, parameter :: MPAS_MAX_ALARMS = 20
    integer, parameter :: MPAS_NOW = 0, &
@@ -139,7 +139,7 @@ module mpas_timekeeping
    end subroutine mpas_timekeeping_finalize
 
 
-   subroutine MPAS_createClock(clock, startTime, timeStep, stopTime, runDuration, ierr)
+   subroutine mpas_create_clock(clock, startTime, timeStep, stopTime, runDuration, ierr)
 
       implicit none
 
@@ -177,10 +177,10 @@ module mpas_timekeeping
       clock % nAlarms = 0
       nullify(clock % alarmListHead)
 
-   end subroutine MPAS_createClock
+   end subroutine mpas_create_clock
 
 
-   subroutine MPAS_destroyClock(clock, ierr)
+   subroutine mpas_destroy_clock(clock, ierr)
 
       implicit none
 
@@ -201,35 +201,10 @@ module mpas_timekeeping
          if (ierr == ESMF_SUCCESS) ierr = 0
       end if
 
-   end subroutine MPAS_destroyClock
+   end subroutine mpas_destroy_clock
 
 
-   logical function MPAS_isClockStartTime(clock, ierr)
-
-      implicit none
-
-      type (MPAS_Clock_type), intent(in) :: clock
-      integer, intent(out), optional :: ierr
-
-      type (ESMF_Time) :: currTime, startTime, stopTime
-
-      call ESMF_ClockGet(clock % c, CurrTime=currTime, rc=ierr)
-      call ESMF_ClockGet(clock % c, StartTime=startTime, rc=ierr)
-      call ESMF_ClockGet(clock % c, StopTime=stopTime, rc=ierr)
-      if (present(ierr)) then
-         if (ierr == ESMF_SUCCESS) ierr = 0
-      end if
-
-      if (startTime <= stopTime) then
-         MPAS_isClockStartTime = (currTime <= startTime)
-      else
-         MPAS_isClockStartTime = (currTime >= startTime)
-      end if
-
-   end function MPAS_isClockStartTime
-
-
-   logical function MPAS_isClockStopTime(clock, ierr)
+   logical function mpas_is_clock_start_time(clock, ierr)
 
       implicit none
 
@@ -246,15 +221,40 @@ module mpas_timekeeping
       end if
 
       if (startTime <= stopTime) then
-         MPAS_isClockStopTime = (currTime >= stopTime)
+         mpas_is_clock_start_time = (currTime <= startTime)
       else
-         MPAS_isClockStopTime = (currTime <= stopTime)
+         mpas_is_clock_start_time = (currTime >= startTime)
       end if
 
-   end function MPAS_isClockStopTime
+   end function mpas_is_clock_start_time
 
 
-   subroutine MPAS_setClockDirection(clock, direction, ierr)
+   logical function mpas_is_clock_stop_time(clock, ierr)
+
+      implicit none
+
+      type (MPAS_Clock_type), intent(in) :: clock
+      integer, intent(out), optional :: ierr
+
+      type (ESMF_Time) :: currTime, startTime, stopTime
+
+      call ESMF_ClockGet(clock % c, CurrTime=currTime, rc=ierr)
+      call ESMF_ClockGet(clock % c, StartTime=startTime, rc=ierr)
+      call ESMF_ClockGet(clock % c, StopTime=stopTime, rc=ierr)
+      if (present(ierr)) then
+         if (ierr == ESMF_SUCCESS) ierr = 0
+      end if
+
+      if (startTime <= stopTime) then
+         mpas_is_clock_stop_time = (currTime >= stopTime)
+      else
+         mpas_is_clock_stop_time = (currTime <= stopTime)
+      end if
+
+   end function mpas_is_clock_stop_time
+
+
+   subroutine mpas_set_clock_direction(clock, direction, ierr)
 
       implicit none
 
@@ -273,17 +273,17 @@ module mpas_timekeeping
       call ESMF_ClockSet(clock % c, TimeStep=timeStep%ti, rc=ierr)
 
       ! specify a valid previousRingTime for each alarm
-      call MPAS_CalibrateAlarms(clock, ierr);
+      call mpas_calibrate_alarms(clock, ierr);
 
       if (present(ierr)) then
          if (ierr == ESMF_SUCCESS) ierr = 0
       end if
 
-   end subroutine MPAS_setClockDirection
+   end subroutine mpas_set_clock_direction
 
 
 
-   integer function MPAS_getClockDirection(clock, ierr)
+   integer function mpas_get_clock_direction(clock, ierr)
 
       implicit none
 
@@ -292,12 +292,12 @@ module mpas_timekeeping
 
       if (present(ierr)) ierr = 0
 
-      MPAS_getClockDirection = clock % direction
+      mpas_get_clock_direction = clock % direction
 
-   end function MPAS_getClockDirection
+   end function mpas_get_clock_direction
 
 
-   subroutine MPAS_setClockTimeStep(clock, timeStep, ierr)
+   subroutine mpas_set_clock_timestep(clock, timeStep, ierr)
 
       implicit none
 
@@ -310,10 +310,10 @@ module mpas_timekeeping
          if (ierr == ESMF_SUCCESS) ierr = 0
       end if
 
-   end subroutine MPAS_setClockTimeStep
+   end subroutine mpas_set_clock_timestep
 
 
-   type (MPAS_TimeInterval_type) function MPAS_getClockTimeStep(clock, ierr)
+   type (MPAS_TimeInterval_type) function mpas_get_clock_timestep(clock, ierr)
 
       implicit none
 
@@ -327,12 +327,12 @@ module mpas_timekeeping
          if (ierr == ESMF_SUCCESS) ierr = 0
       end if
 
-      MPAS_getClockTimeStep = timeStep
+      mpas_get_clock_timestep = timeStep
 
-   end function MPAS_getClockTimeStep
+   end function mpas_get_clock_timestep
 
 
-   subroutine MPAS_advanceClock(clock, timeStep, ierr)
+   subroutine mpas_advance_clock(clock, timeStep, ierr)
 
       implicit none
 
@@ -354,10 +354,10 @@ module mpas_timekeeping
          if (ierr == ESMF_SUCCESS) ierr = 0
       end if
 
-   end subroutine MPAS_advanceClock
+   end subroutine mpas_advance_clock
 
 
-   subroutine MPAS_setClockTime(clock, clock_time, whichTime, ierr)
+   subroutine mpas_set_clock_time(clock, clock_time, whichTime, ierr)
 
       implicit none
 
@@ -368,7 +368,7 @@ module mpas_timekeeping
 
       if (whichTime == MPAS_NOW) then
          call ESMF_ClockSet(clock % c, CurrTime=clock_time%t, rc=ierr)
-         call MPAS_CalibrateAlarms(clock, ierr);
+         call mpas_calibrate_alarms(clock, ierr);
       else if (whichTime == MPAS_START_TIME) then
          call ESMF_ClockSet(clock % c, StartTime=clock_time%t, rc=ierr)
       else if (whichTime == MPAS_STOP_TIME) then
@@ -380,10 +380,10 @@ module mpas_timekeeping
          if (ierr == ESMF_SUCCESS) ierr = 0
       end if
 
-   end subroutine MPAS_setClockTime
+   end subroutine mpas_set_clock_time
 
 
-   type (MPAS_Time_type) function MPAS_getClockTime(clock, whichTime, ierr)
+   type (MPAS_Time_type) function mpas_get_clock_time(clock, whichTime, ierr)
 
       implicit none
 
@@ -406,12 +406,12 @@ module mpas_timekeeping
          if (ierr == ESMF_SUCCESS) ierr = 0
       end if
 
-      MPAS_getClockTime = clock_time
+      mpas_get_clock_time = clock_time
 
-   end function MPAS_getClockTime
+   end function mpas_get_clock_time
 
 
-   subroutine MPAS_addClockAlarm(clock, alarmID, alarmTime, alarmTimeInterval, ierr)
+   subroutine mpas_add_clock_alarm(clock, alarmID, alarmTime, alarmTimeInterval, ierr)
 ! TODO: possibly add a stop time for recurring alarms
 
       implicit none
@@ -473,10 +473,10 @@ module mpas_timekeeping
          if (ierr == ESMF_SUCCESS) ierr = 0
       end if
 
-   end subroutine MPAS_addClockAlarm
+   end subroutine mpas_add_clock_alarm
 
 
-   subroutine MPAS_removeClockAlarm(clock, alarmID, ierr)
+   subroutine mpas_remove_clock_alarm(clock, alarmID, ierr)
 
       implicit none
 
@@ -501,11 +501,11 @@ module mpas_timekeeping
          alarmPtr => alarmPtr % next
       end do
 
-   end subroutine MPAS_removeClockAlarm
+   end subroutine mpas_remove_clock_alarm
 
 
 
-   subroutine MPAS_printAlarm(clock, alarmID, ierr)
+   subroutine mpas_print_alarm(clock, alarmID, ierr)
 
       implicit none
 
@@ -530,13 +530,13 @@ module mpas_timekeeping
             
             write(0,*) 'isSet', alarmPtr % isSet
 
-            call MPAS_getTime(alarmPtr % ringTime, dateTimeString=printString, ierr=ierr)
+            call mpas_get_time(alarmPtr % ringTime, dateTimeString=printString, ierr=ierr)
             write(0,*) 'ringTime', printString
 
-            call MPAS_getTime(alarmPtr % prevRingTime, dateTimeString=printString, ierr=ierr)
+            call mpas_get_time(alarmPtr % prevRingTime, dateTimeString=printString, ierr=ierr)
             write(0,*) 'prevRingTime', printString
 
-            call MPAS_getTimeInterval(alarmPtr % ringTimeInterval, timeString=printString, ierr=ierr)
+            call mpas_get_timeInterval(alarmPtr % ringTimeInterval, timeString=printString, ierr=ierr)
             write(0,*) 'ringTimeInterval', printString
             
             exit
@@ -544,11 +544,11 @@ module mpas_timekeeping
          alarmPtr => alarmPtr % next
       end do
 
-   end subroutine MPAS_printAlarm
+   end subroutine mpas_print_alarm
 
 
 
-   logical function MPAS_isAlarmRinging(clock, alarmID, interval, ierr)
+   logical function mpas_is_alarm_ringing(clock, alarmID, interval, ierr)
 
       implicit none
 
@@ -561,14 +561,14 @@ module mpas_timekeeping
 
       if (present(ierr)) ierr = 0
 
-      MPAS_isAlarmRinging = .false.
+      mpas_is_alarm_ringing = .false.
       
       alarmPtr => clock % alarmListHead
       do while (associated(alarmPtr))
          if (alarmPtr % alarmID == alarmID) then
             if (alarmPtr % isSet) then
-               if (MPAS_inRingingEnvelope(clock, alarmPtr, interval, ierr)) then
-                  MPAS_isAlarmRinging = .true.
+               if (mpas_in_ringing_envelope(clock, alarmPtr, interval, ierr)) then
+                  mpas_is_alarm_ringing = .true.
                end if
             end if
             exit
@@ -576,11 +576,11 @@ module mpas_timekeeping
          alarmPtr => alarmPtr % next
       end do
 
-   end function MPAS_isAlarmRinging
+   end function mpas_is_alarm_ringing
 
 
 
-   subroutine MPAS_getClockRingingAlarms(clock, nAlarms, alarmList, interval, ierr)
+   subroutine mpas_get_clock_ringing_alarms(clock, nAlarms, alarmList, interval, ierr)
 
       implicit none
 
@@ -599,7 +599,7 @@ module mpas_timekeeping
       alarmPtr => clock % alarmListHead
       do while (associated(alarmPtr))
          if (alarmPtr % isSet) then
-            if (MPAS_inRingingEnvelope(clock, alarmPtr, interval, ierr)) then
+            if (mpas_in_ringing_envelope(clock, alarmPtr, interval, ierr)) then
                nAlarms = nAlarms + 1
                alarmList(nAlarms) = alarmPtr % alarmID
             end if
@@ -607,10 +607,10 @@ module mpas_timekeeping
          alarmPtr => alarmPtr % next
       end do
 
-   end subroutine MPAS_getClockRingingAlarms
+   end subroutine mpas_get_clock_ringing_alarms
 
 
-   logical function MPAS_inRingingEnvelope(clock, alarmPtr, interval, ierr)
+   logical function mpas_in_ringing_envelope(clock, alarmPtr, interval, ierr)
 
       implicit none
       
@@ -622,10 +622,10 @@ module mpas_timekeeping
       type (MPAS_Time_type) :: alarmNow
       type (MPAS_Time_type) :: alarmThreshold
 
-      alarmNow = MPAS_getClockTime(clock, MPAS_NOW, ierr)
+      alarmNow = mpas_get_clock_time(clock, MPAS_NOW, ierr)
       alarmThreshold = alarmPtr % ringTime 
       
-      MPAS_inRingingEnvelope = .false.      
+      mpas_in_ringing_envelope = .false.      
                
       if(clock % direction == MPAS_FORWARD) then
 
@@ -638,7 +638,7 @@ module mpas_timekeeping
          end if
 
          if (alarmThreshold <= alarmNow) then
-            MPAS_inRingingEnvelope = .true.
+            mpas_in_ringing_envelope = .true.
          end if
       else
 
@@ -651,15 +651,15 @@ module mpas_timekeeping
          end if
             
          if (alarmThreshold >= alarmNow) then
-            MPAS_inRingingEnvelope = .true.
+            mpas_in_ringing_envelope = .true.
          end if
       end if
 
-   end function MPAS_inRingingEnvelope
+   end function mpas_in_ringing_envelope
 
 
 
-   subroutine MPAS_resetClockAlarm(clock, alarmID, interval, ierr)
+   subroutine mpas_reset_clock_alarm(clock, alarmID, interval, ierr)
 
       implicit none
 
@@ -678,12 +678,12 @@ module mpas_timekeeping
       
          if (alarmPtr % alarmID == alarmID) then
 
-            if (MPAS_inRingingEnvelope(clock, alarmPtr, interval, ierr)) then
+            if (mpas_in_ringing_envelope(clock, alarmPtr, interval, ierr)) then
 
                if (.not. alarmPtr % isRecurring) then
                   alarmPtr % isSet = .false. 
                else
-                  alarmNow = MPAS_getClockTime(clock, MPAS_NOW, ierr)
+                  alarmNow = mpas_get_clock_time(clock, MPAS_NOW, ierr)
 
                   if(clock % direction == MPAS_FORWARD) then
                      if (present(interval)) then
@@ -711,12 +711,12 @@ module mpas_timekeeping
          alarmPtr => alarmPtr % next
       end do
 
-   end subroutine MPAS_resetClockAlarm
+   end subroutine mpas_reset_clock_alarm
 
 
 
    ! specify a valid previousRingTime for each alarm
-   subroutine MPAS_CalibrateAlarms(clock, ierr)
+   subroutine mpas_calibrate_alarms(clock, ierr)
 
       implicit none
 
@@ -730,7 +730,7 @@ module mpas_timekeeping
       type (MPAS_TimeInterval_type) :: ringTimeInterval 
       type (MPAS_Alarm_type), pointer :: alarmPtr
 
-      now = MPAS_getClockTime(clock, MPAS_NOW, ierr)
+      now = mpas_get_clock_time(clock, MPAS_NOW, ierr)
       
       alarmPtr => clock % alarmListHead
       do while (associated(alarmPtr))
@@ -783,10 +783,10 @@ module mpas_timekeeping
          if (ierr == ESMF_SUCCESS) ierr = 0
       end if
    
-   end subroutine MPAS_CalibrateAlarms
+   end subroutine mpas_calibrate_alarms
 
 
-   subroutine MPAS_setTime(curr_time, YYYY, MM, DD, DoY, H, M, S, S_n, S_d, dateTimeString, ierr)
+   subroutine mpas_set_time(curr_time, YYYY, MM, DD, DoY, H, M, S, S_n, S_d, dateTimeString, ierr)
 
       implicit none
 
@@ -819,7 +819,7 @@ module mpas_timekeeping
          numerator = 0
          denominator = 1
 
-         call SplitString(dateTimeString_, ".", subStrings)
+         call mpas_split_string(dateTimeString_, ".", subStrings)
          if (size(subStrings) == 2) then ! contains second decimals
             dateTimeString_ = subStrings(1)
             secDecSubString = subStrings(2)(:integerMaxDigits)
@@ -838,14 +838,14 @@ module mpas_timekeeping
             return
          end if
 
-         call SplitString(dateTimeString_, "_", subStrings)
+         call mpas_split_string(dateTimeString_, "_", subStrings)
 
          if(size(subStrings) == 2) then   ! contains a date and time
             dateSubString = subStrings(1)
             timeSubString = subStrings(2)
             deallocate(subStrings)
             
-            call SplitString(timeSubString, ":", subStrings)
+            call mpas_split_string(timeSubString, ":", subStrings)
             
             if (size(subStrings) == 3) then
                read(subStrings(1),*) hour 
@@ -874,7 +874,7 @@ module mpas_timekeeping
             return
          end if
 
-         call SplitString(dateSubString, "-", subStrings)
+         call mpas_split_string(dateSubString, "-", subStrings)
             
          if (size(subStrings) == 3) then
             read(subStrings(1),*) year 
@@ -893,7 +893,7 @@ module mpas_timekeeping
       else
       
          if (present(DoY)) then
-            call getMonthDay(YYYY, DoY, month, day)
+            call mpas_get_month_day(YYYY, DoY, month, day)
          
             ! consistency check
             if (present(MM)) then
@@ -939,10 +939,10 @@ module mpas_timekeeping
          if (ierr == ESMF_SUCCESS) ierr = 0
       end if
 
-   end subroutine MPAS_setTime
+   end subroutine mpas_set_time
 
 
-   subroutine MPAS_getTime(curr_time, YYYY, MM, DD, DoY, H, M, S, S_n, S_d, dateTimeString, ierr)
+   subroutine mpas_get_time(curr_time, YYYY, MM, DD, DoY, H, M, S, S_n, S_d, dateTimeString, ierr)
 
       implicit none
 
@@ -966,10 +966,10 @@ module mpas_timekeeping
          if (ierr == ESMF_SUCCESS) ierr = 0
       end if
 
-   end subroutine MPAS_getTime
+   end subroutine mpas_get_time
 
 
-   subroutine MPAS_setTimeInterval(interval, DD, H, M, S, S_n, S_d, timeString, dt, ierr)
+   subroutine mpas_set_timeInterval(interval, DD, H, M, S, S_n, S_d, timeString, dt, ierr)
 
       implicit none
 
@@ -1073,7 +1073,7 @@ module mpas_timekeeping
          numerator = 0
          denominator = 1
 
-         call SplitString(timeString_, ".", subStrings)
+         call mpas_split_string(timeString_, ".", subStrings)
          
          if (size(subStrings) == 2) then ! contains second decimals
             timeString_ = subStrings(1)
@@ -1094,7 +1094,7 @@ module mpas_timekeeping
             return
          end if
 
-         call SplitString(timeString_, "_", subStrings)
+         call mpas_split_string(timeString_, "_", subStrings)
 
          if(size(subStrings) == 2) then   ! contains a day and time
             daySubString = subStrings(1)
@@ -1112,7 +1112,7 @@ module mpas_timekeeping
             return
          end if
 
-         call SplitString(timeSubString, ":", subStrings)
+         call mpas_split_string(timeSubString, ":", subStrings)
             
          if (size(subStrings) == 3) then
             read(subStrings(1),*) hour 
@@ -1148,10 +1148,10 @@ module mpas_timekeeping
       
 
       
-   end subroutine MPAS_setTimeInterval
+   end subroutine mpas_set_timeInterval
 
 
-   subroutine MPAS_getTimeInterval(interval, DD, H, M, S, S_n, S_d, timeString, dt, ierr)
+   subroutine mpas_get_timeInterval(interval, DD, H, M, S, S_n, S_d, timeString, dt, ierr)
 ! TODO: add double-precision seconds
 
       implicit none
@@ -1214,7 +1214,7 @@ module mpas_timekeeping
          if (ierr == ESMF_SUCCESS) ierr = 0
       end if
 
-   end subroutine MPAS_getTimeInterval
+   end subroutine mpas_get_timeInterval
 
 
    type (MPAS_Time_type) function add_t_ti(t, ti)
@@ -1485,7 +1485,7 @@ module mpas_timekeeping
 !   end function mod
 
 
-   subroutine SplitString(string, delimiter, subStrings)   
+   subroutine mpas_split_string(string, delimiter, subStrings)   
       
       implicit none
       
@@ -1515,10 +1515,10 @@ module mpas_timekeeping
       end do
       subStrings(index) = string(start:len(string)) 
       
-   end subroutine SplitString
+   end subroutine mpas_split_string
 
 
-    subroutine getMonthDay(YYYY, DoY, month, day)
+    subroutine mpas_get_month_day(YYYY, DoY, month, day)
        
        implicit none
 
@@ -1540,7 +1540,7 @@ module mpas_timekeeping
           month = month + 1       
        end do
 
-    end subroutine getMonthDay
+    end subroutine mpas_get_month_day
 
 
    logical function isValidDate(YYYY, MM, DD)

@@ -14,9 +14,9 @@
 
 module ocn_tracer_hadv3
 
-   use grid_types
-   use configure
-   use timer
+   use mpas_grid_types
+   use mpas_configure
+   use mpas_timer
 
    implicit none
    private
@@ -142,7 +142,7 @@ contains
       areaCell => grid % areaCell % array
       deriv_two => grid % deriv_two % array
 
-      call timer_start("compute_scalar_tend-horiz adv 3")
+      call mpas_timer_start("compute_scalar_tend-horiz adv 3")
       do iEdge=1,nEdges
          cell1 = cellsOnEdge(1,iEdge)
          cell2 = cellsOnEdge(2,iEdge)
@@ -194,7 +194,7 @@ contains
             enddo
          end do
       end do
-      call timer_stop("compute_scalar_tend-horiz adv 3")
+      call mpas_timer_stop("compute_scalar_tend-horiz adv 3")
 
    !--------------------------------------------------------------------
 

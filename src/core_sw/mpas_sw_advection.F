@@ -1,14 +1,14 @@
-module advection
+module sw_advection
 
-   use grid_types
-   use configure
-   use constants
+   use mpas_grid_types
+   use mpas_configure
+   use mpas_constants
 
 
    contains
 
 
-   subroutine initialize_advection_rk( grid )
+   subroutine sw_initialize_advection_rk( grid )
                                       
 !
 ! compute the cell coefficients for the polynomial fit.
@@ -58,6 +58,7 @@ module advection
       logical, parameter :: reset_poly = .true.
 
       real (kind=RKIND) :: rcell, cos2t, costsint, sin2t
+      real (kind=RKIND), dimension(grid%maxEdges) :: angle_2d
 
 !---
 
@@ -152,8 +153,18 @@ module advection
          else     ! On an x-y plane
 
             do i=1,n-1
-               xp(i) = grid % xCell % array(cell_list(i)) - grid % xCell % array(iCell)
-               yp(i) = grid % yCell % array(cell_list(i)) - grid % yCell % array(iCell)
+
+               angle_2d(i) = grid%angleEdge%array(grid % EdgesOnCell % array(i,iCell))
+               iEdge = grid % EdgesOnCell % array(i,iCell)
+               if ( iCell .ne. grid % CellsOnEdge % array(1,iEdge)) &
+                  angle_2d(i) = angle_2d(i) - pii
+
+!               xp(i) = grid % xCell % array(cell_list(i)) - grid % xCell % array(iCell)
+!               yp(i) = grid % yCell % array(cell_list(i)) - grid % yCell % array(iCell)
+
+               xp(i) = grid % dcEdge % array(grid % EdgesOnCell % array(i,iCell)) * cos(angle_2d(i))
+               yp(i) = grid % dcEdge % array(grid % EdgesOnCell % array(i,iCell)) * sin(angle_2d(i))
+
             end do
 
          end if
@@ -243,7 +254,7 @@ module advection
  
          end if
  
-         call poly_fit_2( amatrix, bmatrix, wmatrix, ma, na, 25 )
+         call sw_poly_fit_2( amatrix, bmatrix, wmatrix, ma, na, 25 )
 
          do i=1,grid % nEdgesOnCell % array (iCell)
             ip1 = i+1
@@ -258,7 +269,7 @@ module advection
             zv2 = grid % zVertex % array(grid % verticesOnEdge % array (2,iedge))/a
   
             if ( grid % on_a_sphere ) then
-               call arc_bisect( xv1, yv1, zv1,  &
+               call sw_arc_bisect( xv1, yv1, zv1,  &
                                 xv2, yv2, zv2,  &
                                 xec, yec, zec   )
   
@@ -271,9 +282,11 @@ module advection
                else
                   thetae(2,grid % EdgesOnCell % array (i,iCell)) = thetae_tmp
                end if
-            else
-               xe(grid % EdgesOnCell % array (i,iCell)) = 0.5 * (xv1 + xv2)
-               ye(grid % EdgesOnCell % array (i,iCell)) = 0.5 * (yv1 + yv2)
+!            else
+!
+!               xe(grid % EdgesOnCell % array (i,iCell)) = 0.5 * (xv1 + xv2)
+!               ye(grid % EdgesOnCell % array (i,iCell)) = 0.5 * (yv1 + yv2)
+
             end if
   
          end do
@@ -312,13 +325,36 @@ module advection
                                             + 2.*sin2t*bmatrix(6,j)
                   end do
                end if
+
             else
-               do j=1,n
-                  deriv_two(j,1,iEdge) =   2.*xe(iEdge)*xe(iEdge)*bmatrix(4,j)  &
-                                         + 2.*xe(iEdge)*ye(iEdge)*bmatrix(5,j)  &
-                                         + 2.*ye(iEdge)*ye(iEdge)*bmatrix(6,j)
-                  deriv_two(j,2,iEdge) = deriv_two(j,1,iEdge)
-               end do
+
+               cos2t = cos(angle_2d(i))
+               sin2t = sin(angle_2d(i))
+               costsint = cos2t*sin2t
+               cos2t = cos2t**2
+               sin2t = sin2t**2
+
+!               do j=1,n
+!
+!                  deriv_two(j,1,iEdge) =   2.*xe(iEdge)*xe(iEdge)*bmatrix(4,j)  &
+!                                         + 2.*xe(iEdge)*ye(iEdge)*bmatrix(5,j)  &
+!                                         + 2.*ye(iEdge)*ye(iEdge)*bmatrix(6,j)
+!               end do
+
+               if (iCell == grid % cellsOnEdge % array(1,iEdge)) then
+                  do j=1,n
+                     deriv_two(j,1,iEdge) =   2.*cos2t*bmatrix(4,j)  &
+                                            + 2.*costsint*bmatrix(5,j)  &
+                                            + 2.*sin2t*bmatrix(6,j)
+                  end do
+               else
+                  do j=1,n
+                     deriv_two(j,2,iEdge) =   2.*cos2t*bmatrix(4,j)  &
+                                            + 2.*costsint*bmatrix(5,j)  &
+                                            + 2.*sin2t*bmatrix(6,j)
+                  end do
+               end if
+
             end if
          end do
  
@@ -326,7 +362,26 @@ module advection
 
       if (debug) stop
 
-   end subroutine initialize_advection_rk
+
+!      write(0,*) ' check for deriv2 coefficients, iEdge 4 '
+!
+!      iEdge = 4
+!      j = 1
+!      iCell = grid % cellsOnEdge % array(1,iEdge)
+!      write(0,*) ' j, icell, coef ',j,iCell,deriv_two(j,1,iEdge)
+!      do j=2,7
+!         write(0,*) ' j, icell, coef ',j,grid % CellsOnCell % array(j-1,iCell),deriv_two(j,1,iEdge)
+!      end do
+!
+!      j = 1
+!      iCell = grid % cellsOnEdge % array(2,iEdge)
+!      write(0,*) ' j, icell, coef ',j,iCell,deriv_two(j,2,iEdge)
+!      do j=2,7
+!         write(0,*) ' j, icell, coef ',j,grid % CellsOnCell % array(j-1,iCell),deriv_two(j,2,iEdge)
+!      end do
+!      stop
+
+   end subroutine sw_initialize_advection_rk
 
 
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -467,13 +522,13 @@ module advection
    
    
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   ! SUBROUTINE ARC_BISECT
+   ! subroutine sw_arc_bisect
    !
    ! Returns the point C=(cx, cy, cz) that bisects the great circle arc from
    !   A=(ax, ay, az) to B=(bx, by, bz). It is assumed that A and B lie on the
    !   surface of a sphere centered at the origin.
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   subroutine arc_bisect(ax, ay, az, bx, by, bz, cx, cy, cz)
+   subroutine sw_arc_bisect(ax, ay, az, bx, by, bz, cx, cy, cz)
    
       implicit none
    
@@ -498,10 +553,10 @@ module advection
          cz = r * cz / d
       end if
    
-   end subroutine arc_bisect
+   end subroutine sw_arc_bisect
 
 
-   subroutine poly_fit_2(a_in,b_out,weights_in,m,n,ne)
+   subroutine sw_poly_fit_2(a_in,b_out,weights_in,m,n,ne)
 
       implicit none
 
@@ -538,14 +593,14 @@ module advection
       ata = matmul(at,a)
 
 !      if (m == n) then
-!         call migs(a,n,b,indx)
+!         call sw_migs(a,n,b,indx)
 !      else
 
-         call migs(atha,n,atha_inv,indx)
+         call sw_migs(atha,n,atha_inv,indx)
 
          b = matmul(atha_inv,ath)
 
-!         call migs(ata,n,ata_inv,indx)
+!         call sw_migs(ata,n,ata_inv,indx)
 !         b = matmul(ata_inv,at)
 !      end if
       b_out(1:n,1:m) = b(1:n,1:m)
@@ -556,7 +611,7 @@ module advection
 !
 !     write(6,*) ' '
 
-   end subroutine poly_fit_2
+   end subroutine sw_poly_fit_2
 
 
 ! Updated 10/24/2001.
@@ -575,9 +630,9 @@ module advection
 !                                                                       !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-SUBROUTINE MIGS (A,N,X,INDX)
+subroutine sw_migs (A,N,X,INDX)
 !
-! Subroutine to invert matrix A(N,N) with the inverse stored
+! subroutine to invert matrix A(N,N) with the inverse stored
 ! in X(N,N) in the output.  Copyright (c) Tao Pang 2001.
 !
   IMPLICIT NONE
@@ -597,7 +652,7 @@ SUBROUTINE MIGS (A,N,X,INDX)
     B(I,I) = 1.0
   END DO
 !
-  CALL ELGS (A,N,INDX)
+  call sw_elgs (A,N,INDX)
 !
   DO I = 1, N-1
     DO J = I+1, N
@@ -617,12 +672,12 @@ SUBROUTINE MIGS (A,N,X,INDX)
       X(J,I) =  X(J,I)/A(INDX(J),J)
     END DO
   END DO
-END SUBROUTINE MIGS
+end subroutine sw_migs
 
 
-SUBROUTINE ELGS (A,N,INDX)
+subroutine sw_elgs (A,N,INDX)
 !
-! Subroutine to perform the partial-pivoting Gaussian elimination.
+! subroutine to perform the partial-pivoting Gaussian elimination.
 ! A(N,N) is the original matrix in the input and transformed matrix
 ! plus the pivoting element ratios below the diagonal in the output.
 ! INDX(N) records the pivoting order.  Copyright (c) Tao Pang 2001.
@@ -646,7 +701,7 @@ SUBROUTINE ELGS (A,N,INDX)
   DO I = 1, N
     C1= 0.0
     DO J = 1, N
-      C1 = AMAX1(C1,ABS(A(I,J)))
+      C1 = MAX(C1,ABS(A(I,J)))
     END DO
     C(I) = C1
   END DO
@@ -683,6 +738,196 @@ SUBROUTINE ELGS (A,N,INDX)
     END DO
   END DO
 !
-END SUBROUTINE ELGS
+end subroutine sw_elgs
 
-end module advection
+!-------------------------------------------------------------
+
+   subroutine sw_initialize_deformation_weights( grid )
+                                      
+!
+! compute the cell coefficients for the deformation calculations
+! WCS, 13 July 2010
+!
+      implicit none
+
+      type (mesh_type), intent(in) :: grid
+
+      real (kind=RKIND), dimension(:,:), pointer :: defc_a, defc_b
+      integer, dimension(:,:), pointer :: cellsOnEdge, edgesOnCell
+
+!  local variables
+
+      real (kind=RKIND), dimension(2, grid % nEdges) :: thetae
+      real (kind=RKIND), dimension(grid % nEdges) :: xe, ye
+      real (kind=RKIND), dimension(grid % nCells) :: theta_abs
+
+      real (kind=RKIND), dimension(25) :: xc, yc, zc ! cell center coordinates
+      real (kind=RKIND), dimension(25) :: thetav, thetat, dl_sphere
+      real (kind=RKIND) :: xm, ym, zm, dl, xec, yec, zec
+      real (kind=RKIND) :: thetae_tmp, xe_tmp, ye_tmp
+      real (kind=RKIND) :: xv1, xv2, yv1, yv2, zv1, zv2
+      integer :: i, j, k, ip1, ip2, m, n, ip1a, ii
+      integer :: iCell, iEdge
+      real (kind=RKIND) :: pii
+      real (kind=RKIND) :: x0, y0, x1, y1, x2, y2, x3, y3, x4, y4, x5, y5
+      real (kind=RKIND) :: pdx1, pdx2, pdx3, pdy1, pdy2, pdy3, dx1, dx2, dy1, dy2
+      real (kind=RKIND) :: angv1, angv2, dl1, dl2
+      real (kind=RKIND), dimension(25) :: dxe, dye, x2v, y2v, xp, yp, xpt, ypt
+      
+      real (kind=RKIND) :: length_scale
+      integer :: ma,na, cell_add, mw, nn
+      integer, dimension(25) :: cell_list
+
+      integer :: cell1, cell2, iv
+      logical :: do_the_cell
+      real (kind=RKIND) :: area_cell, sint2, cost2, sint_cost, sumw1, sumw2, xptt, area_cellt
+
+      logical, parameter :: debug = .false.
+
+      if (debug) write(0,*) ' in def weight calc '
+
+      defc_a => grid % defc_a % array
+      defc_b => grid % defc_b % array
+      cellsOnEdge => grid % cellsOnEdge % array
+      edgesOnCell => grid % edgesOnCell % array
+
+      defc_a(:,:) = 0.
+      defc_b(:,:) = 0.
+
+      pii = 2.*asin(1.0)
+
+      if (debug) write(0,*) ' beginning cell loop '
+
+      do iCell = 1, grid % nCells
+
+         if (debug) write(0,*) ' cell loop ', iCell
+
+         cell_list(1) = iCell
+         do i=2, grid % nEdgesOnCell % array(iCell)+1
+            cell_list(i) = grid % CellsOnCell % array(i-1,iCell)
+         end do
+         n = grid % nEdgesOnCell % array(iCell) + 1
+
+!  check to see if we are reaching outside the halo
+
+         if (debug) write(0,*) ' points ', n
+
+         do_the_cell = .true.
+         do i=1,n
+            if (cell_list(i) > grid % nCells) do_the_cell = .false.
+         end do
+
+
+         if (.not. do_the_cell) cycle
+
+
+!  compute poynomial fit for this cell if all needed neighbors exist
+         if (grid % on_a_sphere) then
+
+            xc(1) = grid % xCell % array(iCell)/a
+            yc(1) = grid % yCell % array(iCell)/a
+            zc(1) = grid % zCell % array(iCell)/a
+
+
+            do i=2,n
+               iv = grid % verticesOnCell % array(i-1,iCell)
+               xc(i) = grid % xVertex % array(iv)/a
+               yc(i) = grid % yVertex % array(iv)/a
+               zc(i) = grid % zVertex % array(iv)/a
+            end do
+
+            theta_abs(iCell) =  pii/2. - sphere_angle( xc(1), yc(1), zc(1),  &
+                                                       xc(2), yc(2), zc(2),  &
+                                                       0.,    0.,    1.      ) 
+
+! angles from cell center to neighbor centers (thetav)
+
+            do i=1,n-1
+   
+               ip2 = i+2
+               if (ip2 > n) ip2 = 2
+    
+               thetav(i) = sphere_angle( xc(1),   yc(1),   zc(1),    &
+                                         xc(i+1), yc(i+1), zc(i+1),  &
+                                         xc(ip2), yc(ip2), zc(ip2)   )
+
+               dl_sphere(i) = a*arc_length( xc(1),   yc(1),   zc(1),  &
+                                            xc(i+1), yc(i+1), zc(i+1) )
+            end do
+
+            length_scale = 1.
+            do i=1,n-1
+               dl_sphere(i) = dl_sphere(i)/length_scale
+            end do
+
+            thetat(1) = 0.  !  this defines the x direction, cell center 1 -> 
+!            thetat(1) = theta_abs(iCell)  !  this defines the x direction, longitude line
+            do i=2,n-1
+               thetat(i) = thetat(i-1) + thetav(i-1)
+            end do
+   
+            do i=1,n-1
+               xp(i) = cos(thetat(i)) * dl_sphere(i)
+               yp(i) = sin(thetat(i)) * dl_sphere(i)
+            end do
+
+         else     ! On an x-y plane
+
+            xp(1) = grid % xCell % array(iCell)
+            yp(1) = grid % yCell % array(iCell)
+
+
+            do i=2,n
+               iv = grid % verticesOnCell % array(i-1,iCell)
+               xp(i) = grid % xVertex % array(iv)
+               yp(i) = grid % yVertex % array(iv)
+            end do
+
+         end if
+
+!         thetat(1) = 0.
+         thetat(1) = theta_abs(iCell)
+         do i=2,n-1
+            ip1 = i+1
+            if (ip1 == n) ip1 = 1
+            thetat(i) = plane_angle( 0.,0.,0.,  &
+                                     xp(i)-xp(i-1), yp(i)-yp(i-1), 0.,  &
+                                     xp(ip1)-xp(i), yp(ip1)-yp(i), 0.,  &
+                                     0., 0., 1.)
+            thetat(i) = thetat(i) + thetat(i-1)
+         end do
+
+         area_cell = 0.
+         area_cellt = 0.
+         do i=1,n-1
+            ip1 = i+1
+            if (ip1 == n) ip1 = 1
+            dl = sqrt((xp(ip1)-xp(i))**2 + (yp(ip1)-yp(i))**2)
+            area_cell = area_cell + 0.25*(xp(i)+xp(ip1))*(yp(ip1)-yp(i)) - 0.25*(yp(i)+yp(ip1))*(xp(ip1)-xp(i))
+            area_cellt = area_cellt + (0.25*(xp(i)+xp(ip1))*cos(thetat(i)) + 0.25*(yp(i)+yp(ip1))*sin(thetat(i)))*dl
+         end do
+         if (debug) write(0,*) ' area_cell, area_cellt ',area_cell, area_cellt,area_cell-area_cellt
+
+         do i=1,n-1
+            ip1 = i+1
+            if (ip1 == n) ip1 = 1
+            dl = sqrt((xp(ip1)-xp(i))**2 + (yp(ip1)-yp(i))**2)
+            sint2 = (sin(thetat(i)))**2
+            cost2 = (cos(thetat(i)))**2
+            sint_cost = sin(thetat(i))*cos(thetat(i))
+            defc_a(i,iCell) = dl*(cost2 - sint2)/area_cell
+            defc_b(i,iCell) = dl*2.*sint_cost/area_cell
+            if (cellsOnEdge(1,EdgesOnCell(i,iCell)) /= iCell) then
+               defc_a(i,iCell) = - defc_a(i,iCell)
+               defc_b(i,iCell) = - defc_b(i,iCell)
+            end if
+ 
+         end do
+
+      end do
+
+      if (debug) write(0,*) ' exiting def weight calc '
+
+   end subroutine sw_initialize_deformation_weights
+
+end module sw_advection

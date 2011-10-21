@@ -1,25 +1,25 @@
 .SUFFIXES: .F .o
 
-OBJS = 	module_mpas_core.o \
-        module_test_cases.o \
-	module_advection.o \
-	module_time_integration.o \
-	module_global_diagnostics.o
+OBJS = 	mpas_sw_mpas_core.o \
+        mpas_sw_test_cases.o \
+	mpas_sw_advection.o \
+	mpas_sw_time_integration.o \
+	mpas_sw_global_diagnostics.o
 
 all: core_sw
 
 core_sw: $(OBJS)
 	ar -ru libdycore.a $(OBJS)
 
-module_test_cases.o:
+mpas_sw_test_cases.o:
 
-module_advection.o:
+mpas_sw_advection.o:
 
-module_time_integration.o:
+mpas_sw_time_integration.o:
 
-module_global_diagnostics.o:
+mpas_sw_global_diagnostics.o:
 
-module_mpas_core.o: module_global_diagnostics.o module_test_cases.o module_time_integration.o module_advection.o
+mpas_sw_mpas_core.o: mpas_sw_global_diagnostics.o mpas_sw_test_cases.o mpas_sw_time_integration.o mpas_sw_advection.o
 
 clean:
 	$(RM) *.o *.mod *.f90 libdycore.a

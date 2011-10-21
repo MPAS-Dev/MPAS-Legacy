@@ -1,8 +1,8 @@
 module advection
 
-   use grid_types
-   use configure
-   use constants
+   use mpas_grid_types
+   use mpas_configure
+   use mpas_constants
 
 
    contains
@@ -593,14 +593,14 @@ module advection
       ata = matmul(at,a)
 
 !      if (m == n) then
-!         call migs(a,n,b,indx)
+!         call MIGS(a,n,b,indx)
 !      else
 
-         call migs(atha,n,atha_inv,indx)
+         call MIGS(atha,n,atha_inv,indx)
 
          b = matmul(atha_inv,ath)
 
-!         call migs(ata,n,ata_inv,indx)
+!         call MIGS(ata,n,ata_inv,indx)
 !         b = matmul(ata_inv,at)
 !      end if
       b_out(1:n,1:m) = b(1:n,1:m)
@@ -630,7 +630,7 @@ module advection
 !                                                                       !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-SUBROUTINE MIGS (A,N,X,INDX)
+SUBROUTine MIGS (A,N,X,INDX)
 !
 ! Subroutine to invert matrix A(N,N) with the inverse stored
 ! in X(N,N) in the output.  Copyright (c) Tao Pang 2001.
@@ -672,7 +672,7 @@ SUBROUTINE MIGS (A,N,X,INDX)
       X(J,I) =  X(J,I)/A(INDX(J),J)
     END DO
   END DO
-END SUBROUTINE MIGS
+END SUBROUTine MIGS
 
 
 SUBROUTINE ELGS (A,N,INDX)

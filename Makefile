@@ -1,3 +1,4 @@
+CORE=hyd_atmos
 #MODEL_FORMULATION = -DNCAR_FORMULATION
 MODEL_FORMULATION = -DLANL_FORMULATION
 
@@ -82,7 +83,7 @@ pgi-serial:
 
 ifort-serial:
 	( make all \
-	"FC = mpif90" \
+	"FC = ifort" \
 	"CC = gcc" \
 	"SFC = ifort" \
 	"SCC = gcc" \
@@ -90,7 +91,7 @@ ifort-serial:
 	"CFLAGS = -O3 -m64" \
 	"LDFLAGS = -O3" \
 	"CORE = $(CORE)" \
-	"CPPFLAGS = -DRKIND=8 $(MODEL_FORMULATION) -D_MPI -DUNDERSCORE -m64 $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
+	"CPPFLAGS = -DRKIND=8 $(MODEL_FORMULATION) -DUNDERSCORE -m64 $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
 
 ifort-papi:
 	( make all \

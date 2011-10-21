@@ -14,9 +14,9 @@
 
 module ocn_tracer_hadv2
 
-   use grid_types
-   use configure
-   use timer
+   use mpas_grid_types
+   use mpas_configure
+   use mpas_timer
 
    implicit none
    private
@@ -127,7 +127,7 @@ contains
 
       if(.not.hadv2On) return
 
-      call timer_start("compute_scalar_tend-horiz adv 2")
+      call mpas_timer_start("compute_scalar_tend-horiz adv 2")
 
       nEdges = grid % nEdges
       maxLevelEdgeTop => grid % maxLevelEdgeTop % array
@@ -149,7 +149,7 @@ contains
          end do
       end do
 
-      call timer_stop("compute_scalar_tend-horiz adv 2")
+      call mpas_timer_stop("compute_scalar_tend-horiz adv 2")
    !--------------------------------------------------------------------
 
    end subroutine ocn_tracer_hadv2_tend!}}}

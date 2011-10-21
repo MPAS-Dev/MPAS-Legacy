@@ -1,6 +1,6 @@
-module dmpar
+module mpas_dmpar
 
-   use sort
+   use mpas_sort
 
 #ifdef _MPI
 include 'mpif.h'
@@ -33,19 +33,19 @@ include 'mpif.h'
    end type exchange_list
 
 
-   interface dmpar_alltoall_field
-      module procedure dmpar_alltoall_field1dInteger
-      module procedure dmpar_alltoall_field2dInteger
-      module procedure dmpar_alltoall_field1dReal
-      module procedure dmpar_alltoall_field2dReal
-      module procedure dmpar_alltoall_field3dReal
+   interface mpas_dmpar_alltoall_field
+      module procedure mpas_dmpar_alltoall_field1d_integer
+      module procedure mpas_dmpar_alltoall_field2d_integer
+      module procedure mpas_dmpar_alltoall_field1d_real
+      module procedure mpas_dmpar_alltoall_field2d_real
+      module procedure mpas_dmpar_alltoall_field3d_real
    end interface
 
 
    contains
 
 
-   subroutine dmpar_init(dminfo)
+   subroutine mpas_dmpar_init(dminfo)
 
       implicit none
 
@@ -77,10 +77,10 @@ include 'mpif.h'
       dminfo % nprocs = 1
 #endif
 
-   end subroutine dmpar_init
+   end subroutine mpas_dmpar_init
 
 
-   subroutine dmpar_finalize(dminfo)
+   subroutine mpas_dmpar_finalize(dminfo)
 
       implicit none
 
@@ -92,10 +92,10 @@ include 'mpif.h'
       call MPI_Finalize(mpi_ierr)
 #endif
 
-   end subroutine dmpar_finalize
+   end subroutine mpas_dmpar_finalize
 
 
-   subroutine dmpar_abort(dminfo)
+   subroutine mpas_dmpar_abort(dminfo)
 
       implicit none
 
@@ -109,10 +109,10 @@ include 'mpif.h'
 
       stop
 
-   end subroutine dmpar_abort
+   end subroutine mpas_dmpar_abort
 
 
-   subroutine dmpar_global_abort(mesg)
+   subroutine mpas_dmpar_global_abort(mesg)
 
       implicit none
 
@@ -128,10 +128,10 @@ include 'mpif.h'
       write(0,*) trim(mesg)
       stop
 
-   end subroutine dmpar_global_abort
+   end subroutine mpas_dmpar_global_abort
 
 
-   subroutine dmpar_bcast_int(dminfo, i)
+   subroutine mpas_dmpar_bcast_int(dminfo, i)
 
       implicit none
 
@@ -144,10 +144,10 @@ include 'mpif.h'
       call MPI_Bcast(i, 1, MPI_INTEGERKIND, IO_NODE, dminfo % comm, mpi_ierr)
 #endif
 
-   end subroutine dmpar_bcast_int
+   end subroutine mpas_dmpar_bcast_int
 
 
-   subroutine dmpar_bcast_ints(dminfo, n, iarray)
+   subroutine mpas_dmpar_bcast_ints(dminfo, n, iarray)
 
       implicit none
 
@@ -161,10 +161,10 @@ include 'mpif.h'
       call MPI_Bcast(iarray, n, MPI_INTEGERKIND, IO_NODE, dminfo % comm, mpi_ierr)
 #endif
 
-   end subroutine dmpar_bcast_ints
+   end subroutine mpas_dmpar_bcast_ints
 
 
-   subroutine dmpar_bcast_real(dminfo, r)
+   subroutine mpas_dmpar_bcast_real(dminfo, r)
 
       implicit none
 
@@ -177,10 +177,10 @@ include 'mpif.h'
       call MPI_Bcast(r, 1, MPI_REALKIND, IO_NODE, dminfo % comm, mpi_ierr)
 #endif
 
-   end subroutine dmpar_bcast_real
+   end subroutine mpas_dmpar_bcast_real
 
 
-   subroutine dmpar_bcast_reals(dminfo, n, rarray)
+   subroutine mpas_dmpar_bcast_reals(dminfo, n, rarray)
 
       implicit none
 
@@ -194,10 +194,10 @@ include 'mpif.h'
       call MPI_Bcast(rarray, n, MPI_REALKIND, IO_NODE, dminfo % comm, mpi_ierr)
 #endif
 
-   end subroutine dmpar_bcast_reals
+   end subroutine mpas_dmpar_bcast_reals
 
 
-   subroutine dmpar_bcast_logical(dminfo, l)
+   subroutine mpas_dmpar_bcast_logical(dminfo, l)
 
       implicit none
 
@@ -225,10 +225,10 @@ include 'mpif.h'
       end if
 #endif
 
-   end subroutine dmpar_bcast_logical
+   end subroutine mpas_dmpar_bcast_logical
 
 
-   subroutine dmpar_bcast_char(dminfo, c)
+   subroutine mpas_dmpar_bcast_char(dminfo, c)
 
       implicit none
 
@@ -241,10 +241,10 @@ include 'mpif.h'
       call MPI_Bcast(c, len(c), MPI_CHARACTER, IO_NODE, dminfo % comm, mpi_ierr)
 #endif
 
-   end subroutine dmpar_bcast_char
+   end subroutine mpas_dmpar_bcast_char
 
 
-   subroutine dmpar_sum_int(dminfo, i, isum)
+   subroutine mpas_dmpar_sum_int(dminfo, i, isum)
 
       implicit none
 
@@ -260,10 +260,10 @@ include 'mpif.h'
       isum = i
 #endif
 
-   end subroutine dmpar_sum_int
+   end subroutine mpas_dmpar_sum_int
 
 
-   subroutine dmpar_sum_real(dminfo, r, rsum)
+   subroutine mpas_dmpar_sum_real(dminfo, r, rsum)
 
       implicit none
 
@@ -279,10 +279,10 @@ include 'mpif.h'
       rsum = r
 #endif
 
-   end subroutine dmpar_sum_real
+   end subroutine mpas_dmpar_sum_real
 
 
-   subroutine dmpar_min_int(dminfo, i, imin)
+   subroutine mpas_dmpar_min_int(dminfo, i, imin)
 
       implicit none
 
@@ -298,10 +298,10 @@ include 'mpif.h'
       imin = i
 #endif
 
-   end subroutine dmpar_min_int
+   end subroutine mpas_dmpar_min_int
 
 
-   subroutine dmpar_min_real(dminfo, r, rmin)
+   subroutine mpas_dmpar_min_real(dminfo, r, rmin)
 
       implicit none
 
@@ -317,10 +317,10 @@ include 'mpif.h'
       rmin = r
 #endif
 
-   end subroutine dmpar_min_real
+   end subroutine mpas_dmpar_min_real
 
 
-   subroutine dmpar_max_int(dminfo, i, imax)
+   subroutine mpas_dmpar_max_int(dminfo, i, imax)
 
       implicit none
 
@@ -336,10 +336,10 @@ include 'mpif.h'
       imax = i
 #endif
 
-   end subroutine dmpar_max_int
+   end subroutine mpas_dmpar_max_int
 
 
-   subroutine dmpar_max_real(dminfo, r, rmax)
+   subroutine mpas_dmpar_max_real(dminfo, r, rmax)
 
       implicit none
 
@@ -355,10 +355,10 @@ include 'mpif.h'
       rmax = r
 #endif
 
-   end subroutine dmpar_max_real
+   end subroutine mpas_dmpar_max_real
 
 
-   subroutine dmpar_sum_int_array(dminfo, nElements, inArray, outArray)
+   subroutine mpas_dmpar_sum_int_array(dminfo, nElements, inArray, outArray)
 
       implicit none
    
@@ -375,10 +375,10 @@ include 'mpif.h'
       outArray = inArray
 #endif
 
-   end subroutine dmpar_sum_int_array
+   end subroutine mpas_dmpar_sum_int_array
 
 
-   subroutine dmpar_min_int_array(dminfo, nElements, inArray, outArray)
+   subroutine mpas_dmpar_min_int_array(dminfo, nElements, inArray, outArray)
    
       implicit none
       
@@ -395,10 +395,10 @@ include 'mpif.h'
       outArray = inArray
 #endif
 
-   end subroutine dmpar_min_int_array
+   end subroutine mpas_dmpar_min_int_array
 
 
-   subroutine dmpar_max_int_array(dminfo, nElements, inArray, outArray)
+   subroutine mpas_dmpar_max_int_array(dminfo, nElements, inArray, outArray)
 
       implicit none
 
@@ -415,10 +415,10 @@ include 'mpif.h'
       outArray = inArray
 #endif
 
-   end subroutine dmpar_max_int_array
+   end subroutine mpas_dmpar_max_int_array
 
 
-   subroutine dmpar_sum_real_array(dminfo, nElements, inArray, outArray)
+   subroutine mpas_dmpar_sum_real_array(dminfo, nElements, inArray, outArray)
 
       implicit none
 
@@ -435,10 +435,10 @@ include 'mpif.h'
       outArray = inArray
 #endif
 
-   end subroutine dmpar_sum_real_array
+   end subroutine mpas_dmpar_sum_real_array
 
 
-   subroutine dmpar_min_real_array(dminfo, nElements, inArray, outArray)
+   subroutine mpas_dmpar_min_real_array(dminfo, nElements, inArray, outArray)
 
       implicit none
 
@@ -455,10 +455,10 @@ include 'mpif.h'
       outArray = inArray
 #endif
 
-   end subroutine dmpar_min_real_array
+   end subroutine mpas_dmpar_min_real_array
 
 
-   subroutine dmpar_max_real_array(dminfo, nElements, inArray, outArray)
+   subroutine mpas_dmpar_max_real_array(dminfo, nElements, inArray, outArray)
 
       implicit none
 
@@ -475,10 +475,10 @@ include 'mpif.h'
       outArray = inArray
 #endif
 
-   end subroutine dmpar_max_real_array
+   end subroutine mpas_dmpar_max_real_array
 
 
-   subroutine dmpar_scatter_ints(dminfo, nprocs, noutlist, displs, counts, inlist, outlist)
+   subroutine mpas_dmpar_scatter_ints(dminfo, nprocs, noutlist, displs, counts, inlist, outlist)
 
       implicit none
 
@@ -494,10 +494,10 @@ include 'mpif.h'
       call MPI_Scatterv(inlist, counts, displs, MPI_INTEGERKIND, outlist, noutlist, MPI_INTEGERKIND, IO_NODE, dminfo % comm, mpi_ierr)
 #endif
 
-   end subroutine dmpar_scatter_ints
+   end subroutine mpas_dmpar_scatter_ints
 
 
-   subroutine dmpar_get_index_range(dminfo, &
+   subroutine mpas_dmpar_get_index_range(dminfo, &
                                     global_start, global_end, &
                                     local_start, local_end)
 
@@ -510,10 +510,10 @@ include 'mpif.h'
       local_start = nint(real(dminfo % my_proc_id) * real(global_end - global_start + 1) / real(dminfo % nprocs)) + 1
       local_end   = nint(real(dminfo % my_proc_id + 1) * real(global_end - global_start + 1) / real(dminfo % nprocs)) 
 
-   end subroutine dmpar_get_index_range
+   end subroutine mpas_dmpar_get_index_range
 
   
-   subroutine dmpar_compute_index_range(dminfo, &
+   subroutine mpas_dmpar_compute_index_range(dminfo, &
                                         local_start, local_end, &
                                         global_start, global_end)
 
@@ -547,10 +547,10 @@ include 'mpif.h'
       end if
       
    
-   end subroutine dmpar_compute_index_range
+   end subroutine mpas_dmpar_compute_index_range
 
 
-   subroutine dmpar_get_owner_list(dminfo, &
+   subroutine mpas_dmpar_get_owner_list(dminfo, &
                                    nOwnedList, nNeededList, &
                                    ownedList, neededList, &
                                    sendList, recvList)
@@ -606,7 +606,7 @@ include 'mpif.h'
          currentProc = mod(dminfo % my_proc_id + dminfo % nprocs - i + 1, dminfo % nprocs)
          do j=1,nMesgRecv
             if (ownerListIn(j) > 0) then
-               k = binary_search(ownedListSorted, 2, 1, nOwnedList, ownerListIn(j))
+               k = mpas_binary_search(ownedListSorted, 2, 1, nOwnedList, ownerListIn(j))
                if (k <= nOwnedList) then
                   ownerListOut(j) = -1 * dminfo % my_proc_id
                   numToSend = numToSend + 1
@@ -701,10 +701,10 @@ include 'mpif.h'
       end do
 #endif
 
-   end subroutine dmpar_get_owner_list
+   end subroutine mpas_dmpar_get_owner_list
 
 
-   subroutine dmpar_alltoall_field1dInteger(dminfo, arrayIn, arrayOut, nOwnedList, nNeededList, sendList, recvList)
+   subroutine mpas_dmpar_alltoall_field1d_integer(dminfo, arrayIn, arrayOut, nOwnedList, nNeededList, sendList, recvList)
 
       implicit none
 
@@ -753,7 +753,7 @@ include 'mpif.h'
       do while (associated(sendListPtr))
          if (sendListPtr % procID /= dminfo % my_proc_id) then
             allocate(sendListPtr % ibuffer(sendListPtr % nlist))
-            call packSendBuf1dInteger(nOwnedList, arrayIn, sendListPtr, 1, sendListPtr % nlist, &
+            call mpas_pack_send_buf1d_integer(nOwnedList, arrayIn, sendListPtr, 1, sendListPtr % nlist, &
                                    sendListPtr % ibuffer, nPacked, lastPackedIdx)
             call MPI_Isend(sendListPtr % ibuffer, sendListPtr % nlist, MPI_INTEGERKIND, &
                            sendListPtr % procID, dminfo % my_proc_id, dminfo % comm, sendListPtr % reqID, mpi_ierr)
@@ -765,7 +765,7 @@ include 'mpif.h'
       do while (associated(recvListPtr))
          if (recvListPtr % procID /= dminfo % my_proc_id) then
             call MPI_Wait(recvListPtr % reqID, MPI_STATUS_IGNORE, mpi_ierr)
-            call unpackRecvBuf1dInteger(nNeededList, arrayOut, recvListPtr, 1, recvListPtr % nlist, &
+            call mpas_unpack_recv_buf1d_integer(nNeededList, arrayOut, recvListPtr, 1, recvListPtr % nlist, &
                                      recvListPtr % ibuffer, nUnpacked, lastUnpackedIdx)
             deallocate(recvListPtr % ibuffer)
          end if
@@ -785,16 +785,16 @@ include 'mpif.h'
       if (nOwnedList /= nNeededList) then
          write(0,*) 'Error in dmpar_alltoall_field: For non-dmpar, ', &
            'arrayIn and arrayOut dims must match.'
-         call dmpar_abort(dminfo)
+         call mpas_dmpar_abort(dminfo)
       else
          arrayOut(1:nNeededList) = arrayIn(1:nOwnedList)
       end if
 #endif
 
-   end subroutine dmpar_alltoall_field1dInteger
+   end subroutine mpas_dmpar_alltoall_field1d_integer
 
 
-   subroutine dmpar_alltoall_field2dInteger(dminfo, arrayIn, arrayOut, dim1, nOwnedList, nNeededList, sendList, recvList)
+   subroutine mpas_dmpar_alltoall_field2d_integer(dminfo, arrayIn, arrayOut, dim1, nOwnedList, nNeededList, sendList, recvList)
 
       implicit none
 
@@ -845,7 +845,7 @@ include 'mpif.h'
          if (sendListPtr % procID /= dminfo % my_proc_id) then
             d2 = dim1 * sendListPtr % nlist
             allocate(sendListPtr % ibuffer(d2))
-            call packSendBuf2dInteger(1, dim1, nOwnedList, arrayIn, sendListPtr, 1, d2, &
+            call mpas_pack_send_buf2d_integer(1, dim1, nOwnedList, arrayIn, sendListPtr, 1, d2, &
                                    sendListPtr % ibuffer, nPacked, lastPackedIdx)
             call MPI_Isend(sendListPtr % ibuffer, d2, MPI_INTEGERKIND, &
                            sendListPtr % procID, dminfo % my_proc_id, dminfo % comm, sendListPtr % reqID, mpi_ierr)
@@ -858,7 +858,7 @@ include 'mpif.h'
          if (recvListPtr % procID /= dminfo % my_proc_id) then
             call MPI_Wait(recvListPtr % reqID, MPI_STATUS_IGNORE, mpi_ierr)
             d2 = dim1 * recvListPtr % nlist
-            call unpackRecvBuf2dInteger(1, dim1, nNeededList, arrayOut, recvListPtr, 1, d2, &
+            call mpas_unpack_recv_buf2d_integer(1, dim1, nNeededList, arrayOut, recvListPtr, 1, d2, &
                                      recvListPtr % ibuffer, nUnpacked, lastUnpackedIdx)
             deallocate(recvListPtr % ibuffer)
          end if
@@ -878,16 +878,16 @@ include 'mpif.h'
       if (nOwnedList /= nNeededList) then
          write(0,*) 'Error in dmpar_alltoall_field: For non-dmpar, ', &
            'arrayIn and arrayOut dims must match.'
-         call dmpar_abort(dminfo)
+         call mpas_dmpar_abort(dminfo)
       else
          arrayOut(:,1:nNeededList) = arrayIn(:,1:nOwnedList)
       end if
 #endif
 
-   end subroutine dmpar_alltoall_field2dInteger
+   end subroutine mpas_dmpar_alltoall_field2d_integer
 
 
-   subroutine dmpar_alltoall_field1dReal(dminfo, arrayIn, arrayOut, nOwnedList, nNeededList, sendList, recvList)
+   subroutine mpas_dmpar_alltoall_field1d_real(dminfo, arrayIn, arrayOut, nOwnedList, nNeededList, sendList, recvList)
 
       implicit none
 
@@ -936,7 +936,7 @@ include 'mpif.h'
       do while (associated(sendListPtr))
          if (sendListPtr % procID /= dminfo % my_proc_id) then
             allocate(sendListPtr % rbuffer(sendListPtr % nlist))
-            call packSendBuf1dReal(nOwnedList, arrayIn, sendListPtr, 1, sendListPtr % nlist, &
+            call mpas_pack_send_buf1d_real(nOwnedList, arrayIn, sendListPtr, 1, sendListPtr % nlist, &
                                    sendListPtr % rbuffer, nPacked, lastPackedIdx)
             call MPI_Isend(sendListPtr % rbuffer, sendListPtr % nlist, MPI_REALKIND, &
                            sendListPtr % procID, dminfo % my_proc_id, dminfo % comm, sendListPtr % reqID, mpi_ierr)
@@ -948,7 +948,7 @@ include 'mpif.h'
       do while (associated(recvListPtr))
          if (recvListPtr % procID /= dminfo % my_proc_id) then
             call MPI_Wait(recvListPtr % reqID, MPI_STATUS_IGNORE, mpi_ierr)
-            call unpackRecvBuf1dReal(nNeededList, arrayOut, recvListPtr, 1, recvListPtr % nlist, &
+            call mpas_unpack_recv_buf1d_real(nNeededList, arrayOut, recvListPtr, 1, recvListPtr % nlist, &
                                      recvListPtr % rbuffer, nUnpacked, lastUnpackedIdx)
             deallocate(recvListPtr % rbuffer)
          end if
@@ -968,16 +968,16 @@ include 'mpif.h'
       if (nOwnedList /= nNeededList) then
          write(0,*) 'Error in dmpar_alltoall_field: For non-dmpar, ', &
            'arrayIn and arrayOut dims must match.'
-         call dmpar_abort(dminfo)
+         call mpas_dmpar_abort(dminfo)
       else
          arrayOut(1:nNeededList) = arrayIn(1:nOwnedList)
       end if
 #endif
 
-   end subroutine dmpar_alltoall_field1dReal
+   end subroutine mpas_dmpar_alltoall_field1d_real
 
 
-   subroutine dmpar_alltoall_field2dReal(dminfo, arrayIn, arrayOut, dim1, nOwnedList, nNeededList, sendList, recvList)
+   subroutine mpas_dmpar_alltoall_field2d_real(dminfo, arrayIn, arrayOut, dim1, nOwnedList, nNeededList, sendList, recvList)
 
       implicit none
 
@@ -1028,7 +1028,7 @@ include 'mpif.h'
          if (sendListPtr % procID /= dminfo % my_proc_id) then
             d2 = dim1 * sendListPtr % nlist
             allocate(sendListPtr % rbuffer(d2))
-            call packSendBuf2dReal(1, dim1, nOwnedList, arrayIn, sendListPtr, 1, d2, &
+            call mpas_pack_send_buf2d_real(1, dim1, nOwnedList, arrayIn, sendListPtr, 1, d2, &
                                    sendListPtr % rbuffer, nPacked, lastPackedIdx)
             call MPI_Isend(sendListPtr % rbuffer, d2, MPI_REALKIND, &
                            sendListPtr % procID, dminfo % my_proc_id, dminfo % comm, sendListPtr % reqID, mpi_ierr)
@@ -1041,7 +1041,7 @@ include 'mpif.h'
          if (recvListPtr % procID /= dminfo % my_proc_id) then
             call MPI_Wait(recvListPtr % reqID, MPI_STATUS_IGNORE, mpi_ierr)
             d2 = dim1 * recvListPtr % nlist
-            call unpackRecvBuf2dReal(1, dim1, nNeededList, arrayOut, recvListPtr, 1, d2, &
+            call mpas_unpack_recv_buf2d_real(1, dim1, nNeededList, arrayOut, recvListPtr, 1, d2, &
                                      recvListPtr % rbuffer, nUnpacked, lastUnpackedIdx)
             deallocate(recvListPtr % rbuffer)
          end if
@@ -1061,16 +1061,16 @@ include 'mpif.h'
       if (nOwnedList /= nNeededList) then
          write(0,*) 'Error in dmpar_alltoall_field: For non-dmpar, ', &
            'arrayIn and arrayOut dims must match.'
-         call dmpar_abort(dminfo)
+         call mpas_dmpar_abort(dminfo)
       else
          arrayOut(:,1:nNeededList) = arrayIn(:,1:nOwnedList)
       end if
 #endif
 
-   end subroutine dmpar_alltoall_field2dReal
+   end subroutine mpas_dmpar_alltoall_field2d_real
 
   
-   subroutine dmpar_alltoall_field3dReal(dminfo, arrayIn, arrayOut, dim1, dim2, nOwnedList, nNeededList, sendList, recvList)
+   subroutine mpas_dmpar_alltoall_field3d_real(dminfo, arrayIn, arrayOut, dim1, dim2, nOwnedList, nNeededList, sendList, recvList)
 
       implicit none
 
@@ -1121,7 +1121,7 @@ include 'mpif.h'
          if (sendListPtr % procID /= dminfo % my_proc_id) then
             d3 = dim1 * dim2 * sendListPtr % nlist
             allocate(sendListPtr % rbuffer(d3))
-            call packSendBuf3dReal(1, dim1, 1, dim2, nOwnedList, arrayIn, sendListPtr, 1, d3, &
+            call mpas_pack_send_buf3d_real(1, dim1, 1, dim2, nOwnedList, arrayIn, sendListPtr, 1, d3, &
                                    sendListPtr % rbuffer, nPacked, lastPackedIdx)
             call MPI_Isend(sendListPtr % rbuffer, d3, MPI_REALKIND, &
                            sendListPtr % procID, dminfo % my_proc_id, dminfo % comm, sendListPtr % reqID, mpi_ierr)
@@ -1134,7 +1134,7 @@ include 'mpif.h'
          if (recvListPtr % procID /= dminfo % my_proc_id) then
             call MPI_Wait(recvListPtr % reqID, MPI_STATUS_IGNORE, mpi_ierr)
             d3 = dim1 * dim2 * recvListPtr % nlist
-            call unpackRecvBuf3dReal(1, dim1, 1, dim2, nNeededList, arrayOut, recvListPtr, 1, d3, &
+            call mpas_unpack_recv_buf3d_real(1, dim1, 1, dim2, nNeededList, arrayOut, recvListPtr, 1, d3, &
                                      recvListPtr % rbuffer, nUnpacked, lastUnpackedIdx)
             deallocate(recvListPtr % rbuffer)
          end if
@@ -1154,16 +1154,16 @@ include 'mpif.h'
       if (nOwnedList /= nNeededList) then
          write(0,*) 'Error in dmpar_alltoall_field: For non-dmpar, ', &
            'arrayIn and arrayOut dims must match.'
-         call dmpar_abort(dminfo)
+         call mpas_dmpar_abort(dminfo)
       else
          arrayOut(:,:,1:nNeededList) = arrayIn(:,:,1:nOwnedList)
       end if
 #endif
 
-   end subroutine dmpar_alltoall_field3dReal
+   end subroutine mpas_dmpar_alltoall_field3d_real
 
   
-   subroutine packSendBuf1dInteger(nField, field, sendList, startPackIdx, nBuffer, buffer, nPacked, lastPackedIdx)
+   subroutine mpas_pack_send_buf1d_integer(nField, field, sendList, startPackIdx, nBuffer, buffer, nPacked, lastPackedIdx)
 
       implicit none
 
@@ -1187,10 +1187,10 @@ include 'mpif.h'
       end do
       lastPackedIdx = sendList % nlist
 
-   end subroutine packSendBuf1dInteger
+   end subroutine mpas_pack_send_buf1d_integer
 
 
-   subroutine packSendBuf2dInteger(ds, de, nField, field, sendList, startPackIdx, nBuffer, buffer, nPacked, lastPackedIdx)
+   subroutine mpas_pack_send_buf2d_integer(ds, de, nField, field, sendList, startPackIdx, nBuffer, buffer, nPacked, lastPackedIdx)
 
       implicit none
 
@@ -1222,10 +1222,10 @@ include 'mpif.h'
       end do
       lastPackedIdx = sendList % nlist
 
-   end subroutine packSendBuf2dInteger
+   end subroutine mpas_pack_send_buf2d_integer
 
 
-   subroutine packSendBuf3dInteger(d1s, d1e, d2s, d2e, nField, field, sendList, startPackIdx, nBuffer, buffer, nPacked, lastPackedIdx)
+   subroutine mpas_pack_send_buf3d_integer(d1s, d1e, d2s, d2e, nField, field, sendList, startPackIdx, nBuffer, buffer, nPacked, lastPackedIdx)
 
       implicit none
 
@@ -1261,10 +1261,10 @@ include 'mpif.h'
       end do
       lastPackedIdx = sendList % nlist
 
-   end subroutine packSendBuf3dInteger
+   end subroutine mpas_pack_send_buf3d_integer
 
 
-   subroutine packSendBuf1dReal(nField, field, sendList, startPackIdx, nBuffer, buffer, nPacked, lastPackedIdx)
+   subroutine mpas_pack_send_buf1d_real(nField, field, sendList, startPackIdx, nBuffer, buffer, nPacked, lastPackedIdx)
 
       implicit none
 
@@ -1288,10 +1288,10 @@ include 'mpif.h'
       end do
       lastPackedIdx = sendList % nlist
 
-   end subroutine packSendBuf1dReal
+   end subroutine mpas_pack_send_buf1d_real
 
 
-   subroutine packSendBuf2dReal(ds, de, nField, field, sendList, startPackIdx, nBuffer, buffer, nPacked, lastPackedIdx)
+   subroutine mpas_pack_send_buf2d_real(ds, de, nField, field, sendList, startPackIdx, nBuffer, buffer, nPacked, lastPackedIdx)
 
       implicit none
 
@@ -1323,10 +1323,10 @@ include 'mpif.h'
       end do
       lastPackedIdx = sendList % nlist
 
-   end subroutine packSendBuf2dReal
+   end subroutine mpas_pack_send_buf2d_real
 
 
-   subroutine packSendBuf3dReal(d1s, d1e, d2s, d2e, nField, field, sendList, startPackIdx, nBuffer, buffer, nPacked, lastPackedIdx)
+   subroutine mpas_pack_send_buf3d_real(d1s, d1e, d2s, d2e, nField, field, sendList, startPackIdx, nBuffer, buffer, nPacked, lastPackedIdx)
 
       implicit none
 
@@ -1362,10 +1362,10 @@ include 'mpif.h'
       end do
       lastPackedIdx = sendList % nlist
 
-   end subroutine packSendBuf3dReal
+   end subroutine mpas_pack_send_buf3d_real
 
 
-   subroutine unpackRecvBuf1dInteger(nField, field, recvList, startUnpackIdx, nBuffer, buffer, nUnpacked, lastUnpackedIdx)
+   subroutine mpas_unpack_recv_buf1d_integer(nField, field, recvList, startUnpackIdx, nBuffer, buffer, nUnpacked, lastUnpackedIdx)
 
       implicit none
 
@@ -1389,10 +1389,10 @@ include 'mpif.h'
       end do
       lastUnpackedIdx = recvList % nlist
 
-   end subroutine unpackRecvBuf1dInteger
+   end subroutine mpas_unpack_recv_buf1d_integer
 
 
-   subroutine unpackRecvBuf2dInteger(ds, de, nField, field, recvList, startUnpackIdx, nBuffer, buffer, nUnpacked, lastUnpackedIdx)
+   subroutine mpas_unpack_recv_buf2d_integer(ds, de, nField, field, recvList, startUnpackIdx, nBuffer, buffer, nUnpacked, lastUnpackedIdx)
 
       implicit none
 
@@ -1418,10 +1418,10 @@ include 'mpif.h'
       end do
       lastUnpackedIdx = recvList % nlist
 
-   end subroutine unpackRecvBuf2dInteger
+   end subroutine mpas_unpack_recv_buf2d_integer
 
 
-   subroutine unpackRecvBuf3dInteger(d1s, d1e, d2s, d2e, nField, field, recvList, startUnpackIdx, nBuffer, buffer, &
+   subroutine mpas_unpack_recv_buf3d_integer(d1s, d1e, d2s, d2e, nField, field, recvList, startUnpackIdx, nBuffer, buffer, &
                                   nUnpacked, lastUnpackedIdx)
 
       implicit none
@@ -1452,10 +1452,10 @@ include 'mpif.h'
       end do
       lastUnpackedIdx = recvList % nlist
 
-   end subroutine unpackRecvBuf3dInteger
+   end subroutine mpas_unpack_recv_buf3d_integer
 
 
-   subroutine dmpar_exch_halo_field1dInteger(dminfo, array, dim1, sendList, recvList)
+   subroutine mpas_dmpar_exch_halo_field1d_integer(dminfo, array, dim1, sendList, recvList)
 
       implicit none
 
@@ -1484,7 +1484,7 @@ include 'mpif.h'
       do while (associated(sendListPtr))
          if (sendListPtr % procID /= dminfo % my_proc_id) then
             allocate(sendListPtr % ibuffer(sendListPtr % nlist))
-            call packSendBuf1dInteger(dim1, array, sendListPtr, 1, sendListPtr % nlist, sendListPtr % ibuffer, nPacked, lastPackedIdx)
+            call mpas_pack_send_buf1d_integer(dim1, array, sendListPtr, 1, sendListPtr % nlist, sendListPtr % ibuffer, nPacked, lastPackedIdx)
             call MPI_Isend(sendListPtr % ibuffer, sendListPtr % nlist, MPI_INTEGERKIND, &
                            sendListPtr % procID, dminfo % my_proc_id, dminfo % comm, sendListPtr % reqID, mpi_ierr)
          end if
@@ -1495,7 +1495,7 @@ include 'mpif.h'
       do while (associated(recvListPtr))
          if (recvListPtr % procID /= dminfo % my_proc_id) then
             call MPI_Wait(recvListPtr % reqID, MPI_STATUS_IGNORE, mpi_ierr)
-            call unpackRecvBuf1dInteger(dim1, array, recvListPtr, 1, recvListPtr % nlist, recvListPtr % ibuffer, nUnpacked, lastUnpackedIdx)
+            call mpas_unpack_recv_buf1d_integer(dim1, array, recvListPtr, 1, recvListPtr % nlist, recvListPtr % ibuffer, nUnpacked, lastUnpackedIdx)
             deallocate(recvListPtr % ibuffer)
          end if
          recvListPtr => recvListPtr % next
@@ -1512,10 +1512,10 @@ include 'mpif.h'
 
 #endif
 
-   end subroutine dmpar_exch_halo_field1dInteger
+   end subroutine mpas_dmpar_exch_halo_field1d_integer
 
 
-   subroutine dmpar_exch_halo_field2dInteger(dminfo, array, dim1, dim2, sendList, recvList)
+   subroutine mpas_dmpar_exch_halo_field2d_integer(dminfo, array, dim1, dim2, sendList, recvList)
 
       implicit none
 
@@ -1547,7 +1547,7 @@ include 'mpif.h'
          if (sendListPtr % procID /= dminfo % my_proc_id) then
             d2 = dim1 * sendListPtr % nlist
             allocate(sendListPtr % ibuffer(d2))
-            call packSendBuf2dInteger(1, dim1, dim2, array, sendListPtr, 1, d2, sendListPtr % ibuffer, nPacked, lastPackedIdx)
+            call mpas_pack_send_buf2d_integer(1, dim1, dim2, array, sendListPtr, 1, d2, sendListPtr % ibuffer, nPacked, lastPackedIdx)
             call MPI_Isend(sendListPtr % ibuffer, d2, MPI_INTEGERKIND, &
                            sendListPtr % procID, dminfo % my_proc_id, dminfo % comm, sendListPtr % reqID, mpi_ierr)
          end if
@@ -1559,7 +1559,7 @@ include 'mpif.h'
          if (recvListPtr % procID /= dminfo % my_proc_id) then
             call MPI_Wait(recvListPtr % reqID, MPI_STATUS_IGNORE, mpi_ierr)
             d2 = dim1 * recvListPtr % nlist
-            call unpackRecvBuf2dInteger(1, dim1, dim2, array, recvListPtr, 1, d2, recvListPtr % ibuffer, nUnpacked, lastUnpackedIdx)
+            call mpas_unpack_recv_buf2d_integer(1, dim1, dim2, array, recvListPtr, 1, d2, recvListPtr % ibuffer, nUnpacked, lastUnpackedIdx)
             deallocate(recvListPtr % ibuffer)
          end if
          recvListPtr => recvListPtr % next
@@ -1576,10 +1576,10 @@ include 'mpif.h'
 
 #endif
 
-   end subroutine dmpar_exch_halo_field2dInteger
+   end subroutine mpas_dmpar_exch_halo_field2d_integer
 
 
-   subroutine dmpar_exch_halo_field3dInteger(dminfo, array, dim1, dim2, dim3, sendList, recvList)
+   subroutine mpas_dmpar_exch_halo_field3d_integer(dminfo, array, dim1, dim2, dim3, sendList, recvList)
 
       implicit none
 
@@ -1611,7 +1611,7 @@ include 'mpif.h'
          if (sendListPtr % procID /= dminfo % my_proc_id) then
             d3 = dim1 * dim2 * sendListPtr % nlist
             allocate(sendListPtr % ibuffer(d3))
-            call packSendBuf3dInteger(1, dim1, 1, dim2, dim3, array, sendListPtr, 1, d3, &
+            call mpas_pack_send_buf3d_integer(1, dim1, 1, dim2, dim3, array, sendListPtr, 1, d3, &
                                    sendListPtr % ibuffer, nPacked, lastPackedIdx)
             call MPI_Isend(sendListPtr % ibuffer, d3, MPI_INTEGERKIND, &
                            sendListPtr % procID, dminfo % my_proc_id, dminfo % comm, sendListPtr % reqID, mpi_ierr)
@@ -1624,7 +1624,7 @@ include 'mpif.h'
          if (recvListPtr % procID /= dminfo % my_proc_id) then
             call MPI_Wait(recvListPtr % reqID, MPI_STATUS_IGNORE, mpi_ierr)
             d3 = dim1 * dim2 * recvListPtr % nlist
-            call unpackRecvBuf3dInteger(1, dim1, 1, dim2, dim3, array, recvListPtr, 1, d3, &
+            call mpas_unpack_recv_buf3d_integer(1, dim1, 1, dim2, dim3, array, recvListPtr, 1, d3, &
                                      recvListPtr % ibuffer, nUnpacked, lastUnpackedIdx)
             deallocate(recvListPtr % ibuffer)
          end if
@@ -1642,10 +1642,10 @@ include 'mpif.h'
 
 #endif
 
-   end subroutine dmpar_exch_halo_field3dInteger
+   end subroutine mpas_dmpar_exch_halo_field3d_integer
 
   
-   subroutine unpackRecvBuf1dReal(nField, field, recvList, startUnpackIdx, nBuffer, buffer, nUnpacked, lastUnpackedIdx)
+   subroutine mpas_unpack_recv_buf1d_real(nField, field, recvList, startUnpackIdx, nBuffer, buffer, nUnpacked, lastUnpackedIdx)
 
       implicit none
 
@@ -1669,10 +1669,10 @@ include 'mpif.h'
       end do
       lastUnpackedIdx = recvList % nlist
 
-   end subroutine unpackRecvBuf1dReal
+   end subroutine mpas_unpack_recv_buf1d_real
 
 
-   subroutine unpackRecvBuf2dReal(ds, de, nField, field, recvList, startUnpackIdx, nBuffer, buffer, nUnpacked, lastUnpackedIdx)
+   subroutine mpas_unpack_recv_buf2d_real(ds, de, nField, field, recvList, startUnpackIdx, nBuffer, buffer, nUnpacked, lastUnpackedIdx)
 
       implicit none
 
@@ -1698,10 +1698,10 @@ include 'mpif.h'
       end do
       lastUnpackedIdx = recvList % nlist
 
-   end subroutine unpackRecvBuf2dReal
+   end subroutine mpas_unpack_recv_buf2d_real
 
 
-   subroutine unpackRecvBuf3dReal(d1s, d1e, d2s, d2e, nField, field, recvList, startUnpackIdx, nBuffer, buffer, &
+   subroutine mpas_unpack_recv_buf3d_real(d1s, d1e, d2s, d2e, nField, field, recvList, startUnpackIdx, nBuffer, buffer, &
                                   nUnpacked, lastUnpackedIdx)
 
       implicit none
@@ -1732,10 +1732,10 @@ include 'mpif.h'
       end do
       lastUnpackedIdx = recvList % nlist
 
-   end subroutine unpackRecvBuf3dReal
+   end subroutine mpas_unpack_recv_buf3d_real
 
 
-   subroutine dmpar_exch_halo_field1dReal(dminfo, array, dim1, sendList, recvList)
+   subroutine mpas_dmpar_exch_halo_field1d_real(dminfo, array, dim1, sendList, recvList)
 
       implicit none
 
@@ -1764,7 +1764,7 @@ include 'mpif.h'
       do while (associated(sendListPtr))
          if (sendListPtr % procID /= dminfo % my_proc_id) then
             allocate(sendListPtr % rbuffer(sendListPtr % nlist))
-            call packSendBuf1dReal(dim1, array, sendListPtr, 1, sendListPtr % nlist, sendListPtr % rbuffer, nPacked, lastPackedIdx)
+            call mpas_pack_send_buf1d_real(dim1, array, sendListPtr, 1, sendListPtr % nlist, sendListPtr % rbuffer, nPacked, lastPackedIdx)
             call MPI_Isend(sendListPtr % rbuffer, sendListPtr % nlist, MPI_REALKIND, &
                            sendListPtr % procID, dminfo % my_proc_id, dminfo % comm, sendListPtr % reqID, mpi_ierr)
          end if
@@ -1775,7 +1775,7 @@ include 'mpif.h'
       do while (associated(recvListPtr))
          if (recvListPtr % procID /= dminfo % my_proc_id) then
             call MPI_Wait(recvListPtr % reqID, MPI_STATUS_IGNORE, mpi_ierr)
-            call unpackRecvBuf1dReal(dim1, array, recvListPtr, 1, recvListPtr % nlist, recvListPtr % rbuffer, nUnpacked, lastUnpackedIdx)
+            call mpas_unpack_recv_buf1d_real(dim1, array, recvListPtr, 1, recvListPtr % nlist, recvListPtr % rbuffer, nUnpacked, lastUnpackedIdx)
             deallocate(recvListPtr % rbuffer)
          end if
          recvListPtr => recvListPtr % next
@@ -1792,10 +1792,10 @@ include 'mpif.h'
 
 #endif
 
-   end subroutine dmpar_exch_halo_field1dReal
+   end subroutine mpas_dmpar_exch_halo_field1d_real
 
 
-   subroutine dmpar_exch_halo_field2dReal(dminfo, array, dim1, dim2, sendList, recvList)
+   subroutine mpas_dmpar_exch_halo_field2d_real(dminfo, array, dim1, dim2, sendList, recvList)
 
       implicit none
 
@@ -1827,7 +1827,7 @@ include 'mpif.h'
          if (sendListPtr % procID /= dminfo % my_proc_id) then
             d2 = dim1 * sendListPtr % nlist
             allocate(sendListPtr % rbuffer(d2))
-            call packSendBuf2dReal(1, dim1, dim2, array, sendListPtr, 1, d2, sendListPtr % rbuffer, nPacked, lastPackedIdx)
+            call mpas_pack_send_buf2d_real(1, dim1, dim2, array, sendListPtr, 1, d2, sendListPtr % rbuffer, nPacked, lastPackedIdx)
             call MPI_Isend(sendListPtr % rbuffer, d2, MPI_REALKIND, &
                            sendListPtr % procID, dminfo % my_proc_id, dminfo % comm, sendListPtr % reqID, mpi_ierr)
          end if
@@ -1839,7 +1839,7 @@ include 'mpif.h'
          if (recvListPtr % procID /= dminfo % my_proc_id) then
             call MPI_Wait(recvListPtr % reqID, MPI_STATUS_IGNORE, mpi_ierr)
             d2 = dim1 * recvListPtr % nlist
-            call unpackRecvBuf2dReal(1, dim1, dim2, array, recvListPtr, 1, d2, recvListPtr % rbuffer, nUnpacked, lastUnpackedIdx)
+            call mpas_unpack_recv_buf2d_real(1, dim1, dim2, array, recvListPtr, 1, d2, recvListPtr % rbuffer, nUnpacked, lastUnpackedIdx)
             deallocate(recvListPtr % rbuffer)
          end if
          recvListPtr => recvListPtr % next
@@ -1856,10 +1856,10 @@ include 'mpif.h'
 
 #endif
 
-   end subroutine dmpar_exch_halo_field2dReal
+   end subroutine mpas_dmpar_exch_halo_field2d_real
 
 
-   subroutine dmpar_exch_halo_field3dReal(dminfo, array, dim1, dim2, dim3, sendList, recvList)
+   subroutine mpas_dmpar_exch_halo_field3d_real(dminfo, array, dim1, dim2, dim3, sendList, recvList)
 
       implicit none
 
@@ -1891,7 +1891,7 @@ include 'mpif.h'
          if (sendListPtr % procID /= dminfo % my_proc_id) then
             d3 = dim1 * dim2 * sendListPtr % nlist
             allocate(sendListPtr % rbuffer(d3))
-            call packSendBuf3dReal(1, dim1, 1, dim2, dim3, array, sendListPtr, 1, d3, &
+            call mpas_pack_send_buf3d_real(1, dim1, 1, dim2, dim3, array, sendListPtr, 1, d3, &
                                    sendListPtr % rbuffer, nPacked, lastPackedIdx)
             call MPI_Isend(sendListPtr % rbuffer, d3, MPI_REALKIND, &
                            sendListPtr % procID, dminfo % my_proc_id, dminfo % comm, sendListPtr % reqID, mpi_ierr)
@@ -1904,7 +1904,7 @@ include 'mpif.h'
          if (recvListPtr % procID /= dminfo % my_proc_id) then
             call MPI_Wait(recvListPtr % reqID, MPI_STATUS_IGNORE, mpi_ierr)
             d3 = dim1 * dim2 * recvListPtr % nlist
-            call unpackRecvBuf3dReal(1, dim1, 1, dim2, dim3, array, recvListPtr, 1, d3, &
+            call mpas_unpack_recv_buf3d_real(1, dim1, 1, dim2, dim3, array, recvListPtr, 1, d3, &
                                      recvListPtr % rbuffer, nUnpacked, lastUnpackedIdx)
             deallocate(recvListPtr % rbuffer)
          end if
@@ -1922,7 +1922,7 @@ include 'mpif.h'
 
 #endif
 
-   end subroutine dmpar_exch_halo_field3dReal
+   end subroutine mpas_dmpar_exch_halo_field3d_real
 
 
-end module dmpar
+end module mpas_dmpar

@@ -1,13 +1,13 @@
 .SUFFIXES: .F .o
 
-OBJS = module_mpas_subdriver.o \
+OBJS = mpas_subdriver.o \
        mpas.o
 
 all: $(OBJS)
 
-module_mpas_subdriver.o: 
+mpas_subdriver.o: 
 
-mpas.o: module_mpas_subdriver.o
+mpas.o: mpas_subdriver.o
 
 clean:
 	$(RM) *.o *.mod *.f90

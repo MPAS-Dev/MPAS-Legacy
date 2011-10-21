@@ -14,9 +14,9 @@
 
 module ocn_vel_hmix_del4
 
-   use grid_types
-   use configure
-   use timer
+   use mpas_grid_types
+   use mpas_configure
+   use mpas_timer
 
    implicit none
    private
@@ -134,7 +134,7 @@ contains
 
       if(.not.hmixDel4On) return
 
-      call timer_start("compute_tend-horiz mix-del4")
+      call mpas_timer_start("compute_tend-horiz mix-del4")
 
       nCells = grid % nCells
       nEdges = grid % nEdges
@@ -243,7 +243,7 @@ contains
       deallocate(delsq_circulation)
       deallocate(delsq_vorticity)
 
-      call timer_stop("compute_tend-horiz mix-del4")
+      call mpas_timer_stop("compute_tend-horiz mix-del4")
 
    !--------------------------------------------------------------------
 

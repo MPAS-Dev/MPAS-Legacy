@@ -15,10 +15,10 @@
 
 module ocn_vmix_coefs_rich
 
-   use grid_types
-   use configure
-   use constants
-   use timer
+   use mpas_grid_types
+   use mpas_configure
+   use mpas_constants
+   use mpas_timer
 
    use ocn_equation_of_state
 
