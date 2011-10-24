@@ -1,4 +1,4 @@
-module global_diagnostics
+module ocn_global_diagnostics
 
    use mpas_grid_types
    use mpas_configure
@@ -11,7 +11,7 @@ module global_diagnostics
 
    contains
 
-   subroutine computeGlobalDiagnostics(dminfo, state, grid, timeIndex, dt)
+   subroutine ocn_compute_global_diagnostics(dminfo, state, grid, timeIndex, dt)
 
       ! Note: this routine assumes that there is only one block per processor. No looping
       ! is preformed over blocks.
@@ -86,88 +86,88 @@ module global_diagnostics
       variableIndex = 0
       ! h
       variableIndex = variableIndex + 1
-      call computeFieldAreaWeightedLocalStats(dminfo, nVertLevels, nCellsSolve, areaCell(1:nCellsSolve), h(:,1:nCellsSolve), &
+      call ocn_compute_field_area_weighted_local_stats(dminfo, nVertLevels, nCellsSolve, areaCell(1:nCellsSolve), h(:,1:nCellsSolve), &
         sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), verticalSumMaxes(variableIndex))
 
       ! u
       variableIndex = variableIndex + 1
-      call computeFieldVolumeWeightedLocalStats(dminfo, nVertLevels, nEdgesSolve, areaEdge(1:nEdgesSolve), h_edge(:,1:nEdgesSolve), &
+      call ocn_compute_field_volume_weighted_local_stats(dminfo, nVertLevels, nEdgesSolve, areaEdge(1:nEdgesSolve), h_edge(:,1:nEdgesSolve), &
         u(:,1:nEdgesSolve), sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), &
         verticalSumMaxes(variableIndex))
 
       ! v
       variableIndex = variableIndex + 1
-      call computeFieldVolumeWeightedLocalStats(dminfo, nVertLevels, nEdgesSolve, areaEdge(1:nEdgesSolve), h_edge(:,1:nEdgesSolve), &
+      call ocn_compute_field_volume_weighted_local_stats(dminfo, nVertLevels, nEdgesSolve, areaEdge(1:nEdgesSolve), h_edge(:,1:nEdgesSolve), &
         v(:,1:nEdgesSolve), sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), &
         verticalSumMaxes(variableIndex))
 
       ! h_edge
       variableIndex = variableIndex + 1
-      call computeFieldAreaWeightedLocalStats(dminfo, nVertLevels, nEdgesSolve, areaEdge(1:nEdgesSolve), h_edge(:,1:nEdgesSolve), &
+      call ocn_compute_field_area_weighted_local_stats(dminfo, nVertLevels, nEdgesSolve, areaEdge(1:nEdgesSolve), h_edge(:,1:nEdgesSolve), &
         sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), verticalSumMaxes(variableIndex))
 
       ! circulation
       variableIndex = variableIndex + 1
-      call computeFieldLocalStats(dminfo, nVertLevels, nVerticesSolve, circulation(:,1:nVerticesSolve), &
+      call ocn_compute_field_local_stats(dminfo, nVertLevels, nVerticesSolve, circulation(:,1:nVerticesSolve), &
         sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), verticalSumMaxes(variableIndex))
 
       ! vorticity
       variableIndex = variableIndex + 1
-      call computeFieldAreaWeightedLocalStats(dminfo, nVertLevels, nVerticesSolve, areaTriangle(1:nVerticesSolve), &
+      call ocn_compute_field_area_weighted_local_stats(dminfo, nVertLevels, nVerticesSolve, areaTriangle(1:nVerticesSolve), &
         vorticity(:,1:nVerticesSolve), sums(variableIndex), mins(variableIndex), maxes(variableIndex), &
         verticalSumMins(variableIndex), verticalSumMaxes(variableIndex))
 
       ! ke
       variableIndex = variableIndex + 1
-      call computeFieldVolumeWeightedLocalStats(dminfo, nVertLevels, nCellsSolve, areaCell(1:nCellsSolve), h(:,1:nCellsSolve), &
+      call ocn_compute_field_volume_weighted_local_stats(dminfo, nVertLevels, nCellsSolve, areaCell(1:nCellsSolve), h(:,1:nCellsSolve), &
         ke(:,1:nCellsSolve), sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), &
         verticalSumMaxes(variableIndex))
 
       ! pv_edge
       variableIndex = variableIndex + 1
-      call computeFieldVolumeWeightedLocalStats(dminfo, nVertLevels, nEdgesSolve, areaEdge(1:nEdgesSolve), h_edge(:,1:nEdgesSolve), &
+      call ocn_compute_field_volume_weighted_local_stats(dminfo, nVertLevels, nEdgesSolve, areaEdge(1:nEdgesSolve), h_edge(:,1:nEdgesSolve), &
         pv_edge(:,1:nEdgesSolve), sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), &
         verticalSumMaxes(variableIndex))
 
       ! pv_vertex
       variableIndex = variableIndex + 1
-      call computeFieldAreaWeightedLocalStats(dminfo, nVertLevels, nVerticesSolve, areaTriangle(1:nVerticesSolve), &
+      call ocn_compute_field_area_weighted_local_stats(dminfo, nVertLevels, nVerticesSolve, areaTriangle(1:nVerticesSolve), &
         pv_vertex(:,1:nVerticesSolve), sums(variableIndex), mins(variableIndex), maxes(variableIndex), &
         verticalSumMins(variableIndex), verticalSumMaxes(variableIndex))
 
       ! pv_cell
       variableIndex = variableIndex + 1
-      call computeFieldVolumeWeightedLocalStats(dminfo, nVertLevels, nCellsSolve, areaCell(1:nCellsSolve), h(:,1:nCellsSolve), &
+      call ocn_compute_field_volume_weighted_local_stats(dminfo, nVertLevels, nCellsSolve, areaCell(1:nCellsSolve), h(:,1:nCellsSolve), &
         pv_cell(:,1:nCellsSolve), sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), &
         verticalSumMaxes(variableIndex))
 
       ! gradPVn
       variableIndex = variableIndex + 1
-      call computeFieldVolumeWeightedLocalStats(dminfo, nVertLevels, nEdgesSolve, areaEdge(1:nEdgesSolve), h_edge(:,1:nEdgesSolve), &
+      call ocn_compute_field_volume_weighted_local_stats(dminfo, nVertLevels, nEdgesSolve, areaEdge(1:nEdgesSolve), h_edge(:,1:nEdgesSolve), &
         gradPVn(:,1:nEdgesSolve), sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), &
         verticalSumMaxes(variableIndex))
 
       ! gradPVt
       variableIndex = variableIndex + 1
-      call computeFieldVolumeWeightedLocalStats(dminfo, nVertLevels, nEdgesSolve, areaEdge(1:nEdgesSolve), h_edge(:,1:nEdgesSolve), &
+      call ocn_compute_field_volume_weighted_local_stats(dminfo, nVertLevels, nEdgesSolve, areaEdge(1:nEdgesSolve), h_edge(:,1:nEdgesSolve), &
         gradPVt(:,1:nEdgesSolve), sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), &
         verticalSumMaxes(variableIndex))
 
       ! pressure
       variableIndex = variableIndex + 1
-      call computeFieldVolumeWeightedLocalStats(dminfo, nVertLevels, nCellsSolve, areaCell(1:nCellsSolve), h(:,1:nCellsSolve), &
+      call ocn_compute_field_volume_weighted_local_stats(dminfo, nVertLevels, nCellsSolve, areaCell(1:nCellsSolve), h(:,1:nCellsSolve), &
         pressure(:,1:nCellsSolve), sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), &
         verticalSumMaxes(variableIndex))
 
       ! MontPot
       variableIndex = variableIndex + 1
-      call computeFieldVolumeWeightedLocalStats(dminfo, nVertLevels, nCellsSolve, areaCell(1:nCellsSolve), h(:,1:nCellsSolve), &
+      call ocn_compute_field_volume_weighted_local_stats(dminfo, nVertLevels, nCellsSolve, areaCell(1:nCellsSolve), h(:,1:nCellsSolve), &
         MontPot(:,1:nCellsSolve), sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), &
         verticalSumMaxes(variableIndex))
 
       ! wTop vertical velocity
       variableIndex = variableIndex + 1
-      call computeFieldVolumeWeightedLocalStats(dminfo, nVertLevels+1, nCellsSolve, areaCell(1:nCellsSolve), h(:,1:nCellsSolve), &
+      call ocn_compute_field_volume_weighted_local_stats(dminfo, nVertLevels+1, nCellsSolve, areaCell(1:nCellsSolve), h(:,1:nCellsSolve), &
         wTop(:,1:nCellsSolve), sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), &
         verticalSumMaxes(variableIndex))
 
@@ -176,7 +176,7 @@ module global_diagnostics
       do iTracer=1,num_tracers
         variableIndex = variableIndex + 1
         tracerTemp = Tracers(iTracer,:,1:nCellsSolve)
-        call computeFieldVolumeWeightedLocalStats(dminfo, nVertLevels, nCellsSolve, areaCell(1:nCellsSolve), h(:,1:nCellsSolve), &
+        call ocn_compute_field_volume_weighted_local_stats(dminfo, nVertLevels, nCellsSolve, areaCell(1:nCellsSolve), h(:,1:nCellsSolve), &
           tracerTemp, sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), &
           verticalSumMaxes(variableIndex))
       enddo
@@ -310,27 +310,27 @@ module global_diagnostics
       if (dminfo % my_proc_id == IO_NODE) then
          fileID = getFreeUnit()
          open(fileID,file='stats_min.txt',ACCESS='append')
-            write (fileID,'(100es24.16)') mins(1:nVariables)
+            write (fileID,'(100es24.14)') mins(1:nVariables)
          close (fileID)
          open(fileID,file='stats_max.txt',ACCESS='append')
-            write (fileID,'(100es24.16)') maxes(1:nVariables)
+            write (fileID,'(100es24.14)') maxes(1:nVariables)
          close (fileID)
          open(fileID,file='stats_sum.txt',ACCESS='append')
-            write (fileID,'(100es24.16)') sums(1:nVariables)
+            write (fileID,'(100es24.14)') sums(1:nVariables)
          close (fileID)
          open(fileID,file='stats_avg.txt',ACCESS='append')
-            write (fileID,'(100es24.16)') averages(1:nVariables)
+            write (fileID,'(100es24.14)') averages(1:nVariables)
          close (fileID)
          open(fileID,file='stats_time.txt',ACCESS='append')
-            write (fileID,'(i5,10x,a,100es24.16)') timeIndex, &
+            write (fileID,'(i5,10x,a,100es24.14)') timeIndex, &
                state % xtime % scalar, dt, &
                CFLNumberGlobal
          close (fileID)
          open(fileID,file='stats_colmin.txt',ACCESS='append')
-            write (fileID,'(100es24.16)') verticalSumMins(1:nVariables)
+            write (fileID,'(100es24.14)') verticalSumMins(1:nVariables)
          close (fileID)
          open(fileID,file='stats_colmax.txt',ACCESS='append')
-            write (fileID,'(100es24.16)') verticalSumMaxes(1:nVariables)
+            write (fileID,'(100es24.14)') verticalSumMaxes(1:nVariables)
          close (fileID)
       end if
 
@@ -343,7 +343,7 @@ module global_diagnostics
       state % CFLNumberGlobal % scalar = CFLNumberGlobal
       deallocate(areaEdge)
 
-   end subroutine computeGlobalDiagnostics
+   end subroutine ocn_compute_global_diagnostics
 
    integer function getFreeUnit()
       implicit none
@@ -363,7 +363,7 @@ module global_diagnostics
       end do
    end function getFreeUnit
 
-   subroutine computeFieldLocalStats(dminfo, nVertLevels, nElements, field, localSum, localMin, localMax, localVertSumMin, &
+   subroutine ocn_compute_field_local_stats(dminfo, nVertLevels, nElements, field, localSum, localMin, localMax, localVertSumMin, &
       localVertSumMax)
 
       implicit none
@@ -380,9 +380,9 @@ module global_diagnostics
       localVertSumMin = minval(sum(field,1))
       localVertSumMax = maxval(sum(field,1))
 
-   end subroutine computeFieldLocalStats
+   end subroutine ocn_compute_field_local_stats
 
-   subroutine computeFieldAreaWeightedLocalStats(dminfo, nVertLevels, nElements, areas, field, localSum, localMin, &
+   subroutine ocn_compute_field_area_weighted_local_stats(dminfo, nVertLevels, nElements, areas, field, localSum, localMin, &
       localMax, localVertSumMin, localVertSumMax)
 
       implicit none
@@ -406,9 +406,9 @@ module global_diagnostics
       localVertSumMin = minval(sum(field,1))
       localVertSumMax = maxval(sum(field,1))
 
-   end subroutine computeFieldAreaWeightedLocalStats
+   end subroutine ocn_compute_field_area_weighted_local_stats
 
-   subroutine computeFieldThicknessWeightedLocalStats(dminfo, nVertLevels, nElements, h, field, &
+   subroutine ocn_compute_field_thickness_weighted_local_stats(dminfo, nVertLevels, nElements, h, field, &
       localSum, localMin, localMax, localVertSumMin, localVertSumMax)
 
       implicit none
@@ -430,9 +430,9 @@ module global_diagnostics
       localVertSumMin = minval(sum(h*field,1))
       localVertSumMax = maxval(sum(h*field,1))
 
-   end subroutine computeFieldThicknessWeightedLocalStats
+   end subroutine ocn_compute_field_thickness_weighted_local_stats
 
-   subroutine computeFieldVolumeWeightedLocalStats(dminfo, nVertLevels, nElements, areas, h, field, &
+   subroutine ocn_compute_field_volume_weighted_local_stats(dminfo, nVertLevels, nElements, areas, h, field, &
       localSum, localMin, localMax, localVertSumMin, localVertSumMax)
 
       implicit none
@@ -459,10 +459,10 @@ module global_diagnostics
       localVertSumMin = minval(sum(h*field,1))
       localVertSumMax = maxval(sum(h*field,1))
 
-   end subroutine computeFieldVolumeWeightedLocalStats
+   end subroutine ocn_compute_field_volume_weighted_local_stats
 
 
-   subroutine computeGlobalSum(dminfo, nVertLevels, nElements, field, globalSum)
+   subroutine ocn_compute_global_sum(dminfo, nVertLevels, nElements, field, globalSum)
 
       implicit none
 
@@ -476,9 +476,9 @@ module global_diagnostics
       localSum = sum(field)
       call mpas_dmpar_sum_real(dminfo, localSum, globalSum)
 
-   end subroutine computeGlobalSum
+   end subroutine ocn_compute_global_sum
 
-   subroutine computeAreaWeightedGlobalSum(dminfo, nVertLevels, nElements, areas, field, globalSum)
+   subroutine ocn_compute_area_weighted_global_sum(dminfo, nVertLevels, nElements, areas, field, globalSum)
 
       implicit none
 
@@ -498,9 +498,9 @@ module global_diagnostics
    
       call mpas_dmpar_sum_real(dminfo, localSum, globalSum)
        
-   end subroutine computeAreaWeightedGlobalSum
+   end subroutine ocn_compute_area_weighted_global_sum
 
-   subroutine computeVolumeWeightedGlobalSum(dminfo, nVertLevels, nElements, areas, h, field, globalSum)
+   subroutine ocn_compute_volume_weighted_global_sum(dminfo, nVertLevels, nElements, areas, h, field, globalSum)
 
       implicit none
 
@@ -515,11 +515,11 @@ module global_diagnostics
 
       hTimesField = h*field
 
-      call computeAreaWeightedGlobalSum(dminfo, nVertLevels, nElements, areas, hTimesField, globalSum)
+      call ocn_compute_area_weighted_global_sum(dminfo, nVertLevels, nElements, areas, hTimesField, globalSum)
 
-   end subroutine computeVolumeWeightedGlobalSum
+   end subroutine ocn_compute_volume_weighted_global_sum
 
-   subroutine computeGlobalMin(dminfo, nVertLevels, nElements, field, globalMin)
+   subroutine ocn_compute_global_min(dminfo, nVertLevels, nElements, field, globalMin)
 
       implicit none
 
@@ -533,9 +533,9 @@ module global_diagnostics
       localMin = minval(field)
       call mpas_dmpar_min_real(dminfo, localMin, globalMin)
 
-   end subroutine computeGlobalMin
+   end subroutine ocn_compute_global_min
 
-   subroutine computeGlobalMax(dminfo, nVertLevels, nElements, field, globalMax)
+   subroutine ocn_compute_global_max(dminfo, nVertLevels, nElements, field, globalMax)
 
       implicit none
 
@@ -549,9 +549,9 @@ module global_diagnostics
       localMax = maxval(field)
       call mpas_dmpar_max_real(dminfo, localMax, globalMax)
 
-   end subroutine computeGlobalMax
+   end subroutine ocn_compute_global_max
 
-   subroutine computeGlobalVertSumHorizMin(dminfo, nVertLevels, nElements, field, globalMin)
+   subroutine ocn_compute_global_vert_sum_horiz_min(dminfo, nVertLevels, nElements, field, globalMin)
 
       implicit none
 
@@ -565,9 +565,9 @@ module global_diagnostics
       localMin = minval(sum(field,1))
       call mpas_dmpar_min_real(dminfo, localMin, globalMin)
 
-   end subroutine computeGlobalVertSumHorizMin
+   end subroutine ocn_compute_global_vert_sum_horiz_min
 
-   subroutine computeGlobalVertSumHorizMax(dminfo, nVertLevels, nElements, field, globalMax)
+   subroutine ocn_compute_global_vert_sum_horiz_max(dminfo, nVertLevels, nElements, field, globalMax)
 
       implicit none
 
@@ -581,9 +581,9 @@ module global_diagnostics
       localMax = maxval(sum(field,1))
       call mpas_dmpar_max_real(dminfo, localMax, globalMax)
 
-   end subroutine computeGlobalVertSumHorizMax
+   end subroutine ocn_compute_global_vert_sum_horiz_max
 
-   subroutine computeGlobalVertThicknessWeightedSumHorizMin(dminfo, nVertLevels, nElements, h, field, globalMin)
+   subroutine ocn_compute_global_vert_thickness_weighted_sum_horiz_min(dminfo, nVertLevels, nElements, h, field, globalMin)
 
       implicit none
 
@@ -597,9 +597,9 @@ module global_diagnostics
       localMin = minval(sum(h*field,1))
       call mpas_dmpar_min_real(dminfo, localMin, globalMin)
 
-   end subroutine computeGlobalVertThicknessWeightedSumHorizMin
+   end subroutine ocn_compute_global_vert_thickness_weighted_sum_horiz_min
 
-   subroutine computeGlobalVertThicknessWeightedSumHorizMax(dminfo, nVertLevels, nElements, h, field, globalMax)
+   subroutine ocn_compute_global_vert_thickness_weighted_sum_horiz_max(dminfo, nVertLevels, nElements, h, field, globalMax)
 
       implicit none
 
@@ -613,6 +613,6 @@ module global_diagnostics
       localMax = maxval(sum(h*field,1))
       call mpas_dmpar_max_real(dminfo, localMax, globalMax)
 
-   end subroutine computeGlobalVertThicknessWeightedSumHorizMax
+   end subroutine ocn_compute_global_vert_thickness_weighted_sum_horiz_max
 
-end module global_diagnostics
+end module ocn_global_diagnostics

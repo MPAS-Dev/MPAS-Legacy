@@ -1,4 +1,4 @@
-module advection
+module ocn_advection
 
    use mpas_grid_types
    use mpas_configure
@@ -8,7 +8,7 @@ module advection
    contains
 
 
-   subroutine initialize_advection_rk( grid )
+   subroutine ocn_initialize_advection_rk( grid )
                                       
 !
 ! compute the cell coefficients for the polynomial fit.
@@ -254,7 +254,7 @@ module advection
  
          end if
  
-         call poly_fit_2( amatrix, bmatrix, wmatrix, ma, na, 25 )
+         call ocn_poly_fit_2( amatrix, bmatrix, wmatrix, ma, na, 25 )
 
          do i=1,grid % nEdgesOnCell % array (iCell)
             ip1 = i+1
@@ -269,7 +269,7 @@ module advection
             zv2 = grid % zVertex % array(grid % verticesOnEdge % array (2,iedge))/a
   
             if ( grid % on_a_sphere ) then
-               call arc_bisect( xv1, yv1, zv1,  &
+               call ocn_arc_bisect( xv1, yv1, zv1,  &
                                 xv2, yv2, zv2,  &
                                 xec, yec, zec   )
   
@@ -381,7 +381,7 @@ module advection
 !      end do
 !      stop
 
-   end subroutine initialize_advection_rk
+   end subroutine ocn_initialize_advection_rk
 
 
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -522,13 +522,13 @@ module advection
    
    
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   ! SUBROUTINE ARC_BISECT
+   ! SUBROUTine ocn_arc_bisect
    !
    ! Returns the point C=(cx, cy, cz) that bisects the great circle arc from
    !   A=(ax, ay, az) to B=(bx, by, bz). It is assumed that A and B lie on the
    !   surface of a sphere centered at the origin.
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   subroutine arc_bisect(ax, ay, az, bx, by, bz, cx, cy, cz)
+   subroutine ocn_arc_bisect(ax, ay, az, bx, by, bz, cx, cy, cz)
    
       implicit none
    
@@ -553,10 +553,10 @@ module advection
          cz = r * cz / d
       end if
    
-   end subroutine arc_bisect
+   end subroutine ocn_arc_bisect
 
 
-   subroutine poly_fit_2(a_in,b_out,weights_in,m,n,ne)
+   subroutine ocn_poly_fit_2(a_in,b_out,weights_in,m,n,ne)
 
       implicit none
 
@@ -593,14 +593,14 @@ module advection
       ata = matmul(at,a)
 
 !      if (m == n) then
-!         call MIGS(a,n,b,indx)
+!         call ocn_migs(a,n,b,indx)
 !      else
 
-         call MIGS(atha,n,atha_inv,indx)
+         call ocn_migs(atha,n,atha_inv,indx)
 
          b = matmul(atha_inv,ath)
 
-!         call MIGS(ata,n,ata_inv,indx)
+!         call ocn_migs(ata,n,ata_inv,indx)
 !         b = matmul(ata_inv,at)
 !      end if
       b_out(1:n,1:m) = b(1:n,1:m)
@@ -611,7 +611,7 @@ module advection
 !
 !     write(6,*) ' '
 
-   end subroutine poly_fit_2
+   end subroutine ocn_poly_fit_2
 
 
 ! Updated 10/24/2001.
@@ -630,7 +630,7 @@ module advection
 !                                                                       !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-SUBROUTine MIGS (A,N,X,INDX)
+SUBROUTine ocn_migs (A,N,X,INDX)
 !
 ! Subroutine to invert matrix A(N,N) with the inverse stored
 ! in X(N,N) in the output.  Copyright (c) Tao Pang 2001.
@@ -652,7 +652,7 @@ SUBROUTine MIGS (A,N,X,INDX)
     B(I,I) = 1.0
   END DO
 !
-  CALL ELGS (A,N,INDX)
+  call ocn_elgs (A,N,INDX)
 !
   DO I = 1, N-1
     DO J = I+1, N
@@ -672,10 +672,10 @@ SUBROUTine MIGS (A,N,X,INDX)
       X(J,I) =  X(J,I)/A(INDX(J),J)
     END DO
   END DO
-END SUBROUTine MIGS
+END SUBROUTine ocn_migs
 
 
-SUBROUTINE ELGS (A,N,INDX)
+SUBROUTine ocn_elgs (A,N,INDX)
 !
 ! Subroutine to perform the partial-pivoting Gaussian elimination.
 ! A(N,N) is the original matrix in the input and transformed matrix
@@ -738,11 +738,11 @@ SUBROUTINE ELGS (A,N,INDX)
     END DO
   END DO
 !
-END SUBROUTINE ELGS
+END SUBROUTine ocn_elgs
 
 !-------------------------------------------------------------
 
-   subroutine initialize_deformation_weights( grid )
+   subroutine ocn_initialize_deformation_weights( grid )
                                       
 !
 ! compute the cell coefficients for the deformation calculations
@@ -929,6 +929,6 @@ END SUBROUTINE ELGS
 
       if (debug) write(0,*) ' exiting def weight calc '
 
-   end subroutine initialize_deformation_weights
+   end subroutine ocn_initialize_deformation_weights
 
-end module advection
+end module ocn_advection

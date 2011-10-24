@@ -3,7 +3,7 @@ module mpas_core
    use mpas_framework
    use mpas_timekeeping
    use mpas_dmpar
-   use test_cases
+   use ocn_test_cases
 
    use ocn_time_integration
 
@@ -128,7 +128,7 @@ module mpas_core
    ! no initial statistics write.
    
    !   call mpas_timer_start("global diagnostics")
-   !   call computeGlobalDiagnostics(domain % dminfo, block % state % time_levs(1) % state, mesh, 0, dt)
+   !   call ocn_compute_global_diagnostics(domain % dminfo, block % state % time_levs(1) % state, mesh, 0, dt)
    !   call mpas_timer_stop("global diagnostics")
    !   call mpas_output_state_init(output_obj, domain, "OUTPUT")
    !   call write_output_frame(output_obj, domain)
@@ -406,7 +406,7 @@ module mpas_core
    
       use mpas_grid_types
       use mpas_timer
-      use global_diagnostics
+      use ocn_global_diagnostics
    
       implicit none
    
@@ -429,7 +429,7 @@ module mpas_core
               end if
 
           call mpas_timer_start("global diagnostics")
-          call computeGlobalDiagnostics(domain % dminfo, &
+          call ocn_compute_global_diagnostics(domain % dminfo, &
              block_ptr % state % time_levs(2) % state, block_ptr % mesh, &
              itimestep, dt)
           call mpas_timer_stop("global diagnostics")
@@ -447,7 +447,7 @@ module mpas_core
       !   end if
    
       !   call mpas_timer_start("global diagnostics")
-      !   call computeGlobalDiagnostics(domain % dminfo, &
+      !   call ocn_compute_global_diagnostics(domain % dminfo, &
       !            block_ptr % state % time_levs(2) % state, block_ptr % mesh, &
       !            timeStamp, dt)
       !   call mpas_timer_stop("global diagnostics")
