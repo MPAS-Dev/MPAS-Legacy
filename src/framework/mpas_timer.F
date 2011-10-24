@@ -52,7 +52,7 @@
             all_timers%timer_name = ''
             current => all_timers%next
             nullify(current%next)
-          else
+          else 
             current => all_timers%next
             timer_search: do while ((.not.timer_found) .and. associated(current))
               string_equal = (trim(current%timer_name) == trim(timer_name))
@@ -85,6 +85,8 @@
               current%min_time = 100000000.0
               current%avg_time = 0.0
               current%calls = 0
+            else
+              current => timer_ptr
             endif
           endif
 
