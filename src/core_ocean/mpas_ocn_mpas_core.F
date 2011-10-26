@@ -24,7 +24,6 @@ module mpas_core
    use ocn_vmix
 
    type (io_output_object) :: restart_obj
-   integer :: restart_frame
 
    integer :: current_outfile_frames
 
@@ -133,7 +132,6 @@ module mpas_core
    !   call mpas_output_state_init(output_obj, domain, "OUTPUT")
    !   call write_output_frame(output_obj, domain)
 
-      restart_frame = 1
       current_outfile_frames = 0
 
    end subroutine mpas_core_init!}}}
@@ -329,9 +327,11 @@ module mpas_core
 
          if (mpas_is_alarm_ringing(clock, restartAlarmID, ierr=ierr)) then
             call mpas_reset_clock_alarm(clock, restartAlarmID, ierr=ierr)
-            if (restart_frame == 1) call mpas_output_state_init(restart_obj, domain, "RESTART")
-            call mpas_output_state_for_domain(restart_obj, domain, restart_frame)
-            restart_frame = restart_frame + 1
+
+            ! Write one restart time per file
+            call mpas_output_state_init(restart_obj, domain, "RESTART", trim(timeStamp))
+            call mpas_output_state_for_domain(restart_obj, domain, 1)
+            call mpas_output_state_finalize(restart_obj, domain % dminfo)
          end if
 
       end do
@@ -748,11 +748,8 @@ end subroutine compute_maxLevel!}}}
    
       implicit none
 
-      integer :: ierr
-
       type (domain_type), intent(inout) :: domain 
-
-      if (restart_frame > 1) call mpas_output_state_finalize(restart_obj, domain % dminfo)
+      integer :: ierr
 
       call mpas_destroy_clock(clock, ierr)
 

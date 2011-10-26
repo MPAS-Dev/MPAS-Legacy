@@ -94,7 +94,12 @@ module mpas_io_output
          output_obj % filename = trim(tempfilename)
          output_obj % stream = OUTPUT
       else if (trim(stream) == 'RESTART') then
-         output_obj % filename = trim(config_restart_name)
+         if(present(outputSuffix)) then
+            call mpas_insert_string_suffix(config_restart_name, outputSuffix, tempfilename)
+         else
+            tempfilename = config_restart_name
+         end if
+         output_obj % filename = trim(tempfilename)
          output_obj % stream = RESTART
       else if (trim(stream) == 'SFC') then
          ! Keep filename as whatever was set by the user

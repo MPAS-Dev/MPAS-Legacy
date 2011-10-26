@@ -128,9 +128,17 @@ module mpas_io_input
       type (MPAS_TimeInterval_type) :: timeDiff
       type (MPAS_TimeInterval_type) :: minTimeDiff
       character(len=32) :: timeStamp
+      character(len=1024) :: filename
 
       if (config_do_restart) then
-         input_obj % filename = trim(config_restart_name)
+
+         ! this get followed by set is to ensure that the time is in standard format
+         call mpas_set_time(curr_time=startTime, dateTimeString=config_start_time)
+         call mpas_get_time(curr_time=startTime, dateTimeString=timeStamp)
+
+         call mpas_insert_string_suffix(trim(config_restart_name), timeStamp, filename)
+
+         input_obj % filename = trim(filename)
          input_obj % stream = STREAM_RESTART
       else
          input_obj % filename = trim(config_input_name)
@@ -772,6 +780,12 @@ module mpas_io_input
                end if
             end do
 
+            ! require restart time to exactly match start time (this error should never be reached as we have by this point opened the restart file with a name containing the startTime)
+            if(sliceTime /= startTime) then
+               write(0,*) "Error: restart file ", filename, " did not contain time ", config_start_time
+               call mpas_dmpar_abort(domain % dminfo)
+            end if
+
             timeStamp = xtime % array(input_obj % time)
 
             deallocate(xtime % ioinfo)
@@ -1002,6 +1016,29 @@ module mpas_io_input
 #endif
 #endif
    end subroutine mpas_input_state_for_domain
+
+
+   !CR:TODO: an identical subroutine is found in module_io_output - merge
+   subroutine mpas_insert_string_suffix(stream, suffix, filename)
+
+      implicit none
+
+      character (len=*), intent(in) :: stream
+      character (len=*), intent(in) :: suffix
+      character (len=*), intent(out) :: filename
+      integer :: length, i
+
+      filename = trim(stream) // '.' // trim(suffix)
+
+      length = len_trim(stream)
+      do i=length-1,1,-1
+         if(stream(i:i) == '.') then
+            filename = trim(stream(:i)) // trim(suffix) // trim(stream(i:))
+            exit
+         end if
+      end do
+
+   end subroutine mpas_insert_string_suffix
 
 
    subroutine mpas_read_and_distribute_fields(dminfo, input_obj, block, &
