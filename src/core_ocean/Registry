@@ -186,7 +186,7 @@ var persistent real    salinityRestore ( nCells ) 0 ir salinityRestore mesh - -
 # Prognostic variables: read from input, saved in restart, and written to output
 var persistent real    u ( nVertLevels nEdges Time ) 2 ir u state - -
 var persistent real    h ( nVertLevels nCells Time ) 2 ir h state - -
-var persistent real    rho ( nVertLevels nCells Time ) 2 ir rho state - -
+var persistent real    rho ( nVertLevels nCells Time ) 2 iro rho state - -
 var persistent real    temperature ( nVertLevels nCells Time ) 2 iro temperature state tracers dynamics
 var persistent real    salinity ( nVertLevels nCells Time ) 2 iro salinity state tracers dynamics
 var persistent real    tracer1 ( nVertLevels nCells Time ) 2 iro tracer1 state tracers testing
@@ -216,8 +216,8 @@ var persistent real   u_diffusionBtr ( nEdges Time ) 1 - u_diffusionBtr state - 
 
 # Diagnostic fields: only written to output
 var persistent real    v ( nVertLevels nEdges Time ) 2 - v state - -
-var persistent real    divergence ( nVertLevels nCells Time ) 2 - divergence state - -
-var persistent real    vorticity ( nVertLevels nVertices Time ) 2 - vorticity state - -
+var persistent real    divergence ( nVertLevels nCells Time ) 2 o divergence state - -
+var persistent real    vorticity ( nVertLevels nVertices Time ) 2 o vorticity state - -
 var persistent real    pv_edge ( nVertLevels nEdges Time ) 2 - pv_edge state - -
 var persistent real    h_edge ( nVertLevels nEdges Time ) 2 - h_edge state - -
 var persistent real    h_vertex ( nVertLevels nVertices Time ) 2 - h_vertex state - -
@@ -228,8 +228,8 @@ var persistent real    pv_cell ( nVertLevels nCells Time ) 2 - pv_cell state - -
 var persistent real    uReconstructX ( nVertLevels nCells Time ) 2 - uReconstructX state - -
 var persistent real    uReconstructY ( nVertLevels nCells Time ) 2 - uReconstructY state - -
 var persistent real    uReconstructZ ( nVertLevels nCells Time ) 2 - uReconstructZ state - -
-var persistent real    uReconstructZonal ( nVertLevels nCells Time ) 2 - uReconstructZonal state - -
-var persistent real    uReconstructMeridional ( nVertLevels nCells Time ) 2 - uReconstructMeridional state - -
+var persistent real    uReconstructZonal ( nVertLevels nCells Time ) 2 o uReconstructZonal state - -
+var persistent real    uReconstructMeridional ( nVertLevels nCells Time ) 2 o uReconstructMeridional state - -
 var persistent real    MontPot ( nVertLevels nCells Time ) 2 - MontPot state - -
 var persistent real    pressure ( nVertLevels nCells Time ) 2 - pressure state - -
 var persistent real    wTop ( nVertLevelsP1 nCells Time ) 2 - wTop state - -

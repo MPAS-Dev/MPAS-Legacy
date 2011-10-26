@@ -963,18 +963,16 @@ subroutine ocn_time_integrator_split(domain, dt)!{{{
            block => block % next
          end do
 
-        ! ---  update halos for prognostic variables
-
-        block => domain % blocklist
-        do while (associated(block))
-           call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % tend % h % array(:,:), &
-                                            block % mesh % nVertLevels, block % mesh % nCells, &
-                                            block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-           call mpas_dmpar_exch_halo_field3d_real(domain % dminfo, block % tend % tracers % array(:,:,:), &
-                                            block % tend % num_tracers, block % mesh % nVertLevels, block % mesh % nCells, &
-                                            block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-           block => block % next
-        end do
+        ! update halo for thicknes for unsplit only
+        if (trim(config_time_integration) == 'unsplit_explicit') then
+           block => domain % blocklist
+           do while (associated(block))
+              call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % tend % h % array(:,:), &
+                                               block % mesh % nVertLevels, block % mesh % nCells, &
+                                               block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
+              block => block % next
+           end do
+        endif ! unsplit_explicit
 
 
         block => domain % blocklist
@@ -1056,11 +1054,6 @@ subroutine ocn_time_integrator_split(domain, dt)!{{{
              + block % state % time_levs(2) % state % uBcl % array(:,iEdge) 
            end do ! iEdge
 
-         ! mrp 110512  I really only need this to compute h_edge, density, pressure.
-         ! I can par this down later.
-         call ocn_diagnostic_solve(dt, block % state % time_levs(2) % state, block % mesh)
- 
-
          elseif (split_explicit_step == config_n_ts_iter) then
 
            hNew(:) = block % mesh % hZLevel % array(:)
@@ -1085,6 +1078,30 @@ subroutine ocn_time_integrator_split(domain, dt)!{{{
 
          block => block % next
        end do
+
+        ! Boundary update on tracers.  This is placed here, rather than 
+        ! on tend % tracers as in RK4, because I needed to update 
+        ! afterwards for the del4 diffusion operator.
+        block => domain % blocklist
+        do while (associated(block))
+           call mpas_dmpar_exch_halo_field3d_real(domain % dminfo, block % state % time_levs(2) % state % tracers % array(:,:,:), &
+                                            block % tend % num_tracers, block % mesh % nVertLevels, block % mesh % nCells, &
+                                            block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
+           block => block % next
+        end do
+
+
+         if (split_explicit_step < config_n_ts_iter) then
+            ! mrp 110512  I really only need this to compute h_edge, density, pressure.
+            ! I can par this down later.
+            block => domain % blocklist
+            do while (associated(block))
+
+               call ocn_diagnostic_solve(dt, block % state % time_levs(2) % state, block % mesh)
+
+               block => block % next
+            end do
+         endif
 
       end do  ! split_explicit_step = 1, config_n_ts_iter
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
