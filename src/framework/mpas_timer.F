@@ -33,7 +33,7 @@
         subroutine mpas_timer_start(timer_name, clear_timer, timer_ptr)!{{{
           character (len=*), intent (in) :: timer_name !< Input: name of timer, stored as name of timer
           logical, optional, intent(in) :: clear_timer !< Input: flag to clear timer
-          type (timer_node), optional, pointer, intent(out) :: timer_ptr !< Output: pointer to store timer in module
+          type (timer_node), optional, pointer :: timer_ptr !< Output: pointer to store timer in module
 
           logical :: timer_added, timer_found, string_equal, check_flag
           type (timer_node), pointer :: current, temp
@@ -151,7 +151,7 @@
        
         subroutine mpas_timer_stop(timer_name, timer_ptr)!{{{
           character (len=*), intent(in) :: timer_name !< Input: name of timer to stop
-          type (timer_node), pointer, intent(in), optional :: timer_ptr !< Input: pointer to timer, for stopping
+          type (timer_node), pointer, optional :: timer_ptr !< Input: pointer to timer, for stopping
 
           type (timer_node), pointer :: current
           
@@ -219,8 +219,8 @@
         end subroutine mpas_timer_stop!}}}
 
         recursive subroutine mpas_timer_write(timer_ptr, total_ptr)!{{{
-          type (timer_node), pointer, intent(inout), optional :: timer_ptr
-          type (timer_node), pointer, intent(in), optional :: total_ptr
+          type (timer_node), pointer, optional :: timer_ptr
+          type (timer_node), pointer, optional :: total_ptr
           character (len=10) :: tname
 
           logical :: total_found, string_equals

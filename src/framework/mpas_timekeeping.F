@@ -615,7 +615,7 @@ module mpas_timekeeping
       implicit none
       
       type (MPAS_Clock_type), intent(in) :: clock
-      type (MPAS_Alarm_type), pointer, intent(in) :: alarmPtr
+      type (MPAS_Alarm_type), pointer :: alarmPtr
       type (MPAS_TimeInterval_type), intent(in), optional :: interval
       integer, intent(out), optional :: ierr
       
