@@ -248,7 +248,7 @@ module mpas_core
 !              :block % mesh % nVertLevels,iCell) =  -1e34
 
 ! mrp 110516, added just to test for conservation of tracers
-         block % state % time_levs(1) % state % tracers % array(3,:,iCell) = 1.0
+!         block % state % time_levs(1) % state % tracers % array(block % state % time_levs(1) % state % index_tracer1,:,iCell) = 1.0
 
       end do
 
