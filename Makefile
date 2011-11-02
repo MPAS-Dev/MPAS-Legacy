@@ -1,6 +1,7 @@
 #MODEL_FORMULATION = -DNCAR_FORMULATION
 MODEL_FORMULATION = -DLANL_FORMULATION
 
+# This flag must be off for nersc hopper:
 FILE_OFFSET = -DOFFSET64BIT
 
 #########################
@@ -50,6 +51,18 @@ pgi:
 	"CC = mpicc" \
 	"SFC = pgf90" \
 	"SCC = pgcc" \
+	"FFLAGS = -r8 -O3 -byteswapio -Mfree" \
+	"CFLAGS = -O3" \
+	"LDFLAGS = -O3" \
+	"CORE = $(CORE)" \
+	"CPPFLAGS = -DRKIND=8 $(MODEL_FORMULATION) -D_MPI -DUNDERSCORE $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
+
+pgi-nersc:
+	( make all \
+	"FC = ftn" \
+	"CC = cc" \
+	"SFC = ftn" \
+	"SCC = cc" \
 	"FFLAGS = -r8 -O3 -byteswapio -Mfree" \
 	"CFLAGS = -O3" \
 	"LDFLAGS = -O3" \
@@ -178,6 +191,41 @@ g95-serial:
 	"CORE = $(CORE)" \
 	"CPPFLAGS = -DRKIND=8 $(MODEL_FORMULATION) -DUNDERSCORE $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
 
+pathscale-nersc:
+	( make all \
+	"FC = ftn" \
+	"CC = cc" \
+	"SFC = ftn" \
+	"SCC = cc" \
+	"FFLAGS = -r8 -O3 -freeform -extend-source" \
+	"CFLAGS = -O3" \
+	"LDFLAGS = -O3" \
+	"CORE = $(CORE)" \
+	"CPPFLAGS = -DRKIND=8 $(MODEL_FORMULATION) -D_MPI -DUNDERSCORE $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
+
+cray-nersc:
+	( make all \
+	"FC = ftn" \
+	"CC = cc" \
+	"SFC = ftn" \
+	"SCC = cc" \
+	"FFLAGS = -default64 -O3 -f free" \
+	"CFLAGS = -O3" \
+	"LDFLAGS = -O3" \
+	"CORE = $(CORE)" \
+	"CPPFLAGS = -DRKIND=8 $(MODEL_FORMULATION) -D_MPI -DUNDERSCORE $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
+
+intel-nersc:
+	( make all \
+	"FC = ftn" \
+	"CC = cc" \
+	"SFC = ftn" \
+	"SCC = cc" \
+	"FFLAGS = -real-size 64 -O3 -FR" \
+	"CFLAGS = -O3" \
+	"LDFLAGS = -O3" \
+	"CORE = $(CORE)" \
+	"CPPFLAGS = -DRKIND=8 $(MODEL_FORMULATION) -D_MPI -DUNDERSCORE $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
 
 CPPINCLUDES = -I../inc -I$(NETCDF)/include -I$(PAPI)/include
 FCINCLUDES = -I../inc -I$(NETCDF)/include -I$(PAPI)/include

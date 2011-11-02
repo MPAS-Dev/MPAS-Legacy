@@ -79,7 +79,7 @@ module mpas_core
       call ocn_equation_of_state_init(err_tmp)
       err = err .or. err_tmp
 
-      if(err) then
+      if(err.eq.1) then
           call mpas_dmpar_abort(dminfo)
       endif
 

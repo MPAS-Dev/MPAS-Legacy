@@ -483,7 +483,7 @@ print *, 'h_s',minval(grid % h_s % array),sum(grid % h_s % array)/grid % nCells,
       real (kind=RKIND), intent(in) :: theta
 
       aa = 0.5 * w * (2.0 * omega + w) * cos(theta)**2.0 + &
-          0.25 * K**2.0 * cos(theta)**(2.0*R) * ((R+1.0)*cos(theta)**2.0 + 2.0*R**2.0 - R - 2.0 - 2.0*R**2*cos(theta)**-2.0)
+          0.25 * K**2.0 * cos(theta)**(2.0*R) * ((R+1.0)*cos(theta)**2.0 + 2.0*R**2.0 - R - 2.0 - 2.0*R**2*cos(theta)**(-2.0))
 
    end function aa
 
