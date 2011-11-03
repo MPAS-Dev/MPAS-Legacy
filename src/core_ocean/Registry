@@ -42,6 +42,9 @@ namelist logical   sw_model config_h_ScaleWithMesh     false
 namelist real      hmix     config_h_mom_eddy_visc2     0.0
 namelist real      hmix     config_h_mom_eddy_visc4     0.0
 namelist logical   hmix     config_visc_vorticity_term true
+namelist real      hmix     config_visc_vorticity_visc2_scale 1.0
+namelist real      hmix     config_visc_vorticity_visc4_scale 1.0
+namelist logical   hmix     config_include_KE_vertex false
 namelist real      hmix     config_h_tracer_eddy_diff2  0.0
 namelist real      hmix     config_h_tracer_eddy_diff4  0.0
 namelist real      hmix     config_apvm_upwinding       0.5
@@ -222,6 +225,8 @@ var persistent real    pv_edge ( nVertLevels nEdges Time ) 2 - pv_edge state - -
 var persistent real    h_edge ( nVertLevels nEdges Time ) 2 - h_edge state - -
 var persistent real    h_vertex ( nVertLevels nVertices Time ) 2 - h_vertex state - -
 var persistent real    ke ( nVertLevels nCells Time ) 2 o ke state - -
+var persistent real    kev ( nVertLevels nVertices Time ) 2 o kev state - -
+var persistent real    kevc ( nVertLevels nCells Time ) 2 o kevc state - -
 var persistent real    ke_edge ( nVertLevels nEdges Time ) 2 - ke_edge state - -
 var persistent real    pv_vertex ( nVertLevels nVertices Time ) 2 - pv_vertex state - -
 var persistent real    pv_cell ( nVertLevels nCells Time ) 2 - pv_cell state - -

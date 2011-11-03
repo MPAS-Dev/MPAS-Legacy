@@ -281,7 +281,7 @@ contains
       hmixDel4On = .true.
       eddyVisc4 = config_h_mom_eddy_visc4
       if (config_visc_vorticity_term) then
-         viscVortCoef = 1.0
+         viscVortCoef = config_visc_vorticity_visc4_scale
       else
          viscVortCoef = 0.0
       endif

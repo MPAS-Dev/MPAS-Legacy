@@ -620,7 +620,7 @@ contains
         weightsOnEdge, kiteAreasOnVertex, h_edge, h, u, v, w, pressure,&
         circulation, vorticity, ke, ke_edge, MontPot, wTop, &
         pv_edge, pv_vertex, pv_cell, gradPVn, gradPVt, divergence, &
-        rho, temperature, salinity
+        rho, temperature, salinity, kev, kevc
       real (kind=RKIND), dimension(:,:,:), pointer :: tracers
       real (kind=RKIND), dimension(:), allocatable:: pTop
       real (kind=RKIND), dimension(:,:), allocatable:: div_u
@@ -648,6 +648,8 @@ contains
       vorticity   => s % vorticity % array
       divergence  => s % divergence % array
       ke          => s % ke % array
+      kev         => s % kev % array
+      kevc        => s % kevc % array
       ke_edge     => s % ke_edge % array
       pv_edge     => s % pv_edge % array
       pv_vertex   => s % pv_vertex % array
@@ -878,6 +880,41 @@ contains
             ke(k,iCell) = ke(k,iCell) / areaCell(iCell)
          enddo
       enddo
+
+      !
+      ! Compute kinetic energy in each vertex
+      !
+      kev(:,:) = 0.0; kevc(:,:) = 0.0
+      do iEdge=1,nEdges
+         do k=1,nVertLevels
+            kev(k,verticesOnEdge(1,iEdge)) = kev(k,verticesOnEdge(1,iEdge)) + dcEdge(iEdge) * dvEdge(iEdge) * u(k,iEdge)**2
+            kev(k,verticesOnEdge(2,iEdge)) = kev(k,verticesOnEdge(2,iEdge)) + dcEdge(iEdge) * dvEdge(iEdge) * u(k,iEdge)**2
+         end do
+      end do
+      do iVertex = 1,nVertices
+         do k=1,nVertLevels
+           kev(k,iVertex) = kev(k,iVertex) / areaTriangle(iVertex) / 4.0
+         enddo
+      enddo
+      do iVertex = 1, nVertices
+       do i=1,grid % vertexDegree
+         iCell = cellsOnVertex(i,iVertex)
+         do k=1,nVertLevels
+           kevc(k,iCell) = kevc(k,iCell) + kiteAreasOnVertex(i, iVertex) * kev(k, iVertex) / areaCell(iCell)
+         enddo
+       enddo
+      enddo
+
+      !
+      ! Compute kinetic energy in each cell by blending ke and kevc
+      !
+      if(config_include_KE_vertex) then
+      do iCell=1,nCells
+         do k=1,nVertLevels
+            ke(k,iCell) = 5.0/8.0*ke(k,iCell) + 3.0/8.0*kevc(k,iCell)
+         end do
+      end do
+      endif
 
       !
       ! Compute v (tangential) velocities

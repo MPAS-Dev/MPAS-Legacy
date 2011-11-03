@@ -206,7 +206,7 @@ contains
 
 
       if (config_visc_vorticity_term) then
-         viscVortCoef = 1.0
+         viscVortCoef = config_visc_vorticity_visc2_scale
       else
          viscVortCoef = 0.0
       endif
