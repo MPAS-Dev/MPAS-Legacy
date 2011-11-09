@@ -126,7 +126,7 @@ contains
       call ocn_vmix_coefs_tanh_build(grid, s, d, err2)
       call ocn_vmix_coefs_rich_build(grid, s, d, err3)
 
-      err = err1 .or. err2 .or. err3
+      err = ior(err1, ior(err2, err3))
 
    !--------------------------------------------------------------------
 
@@ -609,7 +609,7 @@ contains
       call ocn_vmix_coefs_tanh_init(err2)
       call ocn_vmix_coefs_rich_init(err3)
 
-      err = err .or. err1 .or. err2 .or. err3
+      err = ior(err1, ior(err2, err3))
 
    !--------------------------------------------------------------------
 

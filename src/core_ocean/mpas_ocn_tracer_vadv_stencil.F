@@ -129,7 +129,7 @@ contains
       call ocn_tracer_vadv_stencil3_tend(grid, wTop, tracers, tend, err1)
       call ocn_tracer_vadv_stencil4_tend(grid, wTop, tracers, tend, err1)
 
-      err = err1 .or. err2 .or. err3
+      err = ior(err1, ior(err2, err3))
 
    !--------------------------------------------------------------------
 
@@ -176,7 +176,7 @@ contains
          call ocn_tracer_vadv_stencil3_init(err2)
          call ocn_tracer_vadv_stencil4_init(err3)
 
-         err = err1 .or. err2 .or. err3
+         err = ior(err1, ior(err2, err3))
       endif
 
    !--------------------------------------------------------------------

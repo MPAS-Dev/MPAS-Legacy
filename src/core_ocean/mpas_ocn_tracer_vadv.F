@@ -127,7 +127,7 @@ contains
       call ocn_tracer_vadv_stencil_tend(grid, wTop, tracers, tend, err1)
       call ocn_tracer_vadv_spline_tend(grid, wTop, tracers, tend, err2)
 
-      err = err1 .or. err2
+      err = ior(err1, err2)
 
    !--------------------------------------------------------------------
 
@@ -163,6 +163,7 @@ contains
 
       integer :: err1, err2
 
+      err = 0
       vadvOn = .false.
 
       if (config_vert_grid_type.eq.'zlevel') then
@@ -170,7 +171,7 @@ contains
           call ocn_tracer_vadv_stencil_init(err1)
           call ocn_tracer_vadv_spline_init(err2)
 
-          err = err1 .or. err2
+          err = ior(err1, err2)
       endif
 
    !--------------------------------------------------------------------

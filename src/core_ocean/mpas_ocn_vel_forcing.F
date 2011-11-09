@@ -127,7 +127,7 @@ contains
       call ocn_vel_forcing_windstress_tend(grid, u_src, h_edge, tend, err1)
       call ocn_vel_forcing_bottomdrag_tend(grid, u, ke_edge, h_edge, tend, err2)
 
-      err = err1 .or. err2
+      err = ior(err1, err2)
 
    !--------------------------------------------------------------------
 
@@ -166,7 +166,7 @@ contains
       call ocn_vel_forcing_windstress_init(err1)
       call ocn_vel_forcing_bottomdrag_init(err2)
 
-      err = err1 .or. err2
+      err = ior(err1, err2)
 
    !--------------------------------------------------------------------
 

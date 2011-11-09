@@ -122,7 +122,7 @@ contains
       call ocn_vel_hmix_del2_tend(grid, divergence, vorticity, tend, err1)
       call ocn_vel_hmix_del4_tend(grid, divergence, vorticity, tend, err2)
 
-      err = err1 .or. err2
+      err = ior(err1, err2)
 
    !--------------------------------------------------------------------
 
@@ -161,7 +161,7 @@ contains
       call ocn_vel_hmix_del2_init(err1)
       call ocn_vel_hmix_del4_init(err2)
 
-      err = err1 .or. err2
+      err = ior(err1, err2)
 
    !--------------------------------------------------------------------
 

@@ -123,7 +123,7 @@ contains
       call ocn_vel_vmix_coefs_tanh(grid, vertViscTopOfEdge, err1)
       call ocn_tracer_vmix_coefs_tanh(grid, vertDiffTopOfCell, err2)
 
-      err = err1 .or. err2
+      err = ior(err1, err2)
 
    !--------------------------------------------------------------------
 

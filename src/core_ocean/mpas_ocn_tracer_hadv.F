@@ -126,7 +126,7 @@ contains
       call ocn_tracer_hadv3_tend(grid, u, h_edge, tracers, tend, err2)
       call ocn_tracer_hadv4_tend(grid, u, h_edge, tracers, tend, err3)
 
-      err = err1 .or. err2 .or. err3
+      err = ior(err1, ior(err2, err3))
 
    !--------------------------------------------------------------------
 
@@ -166,7 +166,7 @@ contains
       call ocn_tracer_hadv3_init(err2)
       call ocn_tracer_hadv4_init(err3)
 
-      err = err1 .or. err2 .or. err3
+      err = ior(err1, ior(err2, err3))
 
    !--------------------------------------------------------------------
 
@@ -177,4 +177,4 @@ contains
 end module ocn_tracer_hadv
 
 !|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
-! vim: foldmetho=marker
+! vim: foldmethod=marker

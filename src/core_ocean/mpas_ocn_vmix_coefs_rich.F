@@ -148,7 +148,7 @@ contains
       call ocn_vel_vmix_coefs_rich(grid, RiTopOfEdge, h_edge, vertViscTopOfEdge, err2)
       call ocn_tracer_vmix_coefs_rich(grid, RiTopOfCell, h, vertDiffTopOfCell, err3)
 
-      err = err1 .or. err2 .or. err3
+      err = ior(err1, ior(err2, err3))
 
    !--------------------------------------------------------------------
 
