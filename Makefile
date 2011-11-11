@@ -21,15 +21,27 @@ dummy:
 	echo "   make gfortran"; \
 	)
 
+xlf-serial:
+	( make all \
+	"FC = xlf90" \
+	"CC = xlc" \
+	"SFC = xlf90" \
+	"SCC = xlc" \
+	"FFLAGS = -qrealsize=8 -g -C " \
+	"CFLAGS = -g" \
+	"LDFLAGS = -g -C" \
+	"CORE = $(CORE)" \
+	"CPPFLAGS = -DRKIND=8 $(MODEL_FORMULATION) $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
+
 xlf:
 	( make all \
 	"FC = mpxlf90" \
 	"CC = mpcc" \
 	"SFC = xlf90" \
 	"SCC = xlc" \
-	"FFLAGS = -qrealsize=8 -g -C " \
-	"CFLAGS = -g" \
-	"LDFLAGS = -g -C" \
+	"FFLAGS = -O3 -qrealsize=8" \
+	"CFLAGS = -O3" \
+	"LDFLAGS = -O3" \
 	"CORE = $(CORE)" \
 	"CPPFLAGS = -DRKIND=8 $(MODEL_FORMULATION) -D_MPI $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
  
@@ -165,7 +177,7 @@ gfortran-serial:
 	"CFLAGS = -O3 -m64" \
 	"LDFLAGS = -O3 -m64" \
 	"CORE = $(CORE)" \
-	"CPPFLAGS = -DRKIND=8 $(MODEL_FORMULATION) $(EXPAND_LEVELS) -DUNDERSCORE -m64 $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
+	"CPPFLAGS = -DRKIND=8 $(MODEL_FORMULATION) -DUNDERSCORE -m64 $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
 
 g95:
 	( make all \
