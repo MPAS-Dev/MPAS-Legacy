@@ -1,0 +1,49 @@
+&nhyd_model
+   config_test_case = 6
+   config_time_integration = 'SRK3'
+   config_dt = 6.
+   config_ntimesteps = 3000
+   config_output_interval = 100
+   config_number_of_sub_steps = 6
+   config_h_mom_eddy_visc2 = 10.
+   config_h_mom_eddy_visc4 = 0.
+   config_v_mom_eddy_visc2 = 10.
+   config_h_theta_eddy_visc2 = 10.
+   config_h_theta_eddy_visc4 = 0.
+   config_v_theta_eddy_visc2 = 10.
+   config_theta_adv_order = 3
+   config_w_adv_order = 3
+   config_scalar_advection = .false.
+   config_positive_definite = .false.
+   config_monotonic = .false.
+   config_mix_full = .false.
+   config_horiz_mixing = '2d_fixed'
+   config_coef_3rd_order = 0.25
+   config_epssm = 0.2
+   config_newpx = .false.
+/
+
+
+&damping
+   config_zd = 22000.0
+   config_xnutr = 0.0
+/
+
+&dimensions
+   config_nvertlevels = 26
+/
+
+&io
+   config_input_name = 'grid.nc'
+   config_output_name = 'output.nc'
+   config_restart_name = 'restart.nc'
+/
+
+&restart
+   config_restart_interval = 3000
+   config_do_restart = .false.
+   config_restart_time = 1036800.0
+/
+
+&physics
+/

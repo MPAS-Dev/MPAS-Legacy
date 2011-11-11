@@ -1,0 +1,582 @@
+!=============================================================================================
+ module mpas_atmphys_interface_nhyd
+ use mpas_configure
+ use mpas_grid_types
+
+ use module_eaung_util
+ use mpas_atmphys_constants
+ use mpas_atmphys_vars
+
+ implicit none
+ private
+ public:: allocate_forall_physics,   &
+          deallocate_forall_physics, &
+          MPAS_to_physics,           &
+          microphysics_from_MPAS,    &
+          microphysics_to_MPAS
+
+ integer:: i,j,k
+
+ contains
+
+!=============================================================================================
+ subroutine allocate_forall_physics
+!=============================================================================================
+
+ if(.not.allocated(psfc_p))  allocate(psfc_p(ims:ime,jms:jme)           )
+ if(.not.allocated(ptop_p))  allocate(ptop_p(ims:ime,jms:jme)           )
+
+ if(.not.allocated(u_p)    )  allocate(u_p(ims:ime,kms:kme,jms:jme)     )
+ if(.not.allocated(v_p)    )  allocate(v_p(ims:ime,kms:kme,jms:jme)     )
+ if(.not.allocated(zz_p)   )  allocate(zz_p(ims:ime,kms:kme,jms:jme)    )
+ if(.not.allocated(pres_p) )  allocate(pres_p(ims:ime,kms:kme,jms:jme)  )
+ if(.not.allocated(pi_p)   )  allocate(pi_p(ims:ime,kms:kme,jms:jme)    )
+ if(.not.allocated(z_p)    )  allocate(z_p(ims:ime,kms:kme,jms:jme)     )
+ if(.not.allocated(dz_p)   )  allocate(dz_p(ims:ime,kms:kme,jms:jme)    )
+ if(.not.allocated(t_p)    )  allocate(t_p(ims:ime,kms:kme,jms:jme)     )
+ if(.not.allocated(th_p)   )  allocate(th_p(ims:ime,kms:kme,jms:jme)    )
+ if(.not.allocated(al_p)   )  allocate(al_p(ims:ime,kms:kme,jms:jme)    )
+ if(.not.allocated(rho_p)  )  allocate(rho_p(ims:ime,kms:kme,jms:jme)   )
+ if(.not.allocated(rh_p)   )  allocate(rh_p(ims:ime,kms:kme,jms:jme)    )
+
+ if(.not.allocated(w_p)    )  allocate(w_p(ims:ime,kms:kme,jms:jme)     )
+ if(.not.allocated(pres2_p))  allocate(pres2_p(ims:ime,kms:kme,jms:jme) )
+ if(.not.allocated(t2_p)   )  allocate(t2_p(ims:ime,kms:kme,jms:jme)    )
+
+ if(.not.allocated(pres_hyd_p) ) allocate(pres_hyd_p(ims:ime,kms:kme,jms:jme)  )
+ if(.not.allocated(pres2_hyd_p)) allocate(pres2_hyd_p(ims:ime,kms:kme,jms:jme) )
+ 
+ do j = jms,jme
+ do i = ims,ime
+    psfc_p(i,j)   = 0.
+    ptop_p(i,j)   = 0.
+ enddo
+ enddo
+
+ do j = jms,jme
+ do k = kms,kme
+ do i = ims,ime
+    u_p(i,k,j)     = 0.
+    v_p(i,k,j)     = 0.
+    w_p(i,k,j)     = 0.
+    pres_p(i,k,j)  = 0.
+    pi_p(i,k,j)    = 0.
+    z_p(i,k,j)     = 0.
+    dz_p(i,k,j)    = 0.
+    t_p(i,k,j)     = 0.
+    th_p(i,k,j)    = 0.
+    al_p(i,k,j)    = 0.
+    rho_p(i,k,j)   = 0.
+    rh_p(i,k,j)    = 0.
+
+    w_p(i,k,j)     = 0.
+    pres2_p(i,k,j) = 0.
+    t2_p(i,k,j)    = 0.
+
+    pres_hyd_p(i,k,j)  = 0.
+    pres2_hyd_p(i,k,j) = 0.
+ enddo
+ enddo
+ enddo
+
+!allocate moist species (to be revisited!):
+ if(.not.allocated(qv_p)   ) allocate(qv_p(ims:ime,kms:kme,jms:jme)     )
+ if(.not.allocated(qc_p)   ) allocate(qc_p(ims:ime,kms:kme,jms:jme)     )
+ if(.not.allocated(qr_p)   ) allocate(qr_p(ims:ime,kms:kme,jms:jme)     )
+ if(.not.allocated(qi_p)   ) allocate(qi_p(ims:ime,kms:kme,jms:jme)     )
+ if(.not.allocated(qs_p)   ) allocate(qs_p(ims:ime,kms:kme,jms:jme)     )
+ if(.not.allocated(qg_p)   ) allocate(qg_p(ims:ime,kms:kme,jms:jme)     )
+
+ end subroutine allocate_forall_physics
+
+!=============================================================================================
+ subroutine deallocate_forall_physics
+!=============================================================================================
+
+!de-allocation of all physics arrays:
+ if(allocated(psfc_p)  ) deallocate(psfc_p  )
+ if(allocated(ptop_p)  ) deallocate(ptop_p  )
+
+ if(allocated(u_p)     ) deallocate(u_p     )
+ if(allocated(v_p)     ) deallocate(v_p     )
+ if(allocated(zz_p)    ) deallocate(zz_p    )
+ if(allocated(pres_p)  ) deallocate(pres_p  )
+ if(allocated(pi_p)    ) deallocate(pi_p    )
+ if(allocated(z_p)     ) deallocate(z_p     )
+ if(allocated(dz_p)    ) deallocate(dz_p    )
+ if(allocated(t_p)     ) deallocate(t_p     )
+ if(allocated(th_p)    ) deallocate(th_p    )
+ if(allocated(al_p)    ) deallocate(al_p    )
+ if(allocated(rho_p)   ) deallocate(rho_p   ) 
+ if(allocated(rh_p)    ) deallocate(rh_p    ) 
+
+ if(allocated(w_p)     ) deallocate(w_p     )
+ if(allocated(pres2_p) ) deallocate(pres2_p )
+ if(allocated(t2_p)    ) deallocate(t2_p    )
+
+ if(allocated(pres_hyd_p) ) deallocate(pres_hyd_p  )
+ if(allocated(pres2_hyd_p)) deallocate(pres2_hyd_p )
+ 
+ if(allocated(qv_p)    ) deallocate(qv_p    )
+ if(allocated(qc_p)    ) deallocate(qc_p    )
+ if(allocated(qr_p)    ) deallocate(qr_p    )
+ if(allocated(qi_p)    ) deallocate(qi_p    )
+ if(allocated(qs_p)    ) deallocate(qs_p    )
+ if(allocated(qg_p)    ) deallocate(qg_p    )
+
+ end subroutine deallocate_forall_physics
+
+!=============================================================================================
+ subroutine MPAS_to_physics(mesh,state,diag)
+!=============================================================================================
+
+!input variables:
+ type(mesh_type) ,intent(in):: mesh
+ type(state_type),intent(in):: state
+ type(diag_type) ,intent(in):: diag
+
+!local variables:
+ integer:: i,k,j
+ real(kind=RKIND):: z0,z1,z2,w1,w2
+
+ real(kind=RKIND),dimension(:),pointer:: latCell,lonCell
+ real(kind=RKIND),dimension(:),pointer  :: fzm,fzp,rdzw
+ real(kind=RKIND),dimension(:,:),pointer:: zgrid
+ real(kind=RKIND),dimension(:,:),pointer:: zz,exner,pressure_b,rtheta_p,rtheta_b
+ real(kind=RKIND),dimension(:,:),pointer:: rho_zz,theta_m,qv,pressure_p,u,v,w
+ real(kind=RKIND),dimension(:,:),pointer:: qvs,rh
+
+ integer:: ip,iEdg
+
+!---------------------------------------------------------------------------------------------
+
+ write(0,*)
+ write(0,*) '--- enter subroutine MPAS_to_phys:'
+ write(0,*) 'ims=',ims,' ime=',ime
+ write(0,*) 'jms=',jms,' jme=',jme
+ write(0,*) 'kms=',kms,' kme=',kme
+ write(0,*)
+ write(0,*) 'its=',its,' ite=',ite
+ write(0,*) 'jts=',jts,' jte=',jte
+ write(0,*) 'kts=',kts,' kte=',kte
+
+!initialization:
+ latCell   => mesh % latCell % array
+ lonCell   => mesh % lonCell % array
+
+ fzm        => mesh % fzm % array
+ fzp        => mesh % fzp % array
+ rdzw       => mesh % rdzw % array
+ zgrid      => mesh % zgrid % array
+ zz         => mesh % zz % array
+ exner      => diag % exner % array
+ pressure_b => diag % pressure_base % array
+ pressure_p => diag % pressure_p % array
+ rtheta_p   => diag % rtheta_p % array
+ rtheta_b   => diag % rtheta_base % array
+
+ rho_zz     => state % rho_zz % array
+ theta_m    => state % theta_m % array
+ qv         => state % scalars % array(state%index_qv,:,:)
+
+ w          => state % w % array
+ u          => diag  % uReconstructZonal % array
+ v          => diag  % uReconstructMeridional % array
+
+!copy sounding variables from the geodesic grid to the rectangular grid:
+ do j = jts, jte
+ do i = its, ite
+    psfc_p(i,j) = diag % surface_pressure % array(i)
+ enddo
+ enddo
+
+ do j = jts, jte
+ do k = kts, kte
+ do i = its, ite
+
+    !moist arrays:
+    qv_p(i,k,j) = max(0.,state % scalars % array(state%index_qv,k,i))
+    qc_p(i,k,j) = max(0.,state % scalars % array(state%index_qc,k,i))
+    qr_p(i,k,j) = max(0.,state % scalars % array(state%index_qr,k,i))
+    qi_p(i,k,j) = max(0.,state % scalars % array(state%index_qi,k,i))
+    qs_p(i,k,j) = max(0.,state % scalars % array(state%index_qs,k,i))
+    qg_p(i,k,j) = max(0.,state % scalars % array(state%index_qg,k,i))
+    
+    !arrays located at theta points:
+    u_p(i,k,j) = u(k,i)
+    v_p(i,k,j) = v(k,i)
+
+    zz_p(i,k,j)  = zz(k,i)
+    rho_p(i,k,j) = zz(k,i) * rho_zz(k,i)
+    rho_p(i,k,j) = rho_p(i,k,j)*(1.+qv_p(i,k,j))
+    th_p(i,k,j)  = theta_m(k,i) / (1. + R_v/R_d * qv(k,i))
+    t_p(i,k,j)   = theta_m(k,i) * exner(k,i) / (1. + R_v/R_d * qv(k,i))
+
+    pi_p(i,k,j)   = exner(k,i)
+    pres_p(i,k,j) = pressure_p(k,i) + pressure_b(k,i)
+
+    dz_p(i,k,j) = zgrid(k+1,i)-zgrid(k,i)
+
+    !arrays located at w points:
+    w_p(i,k,j) = w(k,i)
+   
+ enddo
+ enddo
+ enddo
+
+ do j = jts,jte
+ do i = its,ite
+    if(pres_p(i,1,j) .lt. pres_p(i,2,j)) then
+       write(0,*)
+       write(0,*) '--- subroutine MPAS_to_phys: pres:',j,i
+       write(0,*) 'latCell=', latCell(i)
+       write(0,*) 'lonCell=', lonCell(i)
+       do k = kts,kte
+          write(0,201) j,i,k,pressure_b(k,i),pressure_p(k,i),pres_p(i,k,j),zz(k,i), &
+             rho_p(i,k,j),th_p(i,k,j),t_p(i,k,j),qv_p(i,k,j)
+       enddo
+       write(0,*)
+       do k = kts,kte
+          write(0,201) j,i,k,qv_p(i,k,j),qc_p(i,k,j),qr_p(i,k,j),qi_p(i,k,j),qs_p(i,k,j), &
+                       qg_p(i,k,j)
+       enddo
+       write(0,*)
+       stop
+    endif
+ enddo
+ enddo
+
+!interpolation of pressure and temperature from theta points to w points:
+ do j = jts,jte
+ do k = kts+1,kte
+ do i = its,ite
+    t2_p(i,k,j)    = fzm(k)*t_p(i,k,j) + fzp(k)*t_p(i,k-1,j)
+    pres2_p(i,k,j) = fzm(k)*pres_p(i,k,j) + fzp(k)*pres_p(i,k-1,j)
+ enddo
+ enddo
+ enddo
+
+!interpolation of pressure and temperature from theta points to the top-of-the-model: follows
+!the calculation of the top-of-the-model pressure and temperature in WRF (subroutine phy_prep
+!in ./dyn_em/module_big_step_utilities.F):
+ k = kte+1
+ do j = jts,jte
+ do i = its,ite
+    z0 = zgrid(k,i)
+    z1 = 0.5*(zgrid(k,i)+zgrid(k-1,i)) 
+    z2 = 0.5*(zgrid(k-1,i)+zgrid(k-2,i))
+    w1 = (z0-z2)/(z1-z2)
+    w2 = 1.-w1
+    t2_p(i,k,j) = w1*t_p(i,k-1,j) + w2*t_p(i,k-2,j)
+    !use log of pressure to avoid occurrences of negative top-of-the-model pressure.
+    pres2_p(i,k,j) = exp(w1*log(pres_p(i,k-1,j))+w2*log(pres_p(i,k-2,j)))
+ enddo
+ enddo
+
+!interpolation of pressure and temperature from theta points to the surface:
+ k = kts
+ do j = jts,jte
+ do i = its,ite
+    z0 = zgrid(k,i)
+    z1 = 0.5*(zgrid(k,i)+zgrid(k+1,i)) 
+    z2 = 0.5*(zgrid(k+1,i)+zgrid(k+2,i))
+    w1 = (z0-z2)/(z1-z2)
+    w2 = 1.-w1
+    t2_p(i,k,j)    = w1*t_p(i,k,j)+w2*t_p(i,k+1,j)
+    !use surface pressure calculated in subroutine recover_large_step_variables.
+    !pres2_p(i,k,j) = w1*pres_p(i,k,j)+w2*pres_p(i,k+1,j)
+    pres2_p(i,k,j) = psfc_p(i,j)
+ enddo
+ enddo 
+ do j = jts,jte
+ do i = its,ite
+    if(pres2_p(i,1,j) .lt. pres2_p(i,2,j)) then
+       write(0,*)
+       write(0,*) '--- subroutine MPAS_to_phys: pres2:',j,i
+       do k = kts,kte+1
+          write(0,201) j,i,k,pres2_p(i,k,j)
+      enddo
+!      write(0,*)
+!      do k = kts,kte
+!         write(0,201) j,i,k,pressure_b(k,i),pressure_p(k,i),pres_p(i,k,j),zz(k,i), &
+!            rho_p(i,k,j),th_p(i,k,j),t_p(i,k,j),qv_p(i,k,j)
+!      enddo
+!      write(0,*)
+!      do k = kts,kte
+!         write(0,201) j,i,k,qv_p(i,k,j),qc_p(i,k,j),qr_p(i,k,j),qi_p(i,k,j),qs_p(i,k,j), &
+!                     qg_p(i,k,j)
+!      enddo
+       stop
+    endif
+ enddo
+ enddo
+
+!calculation of the hydrostatic pressure at w points:
+ do j = jts,jte
+ do i = its,ite
+    pres2_hyd_p(i,1,j) = psfc_p(i,j)
+    do k = kts+1,kte+1
+       pres2_hyd_p(i,k,j) = pres2_hyd_p(i,k-1,j) &
+                          - rho_p(i,k-1,j)*(1+qv_p(i,k-1,j))*g*dz_p(i,k-1,j)
+    enddo
+ enddo
+ enddo
+
+!formats: 
+ 201 format(3i8,10(1x,e15.8))
+ 202 format(2i6,10(1x,e15.8))
+ 203 format(i6,10(1x,e15.8))
+
+ end subroutine MPAS_to_physics
+
+!=============================================================================================
+ subroutine microphysics_from_MPAS(mesh,state,tend,diag)
+!=============================================================================================
+
+!input variables:
+ type(state_type),intent(in):: state
+ type(diag_type) ,intent(in):: diag
+ type(mesh_type) ,intent(in):: mesh
+
+ type(tend_type),intent(inout):: tend
+
+!local variables:
+ integer:: i,k,j
+
+ real(kind=RKIND):: min_theta,min_thp,min_tp
+ real(kind=RKIND):: max_theta,max_thp,max_tp
+ real(kind=RKIND):: min_qv,min_qc,min_qr,min_qi,min_qs,min_qg,min_qnr,min_qni
+ real(kind=RKIND):: max_qv,max_qc,max_qr,max_qi,max_qs,max_qg,max_qnr,max_qni
+
+ real(kind=RKIND),dimension(:,:),pointer:: zgrid
+ real(kind=RKIND),dimension(:,:),pointer:: zz,exner,pressure_b,rtheta_p,rtheta_b
+ real(kind=RKIND),dimension(:,:),pointer:: rho_zz,theta_m,qv,rh,pressure_p
+ real(kind=RKIND),dimension(:,:),pointer:: rt_diabatic_tend
+
+!---------------------------------------------------------------------------------------------
+
+!initialization:
+ write(0,*)
+ write(0,*) '--- enter subroutine microphysics_from_MPAS:'
+
+ zgrid => mesh % zgrid % array
+ zz    => mesh % zz % array
+
+ exner      => diag % exner % array
+ pressure_b => diag % pressure_base % array
+ pressure_p => diag % pressure_p % array
+ rtheta_p   => diag % rtheta_p % array
+ rtheta_b   => diag % rtheta_base % array
+ 
+ rho_zz     => state % rho_zz % array
+ theta_m    => state % theta_m % array
+ rh         => diag % rh % array
+
+ rt_diabatic_tend => tend % rt_diabatic_tend % array
+
+ qv => state % scalars % array(state%index_qv,:,:)
+
+ do k = kts,kte
+ do i = its,ite
+    rt_diabatic_tend(k,i) = 0.
+ enddo
+ enddo
+
+!copy sounding variables from the geodesic grid to the wrf-physics grid:
+ do j = jts, jte
+ do k = kts, kte
+ do i = its, ite
+    rho_p(i,k,j)  = zz(k,i) * rho_zz(k,i)
+    th_p(i,k,j)   = theta_m(k,i) / (1. + R_v/R_d * max(0.,qv(k,i)))
+
+    pi_p(i,k,j)   = exner(k,i)
+    pres_p(i,k,j) = pressure_b(k,i) + pressure_p(k,i)
+
+    z_p(i,k,j)    = zgrid(k,i)
+    dz_p(i,k,j)   = zgrid(k+1,i) - zgrid(k,i)
+
+!   qv_p(i,k,j) = max(0.,state % scalars % array(state%index_qv,k,i))
+!   qc_p(i,k,j) = max(0.,state % scalars % array(state%index_qc,k,i))
+!   qr_p(i,k,j) = max(0.,state % scalars % array(state%index_qr,k,i))
+    qv_p(i,k,j) = state % scalars % array(state%index_qv,k,i)
+    qc_p(i,k,j) = state % scalars % array(state%index_qc,k,i)
+    qr_p(i,k,j) = state % scalars % array(state%index_qr,k,i)
+ enddo
+ enddo
+ enddo
+
+!additional initialization as function of cloud microphysics scheme:
+ microp_select_init: select case(microp_scheme)
+
+    case ("thompson")
+
+       do j = jts, jte
+       do k = kts, kte
+       do i = its, ite
+
+          !mass mixing ratios:
+!         qi_p(i,k,j) = max(0.,vars % scalars % array(vars%index_qi,k,i))
+!         qs_p(i,k,j) = max(0.,vars % scalars % array(vars%index_qs,k,i))
+!         qg_p(i,k,j) = max(0.,vars % scalars % array(vars%index_qg,k,i))
+          qi_p(i,k,j) = state % scalars % array(state%index_qi,k,i)
+          qs_p(i,k,j) = state % scalars % array(state%index_qs,k,i)
+          qg_p(i,k,j) = state % scalars % array(state%index_qg,k,i)
+
+          !number concentrations:
+!         qnr_p(i,k,j) = max(0., vars % scalars % array(state%index_qnr,k,i))
+!         qni_p(i,k,j) = max(0., vars % scalars % array(state%index_qni,k,i))
+          qnr_p(i,k,j) = state % scalars % array(state%index_qnr,k,i)
+          qni_p(i,k,j) = state % scalars % array(state%index_qni,k,i)
+
+       enddo
+       enddo
+       enddo
+
+    case ("wsm6")
+       do j = jts, jte
+       do k = kts, kte
+       do i = its, ite
+!         qi_p(i,k,j) = max(0.,vars % scalars % array(vars%index_qi,k,i))
+!         qs_p(i,k,j) = max(0.,vars % scalars % array(vars%index_qs,k,i))
+!         qg_p(i,k,j) = max(0.,vars % scalars % array(vars%index_qg,k,i))
+          qi_p(i,k,j) = state % scalars % array(state%index_qi,k,i)
+          qs_p(i,k,j) = state % scalars % array(state%index_qs,k,i)
+          qg_p(i,k,j) = state % scalars % array(state%index_qg,k,i)
+       enddo
+       enddo
+       enddo
+
+    case default
+
+ end select microp_select_init
+
+!formats:
+ 201 format(3i6,10(1x,e15.8))
+
+ end subroutine microphysics_from_MPAS
+
+!=============================================================================================
+ subroutine microphysics_to_MPAS(mesh,state,diag,tend,itimestep)
+!=============================================================================================
+
+!input variables:
+ integer,intent(in):: itimestep
+ type(mesh_type),intent(in):: mesh
+
+!output variables:
+ type(state_type),intent(inout):: state
+ type(diag_type),intent(inout):: diag
+ type(tend_type),intent(inout):: tend
+
+ real(kind=RKIND):: min_theta,min_thp,min_tp
+ real(kind=RKIND):: max_theta,max_thp,max_tp
+ real(kind=RKIND):: min_qv,min_qc,min_qr,min_qi,min_qs,min_qg,min_qnr,min_qni
+ real(kind=RKIND):: max_qv,max_qc,max_qr,max_qi,max_qs,max_qg,max_qnr,max_qni
+
+!local variables:
+ integer:: icount
+ integer:: i,k,j
+ real(kind=RKIND),dimension(:,:),pointer:: zz,exner,exner_b,pressure_b,rtheta_p,rtheta_b
+ real(kind=RKIND),dimension(:,:),pointer:: rho_zz,theta_m,pressure_p
+ real(kind=RKIND),dimension(:,:),pointer:: rt_diabatic_tend
+
+!---------------------------------------------------------------------------------------------
+
+ write(0,*)
+ write(0,*) '--- enter subroutine microphysics_to_MPAS:'
+
+!initialization:
+ zz         => mesh % zz % array
+ exner      => diag % exner % array
+ exner_b    => diag % exner_base % array
+ pressure_b => diag % pressure_base % array
+ pressure_p => diag % pressure_p % array
+ rtheta_p   => diag % rtheta_p % array
+ rtheta_b   => diag % rtheta_base % array
+
+ rho_zz     => state % rho_zz % array
+ theta_m    => state % theta_m % array
+
+ rt_diabatic_tend => tend % rt_diabatic_tend % array
+
+!variables common to all cloud microphysics schemes:
+
+ do j = jts, jte
+ do k = kts, kte
+ do i = its, ite
+
+    !potential temperature and diabatic forcing:
+    rt_diabatic_tend(k,i) = theta_m(k,i)
+    theta_m(k,i) = th_p(i,k,j) * (1. + R_v/R_d * qv_p(i,k,j))
+    rt_diabatic_tend(k,i) = (theta_m(k,i) - rt_diabatic_tend(k,i)) / dt_dyn
+!   rt_diabatic_tend(k,i) = 0.
+
+    !density-weigthed perturbation potential temperature:
+    rtheta_p(k,i) = rho_zz(k,i) * theta_m(k,i) - rtheta_b(k,i)
+
+    !exner function:
+    exner(k,i) = (zz(k,i)*(R_d/P0)*(rtheta_p(k,i)+rtheta_b(k,i)))**rcv
+
+    !pertubation pressure:
+    pressure_p(k,i) = zz(k,i)*R_d*(exner(k,i)*rtheta_p(k,i) &
+                  + (exner(k,i)-exner_b(k,i))*rtheta_b(k,i))
+
+    !mass mixing ratios:
+    state % scalars % array(state%index_qv,k,i) = qv_p(i,k,j)
+    state % scalars % array(state%index_qc,k,i) = qc_p(i,k,j)
+    state % scalars % array(state%index_qr,k,i) = qr_p(i,k,j)
+
+ enddo
+ enddo
+ enddo
+ 
+!variables specific to different cloud microphysics schemes:
+
+ microp_select_init: select case(microp_scheme)
+
+    case ("thompson")
+
+       do j = jts, jte
+       do k = kts, kte
+       do i = its, ite
+
+          !mass mixing ratios:
+          state % scalars % array(state%index_qi,k,i) = qi_p(i,k,j)
+          state % scalars % array(state%index_qs,k,i) = qs_p(i,k,j)
+          state % scalars % array(state%index_qg,k,i) = qg_p(i,k,j)
+
+          !number concentrations:
+          state % scalars % array(state%index_qnr,k,i) = qnr_p(i,k,j)
+          state % scalars % array(state%index_qni,k,i) = qni_p(i,k,j)
+
+       enddo
+       enddo
+       enddo
+
+    case ("wsm6")
+
+       do j = jts, jte
+       do k = kts, kte
+       do i = its, ite
+
+          !mass mixing ratios:
+          state % scalars % array(state%index_qi,k,i) = qi_p(i,k,j)
+          state % scalars % array(state%index_qs,k,i) = qs_p(i,k,j)
+          state % scalars % array(state%index_qg,k,i) = qg_p(i,k,j)
+
+       enddo
+       enddo
+       enddo
+
+    case default
+
+ end select microp_select_init
+
+!formats:
+ 201 format(3i6,10(1x,e15.8))
+
+ end subroutine microphysics_to_MPAS
+
+!=============================================================================================
+ end module mpas_atmphys_interface_nhyd
+!=============================================================================================
