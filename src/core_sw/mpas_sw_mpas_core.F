@@ -192,7 +192,11 @@ module mpas_core
 
          if (mpas_is_alarm_ringing(clock, outputAlarmID, ierr=ierr)) then
             call mpas_reset_clock_alarm(clock, outputAlarmID, ierr=ierr)
-            if(output_frame == 1) call mpas_output_state_init(output_obj, domain, "OUTPUT", trim(timeStamp)) ! output_frame will always be > 1 here unless it is reset after the output file is finalized
+            ! output_frame will always be > 1 here unless it was reset after the maximum number of frames per outfile was reached
+            if(output_frame == 1) then
+               call mpas_output_state_finalize(output_obj, domain % dminfo)
+               call mpas_output_state_init(output_obj, domain, "OUTPUT", trim(timeStamp))
+            end if
             call write_output_frame(output_obj, output_frame, domain)
          end if
 
@@ -240,12 +244,11 @@ module mpas_core
       call mpas_output_state_for_domain(output_obj, domain, output_frame)
       output_frame = output_frame + 1
 
-      ! if the maximum number of frames per outfile has been reached, finalize outfile and reset frame   
+      ! reset frame if the maximum number of frames per outfile has been reached
       if (config_frames_per_outfile > 0) then
          current_outfile_frames = current_outfile_frames + 1            
          if(current_outfile_frames >= config_frames_per_outfile) then
             current_outfile_frames = 0
-            call mpas_output_state_finalize(output_obj, domain % dminfo)
             output_frame = 1
          end if
       end if
