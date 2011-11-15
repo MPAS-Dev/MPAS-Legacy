@@ -141,6 +141,7 @@ contains
       ! Compute tracerTop using 4rd order stencil [-1 7 7 -1]
 
       do iCell=1,nCellsSolve 
+         tracerTop(:,1,iCell) = tracers(:,1,iCell)
          k=2
             do iTracer=1,num_tracers
               tracerTop(iTracer,k,iCell) = &
@@ -163,6 +164,7 @@ contains
                    hRatioZLevelK(k)  *tracers(iTracer,k-1,iCell) &
                  + hRatioZLevelKm1(k)*tracers(iTracer,k  ,iCell)
             end do
+        tracerTop(:,maxLevelCell(iCell)+1,iCell) = tracers(:,maxLevelCell(iCell),iCell)
       end do
 
       do iCell=1,nCellsSolve 

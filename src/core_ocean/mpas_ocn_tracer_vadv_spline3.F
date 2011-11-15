@@ -172,8 +172,9 @@ contains
                posZMidZLevel, tracersIn, tracer2ndDer, maxLevelCell(iCell), &
                posZTopZLevel, tracersOut, maxLevelCell(iCell)-1 )
 
+            tracerTop(itracer,1,iCell) = tracers(iTracer,1,iCell)
             tracerTop(iTracer,2:maxLevelCell(iCell),iCell) = tracersOut(1:maxLevelCell(iCell)-1)
-
+            tracerTop(itracer,maxLevelCell(iCell)+1,iCell) = tracers(iTracer,maxLevelCell(iCell),iCell)
          end do
       end do
 
