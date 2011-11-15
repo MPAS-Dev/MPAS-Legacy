@@ -126,8 +126,8 @@ contains
       if(.not. stencilOn) return
 
       call ocn_tracer_vadv_stencil2_tend(grid, wTop, tracers, tend, err1)
-      call ocn_tracer_vadv_stencil3_tend(grid, wTop, tracers, tend, err1)
-      call ocn_tracer_vadv_stencil4_tend(grid, wTop, tracers, tend, err1)
+      call ocn_tracer_vadv_stencil3_tend(grid, wTop, tracers, tend, err2)
+      call ocn_tracer_vadv_stencil4_tend(grid, wTop, tracers, tend, err3)
 
       err = ior(err1, ior(err2, err3))
 

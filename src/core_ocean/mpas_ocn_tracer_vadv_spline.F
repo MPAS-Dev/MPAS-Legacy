@@ -163,6 +163,8 @@ contains
 
       integer :: err1, err2
 
+      err = 0
+
       splineOn = .false.
 
       if(config_vert_tracer_adv.eq.'spline') then
