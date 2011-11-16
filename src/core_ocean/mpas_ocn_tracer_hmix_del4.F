@@ -212,6 +212,7 @@ contains
       end do
 
       deallocate(delsq_tracer)
+      deallocate(boundaryMask)
       call mpas_timer_stop("compute_scalar_tend-horiz diff 4")
    !--------------------------------------------------------------------
 

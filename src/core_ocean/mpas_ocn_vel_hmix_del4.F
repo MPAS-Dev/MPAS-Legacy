@@ -157,6 +157,9 @@ contains
       allocate(delsq_vorticity(nVertLevels, nVertices+1))
 
       delsq_u(:,:) = 0.0
+      delsq_circulation(:,:) = 0.0
+      delsq_vorticity(:,:) = 0.0
+      delsq_divergence(:,:) = 0.0
 
       ! Compute \nabla^2 u = \nabla divergence + k \times \nabla vorticity
       do iEdge=1,grid % nEdges
@@ -176,7 +179,6 @@ contains
       end do
 
       ! vorticity using \nabla^2 u
-      delsq_circulation(:,:) = 0.0
       do iEdge=1,nEdges
          vertex1 = verticesOnEdge(1,iEdge)
          vertex2 = verticesOnEdge(2,iEdge)
@@ -195,7 +197,6 @@ contains
       end do
 
       ! Divergence using \nabla^2 u
-      delsq_divergence(:,:) = 0.0
       do iEdge=1,nEdges
          cell1 = cellsOnEdge(1,iEdge)
          cell2 = cellsOnEdge(2,iEdge)

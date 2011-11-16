@@ -123,7 +123,7 @@ contains
       zMidZLevel => grid % zMidZLevel % array
 
       allocate(w_dudzTopEdge(nVertLevels+1))
-      w_dudzTopEdge(1) = 0.0
+      w_dudzTopEdge = 0.0
       do iEdge=1,nEdgesSolve
         cell1 = cellsOnEdge(1,iEdge)
         cell2 = cellsOnEdge(2,iEdge)
