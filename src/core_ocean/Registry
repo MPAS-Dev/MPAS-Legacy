@@ -193,7 +193,6 @@ var persistent real    rho ( nVertLevels nCells Time ) 2 iro rho state - -
 var persistent real    temperature ( nVertLevels nCells Time ) 2 iro temperature state tracers dynamics
 var persistent real    salinity ( nVertLevels nCells Time ) 2 iro salinity state tracers dynamics
 var persistent real    tracer1 ( nVertLevels nCells Time ) 2 iro tracer1 state tracers testing
-var persistent real    tracer2 ( nVertLevels nCells Time ) 2 iro tracer2 state tracers testing
 
 # Tendency variables: neither read nor written to any files
 var persistent real    tend_u ( nVertLevels nEdges Time ) 1 - u tend - -
@@ -202,7 +201,6 @@ var persistent real    tend_ssh ( nCells Time ) 1 - ssh tend - -
 var persistent real    tend_temperature ( nVertLevels nCells Time ) 1 - temperature tend tracers dynamics
 var persistent real    tend_salinity ( nVertLevels nCells Time ) 1 - salinity tend tracers dynamics
 var persistent real    tend_tracer1 ( nVertLevels nCells Time ) 1 - tracer1 tend tracers testing
-var persistent real    tend_tracer2 ( nVertLevels nCells Time ) 1 - tracer2 tend tracers testing
 
 # state variables for Split Explicit timesplitting
 var persistent real   uBtr ( nEdges Time )         2 -  uBtr state - -
