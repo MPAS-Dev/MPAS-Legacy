@@ -3,25 +3,13 @@
 
  implicit none
  private
- public:: get_current_date,       &
-          get_julgmt,             &
+ public:: get_julgmt,             &
           monthly_interp_to_date, &
           monthly_min_max
 
  character(len=24),public:: current_date
 
  contains
-
-!=============================================================================================
- subroutine get_current_date
-!=============================================================================================
-
-!temporary subroutine to provide the date at which the forecast begins.right now, that date is
-!hard-wired. This will change when the time manager is in place.
-
- current_date = '2010-10-23_00'
-
- end subroutine get_current_date
 
 !=============================================================================================
  subroutine get_julgmt(date_str,julyr,julday,gmt)

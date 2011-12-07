@@ -18,10 +18,10 @@
           deallocate_lsm, &
           driver_lsm
  
- logical,parameter:: rdxmaxalb = .true.  !use snow albedo from geogrid;false use table values
- logical,parameter:: myj       = .false. !true if using Mellor-Yamada PBL scheme.
- logical,parameter:: frpcpn    = .false.
- logical,parameter:: rdlai2d   = .false.
+ logical,parameter:: rdmaxalb = .false. !use snow albedo from geogrid;false use table values
+ logical,parameter:: myj      = .false. !true if using Mellor-Yamada PBL scheme.
+ logical,parameter:: frpcpn   = .false.
+ logical,parameter:: rdlai2d  = .false.
 
 !urban physics: since MPAS does not plan to run the urban physics option, the two options
 !below are defined locally:

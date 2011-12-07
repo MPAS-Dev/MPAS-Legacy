@@ -73,8 +73,7 @@
 
 !initialization of global surface properties. set here for now, but may be moved when time
 !manager is implemented:
- if(.not. config_do_restart) &
-    call landuse_init_forMPAS(dminfo,julday,mesh,diag_physics,sfc_input)
+ call landuse_init_forMPAS(dminfo,julday,mesh,diag_physics,sfc_input)
 
 !initialization of parameterized deep convective processes:
  if(config_conv_deep_scheme .ne. 'off') &

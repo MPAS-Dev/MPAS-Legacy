@@ -6,7 +6,8 @@
  module mpas_atmphys_landuse
  use mpas_configure,only: input_landuse_data, &
                           config_sfc_albedo,  &
-                          config_frac_seaice
+                          config_frac_seaice, &
+                          config_do_restart
  use mpas_dmpar
  use mpas_grid_types
 
@@ -184,6 +185,11 @@
  DM_BCAST_MACRO(scfx)
  write(0,*) '--- isice   =',isice
  write(0,*) '--- iswater =',iswater
+ if(config_do_restart) then
+    write(0,*) '--- config_do_restart =', config_do_restart
+    write(0,*) '--- skip the end of landuse_init_forMPAS'
+    return
+ endif
 
 !defines the surface properties over the entire domain:
  do iCell = 1, nCells
