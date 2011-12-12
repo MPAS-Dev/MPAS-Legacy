@@ -121,7 +121,7 @@ var persistent real    kiteAreasOnVertex ( vertexDegree nVertices ) 0 iro kiteAr
 var persistent real    fEdge ( nEdges ) 0 iro fEdge mesh - -
 var persistent real    fVertex ( nVertices ) 0 iro fVertex mesh - -
 
-var persistent real    densityFunction ( nCells ) 0 iro meshDensity mesh - -
+var persistent real    meshDensity ( nCells ) 0 iro meshDensity mesh - -
 var persistent real    meshScalingDel2 ( nEdges ) 0 ro meshScalingDel2 mesh - -
 var persistent real    meshScalingDel4 ( nEdges ) 0 ro meshScalingDel4 mesh - -
 

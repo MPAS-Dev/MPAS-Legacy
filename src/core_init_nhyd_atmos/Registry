@@ -110,7 +110,7 @@ var persistent real    kiteAreasOnVertex ( vertexDegree nVertices ) 0 io kiteAre
 var persistent real    fEdge ( nEdges ) 0 io fEdge mesh - -
 var persistent real    fVertex ( nVertices ) 0 io fVertex mesh - -
  
-var persistent real    densityFunction ( nCells ) 0 iro densityFunction mesh - -
+var persistent real    meshDensity ( nCells ) 0 iro meshDensity mesh - -
 
 # some solver scalar coefficients
 
