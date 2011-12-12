@@ -2069,7 +2069,7 @@ module init_atm_test_cases
       real (kind=RKIND), dimension(:,:), pointer :: sorted_arr
 
       real(kind=RKIND), dimension(:), pointer :: hs, hs1
-      real(kind=RKIND) :: hm, zh, dzmin, dzmina, dzminf, sm
+      real(kind=RKIND) :: hm, zh, dzmin, dzmina, dzmina_global, dzminf, sm
       integer :: nsmterrain, kz, sfc_k
       logical :: hybrid, smooth
 
@@ -3045,10 +3045,11 @@ if (y > 1249.0) y = 1249.0
 
              !  dzmina = minval(hs(:)-hx(k-1,:))
                dzmina = minval(zw(k)+ah(k)*hs(:)-zw(k-1)-ah(k-1)*hx(k-1,:))
+               call mpas_dmpar_min_real(dminfo, dzmina, dzmina_global)
              !  write(0,*) ' k,i, dzmina, dzmin, zw(k)-zw(k-1) ', k,i, dzmina, dzmin, zw(k)-zw(k-1)
-               if (dzmina >= dzmin*(zw(k)-zw(k-1))) then
+               if (dzmina_global >= dzmin*(zw(k)-zw(k-1))) then
                   hx(k,:)=hs(:)
-                  dzminf = dzmina
+                  dzminf = dzmina_global
                else
                   exit
                end if
