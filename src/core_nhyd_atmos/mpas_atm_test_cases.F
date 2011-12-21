@@ -5,7 +5,9 @@ module atm_test_cases
    use mpas_constants
    use mpas_dmpar
    use atm_advection
+#ifdef DO_PHYSICS
    use mpas_atmphys_control
+#endif
 
 
    contains
@@ -94,6 +96,8 @@ module atm_test_cases
          stop
       end if
 
+
+#ifdef DO_PHYSICS
       !initialization of surface input variables technically not needed to run our current set of
       !idealized test cases:
       if (config_test_case > 0)  then
@@ -105,6 +109,7 @@ module atm_test_cases
          end do
 
       endif
+#endif
 
    end subroutine atm_setup_test_case
 
@@ -153,8 +158,8 @@ module atm_test_cases
       integer :: eoe, j
       integer, dimension(:), pointer :: nEdgesOnEdge 
       integer, dimension(:,:), pointer :: edgesOnEdge, CellsOnEdge
-      real, dimension(:), pointer :: dvEdge, AreaCell 
-      real, dimension(:,:), pointer :: weightsOnEdge
+      real (kind=RKIND), dimension(:), pointer :: dvEdge, AreaCell 
+      real (kind=RKIND), dimension(:,:), pointer :: weightsOnEdge
 
       real (kind=RKIND) :: u, v, flux, fluxk, lat1, lat2, eta_v, r_pert, u_pert, lat_pert, lon_pert, r
 
@@ -666,7 +671,7 @@ module atm_test_cases
 
          if (config_test_case == 2) then
             r_pert = sphere_distance( grid % latEdge % array (iEdge), grid % lonEdge % array (iEdge), &
-                                      lat_pert, lon_pert, 1.)/(pert_radius)
+                                      lat_pert, lon_pert, 1.0_RKIND)/(pert_radius)
             u_pert = u_perturbation*exp(-r_pert**2)*(lat2-lat1)*a/grid % dvEdge % array(iEdge)
 
          else if (config_test_case == 3) then
@@ -786,9 +791,9 @@ module atm_test_cases
 
             if (config_theta_adv_order ==3) then 
                diag % rw % array(k,cell2) = diag % rw % array(k,cell2)    &
-                                            - sign(1.,diag % ru % array(k,iEdge))*config_coef_3rd_order*zf3(k,2,iEdge)*flux
+                                            - sign(1.0_RKIND,diag % ru % array(k,iEdge))*config_coef_3rd_order*zf3(k,2,iEdge)*flux
                diag % rw % array(k,cell1) = diag % rw % array(k,cell1)    &
-                                            + sign(1.,diag % ru % array(k,iEdge))*config_coef_3rd_order*zf3(k,1,iEdge)*flux
+                                            + sign(1.0_RKIND,diag % ru % array(k,iEdge))*config_coef_3rd_order*zf3(k,1,iEdge)*flux
             end if
 
          end do
@@ -881,7 +886,7 @@ module atm_test_cases
 !  renormalize for setting cell-face fluxes
 
    do k=1,nz1
-     flux_zonal(k) = sign(1.,lat2_in-lat1_in)*flux_zonal(k)*dlat*a/dvEdge/u0
+     flux_zonal(k) = sign(1.0_RKIND,lat2_in-lat1_in)*flux_zonal(k)*dlat*a/dvEdge/u0
    end do
      
    end subroutine atm_calc_flux_zonal
@@ -1004,7 +1009,7 @@ module atm_test_cases
       integer :: eoe, j
       integer, dimension(:), pointer :: nEdgesOnEdge 
       integer, dimension(:,:), pointer :: edgesOnEdge
-      real, dimension(:,:), pointer :: weightsOnEdge
+      real (kind=RKIND), dimension(:,:), pointer :: weightsOnEdge
 
       integer :: iCell, iCell1, iCell2 , iEdge, vtx1, vtx2, ivtx, i, k, nz, nz1, itr, cell1, cell2, nCellsSolve
       integer :: index_qv
@@ -1320,7 +1325,7 @@ module atm_test_cases
             temp     = p(k,i)*thi(k,i)
             pres     = p0*p(k,i)**(1./rcp)
             qvs      = 380.*exp(17.27*(temp-273.)/(temp-36.))/pres
-            scalars(index_qv,k,i) = amin1(0.014,rh(k,i)*qvs)
+            scalars(index_qv,k,i) = min(0.014_RKIND,rh(k,i)*qvs)
          end do
       end do
 
@@ -1542,8 +1547,8 @@ module atm_test_cases
       integer :: eoe, j
       integer, dimension(:), pointer :: nEdgesOnEdge 
       integer, dimension(:,:), pointer :: edgesOnEdge, CellsOnEdge
-      real, dimension(:), pointer :: dvEdge, AreaCell, xCell, yCell 
-      real, dimension(:,:), pointer :: weightsOnEdge
+      real (kind=RKIND), dimension(:), pointer :: dvEdge, AreaCell, xCell, yCell 
+      real (kind=RKIND), dimension(:,:), pointer :: weightsOnEdge
 
       integer :: iCell, iCell1, iCell2 , iEdge, vtx1, vtx2, ivtx, i, k, nz, nz1, itr, itrp, cell1, cell2, nCellsSolve
       integer :: index_qv
@@ -1769,7 +1774,7 @@ module atm_test_cases
 ! smoothing grid for the upper level >> but not propoer for parallel programing 
       dzmin=.7
       do k=2,nz1
-         sm = .25*min((zc(k)-zc(k-1))/dz,1.)
+         sm = .25*min((zc(k)-zc(k-1))/dz,1.0_RKIND)
          do i=1,grid % nCells
             hx(k,i) = hx(k-1,i)
          end do
@@ -1946,7 +1951,7 @@ module atm_test_cases
               temp   = p(k,i)*t(k,i)
               pres   = p0*p(k,i)**(1./rcp)
               qvs    = 380.*exp(17.27*(temp-273.)/(temp-36.))/pres
-              scalars(index_qv,k,i) = amin1(0.014,rh(k,i)*qvs)
+              scalars(index_qv,k,i) = min(0.014_RKIND,rh(k,i)*qvs)
            end do
                          
            do k=1,nz1
@@ -2069,9 +2074,9 @@ module atm_test_cases
 
             if (config_theta_adv_order ==3) then
                diag % rw % array(k,cell2) = diag % rw % array(k,cell2)    &
-                                            - sign(1.,ru(k,iEdge))*config_coef_3rd_order*zf3(k,2,iEdge)*flux
+                                            - sign(1.0_RKIND,ru(k,iEdge))*config_coef_3rd_order*zf3(k,2,iEdge)*flux
                diag % rw % array(k,cell1) = diag % rw % array(k,cell1)    &
-                                            + sign(1.,ru(k,iEdge))*config_coef_3rd_order*zf3(k,1,iEdge)*flux
+                                            + sign(1.0_RKIND,ru(k,iEdge))*config_coef_3rd_order*zf3(k,1,iEdge)*flux
             end if
 
          end do
@@ -2128,7 +2133,7 @@ module atm_test_cases
 
 !----------------------------------------------------------------------------------------------------------
 
-   real function sphere_distance(lat1, lon1, lat2, lon2, radius)
+   real (kind=RKIND) function sphere_distance(lat1, lon1, lat2, lon2, radius)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! Compute the great-circle distance between (lat1, lon1) and (lat2, lon2) on a
    !   sphere with given radius.
@@ -2147,10 +2152,10 @@ module atm_test_cases
    end function sphere_distance
 
 !--------------------------------------------------------------------
-   real function env_qv( z, temperature, pressure, rh_max )
+   real (kind=RKIND) function env_qv( z, temperature, pressure, rh_max )
 
       implicit none
-      real z, temperature, pressure, ztr, es, qvs, p0, rh_max
+      real (kind=RKIND) :: z, temperature, pressure, ztr, es, qvs, p0, rh_max
 
       p0 = 100000.
 

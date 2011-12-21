@@ -7,6 +7,9 @@
 
 module init_atm_queue
 
+   use mpas_kind_types
+
+
    type q_data         ! The user-defined datatype to store in the queue
       real (kind=RKIND) :: lat, lon
       integer :: x, y

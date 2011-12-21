@@ -1,5 +1,7 @@
 module mpas_spline_interpolation
 
+  use mpas_kind_types
+
   implicit none
 
   private

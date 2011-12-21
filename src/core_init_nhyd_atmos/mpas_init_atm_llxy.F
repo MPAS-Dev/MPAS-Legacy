@@ -130,6 +130,8 @@ MODULE init_atm_llxy
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+   USE MPAS_KIND_TYPES
+
    INTEGER, PARAMETER :: HH=4, VV=5
 
    REAL (KIND=RKIND), PARAMETER :: PI = 3.141592653589793
@@ -1154,10 +1156,10 @@ MODULE init_atm_llxy
       ! intersects the Earth's surface at each of the distinctly different
       ! latitudes
       IF (ABS(truelat1-truelat2) .GT. 0.1) THEN
-         cone = ALOG10(COS(truelat1*rad_per_deg)) - &
-                ALOG10(COS(truelat2*rad_per_deg))
-         cone = cone /(ALOG10(TAN((45.0 - ABS(truelat1)/2.0) * rad_per_deg)) - &
-                ALOG10(TAN((45.0 - ABS(truelat2)/2.0) * rad_per_deg)))        
+         cone = LOG10(COS(truelat1*rad_per_deg)) - &
+                LOG10(COS(truelat2*rad_per_deg))
+         cone = cone /(LOG10(TAN((45.0 - ABS(truelat1)/2.0) * rad_per_deg)) - &
+                LOG10(TAN((45.0 - ABS(truelat2)/2.0) * rad_per_deg)))        
       ELSE
          cone = SIN(ABS(truelat1)*rad_per_deg )  
       ENDIF
@@ -1220,9 +1222,9 @@ MODULE init_atm_llxy
          ! Longitude
          lon = proj%stdlon + deg_per_rad * ATAN2(proj%hemi*xx,yy)/proj%cone
 # if ( defined (G95) && ( DA_CORE == 1 ) )
-         lon = DMOD(lon+360., 360.)
+         lon = DMOD(lon+360., 360.0_RKIND)
 # else
-         lon = AMOD(lon+360., 360.)
+         lon = MOD(lon+360., 360.0_RKIND)
 # endif
    
          ! Latitude.  Latitude determined by solving an equation adapted 
@@ -1323,7 +1325,7 @@ MODULE init_atm_llxy
   
       proj%rsw = 0.
       IF (proj%lat1 .NE. 0.) THEN
-         proj%rsw = (ALOG(TAN(0.5*((proj%lat1+90.)*rad_per_deg))))/proj%dlon
+         proj%rsw = (LOG(TAN(0.5*((proj%lat1+90.)*rad_per_deg))))/proj%dlon
       ENDIF
 
       RETURN
@@ -1347,7 +1349,7 @@ MODULE init_atm_llxy
       IF (deltalon .LT. -180.) deltalon = deltalon + 360.
       IF (deltalon .GT. 180.) deltalon = deltalon - 360.
       i = proj%knowni + (deltalon/(proj%dlon*deg_per_rad))
-      j = proj%knownj + (ALOG(TAN(0.5*((lat + 90.) * rad_per_deg)))) / &
+      j = proj%knownj + (LOG(TAN(0.5*((lat + 90.) * rad_per_deg)))) / &
              proj%dlon - proj%rsw
   
       RETURN
@@ -1531,7 +1533,7 @@ MODULE init_atm_llxy
 
       ! Try to determine whether this domain has global coverage
       if (abs(proj%lat1 - proj%latinc/2. + 90.) < 0.001 .and. &
-          abs(mod(proj%lon1 - proj%loninc/2. - proj%stdlon,360.)) < 0.001) then
+          abs(mod(proj%lon1 - proj%loninc/2. - proj%stdlon,360.0_RKIND)) < 0.001) then
          global_domain = .true.
       else
          global_domain = .false.

@@ -1,15 +1,16 @@
 module mpas_dmpar
 
+   use mpas_kind_types
    use mpas_sort
 
 #ifdef _MPI
 include 'mpif.h'
    integer, parameter :: MPI_INTEGERKIND = MPI_INTEGER
 
-#if (RKIND == 8)
-   integer, parameter :: MPI_REALKIND = MPI_DOUBLE_PRECISION
-#else
+#ifdef SINGLE_PRECISION
    integer, parameter :: MPI_REALKIND = MPI_REAL
+#else
+   integer, parameter :: MPI_REALKIND = MPI_DOUBLE_PRECISION
 #endif
 #endif
 
@@ -19,6 +20,7 @@ include 'mpif.h'
 
    type dm_info
       integer :: nprocs, my_proc_id, comm, info
+      logical :: using_external_comm
    end type dm_info
 
 
@@ -45,22 +47,29 @@ include 'mpif.h'
    contains
 
 
-   subroutine mpas_dmpar_init(dminfo)
+   subroutine mpas_dmpar_init(dminfo, mpi_comm)
 
       implicit none
 
       type (dm_info), intent(inout) :: dminfo
+      integer, intent(in), optional :: mpi_comm     ! Optional: externally-supplied MPI communicator
 
 #ifdef _MPI
       integer :: mpi_rank, mpi_size
       integer :: mpi_ierr
 
-      ! Find out our rank and the total number of processors
-      call MPI_Init(mpi_ierr)
-      call MPI_Comm_rank(MPI_COMM_WORLD, mpi_rank, mpi_ierr)
-      call MPI_Comm_size(MPI_COMM_WORLD, mpi_size, mpi_ierr)
+      if (present(mpi_comm)) then
+         dminfo % comm = mpi_comm
+         dminfo % using_external_comm = .true.
+      else
+         call MPI_Init(mpi_ierr)
+         dminfo % comm = MPI_COMM_WORLD
+         dminfo % using_external_comm = .false.
+      end if
 
-      dminfo % comm = MPI_COMM_WORLD
+      ! Find out our rank and the total number of processors
+      call MPI_Comm_rank(dminfo % comm, mpi_rank, mpi_ierr)
+      call MPI_Comm_size(dminfo % comm, mpi_size, mpi_ierr)
 
       dminfo % nprocs = mpi_size
       dminfo % my_proc_id = mpi_rank
@@ -75,6 +84,7 @@ include 'mpif.h'
       dminfo % comm = 0
       dminfo % my_proc_id = IO_NODE
       dminfo % nprocs = 1
+      dminfo % using_external_comm = .false.
 #endif
 
    end subroutine mpas_dmpar_init
@@ -89,7 +99,9 @@ include 'mpif.h'
 #ifdef _MPI
       integer :: mpi_ierr
 
-      call MPI_Finalize(mpi_ierr)
+      if (.not. dminfo % using_external_comm) then
+         call MPI_Finalize(mpi_ierr)
+      end if
 #endif
 
    end subroutine mpas_dmpar_finalize

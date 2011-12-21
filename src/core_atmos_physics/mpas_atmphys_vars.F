@@ -1,5 +1,7 @@
 !=============================================================================================
  module mpas_atmphys_vars
+
+ use mpas_kind_types
  
  implicit none
  public

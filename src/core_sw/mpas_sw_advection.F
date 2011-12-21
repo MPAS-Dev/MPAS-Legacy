@@ -1,5 +1,6 @@
 module sw_advection
 
+   use mpas_kind_types
    use mpas_grid_types
    use mpas_configure
    use mpas_constants
@@ -117,7 +118,7 @@ module sw_advection
 
             theta_abs(iCell) =  pii/2. - sphere_angle( xc(1), yc(1), zc(1),  &
                                                        xc(2), yc(2), zc(2),  &
-                                                       0.,    0.,    1.      ) 
+                                                       0.0_RKIND, 0.0_RKIND, 1.0_RKIND ) 
 
 ! angles from cell center to neighbor centers (thetav)
 
@@ -390,7 +391,7 @@ module sw_advection
    ! Computes the angle between arcs AB and AC, given points A, B, and C
    ! Equation numbers w.r.t. http://mathworld.wolfram.com/SphericalTrigonometry.html
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   real function sphere_angle(ax, ay, az, bx, by, bz, cx, cy, cz)
+   real (kind=RKIND) function sphere_angle(ax, ay, az, bx, by, bz, cx, cy, cz)
    
       implicit none
    
@@ -410,9 +411,9 @@ module sw_advection
       real (kind=RKIND) :: s                ! Semiperimeter of the triangle
       real (kind=RKIND) :: sin_angle
    
-      a = acos(max(min(bx*cx + by*cy + bz*cz,1.0),-1.0))      ! Eqn. (3)
-      b = acos(max(min(ax*cx + ay*cy + az*cz,1.0),-1.0))      ! Eqn. (2)
-      c = acos(max(min(ax*bx + ay*by + az*bz,1.0),-1.0))      ! Eqn. (1)
+      a = acos(max(min(bx*cx + by*cy + bz*cz,1.0_RKIND),-1.0_RKIND))      ! Eqn. (3)
+      b = acos(max(min(ax*cx + ay*cy + az*cz,1.0_RKIND),-1.0_RKIND))      ! Eqn. (2)
+      c = acos(max(min(ax*bx + ay*by + az*bz,1.0_RKIND),-1.0_RKIND))      ! Eqn. (1)
    
       ABx = bx - ax
       ABy = by - ay
@@ -428,12 +429,12 @@ module sw_advection
    
       s = 0.5*(a + b + c)
 !      sin_angle = sqrt((sin(s-b)*sin(s-c))/(sin(b)*sin(c)))   ! Eqn. (28)
-      sin_angle = sqrt(min(1.,max(0.,(sin(s-b)*sin(s-c))/(sin(b)*sin(c)))))   ! Eqn. (28)
+      sin_angle = sqrt(min(1.0_RKIND,max(0.0_RKIND,(sin(s-b)*sin(s-c))/(sin(b)*sin(c)))))   ! Eqn. (28)
    
       if ((Dx*ax + Dy*ay + Dz*az) >= 0.0) then
-         sphere_angle =  2.0 * asin(max(min(sin_angle,1.0),-1.0))
+         sphere_angle =  2.0 * asin(max(min(sin_angle,1.0_RKIND),-1.0_RKIND))
       else
-         sphere_angle = -2.0 * asin(max(min(sin_angle,1.0),-1.0))
+         sphere_angle = -2.0 * asin(max(min(sin_angle,1.0_RKIND),-1.0_RKIND))
       end if
    
    end function sphere_angle
@@ -445,7 +446,7 @@ module sw_advection
    ! Computes the angle between vectors AB and AC, given points A, B, and C, and
    !   a vector (u,v,w) normal to the plane.
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   real function plane_angle(ax, ay, az, bx, by, bz, cx, cy, cz, u, v, w)
+   real (kind=RKIND) function plane_angle(ax, ay, az, bx, by, bz, cx, cy, cz, u, v, w)
    
       implicit none
    
@@ -480,9 +481,9 @@ module sw_advection
       cos_angle = (ABx*ACx + ABy*ACy + ABz*ACz) / (mAB * mAC)
    
       if ((Dx*u + Dy*v + Dz*w) >= 0.0) then
-         plane_angle =  acos(max(min(cos_angle,1.0),-1.0))
+         plane_angle =  acos(max(min(cos_angle,1.0_RKIND),-1.0_RKIND))
       else
-         plane_angle = -acos(max(min(cos_angle,1.0),-1.0))
+         plane_angle = -acos(max(min(cos_angle,1.0_RKIND),-1.0_RKIND))
       end if
    
    end function plane_angle
@@ -495,7 +496,7 @@ module sw_advection
    !    B=(bx, by, bz). It is assumed that both A and B lie on the surface of the
    !    same sphere centered at the origin.
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   real function arc_length(ax, ay, az, bx, by, bz)
+   real (kind=RKIND) function arc_length(ax, ay, az, bx, by, bz)
    
       implicit none
    
@@ -838,7 +839,7 @@ end subroutine sw_elgs
 
             theta_abs(iCell) =  pii/2. - sphere_angle( xc(1), yc(1), zc(1),  &
                                                        xc(2), yc(2), zc(2),  &
-                                                       0.,    0.,    1.      ) 
+                                                       0.0_RKIND, 0.0_RKIND, 1.0_RKIND ) 
 
 ! angles from cell center to neighbor centers (thetav)
 
@@ -890,10 +891,10 @@ end subroutine sw_elgs
          do i=2,n-1
             ip1 = i+1
             if (ip1 == n) ip1 = 1
-            thetat(i) = plane_angle( 0.,0.,0.,  &
-                                     xp(i)-xp(i-1), yp(i)-yp(i-1), 0.,  &
-                                     xp(ip1)-xp(i), yp(ip1)-yp(i), 0.,  &
-                                     0., 0., 1.)
+            thetat(i) = plane_angle( 0.0_RKIND, 0.0_RKIND, 0.0_RKIND,  &
+                                     xp(i)-xp(i-1), yp(i)-yp(i-1), 0.0_RKIND,  &
+                                     xp(ip1)-xp(i), yp(ip1)-yp(i), 0.0_RKIND,  &
+                                     0.0_RKIND, 0.0_RKIND, 1.0_RKIND)
             thetat(i) = thetat(i) + thetat(i-1)
          end do
 

@@ -1226,10 +1226,10 @@ module mpas_io_input
 
 #include "input_field0dreal.inc"
 
-#if (RKIND == 8)
-      nferr = nf_get_vara_double(input_obj % rd_ncid, varID, start1, count1, field % scalar)
-#else
+#if SINGLE_PRECISION
       nferr = nf_get_vara_real(input_obj % rd_ncid, varID, start1, count1, field % scalar)
+#else
+      nferr = nf_get_vara_double(input_obj % rd_ncid, varID, start1, count1, field % scalar)
 #endif
  
    end subroutine mpas_io_input_field0d_real
@@ -1261,10 +1261,10 @@ module mpas_io_input
  
 #include "input_field1dreal.inc"
 
-#if (RKIND == 8)
-      nferr = nf_get_vara_double(input_obj % rd_ncid, varID, start1, count1, field % array)
-#else
+#if SINGLE_PRECISION
       nferr = nf_get_vara_real(input_obj % rd_ncid, varID, start1, count1, field % array)
+#else
+      nferr = nf_get_vara_double(input_obj % rd_ncid, varID, start1, count1, field % array)
 #endif
  
    end subroutine mpas_io_input_field1d_real
@@ -1290,10 +1290,10 @@ module mpas_io_input
  
 #include "input_field2dreal.inc"
 
-#if (RKIND == 8)
-      nferr = nf_get_vara_double(input_obj % rd_ncid, varID, start2, count2, field % array)
-#else
+#if SINGLE_PRECISION
       nferr = nf_get_vara_real(input_obj % rd_ncid, varID, start2, count2, field % array)
+#else
+      nferr = nf_get_vara_double(input_obj % rd_ncid, varID, start2, count2, field % array)
 #endif
 
    end subroutine mpas_io_input_field2d_real
@@ -1321,10 +1321,10 @@ module mpas_io_input
  
 #include "input_field3dreal.inc"
 
-#if (RKIND == 8)
-      nferr = nf_get_vara_double(input_obj % rd_ncid, varID, start3, count3, field % array)
-#else
+#if SINGLE_PRECISION
       nferr = nf_get_vara_real(input_obj % rd_ncid, varID, start3, count3, field % array)
+#else
+      nferr = nf_get_vara_double(input_obj % rd_ncid, varID, start3, count3, field % array)
 #endif
 
    end subroutine mpas_io_input_field3d_real
@@ -1348,10 +1348,10 @@ module mpas_io_input
  
 #include "input_field0dreal_time.inc"
 
-#if (RKIND == 8)
-      nferr = nf_get_vara_double(input_obj % rd_ncid, varID, start1, count1, field % scalar)
-#else
+#if SINGLE_PRECISION
       nferr = nf_get_vara_real(input_obj % rd_ncid, varID, start1, count1, field % scalar)
+#else
+      nferr = nf_get_vara_double(input_obj % rd_ncid, varID, start1, count1, field % scalar)
 #endif
 
    end subroutine mpas_io_input_field0d_real_time
@@ -1377,10 +1377,10 @@ module mpas_io_input
  
 #include "input_field1dreal_time.inc"
 
-#if (RKIND == 8)
-      nferr = nf_get_vara_double(input_obj % rd_ncid, varID, start2, count2, field % array)
-#else
+#if SINGLE_PRECISION
       nferr = nf_get_vara_real(input_obj % rd_ncid, varID, start2, count2, field % array)
+#else
+      nferr = nf_get_vara_double(input_obj % rd_ncid, varID, start2, count2, field % array)
 #endif
 
    end subroutine mpas_io_input_field1d_real_time
@@ -1408,10 +1408,10 @@ module mpas_io_input
  
 #include "input_field2dreal_time.inc"
 
-#if (RKIND == 8)
-      nferr = nf_get_vara_double(input_obj % rd_ncid, varID, start3, count3, field % array)
-#else
+#if SINGLE_PRECISION
       nferr = nf_get_vara_real(input_obj % rd_ncid, varID, start3, count3, field % array)
+#else
+      nferr = nf_get_vara_double(input_obj % rd_ncid, varID, start3, count3, field % array)
 #endif
 
    end subroutine mpas_io_input_field2d_real_time
@@ -1441,10 +1441,10 @@ module mpas_io_input
  
 #include "input_field3dreal_time.inc"
 
-#if (RKIND == 8)
-      nferr = nf_get_vara_double(input_obj % rd_ncid, varID, start4, count4, field % array)
-#else
+#if SINGLE_PRECISION
       nferr = nf_get_vara_real(input_obj % rd_ncid, varID, start4, count4, field % array)
+#else
+      nferr = nf_get_vara_double(input_obj % rd_ncid, varID, start4, count4, field % array)
 #endif
 
    end subroutine mpas_io_input_field3d_real_time

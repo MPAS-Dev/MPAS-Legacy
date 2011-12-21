@@ -1,5 +1,6 @@
 module mpas_timekeeping
 
+   use mpas_kind_types
    use ESMF_BaseMod
    use ESMF_Stubs
    use ESMF_CalendarMod

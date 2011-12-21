@@ -1,5 +1,6 @@
 !=============================================================================================
  module mpas_atmphys_initialize_real
+ use mpas_kind_types
  use mpas_configure, only: config_met_prefix,  &
                            config_frac_seaice, &
                            config_input_sst,   &
@@ -82,12 +83,12 @@
              
        if(field % iproj == PROJ_LATLON) then
           call map_set(PROJ_LATLON, proj, &
-                       latinc = real(field % deltalat), &
-                       loninc = real(field % deltalon), &
-                       knowni = 1.0, &
-                       knownj = 1.0, &
-                       lat1 = real(field % startlat), &
-                       lon1 = real(field % startlon))
+                       latinc = real(field % deltalat,RKIND), &
+                       loninc = real(field % deltalon,RKIND), &
+                       knowni = 1.0_RKIND, &
+                       knownj = 1.0_RKIND, &
+                       lat1 = real(field % startlat,RKIND), &
+                       lon1 = real(field % startlon,RKIND))
        end if
    
        !Interpolate field to each MPAS grid cell:
@@ -110,10 +111,10 @@
 
           if(index(field % field,'SST') /= 0) then
              fg % sst % array(iCell) = interp_sequence(x,y,1,slab_r8,1,field%nx, &
-                                              1,field%ny,1,1,-1.e30,interp_list,1)
+                                              1,field%ny,1,1,-1.e30_RKIND,interp_list,1)
           elseif(index(field % field,'SEAICE') /= 0) then
              fg % xice % array(iCell) = interp_sequence(x,y,1,slab_r8,1,field%nx, &
-                                              1,field%ny,1,1,-1.e30,interp_list,1)
+                                              1,field%ny,1,1,-1.e30_RKIND,interp_list,1)
           endif          
        end do
 

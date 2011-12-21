@@ -166,8 +166,8 @@ module init_atm_test_cases
       integer :: eoe, j
       integer, dimension(:), pointer :: nEdgesOnEdge 
       integer, dimension(:,:), pointer :: edgesOnEdge, CellsOnEdge
-      real, dimension(:), pointer :: dvEdge, AreaCell 
-      real, dimension(:,:), pointer :: weightsOnEdge
+      real (kind=RKIND), dimension(:), pointer :: dvEdge, AreaCell 
+      real (kind=RKIND), dimension(:,:), pointer :: weightsOnEdge
 
       real (kind=RKIND) :: u, v, flux, fluxk, lat1, lat2, eta_v, r_pert, u_pert, lat_pert, lon_pert, r
 
@@ -626,7 +626,7 @@ module init_atm_test_cases
 
          if (config_test_case == 2) then
             r_pert = sphere_distance( grid % latEdge % array (iEdge), grid % lonEdge % array (iEdge), &
-                                      lat_pert, lon_pert, 1.)/(pert_radius)
+                                      lat_pert, lon_pert, 1.0_RKIND)/(pert_radius)
             u_pert = u_perturbation*exp(-r_pert**2)*(lat2-lat1)*a/grid % dvEdge % array(iEdge)
 
          else if (config_test_case == 3) then
@@ -757,9 +757,9 @@ module init_atm_test_cases
 
             if (config_theta_adv_order ==3) then 
                diag % rw % array(k,cell2) = diag % rw % array(k,cell2)    &
-                                            - sign(1.,diag % ru % array(k,iEdge))*config_coef_3rd_order*zf3(k,2,iEdge)*flux
+                                            - sign(1.0_RKIND,diag % ru % array(k,iEdge))*config_coef_3rd_order*zf3(k,2,iEdge)*flux
                diag % rw % array(k,cell1) = diag % rw % array(k,cell1)    &
-                                            + sign(1.,diag % ru % array(k,iEdge))*config_coef_3rd_order*zf3(k,1,iEdge)*flux
+                                            + sign(1.0_RKIND,diag % ru % array(k,iEdge))*config_coef_3rd_order*zf3(k,1,iEdge)*flux
             end if
 
          end do
@@ -855,7 +855,7 @@ module init_atm_test_cases
 !  renormalize for setting cell-face fluxes
 
    do k=1,nz1
-     flux_zonal(k) = sign(1.,lat2_in-lat1_in)*flux_zonal(k)*dlat*a/dvEdge/u0
+     flux_zonal(k) = sign(1.0_RKIND,lat2_in-lat1_in)*flux_zonal(k)*dlat*a/dvEdge/u0
    end do
      
    end subroutine init_atm_calc_flux_zonal
@@ -885,7 +885,7 @@ module init_atm_test_cases
       integer :: eoe, j
       integer, dimension(:), pointer :: nEdgesOnEdge 
       integer, dimension(:,:), pointer :: edgesOnEdge
-      real, dimension(:,:), pointer :: weightsOnEdge
+      real (kind=RKIND), dimension(:,:), pointer :: weightsOnEdge
 
       integer :: iCell, iCell1, iCell2 , iEdge, vtx1, vtx2, ivtx, i, k, nz, nz1, itr, cell1, cell2, nCellsSolve
       integer :: index_qv
@@ -1200,7 +1200,7 @@ module init_atm_test_cases
             temp     = p(k,i)*thi(k,i)
             pres     = p0*p(k,i)**(1./rcp)
             qvs      = 380.*exp(17.27*(temp-273.)/(temp-36.))/pres
-            scalars(index_qv,k,i) = amin1(0.014,rh(k,i)*qvs)
+            scalars(index_qv,k,i) = min(0.014_RKIND,rh(k,i)*qvs)
          end do
       end do
 
@@ -1422,8 +1422,8 @@ module init_atm_test_cases
       integer :: eoe, j
       integer, dimension(:), pointer :: nEdgesOnEdge 
       integer, dimension(:,:), pointer :: edgesOnEdge, CellsOnEdge
-      real, dimension(:), pointer :: dvEdge, AreaCell, xCell, yCell 
-      real, dimension(:,:), pointer :: weightsOnEdge
+      real (kind=RKIND), dimension(:), pointer :: dvEdge, AreaCell, xCell, yCell 
+      real (kind=RKIND), dimension(:,:), pointer :: weightsOnEdge
 
       integer :: iCell, iCell1, iCell2 , iEdge, vtx1, vtx2, ivtx, i, k, nz, nz1, itr, itrp, cell1, cell2, nCellsSolve
       integer :: index_qv
@@ -1649,7 +1649,7 @@ module init_atm_test_cases
 ! smoothing grid for the upper level >> but not propoer for parallel programing 
       dzmin=.7
       do k=2,nz1
-         sm = .25*min((zc(k)-zc(k-1))/dz,1.)
+         sm = .25*min((zc(k)-zc(k-1))/dz,1.0_RKIND)
          do i=1,grid % nCells
             hx(k,i) = hx(k-1,i)
          end do
@@ -1826,7 +1826,7 @@ module init_atm_test_cases
               temp   = p(k,i)*t(k,i)
               pres   = p0*p(k,i)**(1./rcp)
               qvs    = 380.*exp(17.27*(temp-273.)/(temp-36.))/pres
-              scalars(index_qv,k,i) = amin1(0.014,rh(k,i)*qvs)
+              scalars(index_qv,k,i) = min(0.014_RKIND,rh(k,i)*qvs)
            end do
                          
            do k=1,nz1
@@ -1949,9 +1949,9 @@ module init_atm_test_cases
 
             if (config_theta_adv_order ==3) then
                diag % rw % array(k,cell2) = diag % rw % array(k,cell2)    &
-                                            - sign(1.,ru(k,iEdge))*config_coef_3rd_order*zf3(k,2,iEdge)*flux
+                                            - sign(1.0_RKIND,ru(k,iEdge))*config_coef_3rd_order*zf3(k,2,iEdge)*flux
                diag % rw % array(k,cell1) = diag % rw % array(k,cell1)    &
-                                            + sign(1.,ru(k,iEdge))*config_coef_3rd_order*zf3(k,1,iEdge)*flux
+                                            + sign(1.0_RKIND,ru(k,iEdge))*config_coef_3rd_order*zf3(k,1,iEdge)*flux
             end if
 
          end do
@@ -2520,12 +2520,12 @@ write(0,*) trim(fname)
       grid % soiltemp % array(:) = 0.0
 
       call map_set(PROJ_LATLON, proj, &
-                   latinc = 1.0, &
-                   loninc = 1.0, &
-                   knowni = 1.0, &
-                   knownj = 1.0, &
-                   lat1 = -89.5, &
-                   lon1 = -179.5)
+                   latinc = 1.0_RKIND, &
+                   loninc = 1.0_RKIND, &
+                   knowni = 1.0_RKIND, &
+                   knownj = 1.0_RKIND, &
+                   lat1 = -89.5_RKIND, &
+                   lon1 = -179.5_RKIND)
 
       write(fname,'(a,i5.5,a1,i5.5,a1,i5.5,a1,i5.5)') trim(config_geog_data_path)//'soiltemp_1deg/',1,'-',180,'.',1,'-',180
 write(0,*) trim(fname)
@@ -2568,8 +2568,8 @@ write(0,*) trim(fname)
             end if
 if (y < 1.0) y = 1.0
 if (y > 179.0) y = 179.0
-!            grid % soiltemp % array(iCell) = interp_sequence(x, y, 1, soiltemp_1deg, 1, 360, 1, 180, 1, 1, -1.e30, interp_list, 1)
-            grid % soiltemp % array(iCell) = interp_sequence(x, y, 1, soiltemp_1deg, 1, 360, 1, 180, 1, 1, 0., interp_list, 1)
+!            grid % soiltemp % array(iCell) = interp_sequence(x, y, 1, soiltemp_1deg, 1, 360, 1, 180, 1, 1, -1.e30_RKIND, interp_list, 1)
+            grid % soiltemp % array(iCell) = interp_sequence(x, y, 1, soiltemp_1deg, 1, 360, 1, 180, 1, 1, 0.0_RKIND, interp_list, 1)
          else
             grid % soiltemp % array(iCell) = 0.0
          end if
@@ -2595,12 +2595,12 @@ if (y > 179.0) y = 179.0
       grid % snoalb % array(:) = 0.0
 
       call map_set(PROJ_LATLON, proj, &
-                   latinc = 1.0, &
-                   loninc = 1.0, &
-                   knowni = 1.0, &
-                   knownj = 1.0, &
-                   lat1 = -89.5, &
-                   lon1 = -179.5)
+                   latinc = 1.0_RKIND, &
+                   loninc = 1.0_RKIND, &
+                   knowni = 1.0_RKIND, &
+                   knownj = 1.0_RKIND, &
+                   lat1 = -89.5_RKIND, &
+                   lon1 = -179.5_RKIND)
 
       write(fname,'(a,i5.5,a1,i5.5,a1,i5.5,a1,i5.5)') trim(config_geog_data_path)//'maxsnowalb/',1,'-',180,'.',1,'-',180
 write(0,*) trim(fname)
@@ -2643,8 +2643,8 @@ write(0,*) trim(fname)
             end if
 if (y < 1.0) y = 1.0
 if (y > 179.0) y = 179.0
-!            grid % snoalb % array(iCell) = interp_sequence(x, y, 1, maxsnowalb, 1, 360, 1, 180, 1, 1, -1.e30, interp_list, 1)
-            grid % snoalb % array(iCell) = interp_sequence(x, y, 1, maxsnowalb, 1, 360, 1, 180, 1, 1, 0., interp_list, 1)
+!            grid % snoalb % array(iCell) = interp_sequence(x, y, 1, maxsnowalb, 1, 360, 1, 180, 1, 1, -1.e30_RKIND, interp_list, 1)
+            grid % snoalb % array(iCell) = interp_sequence(x, y, 1, maxsnowalb, 1, 360, 1, 180, 1, 1, 0.0_RKIND, interp_list, 1)
          else
             grid % snoalb % array(iCell) = 0.0
          end if
@@ -2673,12 +2673,12 @@ if (y > 179.0) y = 179.0
       grid % greenfrac % array(:,:) = 0.0
 
       call map_set(PROJ_LATLON, proj, &
-                   latinc = 0.144, &
-                   loninc = 0.144, &
-                   knowni = 1.0, &
-                   knownj = 1.0, &
-                   lat1 = -89.928, &
-                   lon1 = -179.928)
+                   latinc = 0.144_RKIND, &
+                   loninc = 0.144_RKIND, &
+                   knowni = 1.0_RKIND, &
+                   knownj = 1.0_RKIND, &
+                   lat1 = -89.928_RKIND, &
+                   lon1 = -179.928_RKIND)
 
       write(fname,'(a,i5.5,a1,i5.5,a1,i5.5,a1,i5.5)') trim(config_geog_data_path)//'greenfrac/',1,'-',1250,'.',1,'-',1250
 write(0,*) trim(fname)
@@ -2715,7 +2715,7 @@ write(0,*) trim(fname)
 if (y < 1.0) y = 1.0
 if (y > 1249.0) y = 1249.0
             do k=1,12
-               grid % greenfrac % array(k,iCell) = interp_sequence(x, y, k, vegfra, 1, 2500, 1, 1250, 1, 12, -1.e30, interp_list, 1)
+               grid % greenfrac % array(k,iCell) = interp_sequence(x, y, k, vegfra, 1, 2500, 1, 1250, 1, 12, -1.e30_RKIND, interp_list, 1)
             end do
          else
             grid % greenfrac % array(:,iCell) = 0.0
@@ -2744,12 +2744,12 @@ if (y > 1249.0) y = 1249.0
       grid % albedo12m % array(:,:) = 0.0
 
       call map_set(PROJ_LATLON, proj, &
-                   latinc = 0.144, &
-                   loninc = 0.144, &
-                   knowni = 1.0, &
-                   knownj = 1.0, &
-                   lat1 = -89.928, &
-                   lon1 = -179.928)
+                   latinc = 0.144_RKIND, &
+                   loninc = 0.144_RKIND, &
+                   knowni = 1.0_RKIND, &
+                   knownj = 1.0_RKIND, &
+                   lat1 = -89.928_RKIND, &
+                   lon1 = -179.928_RKIND)
 
       write(fname,'(a,i5.5,a1,i5.5,a1,i5.5,a1,i5.5)') trim(config_geog_data_path)//'albedo_ncep/',1,'-',1250,'.',1,'-',1250
 write(0,*) trim(fname)
@@ -2786,7 +2786,7 @@ write(0,*) trim(fname)
 if (y < 1.0) y = 1.0
 if (y > 1249.0) y = 1249.0
             do k=1,12
-               grid % albedo12m % array(k,iCell) = interp_sequence(x, y, k, vegfra, 1, 2500, 1, 1250, 1, 12, 0.0, interp_list, 1)
+               grid % albedo12m % array(k,iCell) = interp_sequence(x, y, k, vegfra, 1, 2500, 1, 1250, 1, 12, 0.0_RKIND, interp_list, 1)
             end do
          else
             grid % albedo12m % array(:,iCell) = 8.0
@@ -2822,12 +2822,12 @@ if (y > 1249.0) y = 1249.0
           
             if (field % iproj == PROJ_LATLON) then
                call map_set(PROJ_LATLON, proj, &
-                            latinc = real(field % deltalat), &
-                            loninc = real(field % deltalon), &
-                            knowni = 1.0, &
-                            knownj = 1.0, &
-                            lat1 = real(field % startlat), &
-                            lon1 = real(field % startlon))
+                            latinc = real(field % deltalat,RKIND), &
+                            loninc = real(field % deltalon,RKIND), &
+                            knowni = 1.0_RKIND, &
+                            knownj = 1.0_RKIND, &
+                            lat1 = real(field % startlat,RKIND), &
+                            lon1 = real(field % startlon,RKIND))
             end if
 
 
@@ -2848,9 +2848,9 @@ if (y > 1249.0) y = 1249.0
                   call latlon_to_ij(proj, lat, lon, x, y)
                end if
                if (ndims == 1) then
-                  destField1d(i) = interp_sequence(x, y, 1, field % slab, 1, field % nx, 1, field % ny, 1, 1, -1.e30, interp_list, 1)
+                  destField1d(i) = interp_sequence(x, y, 1, field % slab, 1, field % nx, 1, field % ny, 1, 1, -1.e30_RKIND, interp_list, 1)
                else if (ndims == 2) then
-                  destField2d(k,i) = interp_sequence(x, y, 1, field % slab, 1, field % nx, 1, field % ny, 1, 1, -1.e30, interp_list, 1)
+                  destField2d(k,i) = interp_sequence(x, y, 1, field % slab, 1, field % nx, 1, field % ny, 1, 1, -1.e30_RKIND, interp_list, 1)
                end if
             end do
          end if
@@ -3014,9 +3014,9 @@ if (y > 1249.0) y = 1249.0
             hx(k,:) = hx(k-1,:)
             dzminf = zw(k)-zw(k-1)
 
-!            dzmin = max(.5,1.-.5*zw(k)/hm)
+!            dzmin = max(0.5_RKIND,1.-.5*zw(k)/hm)
 
-            sm = .05*min(.5*zw(k)/hm,1.)
+            sm = .05*min(0.5_RKIND*zw(k)/hm,1.0_RKIND)
           
             do i=1,50
                do iCell=1,grid %nCells
@@ -3290,18 +3290,18 @@ write(0,*) 'minval, maxval of LANDSEA = ', minval(maskslab), maxval(maskslab)
           
             if (field % iproj == PROJ_LATLON) then
                call map_set(PROJ_LATLON, proj, &
-                            latinc = real(field % deltalat), &
-                            loninc = real(field % deltalon), &
-                            knowni = 1.0, &
-                            knownj = 1.0, &
-                            lat1 = real(field % startlat), &
-                            lon1 = real(field % startlon))
+                            latinc = real(field % deltalat,RKIND), &
+                            loninc = real(field % deltalon,RKIND), &
+                            knowni = 1.0_RKIND, &
+                            knownj = 1.0_RKIND, &
+                            lat1 = real(field % startlat,RKIND), &
+                            lon1 = real(field % startlon,RKIND))
             else if (field % iproj == PROJ_GAUSS) then
                call map_set(PROJ_GAUSS, proj, &
                             nlat = nint(field % deltalat), &
-                            loninc = real(field % deltalon), &
-                            lat1 = real(field % startlat), &
-                            lon1 = real(field % startlon))
+                            loninc = real(field % deltalon,RKIND), &
+                            lat1 = real(field % startlat,RKIND), &
+                            lon1 = real(field % startlon,RKIND))
 !                            nxmax = nint(360.0 / field % deltalon), &
             end if
 
@@ -3737,13 +3737,13 @@ write(0,*) 'PROCESSING SEAICE'
           
                if (field % iproj == PROJ_PS) then
                   call map_set(PROJ_PS, proj, &
-                               dx = real(field % dx * 1000.0), &
-                               truelat1 = real(field % truelat1), &
-                               stdlon = real(field % xlonc), &
-                               knowni = real(field % nx / 2.0), &
-                               knownj = real(field % ny / 2.0), &
-                               lat1 = real(field % startlat), &
-                               lon1 = real(field % startlon))
+                               dx = real(field % dx * 1000.0,RKIND), &
+                               truelat1 = real(field % truelat1,RKIND), &
+                               stdlon = real(field % xlonc,RKIND), &
+                               knowni = real(field % nx / 2.0,RKIND), &
+                               knownj = real(field % ny / 2.0,RKIND), &
+                               lat1 = real(field % startlat,RKIND), &
+                               lon1 = real(field % startlon,RKIND))
                end if
 
                if (index(field % field, 'SEAICE') /= 0) then
@@ -4084,9 +4084,9 @@ write(0,*) 'PROCESSING SEAICE'
 
             if (config_theta_adv_order ==3) then 
                diag % rw % array(k,cell2) = diag % rw % array(k,cell2)    &
-                                            - sign(1.,diag % ru % array(k,iEdge))*config_coef_3rd_order*zf3(k,2,iEdge)*flux
+                                            - sign(1.0_RKIND,diag % ru % array(k,iEdge))*config_coef_3rd_order*zf3(k,2,iEdge)*flux
                diag % rw % array(k,cell1) = diag % rw % array(k,cell1)    &
-                                            + sign(1.,diag % ru % array(k,iEdge))*config_coef_3rd_order*zf3(k,1,iEdge)*flux
+                                            + sign(1.0_RKIND,diag % ru % array(k,iEdge))*config_coef_3rd_order*zf3(k,1,iEdge)*flux
             end if
 
          end do
@@ -4215,18 +4215,18 @@ write(0,*) 'PROCESSING SEAICE'
              
                if (field % iproj == PROJ_LATLON) then
                   call map_set(PROJ_LATLON, proj, &
-                               latinc = real(field % deltalat), &
-                               loninc = real(field % deltalon), &
-                               knowni = 1.0, &
-                               knownj = 1.0, &
-                               lat1 = real(field % startlat), &
-                               lon1 = real(field % startlon))
+                               latinc = real(field % deltalat,RKIND), &
+                               loninc = real(field % deltalon,RKIND), &
+                               knowni = 1.0_RKIND, &
+                               knownj = 1.0_RKIND, &
+                               lat1 = real(field % startlat,RKIND), &
+                               lon1 = real(field % startlon,RKIND))
                else if (field % iproj == PROJ_GAUSS) then
                   call map_set(PROJ_GAUSS, proj, &
                                nlat = nint(field % deltalat), &
-                               loninc = real(field % deltalon), &
-                               lat1 = real(field % startlat), &
-                               lon1 = real(field % startlon))
+                               loninc = real(field % deltalon,RKIND), &
+                               lat1 = real(field % startlat,RKIND), &
+                               lon1 = real(field % startlon,RKIND))
 !                               nxmax = nint(360.0 / field % deltalon), &
                end if
    
@@ -4247,7 +4247,7 @@ write(0,*) 'PROCESSING SEAICE'
                      lon = lon - 360.0
                      call latlon_to_ij(proj, lat, lon, x, y)
                   end if
-                  fg % sst % array(iCell) = interp_sequence(x, y, 1, slab_r8, 1, field % nx, 1, field % ny, 1, 1, -1.e30, interp_list, 1)
+                  fg % sst % array(iCell) = interp_sequence(x, y, 1, slab_r8, 1, field % nx, 1, field % ny, 1, 1, -1.e30_RKIND, interp_list, 1)
                end do
 
                deallocate(slab_r8)
@@ -4272,18 +4272,18 @@ write(0,*) 'PROCESSING SEAICE'
              
                if (field % iproj == PROJ_LATLON) then
                   call map_set(PROJ_LATLON, proj, &
-                               latinc = real(field % deltalat), &
-                               loninc = real(field % deltalon), &
-                               knowni = 1.0, &
-                               knownj = 1.0, &
-                               lat1 = real(field % startlat), &
-                               lon1 = real(field % startlon))
+                               latinc = real(field % deltalat,RKIND), &
+                               loninc = real(field % deltalon,RKIND), &
+                               knowni = 1.0_RKIND, &
+                               knownj = 1.0_RKIND, &
+                               lat1 = real(field % startlat,RKIND), &
+                               lon1 = real(field % startlon,RKIND))
                else if (field % iproj == PROJ_GAUSS) then
                   call map_set(PROJ_GAUSS, proj, &
                                nlat = nint(field % deltalat), &
-                               loninc = real(field % deltalon), &
-                               lat1 = real(field % startlat), &
-                               lon1 = real(field % startlon))
+                               loninc = real(field % deltalon,RKIND), &
+                               lat1 = real(field % startlat,RKIND), &
+                               lon1 = real(field % startlon,RKIND))
 !                               nxmax = nint(360.0 / field % deltalon), &
                end if
    
@@ -4304,7 +4304,7 @@ write(0,*) 'PROCESSING SEAICE'
                      lon = lon - 360.0
                      call latlon_to_ij(proj, lat, lon, x, y)
                   end if
-                  fg % xice % array(iCell) = interp_sequence(x, y, 1, slab_r8, 1, field % nx, 1, field % ny, 1, 1, -1.e30, interp_list, 1)
+                  fg % xice % array(iCell) = interp_sequence(x, y, 1, slab_r8, 1, field % nx, 1, field % ny, 1, 1, -1.e30_RKIND, interp_list, 1)
 
                end do
 
@@ -4390,7 +4390,7 @@ write(0,*) 'PROCESSING SEAICE'
 #endif
 
 
-   real function sphere_distance(lat1, lon1, lat2, lon2, radius)
+   real (kind=RKIND) function sphere_distance(lat1, lon1, lat2, lon2, radius)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! Compute the great-circle distance between (lat1, lon1) and (lat2, lon2) on a
    !   sphere with given radius.
@@ -4433,12 +4433,12 @@ write(0,*) 'PROCESSING SEAICE'
 
       do while (nearest_cell /= current_cell)
          current_cell = nearest_cell
-         current_distance = sphere_distance(latCell(current_cell), lonCell(current_cell), target_lat, target_lon, 1.0)
+         current_distance = sphere_distance(latCell(current_cell), lonCell(current_cell), target_lat, target_lon, 1.0_RKIND)
          nearest_cell = current_cell
          nearest_distance = current_distance
          do i = 1, nEdgesOnCell(current_cell)
             iCell = cellsOnCell(i,current_cell)
-            d = sphere_distance(latCell(iCell), lonCell(iCell), target_lat, target_lon, 1.0)
+            d = sphere_distance(latCell(iCell), lonCell(iCell), target_lat, target_lon, 1.0_RKIND)
             if (d < nearest_distance) then
                nearest_cell = iCell
                nearest_distance = d
@@ -4476,13 +4476,13 @@ write(0,*) 'PROCESSING SEAICE'
 
       do while (nearest_edge /= current_edge)
          current_edge = nearest_edge
-         current_distance = sphere_distance(latEdge(current_edge), lonEdge(current_edge), target_lat, target_lon, 1.0)
+         current_distance = sphere_distance(latEdge(current_edge), lonEdge(current_edge), target_lat, target_lon, 1.0_RKIND)
          nearest_edge = current_edge
          nearest_distance = current_distance
          cell1 = cellsOnEdge(1,current_edge)
          cell2 = cellsOnEdge(2,current_edge)
-         cell1_dist = sphere_distance(latCell(cell1), lonCell(cell1), target_lat, target_lon, 1.0)
-         cell2_dist = sphere_distance(latCell(cell2), lonCell(cell2), target_lat, target_lon, 1.0)
+         cell1_dist = sphere_distance(latCell(cell1), lonCell(cell1), target_lat, target_lon, 1.0_RKIND)
+         cell2_dist = sphere_distance(latCell(cell2), lonCell(cell2), target_lat, target_lon, 1.0_RKIND)
          if (cell1_dist < cell2_dist) then
             iCell = cell1
          else
@@ -4490,7 +4490,7 @@ write(0,*) 'PROCESSING SEAICE'
          end if
          do i = 1, nEdgesOnCell(iCell)
             iEdge = edgesOnCell(i,iCell)
-            d = sphere_distance(latEdge(iEdge), lonEdge(iEdge), target_lat, target_lon, 1.0)
+            d = sphere_distance(latEdge(iEdge), lonEdge(iEdge), target_lat, target_lon, 1.0_RKIND)
             if (d < nearest_distance) then
                nearest_edge = iEdge
                nearest_distance = d
@@ -4501,7 +4501,7 @@ write(0,*) 'PROCESSING SEAICE'
    end function nearest_edge
 
 
-   real function vertical_interp(target_z, nz, zf, order, extrap, surface_val, sealev_val)
+   real (kind=RKIND) function vertical_interp(target_z, nz, zf, order, extrap, surface_val, sealev_val)
 
       implicit none
 

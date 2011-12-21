@@ -108,9 +108,9 @@ contains
       integer, dimension(:), pointer :: maxLevelEdgeTop
       integer, dimension(:,:), pointer :: cellsOnEdge
 
-      real :: wTopEdge
-      real, dimension(:), allocatable :: w_dudzTopEdge
-      real, dimension(:), pointer :: zMidZLevel
+      real (kind=RKIND) :: wTopEdge
+      real (kind=RKIND), dimension(:), allocatable :: w_dudzTopEdge
+      real (kind=RKIND), dimension(:), pointer :: zMidZLevel
 
       if(.not.velVadvOn) return
 

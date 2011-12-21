@@ -1,6 +1,8 @@
 !=============================================================================================
  module mpas_atmphys_date_time
 
+ use mpas_kind_types
+
  implicit none
  private
  public:: get_julgmt,             &

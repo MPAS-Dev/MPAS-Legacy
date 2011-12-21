@@ -429,10 +429,10 @@ module mpas_io_output
 
 #include "output_field0dreal.inc"
 
-#if (RKIND == 8)
-      nferr = nf_put_vara_double(output_obj % wr_ncid, varID, start1, count1, field % scalar)
-#else
+#ifdef SINGLE_PRECISION
       nferr = nf_put_vara_real(output_obj % wr_ncid, varID, start1, count1, field % scalar)
+#else
+      nferr = nf_put_vara_double(output_obj % wr_ncid, varID, start1, count1, field % scalar)
 #endif
  
       nferr = nf_sync(output_obj % wr_ncid)
@@ -458,10 +458,10 @@ module mpas_io_output
 
 #include "output_field1dreal.inc"
 
-#if (RKIND == 8)
-      nferr = nf_put_vara_double(output_obj % wr_ncid, VarID, start1, count1, field % array)
-#else
+#ifdef SINGLE_PRECISION
       nferr = nf_put_vara_real(output_obj % wr_ncid, VarID, start1, count1, field % array)
+#else
+      nferr = nf_put_vara_double(output_obj % wr_ncid, VarID, start1, count1, field % array)
 #endif
  
       nferr = nf_sync(output_obj % wr_ncid)
@@ -489,10 +489,10 @@ module mpas_io_output
 
 #include "output_field2dreal.inc"
 
-#if (RKIND == 8)
-      nferr = nf_put_vara_double(output_obj % wr_ncid, varID, start2, count2, field % array)
-#else
+#ifdef SINGLE_PRECISION
       nferr = nf_put_vara_real(output_obj % wr_ncid, varID, start2, count2, field % array)
+#else
+      nferr = nf_put_vara_double(output_obj % wr_ncid, varID, start2, count2, field % array)
 #endif
  
       nferr = nf_sync(output_obj % wr_ncid)
@@ -522,10 +522,10 @@ module mpas_io_output
 
 #include "output_field3dreal.inc"
 
-#if (RKIND == 8)
-      nferr = nf_put_vara_double(output_obj % wr_ncid, varID, start3, count3, field % array)
-#else
+#ifdef SINGLE_PRECISION
       nferr = nf_put_vara_real(output_obj % wr_ncid, varID, start3, count3, field % array)
+#else
+      nferr = nf_put_vara_double(output_obj % wr_ncid, varID, start3, count3, field % array)
 #endif
  
       nferr = nf_sync(output_obj % wr_ncid)
@@ -551,10 +551,10 @@ module mpas_io_output
 
 #include "output_field0dreal_time.inc"
 
-#if (RKIND == 8)
-      nferr = nf_put_vara_double(output_obj % wr_ncid, varID, start1, count1, field % scalar)
-#else
+#ifdef SINGLE_PRECISION
       nferr = nf_put_vara_real(output_obj % wr_ncid, varID, start1, count1, field % scalar)
+#else
+      nferr = nf_put_vara_double(output_obj % wr_ncid, varID, start1, count1, field % scalar)
 #endif
  
       nferr = nf_sync(output_obj % wr_ncid)
@@ -582,10 +582,10 @@ module mpas_io_output
 
 #include "output_field1dreal_time.inc"
 
-#if (RKIND == 8)
-      nferr = nf_put_vara_double(output_obj % wr_ncid, varID, start2, count2, field % array)
-#else
+#ifdef SINGLE_PRECISION
       nferr = nf_put_vara_real(output_obj % wr_ncid, varID, start2, count2, field % array)
+#else
+      nferr = nf_put_vara_double(output_obj % wr_ncid, varID, start2, count2, field % array)
 #endif
  
       nferr = nf_sync(output_obj % wr_ncid)
@@ -615,10 +615,10 @@ module mpas_io_output
 
 #include "output_field2dreal_time.inc"
 
-#if (RKIND == 8)
-      nferr = nf_put_vara_double(output_obj % wr_ncid, varID, start3, count3, field % array)
-#else
+#ifdef SINGLE_PRECISION
       nferr = nf_put_vara_real(output_obj % wr_ncid, varID, start3, count3, field % array)
+#else
+      nferr = nf_put_vara_double(output_obj % wr_ncid, varID, start3, count3, field % array)
 #endif
  
       nferr = nf_sync(output_obj % wr_ncid)
@@ -650,10 +650,10 @@ module mpas_io_output
 
 #include "output_field3dreal_time.inc"
 
-#if (RKIND == 8)
-      nferr = nf_put_vara_double(output_obj % wr_ncid, varID, start4, count4, field % array)
-#else
+#ifdef SINGLE_PRECISION
       nferr = nf_put_vara_real(output_obj % wr_ncid, varID, start4, count4, field % array)
+#else
+      nferr = nf_put_vara_double(output_obj % wr_ncid, varID, start4, count4, field % array)
 #endif
  
       nferr = nf_sync(output_obj % wr_ncid)

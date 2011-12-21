@@ -1,5 +1,7 @@
 module mpas_sort
 
+   use mpas_kind_types
+
    interface quicksort
       module procedure mpas_quicksort_int
       module procedure mpas_quicksort_real

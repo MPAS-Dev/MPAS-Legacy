@@ -1652,9 +1652,9 @@ module atmh_time_integration
     
                   ! add in vertical flux to get max and min estimate
                   s_max_update(iScalar) = s_max_update(iScalar)  &
-                     - rdnw(k) * (max(0.,v_flux(iScalar,iCell,km0)) - min(0.,v_flux(iScalar,iCell,km1)))
+                     - rdnw(k) * (max(0.0_RKIND,v_flux(iScalar,iCell,km0)) - min(0.0_RKIND,v_flux(iScalar,iCell,km1)))
                   s_min_update(iScalar) = s_min_update(iScalar)  &
-                     - rdnw(k) * (min(0.,v_flux(iScalar,iCell,km0)) - max(0.,v_flux(iScalar,iCell,km1)))
+                     - rdnw(k) * (min(0.0_RKIND,v_flux(iScalar,iCell,km0)) - max(0.0_RKIND,v_flux(iScalar,iCell,km1)))
     
                end do
    
@@ -1671,8 +1671,8 @@ module atmh_time_integration
                         fdir = -1.0
                      end if
                      flux = -fdir * h_flux(iScalar,iEdge)/grid % areaCell % array(iCell)
-                     s_max_update(iScalar) = s_max_update(iScalar) + max(0.,flux)
-                     s_min_update(iScalar) = s_min_update(iScalar) + min(0.,flux)
+                     s_max_update(iScalar) = s_max_update(iScalar) + max(0.0_RKIND,flux)
+                     s_min_update(iScalar) = s_min_update(iScalar) + min(0.0_RKIND,flux)
   
                   end do
    
@@ -1687,9 +1687,9 @@ module atmh_time_integration
                   s_min_update (iScalar) =  s_min_update (iScalar) / h_new (k,iCell)
                   s_upwind = s_update(iScalar,iCell,km0) / h_new(k,iCell)
                   if ( s_max_update(iScalar) > s_max(iScalar) .and. config_monotonic)   &
-                     scale_in (iScalar,iCell,km0) = max(0.,(s_max(iScalar)-s_upwind)/(s_max_update(iScalar)-s_upwind+eps))
+                     scale_in (iScalar,iCell,km0) = max(0.0_RKIND,(s_max(iScalar)-s_upwind)/(s_max_update(iScalar)-s_upwind+eps))
                   if ( s_min_update(iScalar) < s_min(iScalar) )   &
-                     scale_out (iScalar,iCell,km0) = max(0.,(s_upwind-s_min(iScalar))/(s_upwind-s_min_update(iScalar)+eps))
+                     scale_out (iScalar,iCell,km0) = max(0.0_RKIND,(s_upwind-s_min(iScalar))/(s_upwind-s_min_update(iScalar)+eps))
                 end do
   
             end do ! end loop over cells to compute scale factor

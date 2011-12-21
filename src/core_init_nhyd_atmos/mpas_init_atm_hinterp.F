@@ -545,10 +545,10 @@ module init_atm_hinterp
       ify = floor(yy)
       icy = ceiling(yy)
 
-      fxfy = max(0., 1.0 - sqrt((xx-real(ifx))**2+(yy-real(ify))**2))
-      fxcy = max(0., 1.0 - sqrt((xx-real(ifx))**2+(yy-real(icy))**2))
-      cxfy = max(0., 1.0 - sqrt((xx-real(icx))**2+(yy-real(ify))**2))
-      cxcy = max(0., 1.0 - sqrt((xx-real(icx))**2+(yy-real(icy))**2))
+      fxfy = max(0.0_RKIND, 1.0 - sqrt((xx-real(ifx))**2+(yy-real(ify))**2))
+      fxcy = max(0.0_RKIND, 1.0 - sqrt((xx-real(ifx))**2+(yy-real(icy))**2))
+      cxfy = max(0.0_RKIND, 1.0 - sqrt((xx-real(icx))**2+(yy-real(ify))**2))
+      cxcy = max(0.0_RKIND, 1.0 - sqrt((xx-real(icx))**2+(yy-real(icy))**2))
 
       ! First, make sure that the point is contained in the source array
       if (ifx < start_x .or. icx > end_x .or. &
@@ -744,13 +744,13 @@ module init_atm_hinterp
                if (array(ifx+3-i, ify+3-j, izz) == msgval .or. mask_array(ifx+3-i, ify+3-j) == maskval) then
                   weights(i,j) = 0.0
                else
-                  weights(i,j) = max(0., 2.0 - sqrt((xx-real(ifx+3-i))**2+(yy-real(ify+3-j))**2))
+                  weights(i,j) = max(0.0_RKIND, 2.0 - sqrt((xx-real(ifx+3-i))**2+(yy-real(ify+3-j))**2))
                end if
             else
                if (array(ifx+3-i, ify+3-j, izz) == msgval) then
                   weights(i,j) = 0.0
                else
-                  weights(i,j) = max(0., 2.0 - sqrt((xx-real(ifx+3-i))**2+(yy-real(ify+3-j))**2))
+                  weights(i,j) = max(0.0_RKIND, 2.0 - sqrt((xx-real(ifx+3-i))**2+(yy-real(ify+3-j))**2))
                end if
             end if
     

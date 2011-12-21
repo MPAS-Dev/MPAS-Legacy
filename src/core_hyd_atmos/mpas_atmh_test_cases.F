@@ -258,7 +258,7 @@ module atmh_test_cases
 
          if (config_test_case == 2) then
             r_pert = sphere_distance( grid % latEdge % array (iEdge), grid % lonEdge % array (iEdge), &
-                                      lat_pert, lon_pert, 1.)/(pert_radius)
+                                      lat_pert, lon_pert, 1.0_RKIND)/(pert_radius)
             u_pert = u_perturbation*exp(-r_pert**2)*(lat2-lat1)*a/grid % dvEdge % array(iEdge)
 
          else if (config_test_case == 3) then
@@ -468,7 +468,7 @@ module atmh_test_cases
    end subroutine atmh_test_case_1
 
 
-   real function sphere_distance(lat1, lon1, lat2, lon2, radius)
+   real (kind=RKIND) function sphere_distance(lat1, lon1, lat2, lon2, radius)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! Compute the great-circle distance between (lat1, lon1) and (lat2, lon2) on a
    !   sphere with given radius.
@@ -487,7 +487,7 @@ module atmh_test_cases
    end function sphere_distance
 
 
-   real function AA(theta)
+   real (kind=RKIND) function AA(theta)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! A, used in height field computation for Rossby-Haurwitz wave
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -506,7 +506,7 @@ module atmh_test_cases
    end function AA
 
    
-   real function BB(theta)
+   real (kind=RKIND) function BB(theta)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! B, used in height field computation for Rossby-Haurwitz wave
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -524,7 +524,7 @@ module atmh_test_cases
    end function BB
 
 
-   real function CC(theta)
+   real (kind=RKIND) function CC(theta)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! C, used in height field computation for Rossby-Haurwitz wave
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

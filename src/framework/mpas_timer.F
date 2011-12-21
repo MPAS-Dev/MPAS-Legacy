@@ -1,5 +1,7 @@
       module mpas_timer
 
+        use mpas_kind_types
+
         implicit none
         save
 !       private

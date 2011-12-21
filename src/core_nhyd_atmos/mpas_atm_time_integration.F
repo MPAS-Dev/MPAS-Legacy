@@ -680,7 +680,7 @@ module atm_time_integration
       type (mesh_type) :: grid
       integer :: iCell, iEdge, k, cell1, cell2
       integer, dimension(:,:), pointer :: cellsOnEdge
-      real, dimension(:,:,:), pointer :: zf, zf3
+      real (kind=RKIND), dimension(:,:,:), pointer :: zf, zf3
       real (kind=RKIND), dimension(:), pointer :: fzm, fzp, dvEdge, areaCell
       real (kind=RKIND) :: flux
 
@@ -718,9 +718,9 @@ module atm_time_integration
             tend % w % array(k,cell1) = tend % w % array(k,cell1) - zf(k,1,iEdge)*flux
 !3rd order stencil
             if (config_theta_adv_order == 3) then
-               tend % w % array(k,cell2) = tend % w % array(k,cell2) + sign(1.,tend % u % array(k,iEdge))  &
+               tend % w % array(k,cell2) = tend % w % array(k,cell2) + sign(1.0_RKIND,tend % u % array(k,iEdge))  &
                                                                *config_coef_3rd_order*zf3(k,2,iEdge)*flux
-               tend % w % array(k,cell1) = tend % w % array(k,cell1) - sign(1.,tend % u % array(k,iEdge))  &
+               tend % w % array(k,cell1) = tend % w % array(k,cell1) - sign(1.0_RKIND,tend % u % array(k,iEdge))  &
                                                                *config_coef_3rd_order*zf3(k,1,iEdge)*flux
             end if
                
@@ -869,7 +869,7 @@ module atm_time_integration
 
                do k=2,nVertLevels
 
-                  kr = min(nVertLevels,k+ nint(.5-sign(.5,zx(k,iEdge)+zx(k+1,iEdge))))
+                  kr = min(nVertLevels,k+ nint(.5-sign(0.5_RKIND,zx(k,iEdge)+zx(k+1,iEdge))))
                   kl = min(nVertLevels,2*k+1-kr)
                   pr = zz(k,cell2)*rtheta_pp_old(k ,cell2)+.5*(zgrid(k   ,cell1) +zgrid(k +1,cell1)   &
                                                               -zgrid(k   ,cell2) -zgrid(k +1,cell2))  &
@@ -1167,16 +1167,16 @@ module atm_time_integration
 
           !SHP-mtn
           flux = cf1*ru(1,iEdge) + cf2*ru(2,iEdge) + cf3*ru(3,iEdge)
-          w(1,cell2) = w(1,cell2) - (zb(1,2,iEdge) + sign(1.,flux)*coef_3rd_order*zb3(1,2,iEdge))  &
+          w(1,cell2) = w(1,cell2) - (zb(1,2,iEdge) + sign(1.0_RKIND,flux)*coef_3rd_order*zb3(1,2,iEdge))  &
                                  *flux/(cf1*rho_zz(1,cell2)+cf2*rho_zz(2,cell2)+cf3*rho_zz(3,cell2))
-          w(1,cell1) = w(1,cell1) + (zb(1,1,iEdge) + sign(1.,flux)*coef_3rd_order*zb3(1,1,iEdge))  &
+          w(1,cell1) = w(1,cell1) + (zb(1,1,iEdge) + sign(1.0_RKIND,flux)*coef_3rd_order*zb3(1,1,iEdge))  &
                                  *flux/(cf1*rho_zz(1,cell1)+cf2*rho_zz(2,cell1)+cf3*rho_zz(3,cell1))
 
           do k = 2, nVertLevels
             flux = (fzm(k)*ru(k,iEdge)+fzp(k)*ru(k-1,iEdge))
-            w(k,cell2) = w(k,cell2) - (zb(k,2,iEdge)+sign(1.,flux)*coef_3rd_order*zb3(k,2,iEdge)) &
+            w(k,cell2) = w(k,cell2) - (zb(k,2,iEdge)+sign(1.0_RKIND,flux)*coef_3rd_order*zb3(k,2,iEdge)) &
                                  *flux/(fzm(k)*rho_zz(k,cell2)+fzp(k)*rho_zz(k-1,cell2))
-            w(k,cell1) = w(k,cell1) + (zb(k,1,iEdge)+sign(1.,flux)*coef_3rd_order*zb3(k,1,iEdge)) &
+            w(k,cell1) = w(k,cell1) + (zb(k,1,iEdge)+sign(1.0_RKIND,flux)*coef_3rd_order*zb3(k,1,iEdge)) &
                                  *flux/(fzm(k)*rho_zz(k,cell1)+fzp(k)*rho_zz(k-1,cell1))
           enddo
 
@@ -1298,7 +1298,7 @@ module atm_time_integration
                do i=1,nAdvCellsForEdge(iEdge)
                  iCell = advCellsForEdge(i,iEdge)
                  do k=1,grid % nVertLevels
-                   scalar_weight = adv_coefs(i,iEdge) + coef_3rd_order*sign(1.,uhAvg(k,iEdge))*adv_coefs_3rd(i,iEdge)
+                   scalar_weight = adv_coefs(i,iEdge) + coef_3rd_order*sign(1.0_RKIND,uhAvg(k,iEdge))*adv_coefs_3rd(i,iEdge)
                    do iScalar=1,s_old % num_scalars
                      flux_arr(iScalar,k) = flux_arr(iScalar,k) + scalar_weight* scalar_new(iScalar,k,iCell)
                    end do
@@ -1633,7 +1633,7 @@ module atm_time_integration
                do i=1,nAdvCellsForEdge(iEdge)
                  iCell = advCellsForEdge(i,iEdge)
                  do k=1,grid % nVertLevels
-                   scalar_weight = uhAvg(k,iEdge)*(adv_coefs(i,iEdge) + coef_3rd_order*sign(1.,uhAvg(k,iEdge))*adv_coefs_3rd(i,iEdge))
+                   scalar_weight = uhAvg(k,iEdge)*(adv_coefs(i,iEdge) + coef_3rd_order*sign(1.0_RKIND,uhAvg(k,iEdge))*adv_coefs_3rd(i,iEdge))
                    flux_arr(k,iEdge) = flux_arr(k,iEdge) + scalar_weight* scalar_new(k,iCell)
                  end do
                end do
@@ -1651,7 +1651,7 @@ module atm_time_integration
 
             do k = 2, nVertLevels
               scalar_new(k,iCell) = scalar_old(k,iCell)*h_old(k,iCell)
-              flux_upwind = dt*(max(0.,wwAvg(k,iCell))*scalar_old(k-1,iCell) + min(0.,wwAvg(k,iCell))*scalar_old(k,iCell))
+              flux_upwind = dt*(max(0.0_RKIND,wwAvg(k,iCell))*scalar_old(k-1,iCell) + min(0.0_RKIND,wwAvg(k,iCell))*scalar_old(k,iCell))
               scalar_new(k-1,iCell) = scalar_new(k-1,iCell) - flux_upwind*rdnw(k-1)
               scalar_new(k  ,iCell) = scalar_new(k  ,iCell) + flux_upwind*rdnw(k)
               wdtn(k,iCell) = dt*wdtn(k,iCell) - flux_upwind
@@ -1661,8 +1661,8 @@ module atm_time_integration
 ! contributions to the update:  first the vertical flux component, then the horizontal
 
             do k=1,nVertLevels
-              scale_in (k,iCell) = - rdnw(k)*(min(0.,wdtn(k+1,iCell))-max(0.,wdtn(k,iCell)))
-              scale_out(k,iCell) = - rdnw(k)*(max(0.,wdtn(k+1,iCell))-min(0.,wdtn(k,iCell)))
+              scale_in (k,iCell) = - rdnw(k)*(min(0.0_RKIND,wdtn(k+1,iCell))-max(0.0_RKIND,wdtn(k,iCell)))
+              scale_out(k,iCell) = - rdnw(k)*(max(0.0_RKIND,wdtn(k+1,iCell))-min(0.0_RKIND,wdtn(k,iCell)))
             end do
 
           end do
@@ -1677,15 +1677,15 @@ module atm_time_integration
              if (cell1 <= grid%nCellsSolve .or. cell2 <= grid%nCellsSolve) then  ! only for owned cells
                do k=1,grid % nVertLevels
                  flux_upwind = grid % dvEdge % array(iEdge) * dt *   &
-                        (max(0.,uhAvg(k,iEdge))*scalar_old(k,cell1) + min(0.,uhAvg(k,iEdge))*scalar_old(k,cell2))
+                        (max(0.0_RKIND,uhAvg(k,iEdge))*scalar_old(k,cell1) + min(0.0_RKIND,uhAvg(k,iEdge))*scalar_old(k,cell2))
                  flux_arr(k,iEdge) = dt*flux_arr(k,iEdge) - flux_upwind
                  scalar_new(k,cell1) = scalar_new(k,cell1) - flux_upwind / areaCell(cell1)
                  scalar_new(k,cell2) = scalar_new(k,cell2) + flux_upwind / areaCell(cell2)
 
-                 scale_out(k,cell1) = scale_out(k,cell1) - max(0.,flux_arr(k,iEdge)) / areaCell(cell1)
-                 scale_in (k,cell1) = scale_in (k,cell1) - min(0.,flux_arr(k,iEdge)) / areaCell(cell1)
-                 scale_out(k,cell2) = scale_out(k,cell2) + min(0.,flux_arr(k,iEdge)) / areaCell(cell2)
-                 scale_in (k,cell2) = scale_in (k,cell2) + max(0.,flux_arr(k,iEdge)) / areaCell(cell2)
+                 scale_out(k,cell1) = scale_out(k,cell1) - max(0.0_RKIND,flux_arr(k,iEdge)) / areaCell(cell1)
+                 scale_in (k,cell1) = scale_in (k,cell1) - min(0.0_RKIND,flux_arr(k,iEdge)) / areaCell(cell1)
+                 scale_out(k,cell2) = scale_out(k,cell2) + min(0.0_RKIND,flux_arr(k,iEdge)) / areaCell(cell2)
+                 scale_in (k,cell2) = scale_in (k,cell2) + max(0.0_RKIND,flux_arr(k,iEdge)) / areaCell(cell2)
 
                end do
              end if
@@ -1700,10 +1700,10 @@ module atm_time_integration
                s_upwind = scalar_new(k,iCell)/h_new(k,iCell)
            
                scale_factor = (s_max(k,iCell)-s_upwind)/(s_max_update-s_upwind+eps)
-               scale_in(k,iCell) = min( 1.0, max( 0.0, scale_factor) )
+               scale_in(k,iCell) = min( 1.0_RKIND, max( 0.0_RKIND, scale_factor) )
 
                scale_factor = (s_upwind-s_min(k,iCell))/(s_upwind-s_min_update+eps)
-               scale_out(k,iCell) = min( 1.0, max( 0.0, scale_factor) )
+               scale_out(k,iCell) = min( 1.0_RKIND, max( 0.0_RKIND, scale_factor) )
 
             end do
           end do
@@ -1729,8 +1729,8 @@ module atm_time_integration
                if (cell1 <= grid%nCellsSolve .or. cell2 <= grid%nCellsSolve) then
                   do k = 1, nVertLevels
                      flux = flux_arr(k,iEdge)
-                     flux = max(0.,flux) * min(scale_out(k,cell1), scale_in(k,cell2)) &
-                          + min(0.,flux) * min(scale_in(k,cell1), scale_out(k,cell2))
+                     flux = max(0.0_RKIND,flux) * min(scale_out(k,cell1), scale_in(k,cell2)) &
+                          + min(0.0_RKIND,flux) * min(scale_in(k,cell1), scale_out(k,cell2))
                      flux_arr(k,iEdge) = flux
                   end do
                end if
@@ -1741,8 +1741,8 @@ module atm_time_integration
             do iCell=1,grid % nCells
                do k = 2, nVertLevels
                   flux =  wdtn(k,iCell)
-                  flux = max(0.,flux) * min(scale_out(k-1,iCell), scale_in(k  ,iCell)) &
-                       + min(0.,flux) * min(scale_out(k  ,iCell), scale_in(k-1,iCell))
+                  flux = max(0.0_RKIND,flux) * min(scale_out(k-1,iCell), scale_in(k  ,iCell)) &
+                       + min(0.0_RKIND,flux) * min(scale_out(k  ,iCell), scale_in(k-1,iCell))
                   wdtn(k,iCell) = flux
                end do
             end do
@@ -1790,7 +1790,7 @@ module atm_time_integration
 
           do iCell = 1, grid%nCells
           do k=1, grid%nVertLevels
-            scalar_new_in(iScalar,k,iCell) = max(0.,scalar_new(k,iCell))
+            scalar_new_in(iScalar,k,iCell) = max(0.0_RKIND,scalar_new(k,iCell))
           end do
           end do
 
@@ -2072,7 +2072,7 @@ module atm_time_integration
             k = 2
             wduz(k) =  0.5*( rw(k,cell1)+rw(k,cell2) )*(fzm(k)*u(k,iEdge)+fzp(k)*u(k-1,iEdge))  
             do k=3,nVertLevels-1
-               wduz(k) = flux3( u(k-2,iEdge),u(k-1,iEdge),u(k,iEdge),u(k+1,iEdge),0.5*(rw(k,cell1)+rw(k,cell2)), 1. )
+               wduz(k) = flux3( u(k-2,iEdge),u(k-1,iEdge),u(k,iEdge),u(k+1,iEdge),0.5*(rw(k,cell1)+rw(k,cell2)), 1.0_RKIND )
             end do
             k = nVertLevels
             wduz(k) =  0.5*( rw(k,cell1)+rw(k,cell2) )*(fzm(k)*u(k,iEdge)+fzp(k)*u(k-1,iEdge))  
@@ -2368,7 +2368,7 @@ module atm_time_integration
                do i=1,nAdvCellsForEdge(iEdge)
                  iCell = advCellsForEdge(i,iEdge)
                  do k=2,grid % nVertLevels
-                   scalar_weight = adv_coefs(i,iEdge) + coef_3rd_order*sign(1.,ru_edge_w(k))*adv_coefs_3rd(i,iEdge)
+                   scalar_weight = adv_coefs(i,iEdge) + coef_3rd_order*sign(1.0_RKIND,ru_edge_w(k))*adv_coefs_3rd(i,iEdge)
                    flux_arr(k) = flux_arr(k) + scalar_weight* w(k,iCell)
                  end do
                end do
@@ -2582,7 +2582,7 @@ module atm_time_integration
             k = 2
             wdwz(k) =  0.25*(rw(k,icell)+rw(k-1,iCell))*(w(k,iCell)+w(k-1,iCell))
             do k=3,nVertLevels-1
-               wdwz(k) = flux3( w(k-2,iCell),w(k-1,iCell),w(k,iCell),w(k+1,iCell),0.5*(rw(k,iCell)+rw(k-1,iCell)), 1. )
+               wdwz(k) = flux3( w(k-2,iCell),w(k-1,iCell),w(k,iCell),w(k+1,iCell),0.5*(rw(k,iCell)+rw(k-1,iCell)), 1.0_RKIND )
             end do
             k = nVertLevels
             wdwz(k) =  0.25*(rw(k,icell)+rw(k-1,iCell))*(w(k,iCell)+w(k-1,iCell))
@@ -2678,7 +2678,7 @@ module atm_time_integration
                do i=1,nAdvCellsForEdge(iEdge)
                  iCell = advCellsForEdge(i,iEdge)
                  do k=1,grid % nVertLevels
-                   scalar_weight = adv_coefs(i,iEdge) + coef_3rd_order*sign(1.,ru(k,iEdge))*adv_coefs_3rd(i,iEdge)
+                   scalar_weight = adv_coefs(i,iEdge) + coef_3rd_order*sign(1.0_RKIND,ru(k,iEdge))*adv_coefs_3rd(i,iEdge)
                    flux_arr(k) = flux_arr(k) + scalar_weight* theta_m(k,iCell)
                  end do
                end do
@@ -3324,10 +3324,10 @@ module atm_time_integration
                           * (grid % fzp % array(k) * grid % zz % array(k-1,cell1) + grid % fzm % array(k) * grid % zz % array(k,cell1))
 !3rd order! stencil
             if (config_theta_adv_order ==3) then
-               diag % rw % array(k,cell2) = diag % rw % array(k,cell2) + sign(1.,flux)*config_coef_3rd_order    &
+               diag % rw % array(k,cell2) = diag % rw % array(k,cell2) + sign(1.0_RKIND,flux)*config_coef_3rd_order    &
                                         * grid % zb3 % array(k,2,iEdge)*flux                                    &
                           * (grid % fzp % array(k) * grid % zz % array(k-1,cell2) + grid % fzm % array(k) * grid % zz % array(k,cell2))
-               diag % rw % array(k,cell1) = diag % rw % array(k,cell1) - sign(1.,flux)*config_coef_3rd_order    &
+               diag % rw % array(k,cell1) = diag % rw % array(k,cell1) - sign(1.0_RKIND,flux)*config_coef_3rd_order    &
                                         * grid % zb3 % array(k,1,iEdge)*flux                                    &
                           * (grid % fzp % array(k) * grid % zz % array(k-1,cell1) + grid % fzm % array(k) * grid % zz % array(k,cell1))
             end if
@@ -3405,11 +3405,11 @@ module atm_time_integration
           t(k) = state_new % theta_m % array(k,iCell)/(1. + 1.61*state_new % scalars % array(state_new % index_qv,k,iCell))
           rho(k) = grid % zz % array(k,iCell)*state_new % rho_zz % array(k,iCell)
           p(k) = diag % exner % array(k,iCell)
-          qv(k) = max(0.,state_new % scalars % array(state_new % index_qv,k,iCell))
-          qc(k) = max(0.,state_new % scalars % array(state_new % index_qc,k,iCell))
-          qr(k) = max(0.,state_new % scalars % array(state_new % index_qr,k,iCell))
-          qc1(k) = max(0.,state_old % scalars % array(state_old % index_qc,k,iCell))
-          qr1(k) = max(0.,state_old % scalars % array(state_old % index_qr,k,iCell))
+          qv(k) = max(0.0_RKIND,state_new % scalars % array(state_new % index_qv,k,iCell))
+          qc(k) = max(0.0_RKIND,state_new % scalars % array(state_new % index_qc,k,iCell))
+          qr(k) = max(0.0_RKIND,state_new % scalars % array(state_new % index_qr,k,iCell))
+          qc1(k) = max(0.0_RKIND,state_old % scalars % array(state_old % index_qc,k,iCell))
+          qr1(k) = max(0.0_RKIND,state_old % scalars % array(state_old % index_qr,k,iCell))
           dzu(k) = grid % dzu % array(k)
    
         end do
@@ -3486,8 +3486,8 @@ module atm_time_integration
       do i=1,nx
          do k=1,nz1
             qrprod(k) = qc1t(k,i)                                  &
-                      -(qc1t(k,i)-dt*amax1(ackess*(qc1(k,i)-.001), &
-                           0.))/(1.+dt*ckess*qr1(k,i)**.875)       
+                      -(qc1t(k,i)-dt*max(ackess*(qc1(k,i)-.001), &
+                           0.0_RKIND))/(1.+dt*ckess*qr1(k,i)**.875)       
 			   velqr(k)  = (qr1(k,i)*r(k))**1.1364*rhalf(k)
             qvs(k)    = pc(k)*exp(f2x*(pk(k)*t1t(k,i)-273.)  &
                                   /(pk(k)*t1t(k,i)- 36.))
@@ -3505,23 +3505,23 @@ module atm_time_integration
          artemp       = 36340.*(.5*(velqr(2)+velqr(1))+veld-velu)
          artot        = artot+dt*artemp
          do k=1,nz1
-            qc1t(k,i) = amax1(qc1t(k,i)-qrprod(k),0.)
-            qr1t(k,i) = amax1(qr1t(k,i)+qrprod(k),0.)
+            qc1t(k,i) = max(qc1t(k,i)-qrprod(k),0.0_RKIND)
+            qr1t(k,i) = max(qr1t(k,i)+qrprod(k),0.0_RKIND)
             prod(k)   = (qv1t(k,i)-qvs(k))/(1.+qvs(k)*f5  &
                                 /(pk(k)*t1t(k,i)-36.)**2)
          end do
          do k=1,nz1
-            ern(k)    = amin1(dt*(((1.6+124.9*(r(k)*qr1t(k,i))**.2046)  &
+            ern(k)    = min(dt*(((1.6+124.9*(r(k)*qr1t(k,i))**.2046)  &
                          *(r(k)*qr1t(k,i))**.525)/(2.55e6*pc(k)         &
                          /(3.8 *qvs(k))+5.4e5))*(dim(qvs(k),qv1t(k,i))  &
                          /(r(k)*qvs(k))),                               &
-                          amax1(-prod(k)-qc1t(k,i),0.),qr1t(k,i))
+                          max(-prod(k)-qc1t(k,i),0.0_RKIND),qr1t(k,i))
          end do
          do k=1,nz1
-            buoycy(k) = f0(k)*(amax1(prod(k),-qc1t(k,i))-ern(k))
-				qv1t(k,i) = amax1(qv1t(k,i)    &
-                         -amax1(prod(k),-qc1t(k,i))+ern(k),0.)
-            qc1t(k,i) = qc1t(k,i)+amax1(prod(k),-qc1t(k,i))
+            buoycy(k) = f0(k)*(max(prod(k),-qc1t(k,i))-ern(k))
+				qv1t(k,i) = max(qv1t(k,i)    &
+                         -max(prod(k),-qc1t(k,i))+ern(k),0.0_RKIND)
+            qc1t(k,i) = qc1t(k,i)+max(prod(k),-qc1t(k,i))
             qr1t(k,i) = qr1t(k,i)-ern(k)
             t1t (k,i) = t1t (k,i)+buoycy(k)
          end do

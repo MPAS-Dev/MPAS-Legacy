@@ -1,5 +1,7 @@
 module mpas_constants
 
+   use mpas_kind_types
+
    real (kind=RKIND), parameter :: pii     = 3.141592653589793   
    real (kind=RKIND), parameter :: a       = 6371229.0
    real (kind=RKIND), parameter :: omega   = 7.29212e-5
