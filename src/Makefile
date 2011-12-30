@@ -7,7 +7,7 @@ mpas: reg_includes externals frame ops dycore drver
 
 reg_includes: 
 	( cd registry; make CC="$(SCC)" )
-	( cd inc; ../registry/parse ../core_$(CORE)/Registry )
+	( cd inc; $(CPP) ../core_$(CORE)/Registry | ../registry/parse > Registry.processed)
 
 externals:
 	( cd external; make FC="$(FC)" SFC="$(SFC)" CC="$(CC)" SCC="$(SCC)" FFLAGS="$(FFLAGS)" CFLAGS="$(CFLAGS)" CPP="$(CPP)" NETCDF="$(NETCDF)" CORE="$(CORE)" )
@@ -33,7 +33,7 @@ clean:
 	( cd external; make clean )
 	( cd framework; make clean )
 	( cd operators; make clean )
-	( cd inc; rm -f *.inc )
+	( cd inc; rm -f *.inc Registry.processed )
 	if [ -d core_$(CORE) ] ; then \
 	   ( cd core_$(CORE); make clean ) \
 	fi;

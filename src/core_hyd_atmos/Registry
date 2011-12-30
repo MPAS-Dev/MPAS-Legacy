@@ -1,6 +1,6 @@
-#
-# namelist  type  namelist_record  name  default_value
-#
+%
+% namelist  type  namelist_record  name  default_value
+%
 namelist integer   sw_model config_test_case            5
 namelist character sw_model config_time_integration     SRK3
 namelist real      sw_model config_dt                   172.8
@@ -31,9 +31,9 @@ namelist character io       config_decomp_file_prefix   graph.info.part.
 namelist logical   restart  config_do_restart           false
 namelist character restart  config_restart_interval     none
 
-#
-# dim  type  name_in_file  name_in_code
-#
+%
+% dim  type  name_in_file  name_in_code
+%
 dim nCells nCells
 dim nEdges nEdges
 dim maxEdges maxEdges
@@ -44,14 +44,14 @@ dim vertexDegree vertexDegree
 dim FIFTEEN 15
 dim TWENTYONE 21
 dim R3 3
-#dim nVertLevels nVertLevels
+%dim nVertLevels nVertLevels
 dim nVertLevels namelist:config_nvertlevels
-#dim nTracers nTracers
+%dim nTracers nTracers
 dim nVertLevelsP1 nVertLevels+1
 
-#
-# var persistence type  name_in_file  ( dims )  time_levs iro-  name_in_code struct super-array array_class
-#
+%
+% var persistence type  name_in_file  ( dims )  time_levs iro-  name_in_code struct super-array array_class
+%
 var persistent text    xtime ( Time ) 2 ro xtime state - -
 
 var persistent real    latCell ( nCells ) 0 iro latCell mesh - -
@@ -102,7 +102,7 @@ var persistent real    fEdge ( nEdges ) 0 iro fEdge mesh - -
 var persistent real    fVertex ( nVertices ) 0 iro fVertex mesh - -
 var persistent real    h_s ( nCells ) 0 iro h_s mesh - -
 
-# description of the vertical grid structure
+% description of the vertical grid structure
 var persistent real    rdnu ( nVertLevels ) 0 iro rdnu mesh - -
 var persistent real    rdnw ( nVertLevels ) 0 iro rdnw mesh - -
 var persistent real    fnm ( nVertLevels ) 0 iro fnm mesh - -
@@ -111,16 +111,16 @@ var persistent real    dbn ( nVertLevels ) 0 iro dbn mesh - -
 var persistent real    dnu ( nVertLevels ) 0 iro dnu mesh - -
 var persistent real    dnw ( nVertLevels ) 0 iro dnw mesh - -
 
-# Prognostic variables: read from input, saved in restart, and written to output
+% Prognostic variables: read from input, saved in restart, and written to output
 var persistent real    u ( nVertLevels nEdges Time ) 2 iro u state - -
 var persistent real    theta ( nVertLevels nCells Time ) 2 iro theta state - -
 var persistent real    surface_pressure ( nCells Time ) 2 iro surface_pressure state - -
 var persistent real    qv ( nVertLevels nCells Time ) 2 iro qv state scalars moist
 var persistent real    qc ( nVertLevels nCells Time ) 2 iro qc state scalars moist
 var persistent real    qr ( nVertLevels nCells Time ) 2 iro qr state scalars moist
-#var persistent real    tracers ( nTracers nVertLevels nCells Time ) 2 iro state tracers - -
+%var persistent real    tracers ( nTracers nVertLevels nCells Time ) 2 iro state tracers - -
 
-# state variables diagnosed from prognostic state
+% state variables diagnosed from prognostic state
 var persistent real    h ( nVertLevels nCells Time ) 2 ro h state - -
 var persistent real    ww ( nVertLevelsP1 nCells Time ) 2 ro ww state - -
 var persistent real    w ( nVertLevelsP1 nCells Time ) 2 ro w state - -
@@ -128,7 +128,7 @@ var persistent real    pressure ( nVertLevelsP1 nCells Time ) 2 ro pressure stat
 var persistent real    geopotential ( nVertLevelsP1 nCells Time ) 2 ro geopotential state - -
 var persistent real    alpha ( nVertLevels nCells Time ) 2 iro alpha state - -
 
-# Diagnostic fields: only written to output
+% Diagnostic fields: only written to output
 var persistent real    v ( nVertLevels nEdges Time ) 2 o v state - -
 var persistent real    divergence ( nVertLevels nCells Time ) 2 o divergence state - -
 var persistent real    vorticity ( nVertLevels nVertices Time ) 2 o vorticity state - -
@@ -143,7 +143,7 @@ var persistent real    uReconstructZ ( nVertLevels nCells Time ) 1 o uReconstruc
 var persistent real    uReconstructZonal ( nVertLevels nCells Time ) 1 o uReconstructZonal diag - -
 var persistent real    uReconstructMeridional ( nVertLevels nCells Time ) 1 o uReconstructMeridional diag - -
 
-# Tendency variables
+% Tendency variables
 var persistent real    tend_h ( nVertLevels nCells Time ) 1 - h tend - -
 var persistent real    tend_u ( nVertLevels nEdges Time ) 1 - u tend - -
 var persistent real    tend_vh ( nVertLevels nEdges Time ) 1 - vh tend - -
@@ -152,7 +152,7 @@ var persistent real    tend_qv ( nVertLevels nCells Time ) 1 - qv tend scalars m
 var persistent real    tend_qc ( nVertLevels nCells Time ) 1 - qc tend scalars moist
 var persistent real    tend_qr ( nVertLevels nCells Time ) 1 - qr tend scalars moist
 
-# Other diagnostic variables: neither read nor written to any files
+% Other diagnostic variables: neither read nor written to any files
 var persistent real    vh ( nVertLevels nEdges Time ) 2 - vh state - -
 var persistent real    circulation ( nVertLevels nVertices Time ) 2 - circulation state - -
 var persistent real    gradPVt ( nVertLevels nEdges Time ) 2 - gradPVt state - -
@@ -174,12 +174,12 @@ var persistent real    pressure_old ( nVertLevelsP1 nCells ) 0 - pressure_old me
 var persistent real    qv_old ( nVertLevels nCells ) 0 - qv_old mesh scalars_old moist_old
 var persistent real    qc_old ( nVertLevels nCells ) 0 - qc_old mesh scalars_old moist_old
 var persistent real    qr_old ( nVertLevels nCells ) 0 - qr_old mesh scalars_old moist_old
-#var persistent real    tracers_old ( nTracers nVertLevels nCells ) 0 - tracers_old mesh - -
+%var persistent real    tracers_old ( nTracers nVertLevels nCells ) 0 - tracers_old mesh - -
 
-# Space needed for advection
+% Space needed for advection
 var persistent real    deriv_two ( FIFTEEN TWO nEdges ) 0 o deriv_two mesh - -
 var persistent integer advCells ( TWENTYONE nCells ) 0 - advCells mesh - -
 
-# Arrays required for reconstruction of velocity field
+% Arrays required for reconstruction of velocity field
 var persistent real    coeffs_reconstruct ( R3 maxEdges nCells ) 0 - coeffs_reconstruct mesh - -
 

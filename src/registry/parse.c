@@ -19,22 +19,20 @@ int main(int argc, char ** argv)
    struct group_list * groups;
 
    if (argc != 2) {
-      fprintf(stderr,"\nUsage: %s filename\n\n", argv[0]);
-      return 1;
+      fprintf(stderr,"Reading registry file from standard input\n");
+      regfile = stdin;
    }
-
-   if (regfile = fopen(argv[1], "r")) {
-      nls = NULL;
-      dims = NULL;
-      vars = NULL;
-      if (parse_reg(regfile, &nls, &dims, &vars, &groups)) {
-         return 1;
-      }
-   }   
-   else {
+   else if (!(regfile = fopen(argv[1], "r"))) {
       fprintf(stderr,"\nError: Could not open file %s for reading.\n\n", argv[1]);
       return 1;
    }   
+
+   nls = NULL;
+   dims = NULL;
+   vars = NULL;
+   if (parse_reg(regfile, &nls, &dims, &vars, &groups)) {
+      return 1;
+   }
 
    sort_vars(vars);
    sort_group_vars(groups);
@@ -244,6 +242,7 @@ int parse_reg(FILE * regfile, struct namelist ** nls, struct dimension ** dims, 
             dimlist_ptr = dimlist_ptr->next;
          }
       }
+      fprintf(stdout,"\n");
    } 
 
    nls_ptr = *nls;
@@ -274,18 +273,19 @@ int getword(FILE * regfile, char * word)
    
    do { c = getc(regfile); } while (((char)c == ' ' || (char)c == '\n' || (char)c == '\t') && c != EOF);
 
-   while ((char)c == '#') {
+   while ((char)c == '%') {
       do { c = getc(regfile); } while ((char)c != '\n' && c != EOF);
       do { c = getc(regfile); } while (((char)c == ' ' || (char)c == '\n' || (char)c == '\t') && c != EOF);
    };
-   while((char)c != ' ' && (char)c != '\n' && (char)c != '\t' && c != EOF && (char)c != '#') {
+   while((char)c != ' ' && (char)c != '\n' && (char)c != '\t' && c != EOF && (char)c != '%') {
       word[i++] = (char)c; 
       c = (char)getc(regfile);
    } 
    word[i] = '\0';
 
-   if ((char)c == '#') do { c = getc(regfile); } while ((char)c != '\n' && c != EOF);
+   if ((char)c == '%') do { c = getc(regfile); } while ((char)c != '\n' && c != EOF);
 
+   fprintf(stdout,"%s ",word);
    return c;
 }
 

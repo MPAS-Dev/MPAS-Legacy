@@ -1,6 +1,6 @@
-#
-# namelist  type  namelist_record  name  default_value
-#
+%
+% namelist  type  namelist_record  name  default_value
+%
 namelist integer   nhyd_model config_test_case            5
 namelist integer   nhyd_model config_calendar_type        MPAS_GREGORIAN
 namelist character nhyd_model config_start_time           none
@@ -35,9 +35,9 @@ namelist logical   restart    config_do_restart           false
 namelist real      restart    config_restart_time         172800.0
 
 
-#
-# dim  type  name_in_file  name_in_code
-#
+%
+% dim  type  name_in_file  name_in_code
+%
 dim nCells nCells
 dim nEdges nEdges
 dim maxEdges maxEdges
@@ -56,12 +56,12 @@ dim nFGSoilLevels namelist:config_nfgsoillevels
 dim nVertLevelsP1 nVertLevels+1
 dim nMonths 12
 
-#
-# var  type  name_in_file  ( dims )  iro-  name_in_code super-array array_class
-#
+%
+% var  type  name_in_file  ( dims )  iro-  name_in_code super-array array_class
+%
 var persistent text    xtime ( Time ) 2 so xtime state - -
 
-#  horizontal grid structure
+%  horizontal grid structure
 
 var persistent real    latCell ( nCells ) 0 io latCell mesh - -
 var persistent real    lonCell ( nCells ) 0 io lonCell mesh - -
@@ -112,14 +112,14 @@ var persistent real    fVertex ( nVertices ) 0 io fVertex mesh - -
  
 var persistent real    meshDensity ( nCells ) 0 iro meshDensity mesh - -
 
-# some solver scalar coefficients
+% some solver scalar coefficients
 
-# coefficients for vertical extrapolation to the surface
+% coefficients for vertical extrapolation to the surface
 var persistent real    cf1 ( ) 0 io cf1 mesh - -
 var persistent real    cf2 ( ) 0 io cf2 mesh - -
 var persistent real    cf3 ( ) 0 io cf3 mesh - -
 
-# static terrestrial fields
+% static terrestrial fields
 var persistent real    ter         ( nCells ) 0 io ter      mesh - -
 var persistent integer landmask    ( nCells ) 0 io landmask mesh - -
 var persistent integer ivgtyp      ( nCells ) 0 io lu_index mesh - -
@@ -132,7 +132,7 @@ var persistent real    shdmin      ( nCells ) 0 io shdmin mesh - -
 var persistent real    shdmax      ( nCells ) 0 io shdmax mesh - -
 var persistent real    albedo12m   ( nMonths nCells ) 0 io albedo12m mesh - -
 
-# description of the vertical grid structure
+% description of the vertical grid structure
 
 var persistent real    hx ( nVertLevelsP1 nCells ) 0 io hx mesh - -
 var persistent real    zgrid ( nVertLevelsP1 nCells ) 0 io zgrid mesh - -
@@ -148,11 +148,11 @@ var persistent real    zf3 ( nVertLevelsP1 TWO nEdges ) 0 io zf3 mesh - -
 var persistent real    zb ( nVertLevelsP1 TWO nEdges ) 0 io zb mesh - -
 var persistent real    zb3 ( nVertLevelsP1 TWO nEdges ) 0 io zb3 mesh - -
 
-#  W-Rayleigh-damping coefficient
+%  W-Rayleigh-damping coefficient
 
 var persistent real    dss ( nVertLevels nCells ) 0 io dss mesh - -
 
-# Horizontally interpolated from first-guess data
+% Horizontally interpolated from first-guess data
 var persistent real    u_fg ( nFGLevels nEdges Time ) 1 - u fg - -
 var persistent real    v_fg ( nFGLevels nEdges Time ) 1 - v fg - -
 var persistent real    t_fg ( nFGLevels nCells Time ) 1 - t fg - -
@@ -163,15 +163,15 @@ var persistent real    soilz_fg ( nCells Time ) 1 io soilz fg - -
 var persistent real    psfc_fg ( nCells Time ) 1 - psfc fg - -
 var persistent real    pmsl_fg ( nCells Time ) 1 - pmsl fg - -
 
-# Horizontally interpolated from first-guess data
+% Horizontally interpolated from first-guess data
 var persistent real    dz_fg  ( nFGSoilLevels nCells Time ) 1 io dz_fg  fg - -
 var persistent real    dzs_fg ( nFGSoilLevels nCells Time ) 1 io dzs_fg fg - -
 var persistent real    zs_fg  ( nFGSoilLevels nCells Time ) 1 io zs_fg  fg - -
 var persistent real    st_fg  ( nFGSoilLevels nCells Time ) 1 io st_fg  fg - -
 var persistent real    sm_fg  ( nFGSoilLevels nCells Time ) 1 io sm_fg  fg - -
 
-# Horizontally interpolated from first-guess data
-#    and should be read in by model
+% Horizontally interpolated from first-guess data
+%    and should be read in by model
 var persistent real    dz ( nSoilLevels nCells Time ) 1 io dz fg - -
 var persistent real    dzs ( nSoilLevels nCells Time ) 1 io dzs fg - -
 var persistent real    zs ( nSoilLevels nCells Time ) 1 io zs fg - -
@@ -191,7 +191,7 @@ var persistent real    vegfra ( nCells Time ) 1 io vegfra fg - -
 var persistent real    sfc_albbck ( nCells Time ) 1 io sfc_albbck fg - -
 var persistent real    xland ( nCells Time ) 1 io xland fg - - 
 
-# Prognostic variables: read from input, saved in restart, and written to output
+% Prognostic variables: read from input, saved in restart, and written to output
 var persistent real    u ( nVertLevels nEdges Time ) 2 o u state - -
 var persistent real    w ( nVertLevelsP1 nCells Time ) 2 o w state - -
 var persistent real    rho_zz ( nVertLevels nCells Time ) 2 o rho_zz state - -
@@ -200,14 +200,14 @@ var persistent real    qv ( nVertLevels nCells Time ) 2 o qv state scalars moist
 var persistent real    qc ( nVertLevels nCells Time ) 2 o qc state scalars moist
 var persistent real    qr ( nVertLevels nCells Time ) 2 o qr state scalars moist
 
-# state variables diagnosed from prognostic state
+% state variables diagnosed from prognostic state
 var persistent real    pressure_p ( nVertLevels nCells Time ) 1 - pressure_p diag - -
 
 var persistent real    u_init ( nVertLevels ) 0 io u_init mesh - -
 var persistent real    t_init ( nVertLevels nCells ) 0 io t_init mesh - -
 var persistent real    qv_init ( nVertLevels ) 0 io qv_init mesh - -
 
-# Diagnostic fields: only written to output
+% Diagnostic fields: only written to output
 var persistent real    rho ( nVertLevels nCells Time ) 1 o rho diag - -
 var persistent real    theta ( nVertLevels nCells Time ) 1 o theta diag - -
 var persistent real    v ( nVertLevels nEdges Time ) 1 o v diag - -
@@ -229,20 +229,20 @@ var persistent real    cqw  ( nVertLevels nCells Time ) 1 - cqw diag - -
 
 var persistent real    surface_pressure    ( nCells Time    ) 1  o surface_pressure    diag - -
 
-#  coupled variables needed by the solver, but not output...
+%  coupled variables needed by the solver, but not output...
 var persistent real    ru ( nVertLevels nEdges Time ) 1 - ru diag - -
 var persistent real    rw ( nVertLevelsP1 nCells Time ) 1 - rw diag - -
 var persistent real    rtheta_p ( nVertLevels nCells Time ) 1 - rtheta_p diag - -
 var persistent real    rho_p ( nVertLevels nCells Time ) 1 - rho_p diag - -
 
-# Space needed for advection
+% Space needed for advection
 var persistent real    deriv_two ( FIFTEEN TWO nEdges ) 0 io deriv_two mesh - -
 var persistent integer advCells ( TWENTYONE nCells ) 0 io advCells mesh - -
 
-# Space needed for deformation calculation weights
+% Space needed for deformation calculation weights
 var persistent real    defc_a ( maxEdges nCells ) 0 io defc_a mesh - -
 var persistent real    defc_b ( maxEdges nCells ) 0 io defc_b mesh - -
 
-# Arrays required for reconstruction of velocity field
+% Arrays required for reconstruction of velocity field
 var persistent real    coeffs_reconstruct ( R3 maxEdges nCells ) 0 io coeffs_reconstruct mesh - -
 

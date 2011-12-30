@@ -1,6 +1,6 @@
-#
-# namelist  type  namelist_record  name  default_value
-#
+%
+% namelist  type  namelist_record  name  default_value
+%
 namelist integer   nhyd_model config_test_case            5
 namelist character nhyd_model config_time_integration     SRK3
 namelist real      nhyd_model config_dt                   172.8
@@ -50,9 +50,9 @@ namelist logical   restart    config_do_restart           false
 namelist logical   restart    config_do_DAcycling         false
 namelist character restart    config_restart_interval     none
 
-#
-# dim  type  name_in_file  name_in_code
-#
+%
+% dim  type  name_in_file  name_in_code
+%
 dim nCells nCells
 dim nEdges nEdges
 dim maxEdges maxEdges
@@ -67,12 +67,12 @@ dim R3 3
 dim nVertLevels namelist:config_nvertlevels
 dim nVertLevelsP1 nVertLevels+1
 
-#
-# var  type  name_in_file  ( dims )  iro-  name_in_code super-array array_class
-#
+%
+% var  type  name_in_file  ( dims )  iro-  name_in_code super-array array_class
+%
 var persistent text    xtime ( Time ) 2 iro xtime state - -
 
-#  horizontal grid structure
+%  horizontal grid structure
 
 var persistent real    latCell ( nCells ) 0 iro latCell mesh - -
 var persistent real    lonCell ( nCells ) 0 iro lonCell mesh - -
@@ -125,9 +125,9 @@ var persistent real    meshDensity ( nCells ) 0 iro meshDensity mesh - -
 var persistent real    meshScalingDel2 ( nEdges ) 0 ro meshScalingDel2 mesh - -
 var persistent real    meshScalingDel4 ( nEdges ) 0 ro meshScalingDel4 mesh - -
 
-# some solver scalar coefficients
+% some solver scalar coefficients
 
-# coefficients for vertical extrapolation to the surface
+% coefficients for vertical extrapolation to the surface
 var persistent real    cf1 ( ) 0 iro cf1 mesh - -
 var persistent real    cf2 ( ) 0 iro cf2 mesh - -
 var persistent real    cf3 ( ) 0 iro cf3 mesh - -
@@ -135,7 +135,7 @@ var persistent real    cf3 ( ) 0 iro cf3 mesh - -
 var persistent real    cpr ( THREE nEdges ) 0 ro cpr mesh - -
 var persistent real    cpl ( THREE nEdges ) 0 ro cpl mesh - -
 
-# description of the vertical grid structure
+% description of the vertical grid structure
 
 var persistent real    hx ( nVertLevelsP1 nCells ) 0 iro hx mesh - -
 var persistent real    zgrid ( nVertLevelsP1 nCells ) 0 iro zgrid mesh - -
@@ -151,8 +151,8 @@ var persistent real    zf3 ( nVertLevelsP1 TWO nEdges ) 0 iro zf3 mesh - -
 var persistent real    zb ( nVertLevelsP1 TWO nEdges ) 0 iro zb mesh - -
 var persistent real    zb3 ( nVertLevelsP1 TWO nEdges ) 0 iro zb3 mesh - -
 
-# coefficients for the vertical tridiagonal solve
-# Note:  these could be local but...
+% coefficients for the vertical tridiagonal solve
+% Note:  these could be local but...
 
 var persistent real    cofrz ( nVertLevels Time ) 1 - cofrz diag - -
 var persistent real    cofwr ( nVertLevels nCells Time ) 1 - cofwr diag - -
@@ -163,11 +163,11 @@ var persistent real    a_tri ( nVertLevels nCells Time ) 1 - a_tri diag - -
 var persistent real    alpha_tri ( nVertLevels nCells Time ) 1 - alpha_tri diag - -
 var persistent real    gamma_tri ( nVertLevels nCells Time ) 1 - gamma_tri diag - -
 
-#  W-Rayleigh-damping coefficient
+%  W-Rayleigh-damping coefficient
 
 var persistent real    dss ( nVertLevels nCells ) 0 iro dss mesh - -
 
-# Prognostic variables: read from input, saved in restart, and written to output
+% Prognostic variables: read from input, saved in restart, and written to output
 var persistent real    u ( nVertLevels nEdges Time ) 2 iro u state - -
 var persistent real    w ( nVertLevelsP1 nCells Time ) 2 iro w state - -
 var persistent real    rho_zz ( nVertLevels nCells Time ) 2 r rho_zz state - -
@@ -181,7 +181,7 @@ var persistent real    qg ( nVertLevels nCells Time ) 2 iro qg state scalars moi
 var persistent real    qnr ( nVertLevels nCells Time ) 2 iro qnr state scalars number
 var persistent real    qni ( nVertLevels nCells Time ) 2 iro qni state scalars number
 
-# Tendency variables
+% Tendency variables
 var persistent real    tend_u ( nVertLevels nEdges Time ) 1 o u tend - -
 var persistent real    tend_w ( nVertLevelsP1 nCells Time ) 1 o w tend - -
 var persistent real    tend_rho ( nVertLevels nCells Time ) 1 o rho_zz tend - -
@@ -200,17 +200,17 @@ var persistent real    euler_tend_u ( nVertLevels nEdges Time ) 1 - u_euler tend
 var persistent real    euler_tend_w ( nVertLevelsP1 nCells Time ) 1 - w_euler tend - -
 var persistent real    euler_tend_theta ( nVertLevels nCells Time ) 1 - theta_euler tend - -
 
-# state variables diagnosed from prognostic state
+% state variables diagnosed from prognostic state
 var persistent real    pressure_p ( nVertLevels nCells Time ) 1 ro pressure_p diag - -
 
 var persistent real    u_init ( nVertLevels ) 0 iro u_init mesh - -
 var persistent real    t_init ( nVertLevels nCells ) 0 iro t_init mesh - -
 var persistent real    qv_init ( nVertLevels ) 0 iro qv_init mesh - -
 
-# Diagnostic fields: only written to output
-# NOTE: added the "r" option to rho,theta,uReconstructZonal,and uReconstructMeridional for use of the
-# non-hydrostatic dynamical core in a data assimilation framework. NOTE that the "r" option is not
-# needed for those 4 variables to get bit for bit restart capabilities, otherwise. 
+% Diagnostic fields: only written to output
+% NOTE: added the "r" option to rho,theta,uReconstructZonal,and uReconstructMeridional for use of the
+% non-hydrostatic dynamical core in a data assimilation framework. NOTE that the "r" option is not
+% needed for those 4 variables to get bit for bit restart capabilities, otherwise. 
 var persistent real    rho ( nVertLevels nCells Time ) 1 iro rho diag - -
 var persistent real    theta ( nVertLevels nCells Time ) 1 iro theta diag - -
 var persistent real    rh ( nVertLevels nCells Time ) 1 iro rh diag - -
@@ -228,7 +228,7 @@ var persistent real    uReconstructZ ( nVertLevels nCells Time ) 1 o uReconstruc
 var persistent real    uReconstructZonal ( nVertLevels nCells Time ) 1 ro uReconstructZonal diag - -
 var persistent real    uReconstructMeridional ( nVertLevels nCells Time ) 1 ro uReconstructMeridional diag - -
 
-# Other diagnostic variables: neither read nor written to any files
+% Other diagnostic variables: neither read nor written to any files
 var persistent real    rv ( nVertLevels nEdges Time ) 1 r rv diag - -
 var persistent real    circulation ( nVertLevels nVertices Time ) 1 r circulation diag - -
 var persistent real    gradPVt ( nVertLevels nEdges Time ) 1 - gradPVt diag - -
@@ -248,7 +248,7 @@ var persistent real    wwAvg ( nVertLevelsP1 nCells Time ) 1 - wwAvg diag - -
 var persistent real    cqu  ( nVertLevels nEdges Time ) 1 - cqu diag - -
 var persistent real    cqw  ( nVertLevels nCells Time ) 1 - cqw diag - -
 
-#  coupled variables needed by the solver, but not output...
+%  coupled variables needed by the solver, but not output...
 
 var persistent real    ru ( nVertLevels nEdges Time ) 1 r ru diag - -
 var persistent real    ru_p ( nVertLevels nEdges Time ) 1 r ru_p diag - -
@@ -268,7 +268,7 @@ var persistent real    rho_p ( nVertLevels nCells Time ) 1 r rho_p diag - -
 var persistent real    rho_pp ( nVertLevels nCells Time ) 1 - rho_pp diag - -
 var persistent real    rho_p_save ( nVertLevels nCells Time ) 1 - rho_p_save diag - -
 
-# Space needed for advection
+% Space needed for advection
 var persistent real    deriv_two ( FIFTEEN TWO nEdges ) 0 ir deriv_two mesh - -
 var persistent integer advCells ( TWENTYONE nCells ) 0 ir advCells mesh - -
 var persistent real    adv_coefs ( FIFTEEN nEdges ) 0 - adv_coefs mesh - -
@@ -277,43 +277,43 @@ var persistent integer advCellsForEdge ( FIFTEEN nEdges ) 0 - advCellsForEdge me
 var persistent integer nAdvCellsForEdge ( nEdges ) 0 - nAdvCellsForEdge mesh - -
 
 
-# Space needed for deformation calculation weights
+% Space needed for deformation calculation weights
 var persistent real    defc_a ( maxEdges nCells ) 0 iro defc_a mesh - -
 var persistent real    defc_b ( maxEdges nCells ) 0 iro defc_b mesh - -
 var persistent real    kdiff ( nVertLevels nCells Time ) 2 - kdiff diag - -
 
-# Arrays required for reconstruction of velocity field
+% Arrays required for reconstruction of velocity field
 var persistent real    coeffs_reconstruct ( R3 maxEdges nCells ) 0 iro coeffs_reconstruct mesh - -
 
-# ADDED DECLARATIONS MADE BY LDF:
+% ADDED DECLARATIONS MADE BY LDF:
 var persistent real    surface_pressure    ( nCells Time    ) 1 iro surface_pressure    diag - -
 var persistent real    surface_temperature ( nCells Time    ) 1   o surface_temperature diag - -
 
-#==================================================================================================
-# DECLARATIONS OF ALL PHYSICS VARIABLES (will need to be moved to a Physics Registry shared by the
-# hydrostatic and non-hydrostatic dynamical cores):
-#==================================================================================================
+%==================================================================================================
+% DECLARATIONS OF ALL PHYSICS VARIABLES (will need to be moved to a Physics Registry shared by the
+% hydrostatic and non-hydrostatic dynamical cores):
+%==================================================================================================
 
-#... NAMELIST VARIABLES ADDED FOR INITIALIZATION OF SURFACE CHARACTERISTICS:
+%... NAMELIST VARIABLES ADDED FOR INITIALIZATION OF SURFACE CHARACTERISTICS:
 namelist character physics  input_landuse_data          USGS
 namelist character physics  input_soil_data             STAS
 namelist integer   physics  input_soil_temperature_lag   140
 namelist integer   physics  num_soil_layers                4
 namelist integer   physics  months                        12
 
-#... NAMELIST VARIABLE NEEDED FOR THE TIME MANAGER:
+%... NAMELIST VARIABLE NEEDED FOR THE TIME MANAGER:
 dim nMonths namelist:months
 
-#... DIMENSION NEEDED FOR NUMBER OF SOIL LAYERS:
+%... DIMENSION NEEDED FOR NUMBER OF SOIL LAYERS:
 dim nSoilLevels namelist:num_soil_layers
 
-#... DIMENSION NEEDED FOR UPDATING THE DEEP SOIL TEMPERATURE:
+%... DIMENSION NEEDED FOR UPDATING THE DEEP SOIL TEMPERATURE:
 dim nLags namelist:input_soil_temperature_lag 
 
-#... DIMENSION NEEDED FOR OZONE AND AEROSOLS CONCENTRATIONS IN THE CAM LONGWAVE AND SHORTWAVE
-#... RADIATION PARAMETERIZATIONS.
-# noznlev : number of CAM radiation input ozone levels.
-# naerlev : number of CAM radiation input aerosol levels.
+%... DIMENSION NEEDED FOR OZONE AND AEROSOLS CONCENTRATIONS IN THE CAM LONGWAVE AND SHORTWAVE
+%... RADIATION PARAMETERIZATIONS.
+% noznlev : number of CAM radiation input ozone levels.
+% naerlev : number of CAM radiation input aerosol levels.
 
 namelist integer   physics  noznlev                       59
 namelist integer   physics  naerlev                       29
@@ -322,11 +322,11 @@ dim nOznLevels     namelist:noznlev
 dim nAerLevels     namelist:naerlev
 dim cam_dim1       namelist:cam_dim1
 
-#... DIMENSION NEEDED FOR LONGWAVE AND SHORTWAVE RADIATION FLUXES TO INCLUDE AN ADDITIONAL LAYER
-#... BETWEEN THE TOP OF THE MODEL AND THE TOP OF THE ATMOSPHERE
+%... DIMENSION NEEDED FOR LONGWAVE AND SHORTWAVE RADIATION FLUXES TO INCLUDE AN ADDITIONAL LAYER
+%... BETWEEN THE TOP OF THE MODEL AND THE TOP OF THE ATMOSPHERE
 dim nVertLevelsP2 nVertLevels+2
 
-#... NAMELIST VARIABLES ADDED FOR PHYSICS CONFIGURATION:
+%... NAMELIST VARIABLES ADDED FOR PHYSICS CONFIGURATION:
 namelist logical   physics  config_frac_seaice          false
 namelist logical   physics  config_sfc_albedo           false
 namelist logical   physics  config_sst_update           false
@@ -363,16 +363,16 @@ namelist character physics  config_sfclayer_scheme        off
 var persistent real    east       ( R3 nCells               ) 0  r   east          mesh         - -
 var persistent real    north      ( R3 nCells               ) 0  r   north         mesh         - -
 
-#--------------------------------------------------------------------------------------------------
-#... ARRAYS AND VARIABLES FOR UPDATING THE DEEP SOIL TEMPERATURE:
-#--------------------------------------------------------------------------------------------------
+%--------------------------------------------------------------------------------------------------
+%... ARRAYS AND VARIABLES FOR UPDATING THE DEEP SOIL TEMPERATURE:
+%--------------------------------------------------------------------------------------------------
 
-# nsteps_accum: number of accumulated time-step in a day.
-# ndays_accum : number of accumulated days in a year.
-# tlag        : daily mean surface temperature of prior days                                    [K]
-# tday_accum  : accumulated daily surface temperature for current day                           [K]
-# tyear_mean  : annual mean surface temperature                                                 [K]
-# tyear_accum : accumulated yearly surface temperature for current year                         [K]
+% nsteps_accum: number of accumulated time-step in a day.
+% ndays_accum : number of accumulated days in a year.
+% tlag        : daily mean surface temperature of prior days                                    [K]
+% tday_accum  : accumulated daily surface temperature for current day                           [K]
+% tyear_mean  : annual mean surface temperature                                                 [K]
+% tyear_accum : accumulated yearly surface temperature for current year                         [K]
 
 var persistent integer nsteps_accum ( nCells Time           ) 1  r  nsteps_accum   diag_physics - -
 var persistent integer ndays_accum  ( nCells Time           ) 1  r  ndays_accum    diag_physics - -
@@ -382,17 +382,17 @@ var persistent real    tday_accum   ( nCells Time           ) 1  r  tday_accum  
 var persistent real    tyear_mean   ( nCells Time           ) 1  r  tyear_mean     diag_physics - -
 var persistent real    tyear_accum  ( nCells Time           ) 1  r  tyear_accum    diag_physics - -
 
-#--------------------------------------------------------------------------------------------------
-#... PARAMETERIZATION OF CLOUD MICROPHYSICS:
-#--------------------------------------------------------------------------------------------------
+%--------------------------------------------------------------------------------------------------
+%... PARAMETERIZATION OF CLOUD MICROPHYSICS:
+%--------------------------------------------------------------------------------------------------
 
-# rainnc    : accumulated total time-step grid-scale precipitation                             (mm)
-# rainncv   : time-step total grid-scale precipitation                                         (mm)
-# snownc    : accumulated grid-scale precipitation of snow                                     (mm)
-# snowncv   : time-step grid-scale precipitation of snow                                       (mm)
-# graupelnc : accumulated grid-scale precipitation of graupel                                  (mm)
-# graupelncv: time-step grid-scale precipitation of graupel                                    (mm)
-# sr        : time-step ratio of frozen versus total grid-scale precipitation                   (-)
+% rainnc    : accumulated total time-step grid-scale precipitation                             (mm)
+% rainncv   : time-step total grid-scale precipitation                                         (mm)
+% snownc    : accumulated grid-scale precipitation of snow                                     (mm)
+% snowncv   : time-step grid-scale precipitation of snow                                       (mm)
+% graupelnc : accumulated grid-scale precipitation of graupel                                  (mm)
+% graupelncv: time-step grid-scale precipitation of graupel                                    (mm)
+% sr        : time-step ratio of frozen versus total grid-scale precipitation                   (-)
 
 var persistent real    sr         ( nCells Time             ) 1  ro sr             diag_physics - -
 var persistent real    rainncv    ( nCells Time             ) 1  ro rainncv        diag_physics - -
@@ -406,21 +406,21 @@ var persistent real    graupelnc  ( nCells Time             ) 1  ro graupelnc   
 var persistent real    qsat       ( nVertLevels nCells Time ) 1  o  qsat           diag_physics - -
 var persistent real    relhum     ( nVertLevels nCells Time ) 1  o  relhum         diag_physics - -
 
-#--------------------------------------------------------------------------------------------------
-#... PARAMETERIZATION OF CONVECTION:
-#--------------------------------------------------------------------------------------------------
+%--------------------------------------------------------------------------------------------------
+%... PARAMETERIZATION OF CONVECTION:
+%--------------------------------------------------------------------------------------------------
 
-# cubot     : lowest level of convection                                                        (-)
-# cutop     : highest level of convection                                                       (-)
-# cuprec    : convective precipitation rate                                                  (mm/s)
-# rainc     : accumulated time-step convective precipitation                                   (mm)
-# raincv    : time-step convective precipitation                                               (mm)
-# rthcuten  : tendency of potential temperature due to cumulus convection                   (K s-1)
-# rqvcuten  : tendency of water vapor mixing ratio due to cumulus convection            (kg/kg s-1)
-# rqccuten  : tendency of cloud water mixing ratio due to cumulus convection            (kg/kg s-1)
-# rqrcuten  : tendency of rain mixing ratio due to cumulus convection                   (kg/kg s-1)
-# rqicuten  : tendency of cloud ice mixing ratio due to cumulus convection              (kg/kg s-1)
-# rqscuten  : tendency of snow mixing ratio due to cumulus convection                   (kg/kg s-1)
+% cubot     : lowest level of convection                                                        (-)
+% cutop     : highest level of convection                                                       (-)
+% cuprec    : convective precipitation rate                                                  (mm/s)
+% rainc     : accumulated time-step convective precipitation                                   (mm)
+% raincv    : time-step convective precipitation                                               (mm)
+% rthcuten  : tendency of potential temperature due to cumulus convection                   (K s-1)
+% rqvcuten  : tendency of water vapor mixing ratio due to cumulus convection            (kg/kg s-1)
+% rqccuten  : tendency of cloud water mixing ratio due to cumulus convection            (kg/kg s-1)
+% rqrcuten  : tendency of rain mixing ratio due to cumulus convection                   (kg/kg s-1)
+% rqicuten  : tendency of cloud ice mixing ratio due to cumulus convection              (kg/kg s-1)
+% rqscuten  : tendency of snow mixing ratio due to cumulus convection                   (kg/kg s-1)
 
 var persistent real    cubot    ( nCells Time              ) 1  ro cubot           diag_physics - -
 var persistent real    cutop    ( nCells Time              ) 1  ro cutop           diag_physics - -
@@ -435,32 +435,32 @@ var persistent real    rqrcuten ( nVertLevels nCells Time  ) 1  ro rqrcuten     
 var persistent real    rqicuten ( nVertLevels nCells Time  ) 1  ro rqicuten        tend_physics - -
 var persistent real    rqscuten ( nVertLevels nCells Time  ) 1  ro rqscuten        tend_physics - -
 
-#... KAIN_FRITSCH ONLY:
-# nca       : relaxation time for KF parameterization of convection                             (s)
-# wavg0     : average vertical velocity (KF scheme only)                                    (m s-1)
+%... KAIN_FRITSCH ONLY:
+% nca       : relaxation time for KF parameterization of convection                             (s)
+% wavg0     : average vertical velocity (KF scheme only)                                    (m s-1)
 
 var persistent real    nca      ( nCells Time              ) 1  ro nca             diag_physics - -
 var persistent real    w0avg    ( nVertLevels nCells Time  ) 1  ro w0avg           diag_physics - -
 
-#--------------------------------------------------------------------------------------------------
-#... PARAMETERIZATION OF PLANETARY BOUNDARY LAYER PROCESSES:
-#--------------------------------------------------------------------------------------------------
+%--------------------------------------------------------------------------------------------------
+%... PARAMETERIZATION OF PLANETARY BOUNDARY LAYER PROCESSES:
+%--------------------------------------------------------------------------------------------------
 
-# kpbl      : index of PBL top                                                                  (-)
-# hpbl      : PBL height                                                                        (m)
-# exch_h    : exchange coefficient                                                              (-)
-# rublten   : tendency of zonal wind due to pbl processes                                   (m s-1)
-# rvblten   : tendency of meridional wind due to pbl processes                              (m s-1)
-# rthblten  : tendency of potential temperature due to pbl processes                        (K s-1)
-# rqvblten  : tendency of water vapor mixing ratio due to pbl processes                 (kg/kg s-1)
-# rqcblten  : tendency of cloud water mixing ratio due to pbl processes                 (kg/kg s-1)
-# rqiblten  : tendency of cloud ice mixing ratio due to pbl processes                   (kg/kg s-1)
+% kpbl      : index of PBL top                                                                  (-)
+% hpbl      : PBL height                                                                        (m)
+% exch_h    : exchange coefficient                                                              (-)
+% rublten   : tendency of zonal wind due to pbl processes                                   (m s-1)
+% rvblten   : tendency of meridional wind due to pbl processes                              (m s-1)
+% rthblten  : tendency of potential temperature due to pbl processes                        (K s-1)
+% rqvblten  : tendency of water vapor mixing ratio due to pbl processes                 (kg/kg s-1)
+% rqcblten  : tendency of cloud water mixing ratio due to pbl processes                 (kg/kg s-1)
+% rqiblten  : tendency of cloud ice mixing ratio due to pbl processes                   (kg/kg s-1)
 
 var persistent integer kpbl     ( nCells Time               ) 1  ro kpbl           diag_physics - - 
 var persistent real    hpbl     ( nCells Time               ) 1  ro hpbl           diag_physics - - 
 var persistent real    exch_h   ( nVertLevels nCells Time   ) 1   o exch_h         diag_physics - -
 
-#    TENDENCIES:
+%    TENDENCIES:
 var persistent real    rublten  ( nVertLevels nCells Time   ) 1  ro rublten        tend_physics - -
 var persistent real    rvblten  ( nVertLevels nCells Time   ) 1  ro rvblten        tend_physics - -
 var persistent real    rthblten ( nVertLevels nCells Time   ) 1  ro rthblten       tend_physics - -
@@ -468,44 +468,44 @@ var persistent real    rqvblten ( nVertLevels nCells Time   ) 1  ro rqvblten    
 var persistent real    rqcblten ( nVertLevels nCells Time   ) 1  ro rqcblten       tend_physics - -
 var persistent real    rqiblten ( nVertLevels nCells Time   ) 1  ro rqiblten       tend_physics - -
 
-#--------------------------------------------------------------------------------------------------
-#... PARAMETERIZATION OF SURFACE LAYER PROCESSES:
-#--------------------------------------------------------------------------------------------------
+%--------------------------------------------------------------------------------------------------
+%... PARAMETERIZATION OF SURFACE LAYER PROCESSES:
+%--------------------------------------------------------------------------------------------------
 
-# br        :bulk richardson number                                                             [-]
-# cd        :drag coefficient at 10m                                                            [-]
-# cda       :drag coefficient at lowest model level                                             [-]
-# chs       :???
-# chs2      :???
-# cqs2      :???
-# ck        :enthalpy exchange coefficient at 10 m                                              [-]
-# cka       :enthalpy exchange coefficient at lowest model level                                [-]
-# cpm       :???
-# flhc      :exchange coefficient for heat                                                      [-]
-# flqc      :exchange coefficient for moisture                                                  [-]
-# gz1oz0    :log of z1 over z0                                                                  [-]
-# hfx       :upward heat flux at the surface                                               [W/m2/s]
-# lh        :latent heat flux at the surface                                                 [W/m2]
-# mavail    :surface moisture availability                                                      [-]
-# mol       :T* in similarity theory                                                            [K]
-# psih      :similarity theory for heat                                                         [-]
-# psim      :similarity theory for momentum                                                     [-]
-# qfx       :upward moisture flux at the surface                                          [kg/m2/s]
-# qgh       :???
-# qsfc      :specific humidity at lower boundary                                            [kg/kg]
-# regime    :flag indicating PBL regime (stable_p,unstable_p,etc...)                            [-]
-# rmol      :1 / Monin Ob length                                                                [-]
-# ust       :u* in similarity theory                                                          [m/s]
-# ustm      :u* in similarity theory without vconv                                            [m/s]
-# zol       :z/L height over Monin-Obukhov length                                               [-]
-# znt       :time-varying roughness length                                                      [m]
-# wspd      :wind speed                                                                       [m/s]
-# DIAGNOSTICS:
-# q2        :specific humidity at 2m                                                        [kg/kg]
-# u10       :u at 10 m                                                                        [m/s]
-# v10       :v at 10 m                                                                        [m/s]
-# t2m       :temperature at 2m                                                                  [K]
-# th2m      :potential temperature at 2m                                                        [K]
+% br        :bulk richardson number                                                             [-]
+% cd        :drag coefficient at 10m                                                            [-]
+% cda       :drag coefficient at lowest model level                                             [-]
+% chs       :???
+% chs2      :???
+% cqs2      :???
+% ck        :enthalpy exchange coefficient at 10 m                                              [-]
+% cka       :enthalpy exchange coefficient at lowest model level                                [-]
+% cpm       :???
+% flhc      :exchange coefficient for heat                                                      [-]
+% flqc      :exchange coefficient for moisture                                                  [-]
+% gz1oz0    :log of z1 over z0                                                                  [-]
+% hfx       :upward heat flux at the surface                                               [W/m2/s]
+% lh        :latent heat flux at the surface                                                 [W/m2]
+% mavail    :surface moisture availability                                                      [-]
+% mol       :T* in similarity theory                                                            [K]
+% psih      :similarity theory for heat                                                         [-]
+% psim      :similarity theory for momentum                                                     [-]
+% qfx       :upward moisture flux at the surface                                          [kg/m2/s]
+% qgh       :???
+% qsfc      :specific humidity at lower boundary                                            [kg/kg]
+% regime    :flag indicating PBL regime (stable_p,unstable_p,etc...)                            [-]
+% rmol      :1 / Monin Ob length                                                                [-]
+% ust       :u* in similarity theory                                                          [m/s]
+% ustm      :u* in similarity theory without vconv                                            [m/s]
+% zol       :z/L height over Monin-Obukhov length                                               [-]
+% znt       :time-varying roughness length                                                      [m]
+% wspd      :wind speed                                                                       [m/s]
+% DIAGNOSTICS:
+% q2        :specific humidity at 2m                                                        [kg/kg]
+% u10       :u at 10 m                                                                        [m/s]
+% v10       :v at 10 m                                                                        [m/s]
+% t2m       :temperature at 2m                                                                  [K]
+% th2m      :potential temperature at 2m                                                        [K]
 
 var persistent real    hfx      ( nCells Time               ) 1  ro hfx            diag_physics - -
 var persistent real    mavail   ( nCells Time               ) 1  ro mavail         diag_physics - -
@@ -536,34 +536,34 @@ var persistent real    qgh      ( nCells Time               ) 1  ro qgh         
 var persistent real    regime   ( nCells Time               ) 1  ro regime         diag_physics - -
 var persistent real    rmol     ( nCells Time               ) 1  ro rmol           diag_physics - -
 var persistent real    wspd     ( nCells Time               ) 1  ro wspd           diag_physics - -
-# DIAGNOSTICS:
+% DIAGNOSTICS:
 var persistent real    u10      ( nCells Time               ) 1  ro u10            diag_physics - -
 var persistent real    v10      ( nCells Time               ) 1  ro v10            diag_physics - -
 var persistent real    q2       ( nCells Time               ) 1  ro q2             diag_physics - -
 var persistent real    t2m      ( nCells Time               ) 1  ro t2m            diag_physics - -
 var persistent real    th2m     ( nCells Time               ) 1  ro th2m           diag_physics - -
 
-#--------------------------------------------------------------------------------------------------
-#... PARAMETERIZATION OF SHORTWAVE RADIATION:
-#--------------------------------------------------------------------------------------------------
+%--------------------------------------------------------------------------------------------------
+%... PARAMETERIZATION OF SHORTWAVE RADIATION:
+%--------------------------------------------------------------------------------------------------
 
-# coszr     :cosine of the solar zenith angle                                                   [-]
+% coszr     :cosine of the solar zenith angle                                                   [-]
 
-# gsw       :net shortwave flux at surface                                                  [W m-2]
-# swcf      :shortwave cloud forcing at top-of-atmosphere                                   [W m-2]
-# swdnb     :all-sky downwelling shortwave flux at bottom-of-atmosphere                     [J m-2]
-# swdnbc    :clear-sky downwelling shortwave flux at bottom-of-atmosphere                   [J m-2]
-# swdnt     :all-sky downwelling shortwave flux at top-of-atmosphere                        [J m-2]
-# swdntc    :clear-sky downwelling shortwave flux at top-of-atmosphere                      [J m-2] 
-# swupb     :all-sky upwelling shortwave flux at bottom-of-atmosphere                       [J m-2]
-# swupbc    :clear-sky upwelling shortwave flux at bottom-of-atmosphere                     [J m-2]
-# swupt     :all-sky upwelling shortwave flux at top-of-atmosphere                          [J m-2]
-# swuptc    :clear-sky upwelling shortwave flux at top-of-atmosphere                        [J m-2]
-# swdnflx   :
-# swdnflxc  :
-# swupflx   :
-# swupflxc  :
-# rthratensw:uncoupled theta tendency due to shortwave radiation                            [K s-1]
+% gsw       :net shortwave flux at surface                                                  [W m-2]
+% swcf      :shortwave cloud forcing at top-of-atmosphere                                   [W m-2]
+% swdnb     :all-sky downwelling shortwave flux at bottom-of-atmosphere                     [J m-2]
+% swdnbc    :clear-sky downwelling shortwave flux at bottom-of-atmosphere                   [J m-2]
+% swdnt     :all-sky downwelling shortwave flux at top-of-atmosphere                        [J m-2]
+% swdntc    :clear-sky downwelling shortwave flux at top-of-atmosphere                      [J m-2] 
+% swupb     :all-sky upwelling shortwave flux at bottom-of-atmosphere                       [J m-2]
+% swupbc    :clear-sky upwelling shortwave flux at bottom-of-atmosphere                     [J m-2]
+% swupt     :all-sky upwelling shortwave flux at top-of-atmosphere                          [J m-2]
+% swuptc    :clear-sky upwelling shortwave flux at top-of-atmosphere                        [J m-2]
+% swdnflx   :
+% swdnflxc  :
+% swupflx   :
+% swupflxc  :
+% rthratensw:uncoupled theta tendency due to shortwave radiation                            [K s-1]
 
 var persistent real    coszr      ( nCells Time               ) 1   o coszr        diag_physics - -
 var persistent real    swcf       ( nCells Time               ) 1   o swcf         diag_physics - -
@@ -579,37 +579,37 @@ var persistent real    gsw        ( nCells Time               ) 1  ro gsw       
 
 var persistent real    rthratensw ( nVertLevels nCells Time   ) 1  ro rthratensw   tend_physics - -
 
-#... RRTMG SW ONLY:
+%... RRTMG SW ONLY:
 var persistent real    swdnflx    ( nVertLevelsP2 nCells Time ) 1   o swdnflx      diag_physics - -
 var persistent real    swdnflxc   ( nVertLevelsP2 nCells Time ) 1   o swdnflxc     diag_physics - -
 var persistent real    swupflx    ( nVertLevelsP2 nCells Time ) 1   o swupflx      diag_physics - -
 var persistent real    swupflxc   ( nVertLevelsP2 nCells Time ) 1   o swupflxc     diag_physics - -
 
-#--------------------------------------------------------------------------------------------------
-#... PARAMETERIZATION OF LONGWAVE RADIATION:
-#--------------------------------------------------------------------------------------------------
+%--------------------------------------------------------------------------------------------------
+%... PARAMETERIZATION OF LONGWAVE RADIATION:
+%--------------------------------------------------------------------------------------------------
 
-# note: glw is the same diagnostic as lwdnb and is used in the land-surface scheme for the calcula-
-#       tion of the surface budget. glw is always an output argument to the subroutine rrtmg_lwrad.
-#       in contrast,lwdnb is an optional ouput argument to the subroutine rrtmg_lwrad depending on
-#       the presence of lwupt (or not).
+% note: glw is the same diagnostic as lwdnb and is used in the land-surface scheme for the calcula-
+%       tion of the surface budget. glw is always an output argument to the subroutine rrtmg_lwrad.
+%       in contrast,lwdnb is an optional ouput argument to the subroutine rrtmg_lwrad depending on
+%       the presence of lwupt (or not).
 
-# glw       :all-sky downwelling longwave flux at bottom-of-atmosphere                      [W m-2]
-# lwcf      :longwave cloud forcing at top-of-atmosphere                                    [W m-2]
-# lwdnb     :all-sky downwelling longwave flux at bottom-of-atmosphere                      [W m-2]
-# lwdnbc    :clear-sky downwelling longwave flux at bottom-of-atmosphere                    [W m-2]
-# lwdnt     :all-sky downwelling longwave flux at top-of-atmosphere                         [W m-2]
-# lwdntc    :clear-sky downwelling longwave flux at top-of-atmosphere                       [W m-2]
-# lwupb     :all-sky upwelling longwave flux at bottom-of-atmosphere                        [W m-2]
-# lwupbc    :clear-sky upwelling longwave flux at bottom-of-atmosphere                      [W m-2]
-# lwupt     :all-sky upwelling longwave flux at top-of-atmosphere                           [W m-2]
-# lwuptc    :clear-sky upwelling longwave flux at top-of-atmosphere                         [W m-2]
-# lwdnflx   :
-# lwdnflxc  :
-# lwupflx   :
-# lwupflxc  :
-# olrtoa    :outgoing longwave radiation at top-of-the-atmosphere                           [W m-2]
-# rthratenlw:uncoupled theta tendency due to longwave radiation                             [K s-1]
+% glw       :all-sky downwelling longwave flux at bottom-of-atmosphere                      [W m-2]
+% lwcf      :longwave cloud forcing at top-of-atmosphere                                    [W m-2]
+% lwdnb     :all-sky downwelling longwave flux at bottom-of-atmosphere                      [W m-2]
+% lwdnbc    :clear-sky downwelling longwave flux at bottom-of-atmosphere                    [W m-2]
+% lwdnt     :all-sky downwelling longwave flux at top-of-atmosphere                         [W m-2]
+% lwdntc    :clear-sky downwelling longwave flux at top-of-atmosphere                       [W m-2]
+% lwupb     :all-sky upwelling longwave flux at bottom-of-atmosphere                        [W m-2]
+% lwupbc    :clear-sky upwelling longwave flux at bottom-of-atmosphere                      [W m-2]
+% lwupt     :all-sky upwelling longwave flux at top-of-atmosphere                           [W m-2]
+% lwuptc    :clear-sky upwelling longwave flux at top-of-atmosphere                         [W m-2]
+% lwdnflx   :
+% lwdnflxc  :
+% lwupflx   :
+% lwupflxc  :
+% olrtoa    :outgoing longwave radiation at top-of-the-atmosphere                           [W m-2]
+% rthratenlw:uncoupled theta tendency due to longwave radiation                             [K s-1]
 
 var persistent real    lwcf       ( nCells Time               ) 1   o lwcf         diag_physics - -
 var persistent real    lwdnb      ( nCells Time               ) 1   o lwdnb        diag_physics - -
@@ -625,30 +625,30 @@ var persistent real    glw        ( nCells Time               ) 1  ro glw       
 
 var persistent real    rthratenlw ( nVertLevels nCells Time   ) 1  ro rthratenlw   tend_physics - -
 
-#... RRTMG LW ONLY:
-#var persistent real   lwdnflx    ( nVertLevelsP2 nCells Time ) 1   o lwdnflx      diag_physics - -
-#var persistent real   lwdnflxc   ( nVertLevelsP2 nCells Time ) 1   o lwdnflxc     diag_physics - -
-#var persistent real   lwupflx    ( nVertLevelsP2 nCells Time ) 1   o lwupflx      diag_physics - -
-#var persistent real   lwupflxc   ( nVertLevelsP2 nCells Time ) 1   o lwupflxc     diag_physics - -
+%... RRTMG LW ONLY:
+%var persistent real   lwdnflx    ( nVertLevelsP2 nCells Time ) 1   o lwdnflx      diag_physics - -
+%var persistent real   lwdnflxc   ( nVertLevelsP2 nCells Time ) 1   o lwdnflxc     diag_physics - -
+%var persistent real   lwupflx    ( nVertLevelsP2 nCells Time ) 1   o lwupflx      diag_physics - -
+%var persistent real   lwupflxc   ( nVertLevelsP2 nCells Time ) 1   o lwupflxc     diag_physics - -
 
-#--------------------------------------------------------------------------------------------------
-#... ADDITIONAL "RADIATION" ARRAYS NEEDED ONLY IN THE "CAM" LW AND SW RADIATION CODES:
-#--------------------------------------------------------------------------------------------------
+%--------------------------------------------------------------------------------------------------
+%... ADDITIONAL "RADIATION" ARRAYS NEEDED ONLY IN THE "CAM" LW AND SW RADIATION CODES:
+%--------------------------------------------------------------------------------------------------
 
-#INFRARED ABSORPTION:
+%INFRARED ABSORPTION:
 var persistent real absnxt  ( nVertLevels   cam_dim1      nCells Time ) 1 - absnxt diag_physics - -
 var persistent real abstot  ( nVertLevelsP1 nVertLevelsP1 nCells Time ) 1 - abstot diag_physics - -
 var persistent real emstot  ( nVertLevelsP1 nCells Time               ) 1 - emstot diag_physics - -
 
-# OZONE:
+% OZONE:
 var persistent real    pin      ( nOznLevels nCells         ) 0 -  pin       mesh  - -
 var persistent real    ozmixm   ( nMonths nOznLevels nCells ) 0 -  ozmixm    mesh  - -
 
-# AEROSOLS:
+% AEROSOLS:
 var persistent real    m_hybi   ( nAerLevels nCells         ) 0 -  m_hybi    mesh  - -  
 
 var persistent real    m_ps     ( nCells Time               ) 2 -  m_ps      state - -
-#var persistent real   dummy    ( nAerLevels nCells Time    ) 2 -  dummy     state aerosols aer_cam
+%var persistent real   dummy    ( nAerLevels nCells Time    ) 2 -  dummy     state aerosols aer_cam
 var persistent real    sul      ( nAerLevels nCells Time    ) 2 -  sul       state aerosols aer_cam
 var persistent real    sslt     ( nAerLevels nCells Time    ) 2 -  sslt      state aerosols aer_cam
 var persistent real    dust1    ( nAerLevels nCells Time    ) 2 -  dust1     state aerosols aer_cam
@@ -662,43 +662,43 @@ var persistent real    bcphi    ( nAerLevels nCells Time    ) 2 -  bcphi     sta
 var persistent real    bg       ( nAerLevels nCells Time    ) 2 -  bg        state aerosols aer_cam
 var persistent real    volc     ( nAerLevels nCells Time    ) 2 -  volc      state aerosols aer_cam
 
-#--------------------------------------------------------------------------------------------------
-#... PARAMERIZATION OF CLOUDINESS:
-#--------------------------------------------------------------------------------------------------
+%--------------------------------------------------------------------------------------------------
+%... PARAMERIZATION OF CLOUDINESS:
+%--------------------------------------------------------------------------------------------------
 
-# cldfrac   :cloud fraction                                                                     [-]
+% cldfrac   :cloud fraction                                                                     [-]
 
 var persistent real    cldfrac    ( nVertLevels nCells Time ) 1   o cldfrac        diag_physics - -
 
-#--------------------------------------------------------------------------------------------------
-#... PARAMETERIZATION OF LAND-SURFACE SCHEME:
-#--------------------------------------------------------------------------------------------------
+%--------------------------------------------------------------------------------------------------
+%... PARAMETERIZATION OF LAND-SURFACE SCHEME:
+%--------------------------------------------------------------------------------------------------
 
-# acsnom         :accumulated melted snow                                                  [kg m-2]
-# acsnow         :accumulated snow                                                         [kg m-2]
-# canwat         :canopy water                                                             [kg m-2]
-# chklowq        :surface saturation flag                                                       [-]
-# grdflx         :ground heat flux                                                          [W m-2]
-# lai            :leaf area index                                                               [-]
-# noahres        :residual of the noah land-surface scheme energy budget                    [W m-2]
-# potevp         :potential evaporation                                                     [W m-2]
-# qz0            :specific humidity at znt                                                [kg kg-1]
-# rib            :??
-# sfc_albedo     :surface albedo                                                                [-]
-# sfc_embck      :background emissivity                                                         [-]
-# sfc_emiss      :surface emissivity                                                            [-]
-# sfcrunoff      :surface runoff                                                            [m s-1]
-# smstav         :moisture availability                                                         [-]
-# smstot         :total moisture                                                           [m3 m-3]
-# snopcx         :snow phase change heat flux                                               [W m-2]
-# snotime        :??
-# sstsk          : skin sea-surface temperature                                                [K]
-# sstsk_diur     : skin sea-surface temperature difference                                     [K]
-# thc            :thermal inertia                                              [Cal cm-1 K-1 s-0.5]
-# udrunoff       :sub-surface runoff                                                        [m s-1]
-# xicem          :ice mask from previous time-step                                              [-]
-# z0             :background roughness length                                                   [m]
-# zs             :depth of centers of soil layers                                               [m]
+% acsnom         :accumulated melted snow                                                  [kg m-2]
+% acsnow         :accumulated snow                                                         [kg m-2]
+% canwat         :canopy water                                                             [kg m-2]
+% chklowq        :surface saturation flag                                                       [-]
+% grdflx         :ground heat flux                                                          [W m-2]
+% lai            :leaf area index                                                               [-]
+% noahres        :residual of the noah land-surface scheme energy budget                    [W m-2]
+% potevp         :potential evaporation                                                     [W m-2]
+% qz0            :specific humidity at znt                                                [kg kg-1]
+% rib            :??
+% sfc_albedo     :surface albedo                                                                [-]
+% sfc_embck      :background emissivity                                                         [-]
+% sfc_emiss      :surface emissivity                                                            [-]
+% sfcrunoff      :surface runoff                                                            [m s-1]
+% smstav         :moisture availability                                                         [-]
+% smstot         :total moisture                                                           [m3 m-3]
+% snopcx         :snow phase change heat flux                                               [W m-2]
+% snotime        :??
+% sstsk          : skin sea-surface temperature                                                [K]
+% sstsk_diur     : skin sea-surface temperature difference                                     [K]
+% thc            :thermal inertia                                              [Cal cm-1 K-1 s-0.5]
+% udrunoff       :sub-surface runoff                                                        [m s-1]
+% xicem          :ice mask from previous time-step                                              [-]
+% z0             :background roughness length                                                   [m]
+% zs             :depth of centers of soil layers                                               [m]
 
 var persistent real    acsnom     ( nCells Time             ) 1  ro acsnom         diag_physics - -
 var persistent real    acsnow     ( nCells Time             ) 1  ro acsnow         diag_physics - -
@@ -726,36 +726,36 @@ var persistent real    xicem      ( nCells Time             ) 1  ro xicem       
 var persistent real    z0         ( nCells Time             ) 1  ro z0             diag_physics - -   
 var persistent real    zs         ( nCells Time             ) 1  ro zs             diag_physics - -   
 
-#--------------------------------------------------------------------------------------------------
-#... SURFACE CHARACTERISTICS THAT NEED TO BE READ FROM GRID.NC:
-#--------------------------------------------------------------------------------------------------
+%--------------------------------------------------------------------------------------------------
+%... SURFACE CHARACTERISTICS THAT NEED TO BE READ FROM GRID.NC:
+%--------------------------------------------------------------------------------------------------
 
-# albedo12m      :monthly climatological albedo                                                 [-]
-# greenfrac      :monthly climatological greeness fraction                                      [-]                             
-# isltyp         :dominant soil category                                                        [-]
-# ivgtyp         :dominant vegetation category                                                  [-]
-# landmask       :=0 for ocean;=1 for land                                                      [-]
-# sfc_albbck     :background albedo                                                             [-]
-# shdmin         :minimum areal fractional coverage of annual green vegetation                  [-]
-# shdmax         :maximum areal fractional coverage of annual green vegetation                  [-]
-# skintemp       :skin temperature                                                              [K]
-# snoalb         :annual max snow albedo                                                        [-]
-# snow           :snow water equivalent                                                    [kg m-2]
-# sst            :sea-surface temperature                                                       [K]
-# snowc          :flag indicating snow coverage (1 for snow cover)                              [-]
-# snowh          :physical snow depth                                                           [m]
-# ter            :terrain height                                                                [-]
-# tmn            :soil temperature at lower boundary                                            [K]
-# vegfra         :vegetation fraction                                                           [-]
-# seaice         :sea-ice mask (=1 when xice is greater than 0; =0 otherwise)                   [-]
-# xice           :fractional sea-ice coverage                                                   [-]
-# xland          :land mask    (1 for land; 2 for water)                                        [-]
+% albedo12m      :monthly climatological albedo                                                 [-]
+% greenfrac      :monthly climatological greeness fraction                                      [-]                             
+% isltyp         :dominant soil category                                                        [-]
+% ivgtyp         :dominant vegetation category                                                  [-]
+% landmask       :=0 for ocean;=1 for land                                                      [-]
+% sfc_albbck     :background albedo                                                             [-]
+% shdmin         :minimum areal fractional coverage of annual green vegetation                  [-]
+% shdmax         :maximum areal fractional coverage of annual green vegetation                  [-]
+% skintemp       :skin temperature                                                              [K]
+% snoalb         :annual max snow albedo                                                        [-]
+% snow           :snow water equivalent                                                    [kg m-2]
+% sst            :sea-surface temperature                                                       [K]
+% snowc          :flag indicating snow coverage (1 for snow cover)                              [-]
+% snowh          :physical snow depth                                                           [m]
+% ter            :terrain height                                                                [-]
+% tmn            :soil temperature at lower boundary                                            [K]
+% vegfra         :vegetation fraction                                                           [-]
+% seaice         :sea-ice mask (=1 when xice is greater than 0; =0 otherwise)                   [-]
+% xice           :fractional sea-ice coverage                                                   [-]
+% xland          :land mask    (1 for land; 2 for water)                                        [-]
 
-# dzs            :thickness of soil layers                                                      [m]
-# smcrel         :soil moisture threshold below which transpiration begins to stress            [-]
-# sh2o           :soil liquid water                                                        [m3 m-3]
-# smois          :soil moisture                                                            [m3 m-3]
-# tslb           :soil temperature                                                              [K]
+% dzs            :thickness of soil layers                                                      [m]
+% smcrel         :soil moisture threshold below which transpiration begins to stress            [-]
+% sh2o           :soil liquid water                                                        [m3 m-3]
+% smois          :soil moisture                                                            [m3 m-3]
+% tslb           :soil temperature                                                              [K]
 
 var persistent integer isltyp     ( nCells                   ) 0 iro isltyp        sfc_input    - -
 var persistent integer ivgtyp     ( nCells                   ) 0 iro ivgtyp        sfc_input    - -
@@ -785,4 +785,4 @@ var persistent real    sh2o       ( nSoilLevels nCells Time  ) 1 iro sh2o       
 var persistent real    smois      ( nSoilLevels nCells Time  ) 1 iro smois         sfc_input    - -
 var persistent real    tslb       ( nSoilLevels nCells Time  ) 1 iro tslb          sfc_input    - -
 
-#==================================================================================================
+%==================================================================================================
