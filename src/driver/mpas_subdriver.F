@@ -19,14 +19,13 @@ module mpas_subdriver
       real (kind=RKIND) :: dt
       character(len=32) :: timeStamp
 
-      call mpas_timer_start("total time")
-      call mpas_timer_start("initialize")
-
       !
       ! Initialize infrastructure
       !
       call mpas_framework_init(dminfo, domain)
 
+      call mpas_timer_start("total time")
+      call mpas_timer_start("initialize")
 
       call mpas_input_state_for_domain(domain)
 
