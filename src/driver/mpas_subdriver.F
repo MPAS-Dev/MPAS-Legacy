@@ -22,7 +22,6 @@ module mpas_subdriver
       call mpas_timer_start("total time")
       call mpas_timer_start("initialize")
 
-
       !
       ! Initialize infrastructure
       !

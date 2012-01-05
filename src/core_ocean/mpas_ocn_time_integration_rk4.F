@@ -316,6 +316,7 @@ module ocn_time_integration_rk4
             !
 
             call ocn_tracer_vmix_tend_implicit(block % mesh, dt, vertdifftopofcell, h, tracers, err)
+            call mpas_timer_stop("RK4-implicit vert mix")
          end if
 
          ! mrp 110725 momentum decay term

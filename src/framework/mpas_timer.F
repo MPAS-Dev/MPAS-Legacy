@@ -1,6 +1,7 @@
       module mpas_timer
 
-        use mpas_kind_types
+        use mpas_grid_types
+        use mpas_dmpar
 
         implicit none
         save
@@ -10,9 +11,9 @@
         include 'f90papi.h'
 #endif
 
-#ifdef _MPI
-        include 'mpif.h'
-#endif
+!#ifdef _MPI
+!        include 'mpif.h'
+!#endif
 
         type timer_node
           character (len=72) :: timer_name
@@ -20,15 +21,19 @@
           integer :: levels, calls
           real (kind=RKIND) :: start_time, end_time, total_time
           real (kind=RKIND) :: max_time, min_time, avg_time
+          real (kind=RKIND) :: efficiency
           type (timer_node), pointer :: next
         end type timer_node
 
         type (timer_node), pointer :: all_timers
-        integer :: levels
+        integer :: levels, synced
+
+        type (dm_info), pointer :: domain_info
 
         public :: mpas_timer_start, &
                   mpas_timer_stop, &
-                  mpas_timer_write
+                  mpas_timer_write, &
+                  mpas_timer_init
 
         contains
 
@@ -87,6 +92,7 @@
               current%min_time = 100000000.0
               current%avg_time = 0.0
               current%calls = 0
+              current%efficiency = 0.0
             else
               current => timer_ptr
             endif
@@ -114,6 +120,7 @@
             current%min_time = 100000000.0
             current%avg_time = 0.0
             current%calls = 0
+            current%efficiency = 0.0
           endif
 
           if((timer_added .or. timer_found) .and. (.not.current%running)) then
@@ -232,6 +239,10 @@
 
           total_found = .false.
 
+          if(associated(domain_info) .and. synced == 0) then
+            call mpas_timer_sync()
+          endif
+
           if(present(timer_ptr) .and. (.not.present(total_ptr))) then
             print *,'timer_write :: timer_ptr valid, but total_ptr is not assigned.'
             stop
@@ -253,7 +264,7 @@
               percent = timer_ptr%total_time/total_ptr%total_time
             endif
 
-            write(*,'(i2, 1x, a35, f15.5, i10, 3f15.5, f8.2)') timer_ptr%levels, tname(1:timer_ptr%levels)//timer_ptr%timer_name, timer_ptr%total_time, timer_ptr%calls, timer_ptr%min_time, timer_ptr%max_time, timer_ptr%avg_time, percent
+            write(*,'(i2, 1x, a35, f15.5, i10, 3f15.5, 2f8.2)') timer_ptr%levels, tname(1:timer_ptr%levels)//timer_ptr%timer_name, timer_ptr%total_time, timer_ptr%calls, timer_ptr%min_time, timer_ptr%max_time, timer_ptr%avg_time, percent, timer_ptr%efficiency
             return
           endif
 
@@ -273,7 +284,7 @@
             stop
           end if
 
-          write(*,'(3x, a10, 24x, a15, a10, a13, a15, a15, a15)') 'timer_name', 'total', 'calls', 'min', 'max', 'avg', 'percent'
+          write(*,'(3x, a10, 24x, a15, a10, a13, a15, a15, a12, a12)') 'timer_name', 'total', 'calls', 'min', 'max', 'avg', 'percent', 'efficiency'
           write(*,'(i2, 1x, a35, f15.5, i10, 3f15.5)') total%levels, total%timer_name, total%total_time, total%calls, total%min_time, total%max_time, total%avg_time
 
           current => all_timers
@@ -291,6 +302,57 @@
           end do print_timers
 
         end subroutine mpas_timer_write!}}}
+
+        subroutine mpas_timer_init(domain)!{{{
+          type (domain_type), intent(in), optional :: domain
+
+          if( present(domain) ) then
+              domain_info => domain % dminfo
+          endif
+
+          synced = 0
+
+        end subroutine mpas_timer_init!}}}
+
+        subroutine mpas_timer_sync()!{{{
+          type (timer_node), pointer :: current
+          real (kind=RKIND) :: all_total_time, all_max_time, all_min_time, all_ave_time
+
+          current => all_timers
+
+          sync_timers: do while(associated(current))
+            all_total_time = 0.0
+            all_ave_time = 0.0
+            all_max_time = 0.0
+            all_min_time = 0.0
+
+            call mpas_dmpar_max_real(domain_info, current % total_time, all_total_time)
+            call mpas_dmpar_sum_real(domain_info, current % total_time, all_ave_time)
+            
+            all_ave_time = all_ave_time / domain_info % nprocs
+
+            current % total_time = all_total_time
+
+#ifdef _MPI
+            current % efficiency = all_ave_time / all_total_time
+#else
+            current % efficiency = 1.0
+#endif
+
+            current % avg_time = current % total_time / current % calls
+
+            call mpas_dmpar_max_real(domain_info, current % max_time, all_max_time)
+            current % max_time = all_max_time
+
+            call mpas_dmpar_min_real(domain_info, current % min_time, all_min_time)
+            current % min_time = all_min_time
+
+            current => current % next
+          end do sync_timers
+
+          synced = 1
+
+        end subroutine mpas_timer_sync!}}}
 
       end module mpas_timer
 

@@ -3,10 +3,10 @@ module mpas_core
    use mpas_framework
    use mpas_timekeeping
    use mpas_dmpar
+   use mpas_timer
+
    use ocn_test_cases
-
    use ocn_time_integration
-
    use ocn_tendency
 
    use ocn_vel_pressure_grad
@@ -78,6 +78,8 @@ module mpas_core
 
       call ocn_equation_of_state_init(err_tmp)
       err = ior(err, err_tmp)
+
+      call mpas_timer_init(domain)
 
       if(err.eq.1) then
           call mpas_dmpar_abort(dminfo)
