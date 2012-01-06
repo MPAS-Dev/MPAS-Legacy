@@ -41,7 +41,8 @@ OBJS = mpas_ocn_mpas_core.o \
 	   mpas_ocn_equation_of_state.o \
 	   mpas_ocn_equation_of_state_jm.o \
 	   mpas_ocn_equation_of_state_linear.o \
-       mpas_ocn_global_diagnostics.o
+       mpas_ocn_global_diagnostics.o \
+	   mpas_ocn_time_average.o
 
 
 all: core_hyd
@@ -59,9 +60,11 @@ mpas_ocn_time_integration_rk4.o:
 
 mpas_ocn_time_integration_split.o:
 
-mpas_ocn_tendency.o:
+mpas_ocn_tendency.o: mpas_ocn_time_average.o
 
 mpas_ocn_global_diagnostics.o: 
+
+mpas_ocn_time_average.o:
 
 mpas_ocn_thick_hadv.o:
 
@@ -172,7 +175,8 @@ mpas_ocn_mpas_core.o: mpas_ocn_mpas_core.o \
 					  mpas_ocn_equation_of_state.o \
 					  mpas_ocn_equation_of_state_jm.o \
 					  mpas_ocn_equation_of_state_linear.o \
-					  mpas_ocn_global_diagnostics.o
+					  mpas_ocn_global_diagnostics.o \
+					  mpas_ocn_time_average.o
 
 clean:
 	$(RM) *.o *.mod *.f90 libdycore.a

@@ -24,7 +24,8 @@ module ocn_time_integration_rk4
    use ocn_tendency
 
    use ocn_equation_of_state
-   use ocn_Vmix
+   use ocn_vmix
+   use ocn_time_average
 
    implicit none
    private
@@ -355,6 +356,8 @@ module ocn_time_integration_rk4
                           block % state % time_levs(2) % state % uReconstructZonal % array,        &
                           block % state % time_levs(2) % state % uReconstructMeridional % array    &
                          )
+
+         call ocn_time_average_accumulate(block % state % time_levs(2) % state, block % state % time_levs(1) % state)
 
          block => block % next
       end do

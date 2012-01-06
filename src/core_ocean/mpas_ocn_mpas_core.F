@@ -23,6 +23,8 @@ module mpas_core
 
    use ocn_vmix
 
+   use ocn_time_average
+
    type (io_output_object) :: restart_obj
 
    integer :: current_outfile_frames
@@ -209,6 +211,7 @@ module mpas_core
       real (kind=RKIND), intent(in) :: dt
       integer :: i, iEdge, iCell, k
    
+      call ocn_time_average_init(block % state % time_levs(1) % state)
    
       call ocn_diagnostic_solve(dt, block % state % time_levs(1) % state, mesh)
 
@@ -301,6 +304,12 @@ module mpas_core
       write(0,*) 'Initial time ', timeStamp
 
       call write_output_frame(output_obj, output_frame, domain)
+      block_ptr => domain % blocklist
+
+      do while(associated(block_ptr))
+        call ocn_time_average_init(block_ptr % state % time_levs(1) % state)
+        block_ptr => block_ptr % next
+      end do
 
       ! During integration, time level 1 stores the model state at the beginning of the
       !   time step, and time level 2 stores the state advanced dt in time by timestep(...)
@@ -328,7 +337,18 @@ module mpas_core
                call mpas_output_state_finalize(output_obj, domain % dminfo)
                call mpas_output_state_init(output_obj, domain, "OUTPUT", trim(timeStamp))
             end if
+
+            block_ptr => domain % blocklist
+            do while (associated(block_ptr))
+                call ocn_time_average_normalize(block_ptr % state % time_levs(1) % state)
+                block_ptr => block_ptr % next
+            end do
             call write_output_frame(output_obj, output_frame, domain)
+            block_ptr => domain % blocklist
+            do while (associated(block_ptr))
+                call ocn_time_average_init(block_ptr % state % time_levs(1) % state)
+                block_ptr => block_ptr % next
+            end do
          end if
 
          if (mpas_is_alarm_ringing(clock, restartAlarmID, ierr=ierr)) then

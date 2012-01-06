@@ -27,7 +27,7 @@ module ocn_time_integration_split
 
    use ocn_equation_of_state
    use ocn_vmix
-
+   use ocn_time_average
 
    implicit none
    private
@@ -1250,6 +1250,8 @@ subroutine ocn_time_integrator_split(domain, dt)!{{{
                           block % state % time_levs(2) % state % uReconstructZonal % array,        &
                           block % state % time_levs(2) % state % uReconstructMeridional % array    &
                          )
+
+         call ocn_time_average_accumulate(block % state % time_levs(2) % state, block % state % time_levs(1) % state)
 
          block => block % next
       end do

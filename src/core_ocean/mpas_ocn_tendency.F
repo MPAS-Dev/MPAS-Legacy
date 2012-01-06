@@ -38,6 +38,8 @@ module ocn_tendency
    use ocn_equation_of_state
    use ocn_vmix
 
+   use ocn_time_average
+
    implicit none
    private
    save
