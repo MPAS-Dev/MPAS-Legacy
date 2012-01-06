@@ -280,7 +280,7 @@ var persistent integer nAdvCellsForEdge ( nEdges ) 0 - nAdvCellsForEdge mesh - -
 % Space needed for deformation calculation weights
 var persistent real    defc_a ( maxEdges nCells ) 0 iro defc_a mesh - -
 var persistent real    defc_b ( maxEdges nCells ) 0 iro defc_b mesh - -
-var persistent real    kdiff ( nVertLevels nCells Time ) 2 - kdiff diag - -
+var persistent real    kdiff ( nVertLevels nCells Time ) 1 - kdiff diag - -
 
 % Arrays required for reconstruction of velocity field
 var persistent real    coeffs_reconstruct ( R3 maxEdges nCells ) 0 iro coeffs_reconstruct mesh - -
