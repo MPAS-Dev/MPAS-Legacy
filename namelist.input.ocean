@@ -48,8 +48,6 @@
    config_visc_vorticity_term = .true.
    config_h_tracer_eddy_diff2 = 1.0e4
    config_h_tracer_eddy_diff4 = 0.0
-   config_mom_decay      = .false.
-   config_mom_decay_time = 3600.0
 /
 &vmix
    config_vert_visc_type  = 'rich'

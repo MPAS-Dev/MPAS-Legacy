@@ -1217,26 +1217,6 @@ subroutine ocn_time_integrator_split(domain, dt)!{{{
             call ocn_tracer_vmix_tend_implicit(block % mesh, dt, vertdifftopofcell, h, tracers, err)
          end if
 
-         ! mrp 110725 adding momentum decay term
-         if (config_mom_decay) then
-
-            !
-            !  Implicit solve for momentum decay
-            !
-            !  Add term to RHS of momentum equation: -1/gamma u
-            !
-            !  This changes the solve to:
-            !  u^{n+1} = u_provis^{n+1}/(1+dt/gamma)
-            !
-            coef = 1.0/(1.0 + dt/config_mom_decay_time)
-            do iEdge=1,block % mesh % nEdges
-               do k=1,maxLevelEdgeTop(iEdge)
-                  u(k,iEdge) = coef*u(k,iEdge) 
-               end do
-            end do
-
-         end if
-
          if (config_test_case == 1) then    ! For case 1, wind field should be fixed
             block % state % time_levs(2) % state % u % array(:,:) = block % state % time_levs(1) % state % u % array(:,:)
          end if

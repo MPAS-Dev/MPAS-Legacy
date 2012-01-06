@@ -38,7 +38,7 @@ namelist real      split_explicit_ts config_btr_gam1_uWt1    0.5
 namelist real      split_explicit_ts config_btr_gam2_SSHWt1  1.0
 namelist real      split_explicit_ts config_btr_gam3_uWt2    1.0
 namelist logical   split_explicit_ts config_btr_solve_SSH2   false
-namelist logical   sw_model config_h_ScaleWithMesh     false
+namelist logical   hmix     config_h_ScaleWithMesh     false
 namelist real      hmix     config_h_mom_eddy_visc2     0.0
 namelist real      hmix     config_h_mom_eddy_visc4     0.0
 namelist logical   hmix     config_visc_vorticity_term true
@@ -48,8 +48,8 @@ namelist logical   hmix     config_include_KE_vertex false
 namelist real      hmix     config_h_tracer_eddy_diff2  0.0
 namelist real      hmix     config_h_tracer_eddy_diff4  0.0
 namelist real      hmix     config_apvm_upwinding       0.5
-namelist logical   hmix     config_mom_decay            false 
-namelist real      hmix     config_mom_decay_time       3600.0
+namelist logical   hmix     config_rayleigh_friction    false
+namelist real      hmix     config_rayleigh_damping_coeff 0.0
 namelist character vmix     config_vert_visc_type       const
 namelist character vmix     config_vert_diff_type       const
 namelist logical   vmix     config_implicit_vertical_mix  .true.

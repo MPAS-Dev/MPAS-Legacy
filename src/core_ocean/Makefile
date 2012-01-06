@@ -13,6 +13,7 @@ OBJS = mpas_ocn_mpas_core.o \
 	   mpas_ocn_vel_forcing.o \
 	   mpas_ocn_vel_forcing_windstress.o \
 	   mpas_ocn_vel_forcing_bottomdrag.o \
+	   mpas_ocn_vel_forcing_rayleigh.o \
 	   mpas_ocn_vel_pressure_grad.o \
 	   mpas_ocn_tracer_vadv.o \
 	   mpas_ocn_tracer_vadv_spline.o \
@@ -43,7 +44,6 @@ OBJS = mpas_ocn_mpas_core.o \
 	   mpas_ocn_equation_of_state_linear.o \
        mpas_ocn_global_diagnostics.o \
 	   mpas_ocn_time_average.o
-
 
 all: core_hyd
 
@@ -80,11 +80,13 @@ mpas_ocn_vel_hmix_del2.o:
 
 mpas_ocn_vel_hmix_del4.o:
 
-mpas_ocn_vel_forcing.o: mpas_ocn_vel_forcing_windstress.o mpas_ocn_vel_forcing_bottomdrag.o
+mpas_ocn_vel_forcing.o: mpas_ocn_vel_forcing_windstress.o mpas_ocn_vel_forcing_bottomdrag.o mpas_ocn_vel_forcing_rayleigh.o
 
 mpas_ocn_vel_forcing_windstress.o:
 
-mpas_ocn_velforcing_bottomdrag.o:
+mpas_ocn_vel_forcing_bottomdrag.o:
+
+mpas_ocn_vel_forcing_rayleigh.o:
 
 mpas_ocn_vel_coriolis.o:
 

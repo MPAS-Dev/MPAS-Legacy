@@ -1,25 +1,21 @@
 !|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
 !
-!  ocn_vel_forcing
+!  ocn_vel_forcing_rayleigh
 !
-!> \brief MPAS ocean forcing driver
-!> \author Doug Jacobsen
-!> \date   16 September 2011
+!> \brief MPAS ocean Rayleigh Friction (to be used to smooth "shocks" from cold starts)
+!> \author Todd Ringler
+!> \date   5 January 2012
 !> \version SVN:$Id:$
 !> \details
-!>  This module contains the main driver routine for computing 
-!>  tendencies from forcings.  
+!>  This module contains the routine for computing 
+!>  tendencies based on linear Rayleigh friction.
 !
 !-----------------------------------------------------------------------
 
-module ocn_vel_forcing
+module ocn_vel_forcing_rayleigh
 
    use mpas_grid_types
    use mpas_configure
-
-   use ocn_vel_forcing_windstress
-   use ocn_vel_forcing_bottomdrag
-   use ocn_vel_forcing_rayleigh
 
    implicit none
    private
@@ -37,14 +33,17 @@ module ocn_vel_forcing
    !
    !--------------------------------------------------------------------
 
-   public :: ocn_vel_forcing_tend, &
-             ocn_vel_forcing_init
+   public :: ocn_vel_forcing_rayleigh_tend, &
+             ocn_vel_forcing_rayleigh_init
 
    !--------------------------------------------------------------------
    !
    ! Private module variables
    !
    !--------------------------------------------------------------------
+
+   logical :: rayleighFrictionOn
+   real (kind=RKIND) :: rayleighDampingCoef
 
 
 !***********************************************************************
@@ -53,23 +52,19 @@ contains
 
 !***********************************************************************
 !
-!  routine ocn_vel_forcing_tend
+!  ocn_vel_forcing_rayleigh_tend
 !
-!> \brief   Computes tendency term from forcings
-!> \author  Doug Jacobsen
-!> \date    15 September 2011
+!> \brief   Computes tendency term from Rayleigh friction
+!> \author  Todd Ringler
+!> \date    5 January 2012
 !> \version SVN:$Id$
 !> \details 
-!>  This routine computes the forcing tendency for momentum
-!>  based on current state and user choices of forcings.
-!>  Multiple forcings may be chosen and added together.  These
-!>  tendencies are generally computed by calling the specific routine
-!>  for the chosen forcing, so this routine is primarily a
-!>  driver for managing these choices.
+!>  This routine computes the Rayleigh friction tendency for momentum
+!>  based on current state.
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_vel_forcing_tend(grid, u, u_src, ke_edge, h_edge, tend, err)!{{{
+   subroutine ocn_vel_forcing_rayleigh_tend(grid, u, tend, err)!{{{
 
       !-----------------------------------------------------------------
       !
@@ -78,16 +73,7 @@ contains
       !-----------------------------------------------------------------
 
       real (kind=RKIND), dimension(:,:), intent(in) :: &
-         u    !< Input: velocity
-
-      real (kind=RKIND), dimension(:,:), intent(in) :: &
-         u_src     !< Input: wind stress
-
-      real (kind=RKIND), dimension(:,:), intent(in) :: &
-         ke_edge     !< Input: kinetic energy at edge
-
-      real (kind=RKIND), dimension(:,:), intent(in) :: &
-         h_edge     !< Input: thickness at edge
+         u    !< Input: velocity 
 
       type (mesh_type), intent(in) :: &
          grid          !< Input: grid information
@@ -115,7 +101,8 @@ contains
       !
       !-----------------------------------------------------------------
 
-      integer :: err1, err2, err3
+      integer :: iEdge, nEdgesSolve, k
+      integer, dimension(:), pointer :: maxLevelEdgeTop
 
       !-----------------------------------------------------------------
       !
@@ -125,34 +112,41 @@ contains
       !
       !-----------------------------------------------------------------
 
-      call ocn_vel_forcing_windstress_tend(grid, u_src, h_edge, tend, err1)
-      call ocn_vel_forcing_bottomdrag_tend(grid, u, ke_edge, h_edge, tend, err2)
-      call ocn_vel_forcing_rayleigh_tend(grid, u, tend, err3)
+      err = 0
 
-      err = ior(err1, err2)
-      err = ior(err, err3)
+      if(.not.rayleighFrictionOn) return
+
+      nEdgesSolve = grid % nEdgesSolve
+      maxLevelEdgeTop => grid % maxLevelEdgeTop % array
+
+      do iEdge=1,nEdgesSolve
+        do k=1,maxLevelEdgeTop(iEdge)
+
+           tend(k,iEdge) = tend(k,iEdge) - rayleighDampingCoef * u(k,iEdge)
+
+        enddo
+      enddo
+
 
    !--------------------------------------------------------------------
 
-   end subroutine ocn_vel_forcing_tend!}}}
+   end subroutine ocn_vel_forcing_rayleigh_tend!}}}
 
 !***********************************************************************
 !
-!  routine ocn_vel_forcing_init
+!  ocn_vel_forcing_rayleigh_init
 !
-!> \brief   Initializes ocean forcings
-!> \author  Doug Jacobsen
-!> \date    16 September 2011
+!> \brief   Initializes ocean Rayleigh friction
+!> \author  Todd Ringler
+!> \date    5 January 2012
 !> \version SVN:$Id$
 !> \details 
-!>  This routine initializes quantities related to forcings 
-!>  in the ocean. Since a multiple forcings are available, 
-!>  this routine primarily calls the
-!>  individual init routines for each forcing. 
+!>  This routine initializes quantities related to 
+!>  in the ocean. 
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_vel_forcing_init(err)!{{{
+   subroutine ocn_vel_forcing_rayleigh_init(err)!{{{
 
    !--------------------------------------------------------------------
 
@@ -164,22 +158,23 @@ contains
 
       integer, intent(out) :: err !< Output: error flag
 
-      integer :: err1, err2, err3
 
-      call ocn_vel_forcing_windstress_init(err1)
-      call ocn_vel_forcing_bottomdrag_init(err2)
-      call ocn_vel_forcing_rayleigh_init(err3)
+      err = 0
 
-      err = ior(err1, err2)
-      err = ior(err, err3)
+      rayleighDampingCoef = 0.0
+
+      if (config_rayleigh_friction) then
+          rayleighFrictionOn = .true.
+          rayleighDampingCoef = config_rayleigh_damping_coeff
+      endif
 
    !--------------------------------------------------------------------
 
-   end subroutine ocn_vel_forcing_init!}}}
+   end subroutine ocn_vel_forcing_rayleigh_init!}}}
 
 !***********************************************************************
 
-end module ocn_vel_forcing
+end module ocn_vel_forcing_rayleigh
 
 !|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
 ! vim: foldmethod=marker
