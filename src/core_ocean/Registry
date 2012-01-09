@@ -207,13 +207,13 @@ var persistent real   uBtr ( nEdges Time )         2 -  uBtr state - -
 var persistent real   ssh ( nCells Time )          2 o  ssh state - - 
 var persistent real   uBtrSubcycle ( nEdges Time ) 2 -  uBtrSubcycle state - -
 var persistent real   sshSubcycle ( nCells Time )  2 -  sshSubcycle state - - 
-var persistent real   FBtr ( nEdges Time )         1 -  FBtr state - - 
-var persistent real   GBtrForcing ( nEdges Time )  1 -  GBtrForcing state - -
+var persistent real   FBtr ( nEdges Time )         2 -  FBtr state - - 
+var persistent real   GBtrForcing ( nEdges Time )  2 -  GBtrForcing state - -
 var persistent real   uBcl ( nVertLevels nEdges Time )  2 - uBcl state - - 
-var persistent real   circulationBtr ( nVertices Time ) 1 - circulationBtr state - -
-var persistent real   divergenceBtr ( nCells Time ) 1 - divergenceBtr state - -
-var persistent real   vorticityBtr ( nVertices Time ) 1 - vorticityBtr state - -
-var persistent real   u_diffusionBtr ( nEdges Time ) 1 - u_diffusionBtr state - -
+var persistent real   circulationBtr ( nVertices Time ) 2 - circulationBtr state - -
+var persistent real   divergenceBtr ( nCells Time ) 2 - divergenceBtr state - -
+var persistent real   vorticityBtr ( nVertices Time ) 2 - vorticityBtr state - -
+var persistent real   u_diffusionBtr ( nEdges Time ) 2 - u_diffusionBtr state - -
 
 % Diagnostic fields: only written to output
 var persistent real    v ( nVertLevels nEdges Time ) 2 - v state - -
@@ -259,12 +259,12 @@ var persistent real    RiTopOfEdge ( nVertLevelsP1 nEdges Time ) 1 - RiTopOfEdge
 var persistent real    vertViscTopOfEdge ( nVertLevelsP1 nEdges Time ) 1 - vertViscTopOfEdge diagnostics - -
 var persistent real    vertDiffTopOfCell ( nVertLevelsP1 nCells Time ) 1 - vertDiffTopOfCell diagnostics - -
 
-var persistent real    nAccumulate ( Time ) 1 o nAccumulate state - -
-var persistent real    acc_ssh ( nCells Time ) 1 o acc_ssh state - -
-var persistent real    acc_sshVar ( nCells Time ) 1 o acc_sshVar state - -
-var persistent real    acc_uReconstructZonal ( nVertLevels nCells Time ) 1 o acc_uReconstructZonal state - -
-var persistent real    acc_uReconstructMeridional ( nVertLevels nCells Time ) 1 o acc_uReconstructMeridional state - -
-var persistent real    acc_uReconstructZonalVar ( nVertLevels nCells Time ) 1 o acc_uReconstructZonalVar state - -
-var persistent real    acc_uReconstructMeridionalVar ( nVertLevels nCells Time ) 1 o acc_uReconstructMeridionalVar state - -
-var persistent real	   acc_u ( nVertLevels nEdges Time ) 1 o acc_u state - -
-var persistent real	   acc_uVar ( nVertLevels nEdges Time ) 1 o acc_uVar state - -
+var persistent real    nAccumulate ( Time ) 2 o nAccumulate state - -
+var persistent real    acc_ssh ( nCells Time ) 2 o acc_ssh state - -
+var persistent real    acc_sshVar ( nCells Time ) 2 o acc_sshVar state - -
+var persistent real    acc_uReconstructZonal ( nVertLevels nCells Time ) 2 o acc_uReconstructZonal state - -
+var persistent real    acc_uReconstructMeridional ( nVertLevels nCells Time ) 2 o acc_uReconstructMeridional state - -
+var persistent real    acc_uReconstructZonalVar ( nVertLevels nCells Time ) 2 o acc_uReconstructZonalVar state - -
+var persistent real    acc_uReconstructMeridionalVar ( nVertLevels nCells Time ) 2 o acc_uReconstructMeridionalVar state - -
+var persistent real	   acc_u ( nVertLevels nEdges Time ) 2 o acc_u state - -
+var persistent real	   acc_uVar ( nVertLevels nEdges Time ) 2 o acc_uVar state - -
