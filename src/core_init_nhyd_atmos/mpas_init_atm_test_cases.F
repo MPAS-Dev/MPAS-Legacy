@@ -5,10 +5,12 @@ module init_atm_test_cases
    use mpas_constants
    use mpas_dmpar
    use atm_advection
-   use mpas_sort
-   use mpas_timekeeping
-
    use mpas_atmphys_initialize_real
+
+   ! Added only clause to keep xlf90 from getting confused from the overloaded abs intrinsic in mpas_timekeeping
+   use mpas_timekeeping !, only: MPAS_Time_type, MPAS_TimeInterval_type, MPAS_Clock_type, &
+                        !        mpas_set_time, mpas_set_timeInterval, mpas_get_time, operator(+), add_t_ti
+   
 
 
    contains
@@ -30,17 +32,9 @@ module init_atm_test_cases
       integer :: i
       type (block_type), pointer :: block_ptr
 
-      if (config_test_case == 0) then
-         write(0,*) ' Using initial conditions from input file'
-         block_ptr => domain % blocklist
-         do while (associated(block_ptr))
-            do i=2,nTimeLevs
-               call mpas_copy_state(block_ptr % state % time_levs(i) % state, block_ptr % state % time_levs(1) % state)
-            end do
-            block_ptr => block_ptr % next
-         end do
 
-      else if ((config_test_case == 1) .or. (config_test_case == 2) .or. (config_test_case == 3)) then
+      if ((config_test_case == 1) .or. (config_test_case == 2) .or. (config_test_case == 3)) then
+
          write(0,*) ' Jablonowski and Williamson baroclinic wave test case '
          if (config_test_case == 1) write(0,*) ' no initial perturbation '
          if (config_test_case == 2) write(0,*) ' initial perturbation included '
@@ -49,11 +43,8 @@ module init_atm_test_cases
          do while (associated(block_ptr))
             write(0,*) ' calling test case setup '
             call init_atm_test_case_jw(block_ptr % mesh, block_ptr % state % time_levs(1) % state, block_ptr % diag, config_test_case)
+            call decouple_variables(block_ptr % mesh, block_ptr % state % time_levs(1) % state, block_ptr % diag)
             write(0,*) ' returned from test case setup '
-            do i=2,nTimeLevs
-               call mpas_copy_state(block_ptr % state % time_levs(i) % state, block_ptr % state % time_levs(1) % state)
-            end do
-
             block_ptr => block_ptr % next
          end do
 
@@ -66,11 +57,8 @@ module init_atm_test_cases
          do while (associated(block_ptr))
             write(0,*) ' calling test case setup '
             call init_atm_test_case_squall_line(domain % dminfo, block_ptr % mesh, block_ptr % state % time_levs(1) % state, block_ptr % diag, config_test_case)
+            call decouple_variables(block_ptr % mesh, block_ptr % state % time_levs(1) % state, block_ptr % diag)
             write(0,*) ' returned from test case setup '
-            do i=2,nTimeLevs
-               call mpas_copy_state(block_ptr % state % time_levs(i) % state, block_ptr % state % time_levs(1) % state)
-            end do
-
             block_ptr => block_ptr % next
          end do
 
@@ -81,11 +69,8 @@ module init_atm_test_cases
          do while (associated(block_ptr))
             write(0,*) ' calling test case setup '
             call init_atm_test_case_mtn_wave(block_ptr % mesh, block_ptr % state % time_levs(1) % state, block_ptr % diag, config_test_case)
+            call decouple_variables(block_ptr % mesh, block_ptr % state % time_levs(1) % state, block_ptr % diag)
             write(0,*) ' returned from test case setup '
-            do i=2,nTimeLevs
-               call mpas_copy_state(block_ptr % state % time_levs(i) % state, block_ptr % state % time_levs(1) % state)
-            end do
-
             block_ptr => block_ptr % next
          end do
 
@@ -98,11 +83,6 @@ module init_atm_test_cases
                                     block_ptr % diag, config_test_case, block_ptr % parinfo)
             if(config_physics_init) &
                call physics_initialize_real(block_ptr % mesh, block_ptr % fg)
-
-            do i=2,nTimeLevs
-               call mpas_copy_state(block_ptr % state % time_levs(i) % state, block_ptr % state % time_levs(1) % state)
-            end do
-
             block_ptr => block_ptr % next
          end do
 
@@ -113,19 +93,34 @@ module init_atm_test_cases
          do while (associated(block_ptr))
             call init_atm_test_case_sst(domain, domain % dminfo, block_ptr % mesh, block_ptr % fg, block_ptr % state % time_levs(1) % state, &
                                     block_ptr % diag, config_test_case, block_ptr % parinfo)
-            do i=2,nTimeLevs
-               call mpas_copy_state(block_ptr % state % time_levs(i) % state, block_ptr % state % time_levs(1) % state)
-            end do
-
             block_ptr => block_ptr % next
          end do
 
       else
 
-
-         write(0,*) ' Only test case 1, 2, 3, 4, 5, 6, and 7 are currently supported for nonhydrostatic core '
+         write(0,*) ' Only test cases 1, 2, 3, 4, 5, 6, 7, and 8 are currently supported for nonhydrostatic core '
          stop
+
       end if
+
+      block_ptr => domain % blocklist
+      do while (associated(block_ptr))
+         do i=2,nTimeLevs
+            call mpas_copy_state(block_ptr % state % time_levs(i) % state, block_ptr % state % time_levs(1) % state)
+         end do
+         block_ptr => block_ptr % next
+      end do
+
+      !initialization of surface input variables technically not needed to run our current set of
+      !idealized test cases:
+      if (config_test_case < 7)  then
+         block_ptr => domain % blocklist
+         do while (associated(block_ptr))
+            call physics_idealized_init(block_ptr % mesh, block_ptr % fg)
+            block_ptr => block_ptr % next
+         end do
+      endif
+
 
    end subroutine init_atm_setup_test_case
 
@@ -141,6 +136,7 @@ module init_atm_test_cases
       type (mesh_type), intent(inout) :: grid
       type (state_type), intent(inout) :: state
       type (diag_type), intent(inout) :: diag
+      !type (diag_physics_type), intent(inout) :: diag_physics
       integer, intent(in) :: test_case
 
       real (kind=RKIND), parameter :: u0 = 35.0
@@ -150,15 +146,22 @@ module init_atm_test_cases
       real (kind=RKIND), parameter :: u_perturbation = 1., pert_radius = 0.1, latitude_pert = 40., longitude_pert = 20.
       real (kind=RKIND), parameter :: theta_c = pii/4.0
       real (kind=RKIND), parameter :: lambda_c = 3.0*pii/2.0
-      real (kind=RKIND), parameter :: rh_max = 0.4       ! Maximum relative humidity
       real (kind=RKIND), parameter :: k_x = 9.           ! Normal mode wave number
 
       real (kind=RKIND), dimension(:), pointer :: rdzw, dzu, rdzu, fzm, fzp
+      real (kind=RKIND), dimension(:), pointer :: surface_pressure
       real (kind=RKIND), dimension(:,:), pointer :: zgrid, zx, zz, hx
       real (kind=RKIND), dimension(:,:), pointer :: pressure, ppb, pb, rho_zz, rb, rr, tb, rtb, p, pp, dss, t, rt
       real (kind=RKIND), dimension(:,:,:), pointer :: zf, zf3, zb, zb3
-      real (kind=RKIND), dimension(:,:,:), pointer :: scalars
       real (kind=RKIND), dimension(:,:,:), pointer :: deriv_two
+      
+!.. initialization of moisture:
+      integer:: index_qv
+      real (kind=RKIND),parameter :: rh_max = 0.40 ! Maximum relative humidity
+!      real (kind=RKIND),parameter :: rh_max = 0.70 ! Maximum relative humidity
+      real (kind=RKIND),dimension(grid % nVertLevels, grid % nCells) :: qsat, relhum
+      real (kind=RKIND),dimension(:,:,:),pointer:: scalars
+!.. end initialization of moisture.
 
       integer :: iCell, iCell1, iCell2 , iEdge, vtx1, vtx2, ivtx, i, k, nz, nz1, itr, itrp, cell1, cell2, nCellsSolve
 
@@ -176,8 +179,7 @@ module init_atm_test_cases
 
       real (kind=RKIND) :: r_earth, etavs, ztemp, zd, zt, dz, gam, delt, str
 
-      real (kind=RKIND), dimension(grid % nVertLevels, grid % nCells) :: rel_hum, temperature, qv
-      real (kind=RKIND) :: ptmp, es, qvs, xnutr, znut, ptemp
+      real (kind=RKIND) :: es, qvs, xnutr, znut, ptemp 
       integer :: iter
 
       real (kind=RKIND), dimension(grid % nVertLevels + 1 ) :: hyai, hybi, znu, znw, znwc, znwv, hyam, hybm
@@ -185,20 +187,23 @@ module init_atm_test_cases
 
       real (kind=RKIND), dimension(grid % nVertLevels + 1 ) :: sh, zw, ah
       real (kind=RKIND), dimension(grid % nVertLevels ) :: zu, dzw, rdzwp, rdzwm
-      real (kind=RKIND), dimension(grid % nVertLevels ) :: eta, etav, teta, ppi, tt
+      real (kind=RKIND), dimension(grid % nVertLevels ) :: eta, etav, teta, ppi, tt, temperature_1d
 
       real (kind=RKIND) :: d1, d2, d3, cf1, cf2, cf3, cof1, cof2, psurf
 
       !  storage for (lat,z) arrays for zonal velocity calculation
 
-      integer, parameter :: nlat=361
-      real (kind=RKIND), dimension(grid % nVertLevels + 1) :: zz_1d, zgrid_1d, hx_1d
+      logical, parameter :: rebalance = .true.
+      integer, parameter :: nlat=721
       real (kind=RKIND), dimension(grid % nVertLevels) :: flux_zonal
-      real (kind=RKIND), dimension(nlat, grid % nVertLevels) :: u_2d, etavs_2d
+      real (kind=RKIND), dimension(grid % nVertLevels + 1, nlat) :: zgrid_2d
+      real (kind=RKIND), dimension(grid % nVertLevels, nlat) :: u_2d, pp_2d, rho_2d, qv_2d, etavs_2d, zz_2d
+      real (kind=RKIND), dimension(grid % nVertLevels, nlat-1) :: zx_2d 
       real (kind=RKIND), dimension(nlat) :: lat_2d
-      real (kind=RKIND) :: dlat
+      real (kind=RKIND) :: dlat, hx_1d
       real (kind=RKIND) :: z_edge, z_edge3, d2fdx2_cell1, d2fdx2_cell2
 
+      logical, parameter :: moisture = .true.
       !
       ! Scale all distances and areas from a unit sphere to one with radius a
       !
@@ -259,12 +264,24 @@ module init_atm_test_cases
       t => state % theta_m % array      
       rt => diag % rtheta_p % array
 
-      scalars => state % scalars % array
+      surface_pressure => diag % surface_pressure % array
 
-      scalars(:,:,:) = 0.
+!.. initialization of moisture:
+      scalars => state % scalars % array
+      !qsat    => diag_physics % qsat % array
+      !relhum  => diag_physics % relhum % array
+      scalars(:,:,:) = 0.0
+      qsat(:,:)      = 0.0
+      relhum(:,:)    = 0.0
+      qv_2d(:,:)     = 0.0
+!.. end initialization of moisture.
+
+      surface_pressure(:) = 0.0
 
       call atm_initialize_advection_rk(grid) 
       call atm_initialize_deformation_weights(grid) 
+
+      index_qv = state % index_qv
 
       xnutr = 0.
       zd = 12000.
@@ -293,7 +310,7 @@ module init_atm_test_cases
 
       !     Metrics for hybrid coordinate and vertical stretching
 
-      str = 1.5
+      str = 1.8
       zt = 45000.
       dz = zt/float(nz1)
 
@@ -323,7 +340,7 @@ module init_atm_test_cases
  
             ah(k) = 1.-cos(.5*pii*(k-1)*dz/zt)**6
 !            ah(k) = 0.
-	    write(0,*) ' k, sh, zw, ah ',k,sh(k),zw(k),ah(k)			
+	    write(0,*) ' k, sh, zw, ah ',k,sh(k),zw(k),ah(k)
       end do
       do k=1,nz1
          dzw (k) = zw(k+1)-zw(k)
@@ -388,47 +405,43 @@ module init_atm_test_cases
         end do
       enddo
 
-      do k=1,nz1
-        write(0,*) ' k, zgrid(k,1),hx(k,1) ',k,zgrid(k,1),hx(k,1)
-      enddo
+      !do k=1,nz1
+      !  write(0,*) ' k, zgrid(k,1),hx(k,1) ',k,zgrid(k,1),hx(k,1)
+      !enddo
 
-      do k=1,nz1
-        write(0,*) ' k, zx(k,1) ',k,zx(k,1)
-      enddo
+      !do k=1,nz1
+      !  write(0,*) ' k, zx(k,1) ',k,zx(k,1)
+      !enddo
 
       write(0,*) ' grid metrics setup complete '
 
-!**************  section for 2d (lat,z) calc for zonal velocity
+!**************  section for 2d (z,lat) calc for zonal velocity
 
       dlat = 0.5*pii/float(nlat-1)
       do i = 1,nlat
 
         lat_2d(i) = float(i-1)*dlat
-!        write(0,*) ' zonal setup, latitude = ',lat_2d(i)*180./pii
-
-        do k=1,nz
-          phi = lat_2d(i)
-          hx_1d(k) = u0/gravity*cos(etavs)**1.5                            &
-                      *((-2.*sin(phi)**6                                   &
-                            *(cos(phi)**2+1./3.)+10./63.)                  &
-                            *(u0)*cos(etavs)**1.5                          &
-                       +(1.6*cos(phi)**3                                   &
-                            *(sin(phi)**2+2./3.)-pii/4.)*r_earth*omega_e)
-        enddo
+        phi = lat_2d(i)
+        hx_1d    = u0/gravity*cos(etavs)**1.5                           &
+                   *((-2.*sin(phi)**6                                   &
+                         *(cos(phi)**2+1./3.)+10./63.)                  &
+                         *(u0)*cos(etavs)**1.5                          &
+                    +(1.6*cos(phi)**3                                   &
+                         *(sin(phi)**2+2./3.)-pii/4.)*r_earth*omega_e)
 
         do k=1,nz	
-          zgrid_1d(k) = (1.-ah(k))*(sh(k)*(zt-hx_1d(k))+hx_1d(k))  &
+          zgrid_2d(k,i) = (1.-ah(k))*(sh(k)*(zt-hx_1d)+hx_1d)  &
                          + ah(k) * sh(k)* zt	
         end do
         do k=1,nz1
-          zz_1d (k) = (zw(k+1)-zw(k))/(zgrid_1d(k+1)-zgrid_1d(k))
+          zz_2d (k,i) = (zw(k+1)-zw(k))/(zgrid_2d(k+1,i)-zgrid_2d(k,i))
         end do
 
         do k=1,nz1
-          ztemp    = .5*(zgrid_1d(k+1)+zgrid_1d(k))
+          ztemp    = .5*(zgrid_2d(k+1,i)+zgrid_2d(k,i))
           ppb(k,i) = p0*exp(-gravity*ztemp/(rgas*t0b)) 
           pb (k,i) = (ppb(k,i)/p0)**(rgas/cp)
-          rb (k,i) = ppb(k,i)/(rgas*t0b*zz_1d(k))
+          rb (k,i) = ppb(k,i)/(rgas*t0b*zz_2d(k,i))
           tb (k,i) = t0b/pb(k,i)
           rtb(k,i) = rb(k,i)*tb(k,i)
           p  (k,i) = pb(k,i)
@@ -448,40 +461,43 @@ module init_atm_test_cases
               teta(k) = t0*eta(k)**(rgas*dtdz/gravity) + delta_t*(znut-eta(k))**5
             end if
           end do
-          ! phi = grid % latCell % array (i)
+
           phi = lat_2d (i)
           do k=1,nz1
-            tt(k) = 0.
-            tt(k) = teta(k)+.75*eta(k)*pii*u0/rgas*sin(etav(k))      &
+            temperature_1d(k) = teta(k)+.75*eta(k)*pii*u0/rgas*sin(etav(k))      &
                             *sqrt(cos(etav(k)))*                   &
                               ((-2.*sin(phi)**6                    &
                                    *(cos(phi)**2+1./3.)+10./63.)   &
                                    *2.*u0*cos(etav(k))**1.5        &
                               +(1.6*cos(phi)**3                    &
-                                *(sin(phi)**2+2./3.)-pii/4.)*r_earth*omega_e)
+                                *(sin(phi)**2+2./3.)-pii/4.)*r_earth*omega_e)/(1.+0.61*qv_2d(k,i))
 
 
-            ztemp   = .5*(zgrid_1d(k)+zgrid_1d(k+1))
+            ztemp   = .5*(zgrid_2d(k,i)+zgrid_2d(k+1,i))
             ptemp   = ppb(k,i) + pp(k,i)
-            qv(k,i) = 0.
 
+            !get moisture 
+            if (moisture) then
+              qv_2d(k,i) = env_qv( ztemp, temperature_1d(k), ptemp, rh_max )
+            end if
+
+            tt(k) = temperature_1d(k)*(1.+1.61*qv_2d(k,i))
           end do
-		
+
           do itrp = 1,25
             do k=1,nz1				
-              rr(k,i)  = (pp(k,i)/(rgas*zz_1d(k))  &
-                          -rb(k,i)*(tt(k)-t0b))/tt(k)
+              rr(k,i)  = (pp(k,i)/(rgas*zz_2d(k,i)) - rb(k,i)*(tt(k)-t0b))/tt(k)
             end do
 
-            ppi(1) = p0-.5*dzw(1)*gravity                         &
-                          *(1.25*(rr(1,i)+rb(1,i))*(1.+qv(1,i))   &
-                            -.25*(rr(2,i)+rb(2,i))*(1.+qv(2,i)))
+            ppi(1) = p0-.5*dzw(1)*gravity                            &
+                          *(1.25*(rr(1,i)+rb(1,i))*(1.+qv_2d(1,i))   &
+                            -.25*(rr(2,i)+rb(2,i))*(1.+qv_2d(2,i)))
 
             ppi(1) = ppi(1)-ppb(1,i)
             do k=1,nz1-1
-              ppi(k+1) = ppi(k)-.5*dzu(k+1)*gravity*                     &
-                            (rr(k  ,i)+(rr(k  ,i)+rb(k  ,i))*qv(k  ,i)   &
-                            +rr(k+1,i)+(rr(k+1,i)+rb(k+1,i))*qv(k+1,i))
+              ppi(k+1) = ppi(k)-.5*dzu(k+1)*gravity*                        &
+                            (rr(k  ,i)+(rr(k  ,i)+rb(k  ,i))*qv_2d(k  ,i)   &
+                            +rr(k+1,i)+(rr(k+1,i)+rb(k+1,i))*qv_2d(k+1,i))
             end do
 
             do k=1,nz1
@@ -493,20 +509,27 @@ module init_atm_test_cases
         end do  ! end outer iteration loop itr
 
         do k=1,nz1
-          etavs_2d(i,k) = (0.5*(ppb(k,i)+ppb(k,i)+pp(k,i)+pp(k,i))/p0 - 0.252)*pii/2.
-!          u_2d(i,k) = u0*(sin(2.*lat_2d(i))**2) *(cos(etavs_2d(i,k))**1.5)
-          u_2d(i,k) = u0*(sin(2.*lat_2d(i))**2) *(cos(etavs_2d(i,k))**1.5)*(rb(k,i)+rr(k,i))
+          rho_2d(k,i) = rr(k,i)+rb(k,i)
+          pp_2d(k,i) = pp(k,i)
+          etavs_2d(k,i) = ((ppb(k,i)+pp(k,i))/p0 - 0.252)*pii/2.
+          u_2d(k,i) = u0*(sin(2.*lat_2d(i))**2) *(cos(etavs_2d(k,i))**1.5)
         end do
 
       end do  ! end loop over latitudes for 2D zonal wind field calc
 
-!      do i=1,nlat
-!        do k=1,nz1
-!          u_2d(i,k) = u_2d(i,k) - u0*(sin(2.*lat_2d(i))**2) *(cos(etavs_2d(nlat/2,k))**1.5)
-!        end do
-!      end do
-!
-!      write(22,*) nz1,nlat,u_2d
+      !SHP-balance:: in case of rebalacing for geostrophic wind component
+      if (rebalance) then
+
+        do i=1,nlat-1
+          do k=1,nz1
+            zx_2d(k,i) = (zgrid_2d(k,i+1)-zgrid_2d(k,i))/(dlat*r_earth)
+          end do
+        end do
+
+        call init_atm_recompute_geostrophic_wind(u_2d,rho_2d,pp_2d,qv_2d,lat_2d,zz_2d,zx_2d,     &
+                                        cf1,cf2,cf3,fzm,fzp,rdzw,nz1,nlat,dlat)
+
+      end if
 
 !******************************************************************      
 
@@ -516,7 +539,6 @@ module init_atm_test_cases
 !     reference sounding based on dry isothermal atmosphere
 !
       do i=1, grid % nCells
-        !write(0,*) ' thermodynamic setup, cell ',i
         do k=1,nz1
           ztemp    = .5*(zgrid(k+1,i)+zgrid(k,i))
           ppb(k,i) = p0*exp(-gravity*ztemp/(rgas*t0b)) 
@@ -529,12 +551,17 @@ module init_atm_test_cases
           rr (k,i) = 0.
         end do
 
-        if(i == 1) then
-          do k=1,nz1
-            write(0,*) ' k, ppb, pb, rb, tb (k,1) ',k,ppb(k,1),pb(k,1),rb(k,1)*zz(k,1),tb(k,1)
-          enddo
-        end if
-!
+!       if(i == 1) then
+!         do k=1,nz1
+!           write(0,*) ' k, ppb, pb, rb, tb (k,1) ',k,ppb(k,1),pb(k,1),rb(k,1)*zz(k,1),tb(k,1)
+!         enddo
+!       end if
+
+      200 format(4i6,8(1x,e15.8))
+      201 format(3i6,8(1x,e15.8))
+      202 format(2i6,10(1x,e15.8))
+      203 format(i6,10(1x,e15.8))
+
 !     iterations to converge temperature as a function of pressure
 !
         do itr = 1,10
@@ -550,42 +577,60 @@ module init_atm_test_cases
           end do
           phi = grid % latCell % array (i)
           do k=1,nz1
-            tt(k) = 0.
-            tt(k) = teta(k)+.75*eta(k)*pii*u0/rgas*sin(etav(k))      &
+            temperature_1d(k) = teta(k)+.75*eta(k)*pii*u0/rgas*sin(etav(k))      &
                             *sqrt(cos(etav(k)))*                   &
                               ((-2.*sin(phi)**6                    &
                                    *(cos(phi)**2+1./3.)+10./63.)   &
                                    *2.*u0*cos(etav(k))**1.5        &
                               +(1.6*cos(phi)**3                    &
-                                *(sin(phi)**2+2./3.)-pii/4.)*r_earth*omega_e)
+                                *(sin(phi)**2+2./3.)-pii/4.)*r_earth*omega_e)/(1.+0.61*scalars(index_qv,k,i))
 
-
-            !write(0,*) ' k, tt(k) ',k,tt(k)
             ztemp   = .5*(zgrid(k,i)+zgrid(k+1,i))
             ptemp   = ppb(k,i) + pp(k,i)
-!            qv(k,i) = env_qv( ztemp, tt(k), ptemp, 0 )
-            qv(k,i) = 0.
+
+            !get moisture 
+            if (moisture) then
+ 
+                !scalars(index_qv,k,i) = env_qv( ztemp, temperature_1d(k), ptemp, rh_max )
+
+               if(ptemp < 50000.) then
+                  relhum(k,i) = 0.0
+               elseif(ptemp > p0) then
+                  relhum(k,i) = 1.0
+               else
+                  relhum(k,i) = (1.-((p0-ptemp)/50000.)**1.25)
+               endif
+               relhum(k,i) = min(rh_max,relhum(k,i))
+
+               !.. calculation of water vapor mixing ratio:
+               if (temperature_1d(k) > 273.15) then
+                   es  = 1000.*0.6112*exp(17.67*(temperature_1d(k)-273.15)/(temperature_1d(k)-29.65))
+               else
+                   es  = 1000.*0.6112*exp(21.8745584*(temperature_1d(k)-273.15)/(temperature_1d(k)-7.66))
+               end if
+               qsat(k,i) = (287.04/461.6)*es/(ptemp-es)
+               if(relhum(k,i) .eq. 0.0) qsat(k,i) = 0.0
+               scalars(index_qv,k,i) = relhum(k,i)*qsat(k,i)
+            end if
+
+            tt(k) = temperature_1d(k)*(1.+1.61*scalars(index_qv,k,i))
 
           end do
-!          do k=2,nz1
-!            cqw(k,i) = 1./(1.+.5*(qv(k,i)+qv(k-1,i)))
-!          end do
 		
           do itrp = 1,25
             do k=1,nz1				
-              rr(k,i)  = (pp(k,i)/(rgas*zz(k,i))  &
-                          -rb(k,i)*(tt(k)-t0b))/tt(k)
+              rr(k,i)  = (pp(k,i)/(rgas*zz(k,i)) - rb(k,i)*(tt(k)-t0b))/tt(k)
             end do
 
             ppi(1) = p0-.5*dzw(1)*gravity                         &
-                          *(1.25*(rr(1,i)+rb(1,i))*(1.+qv(1,i))   &
-                            -.25*(rr(2,i)+rb(2,i))*(1.+qv(2,i)))
+                          *(1.25*(rr(1,i)+rb(1,i))*(1.+scalars(index_qv,1,i))   &
+                            -.25*(rr(2,i)+rb(2,i))*(1.+scalars(index_qv,2,i)))
 
             ppi(1) = ppi(1)-ppb(1,i)
             do k=1,nz1-1
               ppi(k+1) = ppi(k)-.5*dzu(k+1)*gravity*                     &
-                            (rr(k  ,i)+(rr(k  ,i)+rb(k  ,i))*qv(k  ,i)   &
-                            +rr(k+1,i)+(rr(k+1,i)+rb(k+1,i))*qv(k+1,i))
+                            (rr(k  ,i)+(rr(k  ,i)+rb(k  ,i))*scalars(index_qv,k  ,i)   &
+                            +rr(k+1,i)+(rr(k+1,i)+rb(k+1,i))*scalars(index_qv,k+1,i))
             end do
 
             do k=1,nz1
@@ -603,13 +648,24 @@ module init_atm_test_cases
           rho_zz (k,i) = rb(k,i) + rr(k,i)
         end do
 
-        if(i == 1) then
-          do k=1,nz1
-            write(0,*) ' k, p, t, rt ',k,p(k,1),t(k,1),rt(k,1)
-          enddo
-        end if
+        !calculation of surface pressure:
+        surface_pressure(i) = 0.5*dzw(1)*gravity                                    &
+                        * (1.25*(rr(1,i) + rb(1,i)) * (1. + scalars(index_qv,1,i))  &
+                        -  0.25*(rr(2,i) + rb(2,i)) * (1. + scalars(index_qv,2,i)))
+        surface_pressure(i) = surface_pressure(i) + pp(1,i) + ppb(1,i)
 
       end do  ! end loop over cells
+
+      !write(0,*)
+      !write(0,*) '--- initialization of water vapor:'
+      !do iCell = 1, grid % nCells
+      !   if(iCell == 1 .or. iCell == grid % nCells) then
+      !      do k = nz1, 1, -1
+      !         write(0,202) iCell,k,t(k,iCell),relhum(k,iCell),qsat(k,iCell),scalars(index_qv,k,iCell)
+      !      enddo
+      !      write(0,*)
+      !   endif
+      !enddo
 
       lat_pert = latitude_pert*pii/180.
       lon_pert = longitude_pert*pii/180.
@@ -637,33 +693,29 @@ module init_atm_test_cases
             u_pert = 0.0
          end if
 
-         call init_atm_calc_flux_zonal(u_2d,etavs_2d,lat_2d,flux_zonal,lat1,lat2,grid % dvEdge % array(iEdge),a,u0,nz1,nlat)
+         if (rebalance) then
 
-         do k=1,grid % nVertLevels
-!!           etavs = (0.5*(ppb(k,iCell1)+ppb(k,iCell2)+pp(k,iCell1)+pp(k,iCell2))/p0 - 0.252)*pii/2.
-!           etavs = (0.5*(ppb(k,1)+ppb(k,1)+pp(k,1)+pp(k,1))/p0 - 0.252)*pii/2.
-           etavs = (0.5*(ppb(k,440)+ppb(k,440)+pp(k,440)+pp(k,440))/p0 - 0.252)*pii/2.  ! 10262 mesh
-!           etavs = (0.5*(ppb(k,505)+ppb(k,505)+pp(k,505)+pp(k,505))/p0 - 0.252)*pii/2.  ! 40962 mesh
-  
-!           fluxk = u0*flux*(cos(etavs)**1.5)
-
-            fluxk = u0*flux_zonal(k)/(0.5*(rb(k,iCell1)+rb(k,iCell2)+rr(k,iCell1)+rr(k,iCell2)))
-
-!           if(k.eq.18) then
-!              write(21,*) ' iEdge, u1, u2 ',iEdge,fluxk,u0*flux_zonal(k)
-!           end if
-!!           fluxk = u0*flux*(cos(znuv(k))**(1.5))
-!!           fluxk = u0 * cos(grid % angleEdge % array(iEdge)) * (sin(lat1+lat2)**2) *(cos(etavs)**1.5)
-           state % u % array(k,iEdge) = fluxk + u_pert
-         end do
-
-         cell1 = grid % CellsOnEdge % array(1,i)
-         cell2 = grid % CellsOnEdge % array(2,i)
-         if(cell1 <= nCellsSolve .or. cell2 <= nCellsSolve) then
-           do k=1,nz1
-             diag % ru % array (k,iEdge)  = 0.5*(rho_zz(k,cell1)+rho_zz(k,cell2))*state % u % array (k,iEdge)
+           call init_atm_calc_flux_zonal(u_2d,etavs_2d,lat_2d,flux_zonal,lat1,lat2,grid % dvEdge % array(iEdge),a,u0,nz1,nlat)
+           do k=1,grid % nVertLevels
+             fluxk = u0*flux_zonal(k)/(0.5*(rb(k,iCell1)+rb(k,iCell2)+rr(k,iCell1)+rr(k,iCell2)))
+             state % u % array(k,iEdge) = fluxk + u_pert
            end do
+
+         else 
+
+           do k=1,grid % nVertLevels
+             etavs = (0.5*(ppb(k,iCell1)+ppb(k,iCell2)+pp(k,iCell1)+pp(k,iCell2))/p0 - 0.252)*pii/2.
+             fluxk = u0*flux*(cos(etavs)**1.5)
+             state % u % array(k,iEdge) = fluxk + u_pert
+           end do
+
          end if
+
+         cell1 = grid % CellsOnEdge % array(1,iEdge)
+         cell2 = grid % CellsOnEdge % array(2,iEdge)
+         do k=1,nz1
+            diag % ru % array (k,iEdge)  = 0.5*(rho_zz(k,cell1)+rho_zz(k,cell2))*state % u % array (k,iEdge)
+         end do
 
       !
       ! Generate rotated Coriolis field
@@ -692,54 +744,48 @@ module init_atm_test_cases
       do iEdge = 1,grid % nEdges
          cell1 = CellsOnEdge(1,iEdge)
          cell2 = CellsOnEdge(2,iEdge)
-         if (cell1 <= nCellsSolve .or. cell2 <= nCellsSolve ) then
 
-            do k = 1, grid%nVertLevels
+         do k = 1, grid%nVertLevels
 
-               if (config_theta_adv_order == 2) then
+            if (config_theta_adv_order == 2) then
 
-                  z_edge = (zgrid(k,cell1)+zgrid(k,cell2))/2.
+               z_edge = (zgrid(k,cell1)+zgrid(k,cell2))/2.
 
-               else if (config_theta_adv_order == 3 .or. config_theta_adv_order ==4) then !theta_adv_order == 3 or 4 
+            else if (config_theta_adv_order == 3 .or. config_theta_adv_order ==4) then !theta_adv_order == 3 or 4 
 
-                  d2fdx2_cell1 = deriv_two(1,1,iEdge) * zgrid(k,cell1)
-                  d2fdx2_cell2 = deriv_two(1,2,iEdge) * zgrid(k,cell2)
-                  do i=1, grid % nEdgesOnCell % array (cell1)
-                     if ( grid % CellsOnCell % array (i,cell1) > 0)       &
-                     d2fdx2_cell1 = d2fdx2_cell1 + deriv_two(i+1,1,iEdge) * zgrid(k,grid % CellsOnCell % array (i,cell1))
-                  end do
-                  do i=1, grid % nEdgesOnCell % array (cell2)
-                     if ( grid % CellsOnCell % array (i,cell2) > 0)       &
-                     d2fdx2_cell2 = d2fdx2_cell2 + deriv_two(i+1,2,iEdge) * zgrid(k,grid % CellsOnCell % array (i,cell2))
-                  end do
+               d2fdx2_cell1 = deriv_two(1,1,iEdge) * zgrid(k,cell1)
+               d2fdx2_cell2 = deriv_two(1,2,iEdge) * zgrid(k,cell2)
+               do i=1, grid % nEdgesOnCell % array (cell1)
+                  d2fdx2_cell1 = d2fdx2_cell1 + deriv_two(i+1,1,iEdge) * zgrid(k,grid % CellsOnCell % array (i,cell1))
+                  d2fdx2_cell2 = d2fdx2_cell2 + deriv_two(i+1,2,iEdge) * zgrid(k,grid % CellsOnCell % array (i,cell2))
+               end do
 
-                  z_edge =  0.5*(zgrid(k,cell1) + zgrid(k,cell2))         &
-                                - (grid % dcEdge % array(iEdge) **2) * (d2fdx2_cell1 + d2fdx2_cell2) / 12.
+               z_edge =  0.5*(zgrid(k,cell1) + zgrid(k,cell2))         &
+                             - (grid % dcEdge % array(iEdge) **2) * (d2fdx2_cell1 + d2fdx2_cell2) / 12.
 
-                  if (config_theta_adv_order == 3) then
-                     z_edge3 =  - (grid % dcEdge % array(iEdge) **2) * (d2fdx2_cell1 - d2fdx2_cell2) / 12.
-                  else
-                     z_edge3 = 0.
-                  end if
-
+               if (config_theta_adv_order == 3) then
+                  z_edge3 =  - (grid % dcEdge % array(iEdge) **2) * (d2fdx2_cell1 - d2fdx2_cell2) / 12.
+               else
+                  z_edge3 = 0.
                end if
 
-                  zb(k,1,iEdge) = (z_edge-zgrid(k,cell1))*dvEdge(iEdge)/AreaCell(cell1)
-                  zb(k,2,iEdge) = (z_edge-zgrid(k,cell2))*dvEdge(iEdge)/AreaCell(cell2)
-                  zb3(k,1,iEdge)=  z_edge3*dvEdge(iEdge)/AreaCell(cell1)
-                  zb3(k,2,iEdge)=  z_edge3*dvEdge(iEdge)/AreaCell(cell2)
+            end if
 
-                  if (k /= 1) then
-                     zf(k,1,iEdge) = ( fzm(k)*zz(k,cell1)+fzp(k)*zz(k-1,cell1))*zb(k,1,iEdge)
-                     zf(k,2,iEdge) = ( fzm(k)*zz(k,cell2)+fzp(k)*zz(k-1,cell2))*zb(k,2,iEdge)
-                     zf3(k,1,iEdge)= ( fzm(k)*zz(k,cell1)+fzp(k)*zz(k-1,cell1))*zb3(k,1,iEdge)
-                     zf3(k,2,iEdge)= ( fzm(k)*zz(k,cell2)+fzp(k)*zz(k-1,cell2))*zb3(k,2,iEdge)
-                  end if
+               zb(k,1,iEdge) = (z_edge-zgrid(k,cell1))*dvEdge(iEdge)/AreaCell(cell1)
+               zb(k,2,iEdge) = (z_edge-zgrid(k,cell2))*dvEdge(iEdge)/AreaCell(cell2)
+               zb3(k,1,iEdge)=  z_edge3*dvEdge(iEdge)/AreaCell(cell1)
+               zb3(k,2,iEdge)=  z_edge3*dvEdge(iEdge)/AreaCell(cell2)
 
-            end do
+               if (k /= 1) then
+                  zf(k,1,iEdge) = ( fzm(k)*zz(k,cell1)+fzp(k)*zz(k-1,cell1))*zb(k,1,iEdge)
+                  zf(k,2,iEdge) = ( fzm(k)*zz(k,cell2)+fzp(k)*zz(k-1,cell2))*zb(k,2,iEdge)
+                  zf3(k,1,iEdge)= ( fzm(k)*zz(k,cell1)+fzp(k)*zz(k-1,cell1))*zb3(k,1,iEdge)
+                  zf3(k,2,iEdge)= ( fzm(k)*zz(k,cell2)+fzp(k)*zz(k-1,cell2))*zb3(k,2,iEdge)
+               end if
 
-         end if
-       end do
+         end do
+
+      end do
 
       ! for including terrain
       diag % rw % array = 0.
@@ -749,7 +795,6 @@ module init_atm_test_cases
          cell1 = CellsOnEdge(1,iEdge)
          cell2 = CellsOnEdge(2,iEdge)
 
-         if (cell1 <= nCellsSolve .or. cell2 <= nCellsSolve ) then
          do k = 2, grid%nVertLevels
             flux =  (fzm(k)*diag % ru % array(k,iEdge)+fzp(k)*diag % ru % array(k-1,iEdge))
             diag % rw % array(k,cell2) = diag % rw % array(k,cell2) + zf(k,2,iEdge)*flux
@@ -763,7 +808,6 @@ module init_atm_test_cases
             end if
 
          end do
-         end if
 
       end do
 
@@ -783,11 +827,9 @@ module init_atm_test_cases
       do iEdge = 1, grid%nEdges
          do i=1,nEdgesOnEdge(iEdge)
             eoe = edgesOnEdge(i,iEdge)
-            if (eoe > 0) then
-               do k = 1, grid%nVertLevels
-                 diag % v % array(k,iEdge) = diag % v %array(k,iEdge) + weightsOnEdge(i,iEdge) * state % u % array(k, eoe)
-              end do
-            end if
+            do k = 1, grid%nVertLevels
+               diag % v % array(k,iEdge) = diag % v %array(k,iEdge) + weightsOnEdge(i,iEdge) * state % u % array(k, eoe)
+           end do
          end do
       end do
 
@@ -795,8 +837,8 @@ module init_atm_test_cases
         psurf = (cf1*(ppb(1,i)+pp(1,i)) + cf2*(ppb(2,i)+pp(2,i)) + cf3*(ppb(3,i)+pp(3,i)))/100.
 
             psurf = (ppb(1,i)+pp(1,i)) + .5*dzw(1)*gravity        &
-                          *(1.25*(rr(1,i)+rb(1,i))*(1.+qv(1,i))   &
-                            -.25*(rr(2,i)+rb(2,i))*(1.+qv(2,i)))
+                          *(1.25*(rr(1,i)+rb(1,i))*(1.+scalars(index_qv,1,i))   &
+                            -.25*(rr(2,i)+rb(2,i))*(1.+scalars(index_qv,2,i)))
 
         write(0,*) ' i, psurf, lat ',i,psurf,grid%latCell%array(i)*180./3.1415828
       enddo
@@ -805,7 +847,7 @@ module init_atm_test_cases
       do iCell=1,grid%nCells
          do k=1,grid%nVertLevels
             diag % rho % array(k,iCell) = state % rho_zz % array(k,iCell) * zz(k,iCell)
-            diag % theta % array(k,iCell) = state % theta_m % array(k,iCell) / (1.0 + 1.61 * scalars(state % index_qv,k,iCell))
+            diag % theta % array(k,iCell) = state % theta_m % array(k,iCell) / (1.0 + 1.61 * scalars(index_qv,k,iCell))
          end do
       end do
 
@@ -815,7 +857,7 @@ module init_atm_test_cases
 
    implicit none
    integer, intent(in) :: nz1,nlat
-   real (kind=RKIND), dimension(nlat,nz1), intent(in) :: u_2d,etavs_2d
+   real (kind=RKIND), dimension(nz1,nlat), intent(in) :: u_2d,etavs_2d
    real (kind=RKIND), dimension(nlat), intent(in) :: lat_2d
    real (kind=RKIND), dimension(nz1), intent(out) :: flux_zonal
    real (kind=RKIND), intent(in) :: lat1_in, lat2_in, dvEdge, a, u0
@@ -845,7 +887,7 @@ module init_atm_test_cases
      w2 = 0.5*(db-da)**2
 
      do k=1,nz1
-       flux_zonal(k) = flux_zonal(k) + w1*u_2d(i,k) + w2*u_2d(i+1,k)
+       flux_zonal(k) = flux_zonal(k) + w1*u_2d(k,i) + w2*u_2d(k,i+1)
      end do
 
      end if
@@ -860,7 +902,100 @@ module init_atm_test_cases
      
    end subroutine init_atm_calc_flux_zonal
 
+   !SHP-balance
+   subroutine init_atm_recompute_geostrophic_wind(u_2d,rho_2d,pp_2d,qv_2d,lat_2d,zz_2d,zx_2d,     &
+                                         cf1,cf2,cf3,fzm,fzp,rdzw,nz1,nlat,dlat)
 
+   implicit none
+   integer, intent(in) :: nz1,nlat
+   real (kind=RKIND), dimension(nz1,nlat), intent(inout) :: u_2d
+   real (kind=RKIND), dimension(nz1,nlat), intent(in) :: rho_2d, pp_2d, qv_2d, zz_2d
+   real (kind=RKIND), dimension(nz1,nlat-1), intent(in) :: zx_2d
+   real (kind=RKIND), dimension(nlat), intent(in) :: lat_2d
+   real (kind=RKIND), dimension(nz1), intent(in) :: fzm, fzp, rdzw
+   real (kind=RKIND), intent(in) :: cf1, cf2, cf3, dlat
+
+   !local variable
+   real (kind=RKIND), dimension(nz1,nlat-1) :: pgrad, ru, u
+   real (kind=RKIND), dimension(nlat-1) :: f
+   real (kind=RKIND), dimension(nz1+1)  :: dpzx
+
+   real (kind=RKIND), parameter :: omega_e = 7.29212e-05
+   real (kind=RKIND) :: rdx, qtot, r_earth, phi
+   integer :: k,i, itr
+
+   r_earth  = a
+   rdx = 1./(dlat*r_earth)
+
+   do i=1,nlat-1
+     do k=1,nz1
+       pgrad(k,i) = rdx*(pp_2d(k,i+1)/zz_2d(k,i+1)-pp_2d(k,i)/zz_2d(k,i))
+     end do
+
+     dpzx(:) = 0.
+
+     k=1
+     dpzx(k) = .5*zx_2d(k,i)*(cf1*(pp_2d(k  ,i+1)+pp_2d(k  ,i))        &
+                             +cf2*(pp_2d(k+1,i+1)+pp_2d(k+1,i))        &
+                             +cf3*(pp_2d(k+2,i+1)+pp_2d(k+2,i)))
+     do k=2,nz1
+        dpzx(k) = .5*zx_2d(k,i)*(fzm(k)*(pp_2d(k  ,i+1)+pp_2d(k  ,i))   &
+                                +fzp(k)*(pp_2d(k-1,i+1)+pp_2d(k-1,i)))
+     end do
+
+     do k=1,nz1
+        pgrad(k,i) = pgrad(k,i) - rdzw(k)*(dpzx(k+1)-dpzx(k))
+     end do
+   end do
+
+
+   !initial value of v and rv -> that is from analytic sln. 
+   do i=1,nlat-1
+      do k=1,nz1
+         u(k,i) = .5*(u_2d(k,i)+u_2d(k,i+1))
+         ru(k,i) = u(k,i)*(rho_2d(k,i)+rho_2d(k,i+1))*.5
+      end do
+   end do
+
+   write(0,*) "MAX U wind before REBALANCING ---->", maxval(abs(u))
+
+   !re-calculate geostrophic wind using iteration 
+   do itr=1,50
+   do i=1,nlat-1
+      phi = (lat_2d(i)+lat_2d(i+1))/2.
+      f(i) = 2.*omega_e*sin(phi)
+      do k=1,nz1
+         if (f(i).eq.0.) then
+           ru(k,i) = 0.
+         else
+           qtot = .5*(qv_2d(k,i)+qv_2d(k,i+1))
+           ru(k,i) = - ( 1./(1.+qtot)*pgrad(k,i) + tan(phi)/r_earth*u(k,i)*ru(k,i) )/f(i)
+         end if
+           u(k,i) = ru(k,i)*2./(rho_2d(k,i)+rho_2d(k,i+1))
+      end do
+   end do
+   end do
+
+   write(0,*) "MAX U wind after REBALANCING ---->", maxval(abs(u))
+
+   !update 2d ru
+   do i=2,nlat-1
+     do k=1,nz1
+       u_2d(k,i) = (ru(k,i-1)+ru(k,i))*.5
+     end do
+   end do
+
+   i=1
+   do k=1,nz1
+      u_2d(k,i) = (3.*u_2d(k,i+1)-u_2d(k,i+2))*.5
+   end do
+   i=nlat
+   do k=1,nz1
+      u_2d(k,i) = (3.*u_2d(k,i-1)-u_2d(k,i-2))*.5
+   end do
+
+
+   end subroutine init_atm_recompute_geostrophic_wind
 !----------------------------------------------------------------------------------------------------------
 
    subroutine init_atm_test_case_squall_line(dminfo, grid, state, diag, test_case)
@@ -1174,7 +1309,7 @@ module init_atm_test_cases
       call mpas_dmpar_bcast_real(dminfo, pibtop)
 
       ptopb = p0*pibtop**(1./rcp)
-      write(0,*) 'ptopb = ',.01*ptopb
+      write(6,*) 'ptopb = ',.01*ptopb
 
       do i=1, grid % nCells
          pb(nz1,i) = pibtop+.5*dzw(nz1)*gravity*(1.+qvb(nz1))/(cp*tb(nz1,i)*zz(nz1,i))
@@ -1189,6 +1324,7 @@ module init_atm_test_cases
             rb (k,i) = pb(k,i)**(1./rcv)/((rgas/p0)*tb(k,i)*zz(k,i))
             rtb(k,i) = rb(k,i)*tb(k,i)
             rr (k,i) = p (k,i)**(1./rcv)/((rgas/p0)*t (k,i)*zz(k,i))-rb(k,i)
+            ppb(k,i) = p0*(zz(k,i)*rgas*rtb(k,i)/p0)**(cp/cv)
          end do
       end do
 
@@ -1283,7 +1419,7 @@ module init_atm_test_cases
         ptop = p0*pitop**(1./rcp)
         write(0,*) 'ptop  = ',.01*ptop, .01*ptopb
 
-        call mpas_dmpar_bcast_real(dminfo, pitop)
+        call mpas_dmpar_bcast_real(dminfo, ptop)
 
         do i = 1, grid % nCells
 
@@ -1301,7 +1437,7 @@ module init_atm_test_cases
           end do
           if (itr==1.and.i==1) then
           do k=1,nz1
-          print *, "pp-check", pp(k,i) 
+          write(0,*) "pp-check", pp(k,i) 
           end do
           end if
           do k=1,nz1
@@ -1389,7 +1525,7 @@ module init_atm_test_cases
       do iCell=1,grid%nCells
          do k=1,grid%nVertLevels
             diag % rho % array(k,iCell) = state % rho_zz % array(k,iCell) * zz(k,iCell)
-            diag % theta % array(k,iCell) = state % theta_m % array(k,iCell) / (1.0 + 1.61 * scalars(state % index_qv,k,iCell))
+            diag % theta % array(k,iCell) = state % theta_m % array(k,iCell) / (1.0 + 1.61 * scalars(index_qv,k,iCell))
          end do
       end do
 
@@ -1433,7 +1569,7 @@ module init_atm_test_cases
       real (kind=RKIND) :: ztemp, zd, zt, dz, str
 
       real (kind=RKIND), dimension(grid % nVertLevels, grid % nCells) :: rh
-      real (kind=RKIND) :: ptmp, es, qvs, xnutr, ptemp
+      real (kind=RKIND) :: es, qvs, xnutr, ptemp
       integer :: iter
 
       real (kind=RKIND), dimension(grid % nVertLevels + 1 ) :: zc, zw, ah
@@ -1674,7 +1810,7 @@ module init_atm_test_cases
             end if
 
          end do !end of iteration for smoothing
-99       print *,"PASS-SHP"
+99       write(0,*) "PASS-SHP"
       end do
 
       do iCell=1,grid % nCells
@@ -1845,7 +1981,7 @@ module init_atm_test_cases
       write(0,*) ' *** sounding for the simulation ***'
       write(0,*) '    z       theta       pres         qv       rho_m        u        rr'
       do k=1,nz1
-         write(0,'(8(f14.9,2x))') .5*(zgrid(k,1)+zgrid(k+1,1))/1000.,   &
+         write(6,'(8(f14.9,2x))') .5*(zgrid(k,1)+zgrid(k+1,1))/1000.,   &
                        t(k,1)/(1.+1.61*scalars(index_qv,k,1)),        &
                        .01*p0*p(k,1)**(1./rcp),                       &
                        1000.*scalars(index_qv,k,1),                   &
@@ -1999,7 +2135,7 @@ module init_atm_test_cases
       do iCell=1,grid%nCells
          do k=1,grid%nVertLevels
             diag % rho % array(k,iCell) = state % rho_zz % array(k,iCell) * zz(k,iCell)
-            diag % theta % array(k,iCell) = state % theta_m % array(k,iCell) / (1.0 + 1.61 * scalars(state % index_qv,k,iCell))
+            diag % theta % array(k,iCell) = state % theta_m % array(k,iCell) / (1.0 + 1.61 * scalars(index_qv,k,iCell))
          end do
       end do
 
@@ -4389,25 +4525,7 @@ write(0,*) 'PROCESSING SEAICE'
    end function four_pt
 #endif
 
-
-   real (kind=RKIND) function sphere_distance(lat1, lon1, lat2, lon2, radius)
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   ! Compute the great-circle distance between (lat1, lon1) and (lat2, lon2) on a
-   !   sphere with given radius.
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-      implicit none
-
-      real (kind=RKIND), intent(in) :: lat1, lon1, lat2, lon2, radius
-
-      real (kind=RKIND) :: arg1
-
-      arg1 = sqrt( sin(0.5*(lat2-lat1))**2 +  &
-                   cos(lat1)*cos(lat2)*sin(0.5*(lon2-lon1))**2 )
-      sphere_distance = 2.*radius*asin(arg1)
-
-   end function sphere_distance
-
+!----------------------------------------------------------------------------------------------------------
 
    integer function nearest_cell(target_lat, target_lon, &
                                  start_cell, &
@@ -4602,5 +4720,180 @@ write(0,*) 'PROCESSING SEAICE'
       end if
 
    end subroutine init_atm_check_read_error
+
+
+!----------------------------------------------------------------------------------------------------------
+
+   real (kind=RKIND) function sphere_distance(lat1, lon1, lat2, lon2, radius)
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   ! Compute the great-circle distance between (lat1, lon1) and (lat2, lon2) on a
+   !   sphere with given radius.
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+      implicit none
+
+      real (kind=RKIND), intent(in) :: lat1, lon1, lat2, lon2, radius
+
+      real (kind=RKIND) :: arg1
+
+      arg1 = sqrt( sin(0.5*(lat2-lat1))**2 +  &
+                   cos(lat1)*cos(lat2)*sin(0.5*(lon2-lon1))**2 )
+      sphere_distance = 2.*radius*asin(arg1)
+
+   end function sphere_distance
+
+!--------------------------------------------------------------------
+
+   real (kind=RKIND) function env_qv( z, temperature, pressure, rh_max )
+
+      implicit none
+      real (kind=RKIND) :: z, temperature, pressure, ztr, es, qvs, p0, rh_max
+
+      p0 = 100000.
+
+!      ztr = 5000.
+!
+!      if(z .gt. ztr) then
+!         env_qv = 0.
+!      else
+!         if(z.lt.2000.) then
+!            env_qv = .5
+!         else
+!            env_qv = .5*(1.-(z-2000.)/(ztr-2000.))
+!         end if
+!      end if
+
+       if (pressure .lt. 50000. ) then
+           env_qv = 0.0
+       else
+           env_qv = (1.-((p0-pressure)/50000.)**1.25)
+       end if
+
+       env_qv = min(rh_max,env_qv)
+
+! env_qv is the relative humidity, turn it into mixing ratio
+       if (temperature .gt. 273.15) then
+           es  = 1000.*0.6112*exp(17.67*(temperature-273.15)/(temperature-29.65))
+       else
+           es  = 1000.*0.6112*exp(21.8745584*(temperature-273.16)/(temperature-7.66))
+       end if
+       qvs = (287.04/461.6)*es/(pressure-es)
+
+       ! qvs =  380.*exp(17.27*(temperature-273.)/(temperature-36.))/pressure
+
+        env_qv = env_qv*qvs
+
+   end function env_qv
+
+
+   subroutine physics_idealized_init(mesh, fg)
+   
+      implicit none
+      
+      !input and output arguments:
+      type(mesh_type),intent(inout):: mesh
+      type (fg_type), intent(inout) :: fg
+      
+      !local variables:
+      integer:: iCell,iMonth,iSoil
+      
+      !---------------------------------------------------------------------------------------------
+      
+      !initialization of surface input variables that are not needed if we run the current set of
+      !idealized test cases:
+      
+      
+      do iCell = 1, mesh % nCells
+      
+         !terrain,soil type, and vegetation:
+         mesh % ter      % array(iCell) = 0.
+         fg % xice       % array(iCell) = 0.
+         mesh % landmask % array(iCell) = 0
+         mesh % lu_index  % array(iCell) = 0
+         mesh % soilcat_top % array(iCell) = 0
+         mesh % shdmin   % array(iCell) = 0.
+         mesh % shdmax   % array(iCell) = 0.
+         fg % vegfra   % array(iCell) = 0.
+         fg % sfc_albbck % array(iCell) = 0.
+         fg % xland % array(iCell) = 0.
+         fg % seaice % array(iCell) = 0.
+      
+         !snow coverage:
+         fg % snow     % array(iCell) = 0.
+         fg % snowc    % array(iCell) = 0.
+         mesh % snoalb % array(iCell) = 0.08
+         fg % snowh % array(iCell) = 0.
+      
+         !surface and sea-surface temperatures:
+         fg % skintemp % array(iCell) = 288.0
+         fg % sst      % array(iCell) = 288.0
+      
+         !soil layers:
+         fg % tmn % array(iCell) = 288.0
+         do iSoil = 1, mesh % nSoilLevels
+            fg % tslb % array(iSoil,iCell)   = 288.0
+            fg % smcrel % array(iSoil,iCell) =   0.0
+            fg % sh2o   % array(iSoil,iCell) =   0.0
+            fg % smois  % array(iSoil,iCell) =   0.0
+            fg % dzs    % array(iSoil,iCell) =   0.0
+         enddo
+      
+         !monthly climatological surface albedo and greeness fraction:
+         do iMonth = 1, mesh % nMonths
+            mesh % albedo12m % array(iMonth,iCell) = 0.08
+            mesh % greenfrac % array(iMonth,iCell) = 0.
+         enddo
+      
+      enddo
+   
+   end subroutine physics_idealized_init
+   
+   
+   subroutine decouple_variables(grid, state, diag)
+
+      implicit none
+
+      type (mesh_type), intent(in) :: grid
+      type (state_type), intent(inout) :: state
+      type (diag_type), intent(inout) :: diag
+
+      integer :: iCell, iEdge, k
+
+      integer, dimension(:,:), pointer :: cellsOnEdge
+      real (kind=RKIND), dimension(:), pointer :: fzm, fzp, rdzw
+      real (kind=RKIND), dimension(:,:), pointer :: zz, pp, ppb
+      real (kind=RKIND), dimension(:,:,:), pointer :: scalars
+
+      cellsOnEdge => grid % CellsOnEdge % array
+      fzp => grid % fzm % array
+      fzp => grid % fzp % array
+      rdzw => grid % rdzw % array
+      zz => grid % zz % array
+
+      pp  => diag % pressure_p % array
+      ppb => diag % pressure_base % array
+
+      scalars => state % scalars % array
+ 
+     
+      ! Compute surface pressure
+      do iCell=1,grid%nCells
+         diag % surface_pressure % array(iCell) = 0.5*gravity/rdzw(1)                                        &
+                                                * (1.25* state % rho_zz % array(1,iCell) * (1. + scalars(state % index_qv, 1, iCell))  &
+                                                -  0.25* state % rho_zz % array(2,iCell) * (1. + scalars(state % index_qv, 2, iCell)))
+         diag % surface_pressure % array(iCell) = diag % surface_pressure % array(iCell) + pp(1,iCell) + ppb(1,iCell)
+      end do
+
+
+      ! Compute rho and theta from rho_zz and theta_m
+      do iCell=1,grid%nCells
+         do k=1,grid%nVertLevels
+            diag % rho % array(k,iCell) = state % rho_zz % array(k,iCell) * zz(k,iCell)
+            diag % theta % array(k,iCell) = state % theta_m % array(k,iCell) / (1.0 + 1.61 * scalars(state % index_qv,k,iCell))
+         end do
+      end do
+
+   end subroutine decouple_variables
+
 
 end module init_atm_test_cases

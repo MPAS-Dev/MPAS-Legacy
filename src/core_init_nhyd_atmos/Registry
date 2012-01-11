@@ -11,6 +11,7 @@ namelist integer   dimensions config_nvertlevels          26
 namelist integer   dimensions config_nsoillevels          4
 namelist integer   dimensions config_nfglevels            27
 namelist integer   dimensions config_nfgsoillevels        4
+namelist integer   dimensions config_months               12
 namelist character data_sources config_geog_data_path     /data3/mp/wrfhelp/WPS_GEOG/
 namelist character data_sources config_met_prefix         FILE
 namelist character data_sources config_sst_prefix         FILE
@@ -54,7 +55,7 @@ dim nSoilLevels namelist:config_nsoillevels
 dim nFGLevels namelist:config_nfglevels
 dim nFGSoilLevels namelist:config_nfgsoillevels
 dim nVertLevelsP1 nVertLevels+1
-dim nMonths 12
+dim nMonths namelist:config_months
 
 %
 % var  type  name_in_file  ( dims )  iro-  name_in_code super-array array_class
@@ -178,6 +179,7 @@ var persistent real    zs ( nSoilLevels nCells Time ) 1 io zs fg - -
 var persistent real    sh2o ( nSoilLevels nCells Time ) 1 io sh2o fg - -
 var persistent real    smois ( nSoilLevels nCells Time ) 1 io smois fg - -
 var persistent real    tslb ( nSoilLevels nCells Time ) 1 io tslb fg - -
+var persistent real    smcrel ( nSoilLevels nCells Time ) 1 io smcrel fg - -
 var persistent real    tmn ( nCells Time ) 1 io tmn fg - -
 var persistent real    skintemp ( nCells Time ) 1 io skintemp fg - -
 var persistent real    sst ( nCells Time ) 1 iso sst fg - -
