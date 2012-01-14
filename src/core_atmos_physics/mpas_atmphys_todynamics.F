@@ -3,7 +3,7 @@
  use mpas_configure
  use mpas_grid_types
 
- use mpas_atmphys_constants, only: R_d,R_v
+ use mpas_atmphys_constants, only: R_d,R_v,degrad
 
  implicit none
  private
@@ -34,9 +34,9 @@
 
 !local variables:
 !----------------
- integer:: i,k,nCells,nCellsSolve,nEdges,nEdgesSolve,nVertLevels
+ integer:: i,iCell,k,n,nCells,nCellsSolve,nEdges,nEdgesSolve,nVertLevels
 
- real(kind=RKIND),dimension(:,:),pointer:: theta,theta_m,qv
+ real(kind=RKIND),dimension(:,:),pointer:: theta_m,qv
  real(kind=RKIND),dimension(:,:),pointer:: rthblten,rqvblten,rqcblten, &
                                            rqiblten,rublten,rvblten
  real(kind=RKIND),dimension(:,:),pointer:: rthcuten,rqvcuten,rqccuten, &
@@ -49,6 +49,10 @@
  real(kind=RKIND):: tem
  real(kind=RKIND),dimension(:,:),allocatable:: rublten_Edge
 
+!ldf (2011-12-16):
+ real(kind=RKIND),dimension(:,:),allocatable:: theta,tend_th
+!ldf end.
+
 !=============================================================================================
 !write(0,*)
 !write(0,*) '--- enter subroutine physics_add_tend:'
@@ -59,7 +63,7 @@
  nEdgesSolve = mesh % nEdgesSolve
  nVertLevels = mesh % nVertLevels
 
- theta   => diag % theta % array
+!theta   => diag % theta % array
  theta_m => state % theta_m % array
  qv      => state % scalars % array(state%index_qv,:,:)
 
@@ -84,6 +88,11 @@
  tend_theta   => tend % theta_m % array
  tend_scalars => tend % scalars % array
 
+!initialize the tendency for the potential temperature and all scalars due to PBL, convection,
+!and longwave and shortwave radiation:
+ allocate(theta(nVertLevels,nCellsSolve)  )
+ allocate(tend_th(nVertLevels,nCellsSolve))
+ tend_th      = 0.
  tend_scalars = 0.
 
 !add coupled tendencies due to PBL processes:
@@ -96,24 +105,25 @@
        tend_u(k,i)=tend_u(k,i)+rublten_Edge(k,i)*mass_edge(k,i)
     enddo
     enddo
-
     deallocate(rublten_Edge)
 
     do i = 1, nCellsSolve
     do k = 1, nVertLevels
-       tend_theta(k,i)=tend_theta(k,i)+rthblten(k,i)*mass(k,i)
+       tend_th(k,i) = tend_th(k,i)+rthblten(k,i)*mass(k,i)
        tend_scalars(tend%index_qv,k,i)=tend_scalars(tend%index_qv,k,i)+rqvblten(k,i)*mass(k,i)
        tend_scalars(tend%index_qc,k,i)=tend_scalars(tend%index_qc,k,i)+rqcblten(k,i)*mass(k,i)
        tend_scalars(tend%index_qi,k,i)=tend_scalars(tend%index_qi,k,i)+rqiblten(k,i)*mass(k,i)
     enddo
     enddo
  endif
+ write(0,*) 'max rthblten = ',maxval(rthblten(:,1:nCellsSolve))
+ write(0,*) 'min rthblten = ',minval(rthblten(:,1:nCellsSolve))
 
 !add coupled tendencies due to convection:
  if(config_conv_deep_scheme .ne. 'off') then
     do i = 1, nCellsSolve
     do k = 1, nVertLevels
-       tend_theta(k,i)=tend_theta(k,i)+rthcuten(k,i)*mass(k,i)
+       tend_th(k,i)=tend_th(k,i)+rthcuten(k,i)*mass(k,i)
        tend_scalars(tend%index_qv,k,i)=tend_scalars(tend%index_qv,k,i)+rqvcuten(k,i)*mass(k,i)
        tend_scalars(tend%index_qc,k,i)=tend_scalars(tend%index_qc,k,i)+rqccuten(k,i)*mass(k,i)
        tend_scalars(tend%index_qr,k,i)=tend_scalars(tend%index_qr,k,i)+rqrcuten(k,i)*mass(k,i)
@@ -122,64 +132,55 @@
     enddo
     enddo
  endif
+ write(0,*) 'max rthcuten = ',maxval(rthcuten(:,1:nCellsSolve))
+ write(0,*) 'min rthcuten = ',minval(rthcuten(:,1:nCellsSolve))
 
 !add coupled tendencies due to longwave radiation:
  if(config_radt_lw_scheme .ne. 'off') then
     do i = 1, nCellsSolve
     do k = 1, nVertLevels
-       tend_theta(k,i)=tend_theta(k,i)+rthratenlw(k,i)*mass(k,i)
+       tend_th(k,i)=tend_th(k,i)+rthratenlw(k,i)*mass(k,i)
     enddo
     enddo
  endif
+ write(0,*) 'max rthratenlw = ',maxval(rthratenlw(:,1:nCellsSolve))
+ write(0,*) 'min rthratenlw = ',minval(rthratenlw(:,1:nCellsSolve))
     
 !add coupled tendencies due to shortwave radiation:
  if(config_radt_sw_scheme .ne. 'off') then
     do i = 1, nCellsSolve
     do k = 1, nVertLevels
-       tend_theta(k,i)=tend_theta(k,i)+rthratensw(k,i)*mass(k,i)
+       tend_th(k,i)=tend_th(k,i)+rthratensw(k,i)*mass(k,i)
     enddo
     enddo
  endif
+ write(0,*) 'max rthratensw = ',maxval(rthratensw(:,1:nCellsSolve))
+ write(0,*) 'min rthratensw = ',minval(rthratensw(:,1:nCellsSolve))
 
 !if non-hydrostatic core, convert the tendency for the potential temperature to a
 !tendency for the modified potential temperature:
 #ifdef non_hydrostatic_core
     do i = 1, nCellsSolve
     do k = 1, nVertLevels
-
        theta(k,i) = theta_m(k,i) / (1. + R_v/R_d * qv(k,i))
-       tend_theta(k,i) = (1. + R_v/R_d * qv(k,i)) * tend_theta(k,i) &
+       tend_th(k,i) = (1. + R_v/R_d * qv(k,i)) * tend_th(k,i) &
                        + R_v/R_d * theta(k,i) * tend_scalars(tend%index_qv,k,i)
+       tend_theta(k,i) = tend_theta(k,i) + tend_th(k,i)
     enddo
-    enddo 
+    enddo
+#elif hydrostatic_core
+    do i = 1, nCellsSolve
+    do k = 1, nVertLevels
+       tend_theta(k,i) = tend_theta(k,i) + tend_th(k,i)
+    enddo
+    enddo
 #endif
-
-!write(0,*) 'max PBL tendencies:'
-!write(0,*) 'max rthblten=',maxval(rthblten(:,:))
-!write(0,*) 'max rqvblten=',maxval(rqvblten(:,:))
-!write(0,*) 'max rqcblten=',maxval(rqcblten(:,:))
-!write(0,*) 'max rqiblten=',maxval(rqiblten(:,:))
-!write(0,*) 'max rublten =',maxval(rublten(:,:))
-!write(0,*) 'max rvblten =',maxval(rvblten(:,:))
-!write(0,*)
-!write(0,*) 'max CU tendencies:'
-!write(0,*) 'max rthcuten=',maxval(rthcuten(:,:))
-!write(0,*) 'max rqvcuten=',maxval(rqvcuten(:,:))
-!write(0,*) 'max rqccuten=',maxval(rqccuten(:,:))
-!write(0,*) 'max rqrcuten=',maxval(rqrcuten(:,:))
-!write(0,*) 'max rqicuten=',maxval(rqicuten(:,:))
-!write(0,*) 'max rqscuten=',maxval(rqscuten(:,:))
-!write(0,*)
-!write(0,*) 'max tend_scalars:'
-!write(0,*) 'max tend qv=',maxval(tend_scalars(tend%index_qv,:,:))
-!write(0,*) 'max tend qc=',maxval(tend_scalars(tend%index_qc,:,:))
-!write(0,*) 'max tend qr=',maxval(tend_scalars(tend%index_qr,:,:))
-!write(0,*) 'max tend qi=',maxval(tend_scalars(tend%index_qi,:,:))
-!write(0,*) 'max tend qs=',maxval(tend_scalars(tend%index_qs,:,:))
-!write(0,*)
+ deallocate(theta)
+ deallocate(tend_th)
 
 !formats:
- 201 format(2i6,8(1x,e15.8))
+ 201 format(2i6,10(1x,e15.8))
+ 202 format(3i6,10(1x,e15.8))
 
  end subroutine  physics_addtend
 

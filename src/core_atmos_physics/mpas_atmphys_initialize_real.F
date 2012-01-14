@@ -426,8 +426,8 @@
  nCells        = mesh % nCells
  nSoilLevels   = mesh % nSoilLevels
  nFGSoilLevels = mesh % nFGSoilLevels
- write(0,*) 'nSoilLevels  =',nSoilLevels
- write(0,*) 'nFGSoilLevels=',nFGSoilLevels
+ write(0,*) 'nSoilLevels   =',nSoilLevels
+ write(0,*) 'nFGSoilLevels =',nFGSoilLevels
 
  landmask => mesh % landmask % array
 
@@ -607,7 +607,7 @@
  endif
 
 !make sure that all the cells flagged as sea-ice cells are defined as ocean cells:
-!num_seaice_changes = 0
+ num_seaice_changes = 0
  do iCell = 1, nCellsSolve
     if((landmask(iCell).eq.1 .and. xice(iCell).gt.0.) .or. xice(iCell).gt.200.) then
        num_seaice_changes = num_seaice_changes + 1

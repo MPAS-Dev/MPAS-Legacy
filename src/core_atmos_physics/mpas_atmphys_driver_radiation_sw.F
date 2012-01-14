@@ -27,11 +27,16 @@
  contains
 
 !=============================================================================================
- subroutine allocate_radiation_sw
+ subroutine allocate_radiation_sw(xtime_s)
 !=============================================================================================
 
- if(.not.allocated(f_ice)        ) allocate(f_ice(ims:ime,kms:kme,jms:jme)                )
- if(.not.allocated(f_rain)       ) allocate(f_rain(ims:ime,kms:kme,jms:jme)               )
+!input arguments:
+ real(kind=RKIND),intent(in):: xtime_s
+
+!---------------------------------------------------------------------------------------------
+
+ if(.not.allocated(f_ice)        ) allocate(f_ice(ims:ime,kms:kme,jms:jme)        )
+ if(.not.allocated(f_rain)       ) allocate(f_rain(ims:ime,kms:kme,jms:jme)       )
 
  if(.not.allocated(xlat_p)       ) allocate(xlat_p(ims:ime,jms:jme)               )
  if(.not.allocated(xlon_p)       ) allocate(xlon_p(ims:ime,jms:jme)               )
@@ -65,9 +70,6 @@
        if(.not.allocated(swupflxc_p)   ) allocate(swupflxc_p(ims:ime,kms:kme+1,jms:jme) )
 
     case("cam_sw")
-       if(.not.allocated(xlat_p)       ) allocate(xlat_p(ims:ime,jms:jme)               )
-       if(.not.allocated(xlon_p)       ) allocate(xlon_p(ims:ime,jms:jme)               )
-
        if(.not.allocated(glw_p)        ) allocate(glw_p(ims:ime,jms:jme)                )
        if(.not.allocated(lwcf_p)       ) allocate(lwcf_p(ims:ime,jms:jme)               )
        if(.not.allocated(lwdnb_p)      ) allocate(lwdnb_p(ims:ime,jms:jme)              )
@@ -98,11 +100,16 @@
        if(.not.allocated(aerosolcp_p)  ) &
           allocate(aerosolcp_p(ims:ime,1:num_aerlevels,jms:jme,num_aerosols) )
 
-       if(.not.allocated(emstot_p) ) allocate(emstot_p(ims:ime,kms:kme,jms:jme) )
-       if(.not.allocated(abstot_p) ) &
-          allocate(abstot_p(ims:ime,kms:kme,cam_abs_dim2,jms:jme) )
-       if(.not.allocated(absnxt_p) ) &
-          allocate(absnxt_p(ims:ime,kms:kme,cam_abs_dim1,jms:jme) )
+       !allocate these arrays on the first time step, only:
+       if(xtime_s .lt. 1.e-12) then
+
+          if(.not.allocated(emstot_p) ) allocate(emstot_p(ims:ime,kms:kme,jms:jme) )
+          if(.not.allocated(abstot_p) ) &
+             allocate(abstot_p(ims:ime,kms:kme,cam_abs_dim2,jms:jme) )
+          if(.not.allocated(absnxt_p) ) &
+             allocate(absnxt_p(ims:ime,kms:kme,cam_abs_dim1,jms:jme) )
+
+       endif
 
     case default
 
@@ -176,10 +183,6 @@
        if(allocated(aerosolcn_p)  ) deallocate(aerosolcn_p  )
        if(allocated(aerosolcp_p)  ) deallocate(aerosolcp_p  )
 
-       if(allocated(abstot_p)     ) deallocate(abstot_p     )
-       if(allocated(absnxt_p)     ) deallocate(absnxt_p     )
-       if(allocated(emstot_p)     ) deallocate(emstot_p     )
-
     case default
 
  end select radiation_sw_select
@@ -187,7 +190,7 @@
  end subroutine deallocate_radiation_sw
 
 !=============================================================================================
- subroutine radiation_sw_from_MPAS(mesh,state,diag_physics,sfc_input)
+ subroutine radiation_sw_from_MPAS(mesh,state,diag_physics,sfc_input,xtime_s)
 !=============================================================================================
 
 !input arguments:
@@ -195,6 +198,8 @@
  type(state_type),intent(in):: state
  type(diag_physics_type),intent(inout):: diag_physics
  type(sfc_input_type)   ,intent(inout):: sfc_input
+
+ real(kind=RKIND),intent(in):: xtime_s
 
 !---------------------------------------------------------------------------------------------
 
@@ -265,7 +270,6 @@
        enddo
 
     case("cam_sw")
-
        do j = jts,jte
        do i = its,ite
           sfc_emiss_p(i,j) = diag_physics % sfc_emiss % array(i)
@@ -292,39 +296,29 @@
        enddo
        enddo
        !infrared absorption:
-       do j = jts,jte
-       do n = 1,cam_abs_dim1
-       do k = kts,kte
-       do i = its,ite
-          absnxt_p(i,k,n,j) = diag_physics % absnxt % array(k,n,i)
-       enddo
-       enddo
-       enddo
-       do n = 1,cam_abs_dim2
-       do k = kts,kte+1
-       do i = its,ite
-          abstot_p(i,k,n,j) = diag_physics % abstot % array(k,n,i)
-       enddo
-       enddo
-       enddo
-       do k = kts,kte+1
-       do i = its,ite
-          emstot_p(i,k,j) = diag_physics % emstot % array(k,i)
-       enddo
-       enddo
-       enddo
-!      write(0,*) '--- end radiation_sw_from_MPAS: doabsems=',doabsems
-!      do k = kts,kte+1
-!         write(0,102) k,(maxval(abstot_p(its:ite,k,n,jts:jte)),n=1,10)
-!      enddo
-!      write(0,*)
-!      do k = kts,kte
-!         write(0,102) k,(maxval(absnxt_p(its:ite,k,n,jts:jte)),n=1,cam_abs_dim1)
-!      enddo
-!      write(0,*)
-!      do k = kts,kte+1
-!         write(0,102) k,maxval(emstot_p(its:ite,k,jts:jte))
-!      enddo
+       if(xtime_s .lt. 1.e-12) then
+          do j = jts,jte
+          do n = 1,cam_abs_dim1
+          do k = kts,kte
+          do i = its,ite
+             absnxt_p(i,k,n,j) = 0.
+          enddo
+          enddo
+          enddo
+          do n = 1,cam_abs_dim2
+          do k = kts,kte+1
+          do i = its,ite
+             abstot_p(i,k,n,j) = 0.
+          enddo
+          enddo
+          enddo
+          do k = kts,kte+1
+          do i = its,ite
+             emstot_p(i,k,j) = 0.
+          enddo
+          enddo
+          enddo
+       endif
        !ozone mixing ratio:
        do k = 1, num_oznlevels
           pin_p(k) = mesh % pin % array(k,1)
@@ -412,35 +406,6 @@
 
  enddo
 
- radiation_sw_select: select case (trim(radt_sw_scheme))
-    case("cam_sw")
-       !infrared absorption:
-       do j = jts,jte
-       do n = 1,cam_abs_dim1
-       do k = kts,kte
-       do i = its,ite
-          diag_physics % absnxt % array(k,n,i) = absnxt_p(i,k,n,j)
-       enddo
-       enddo
-       enddo
-       do n = 1,cam_abs_dim2
-       do k = kts,kte+1
-       do i = its,ite
-          diag_physics % abstot % array(k,n,i) = abstot_p(i,k,n,j)
-       enddo
-       enddo
-       enddo
-       do k = kts,kte+1
-       do i = its,ite
-          diag_physics % emstot % array(k,i) = emstot_p(i,k,j)
-       enddo
-       enddo
-       enddo
-
-    case default
-
- end select radiation_sw_select
-
  end subroutine radiation_sw_to_MPAS
 
 !=============================================================================================
@@ -456,7 +421,7 @@
 
 !---------------------------------------------------------------------------------------------
  write(0,*)
- write(0,*) '--- begin radiation_sw initialization:'
+ write(0,*) '--- enter radiation_sw initialization:'
 
 !call to shortwave radiation scheme:
  radiation_sw_select: select case (trim(radt_sw_scheme))
@@ -475,7 +440,7 @@
 
  end select radiation_sw_select
 
- write(0,*) '--- end radiation_sw initialization:'
+ write(0,*) '--- end radiation_sw initialization'
 
  end subroutine init_radiation_sw
 
@@ -517,7 +482,7 @@
   xtime_m = xtime_s/60.
 
 !copy all MPAS arrays to rectangular grid:
- call radiation_sw_from_MPAS(mesh,state,diag_physics,sfc_input)
+ call radiation_sw_from_MPAS(mesh,state,diag_physics,sfc_input,xtime_s)
 
 !... calculates solar declination:
 !call radconst(declin,solcon,julday,degrad,dpd)
@@ -531,6 +496,7 @@
  radiation_sw_select: select case (trim(radt_sw_scheme))
 
     case ("rrtmg_sw")
+
        write(0,*) '--- enter subroutine rrtmg_swrad:'
        call rrtmg_swrad( &
                 rthratensw = rthratensw_p , swupt     = swupt_p    , swuptc    = swuptc_p  , &
@@ -562,6 +528,8 @@
        write(0,*) '--- exit subroutine rrtmg_swrad'
 
     case ("cam_sw")
+
+       write(0,*) '--- enter subroutine camrad_sw:'
        call camrad( dolw = .false. , dosw = .true. ,                                         &
                 rthratenlw    = rthratenlw_p  , rthratensw    = rthratensw_p  ,              &
                 swupt         = swupt_p       , swuptc        = swuptc_p      ,              &
@@ -581,7 +549,7 @@
                 xlat          = xlat_p        , xlong         = xlon_p        ,              &
                 t_phy         = t_p           , pi_phy        = pi_p          ,              &
                 p_phy         = pres_p        , p8w           = pres2_p       ,              &
-                z             = z_p           , dz8w          = dz_p          ,              &            
+                z             = zmid_p        , dz8w          = dz_p          ,              &            
                 rho_phy       = rho_p         , qv3d          = qv_p          ,              & 
                 qc3d          = qc_p          , qr3d          = qr_p          ,              &
                 qi3d          = qi_p          , qs3d          = qs_p          ,              &
@@ -610,19 +578,14 @@
                 ims = ims , ime = ime , jms = jms , jme = jme , kms = kms , kme = kme ,      &
                 its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte        &
                   )
-
-       write(0,*) '--- end subroutine camrad sw'
        write(0,*) 'doabsems =',doabsems
        write(0,*) 'max swupb      =',maxval(swupb_p(its:ite,jms:jme))
-       write(0,*) 'min swupb      =',minval(swupb_p(its:ite,jms:jme))
        write(0,*) 'max swupbc     =',maxval(swupbc_p(its:ite,jms:jme))
-       write(0,*) 'min swupbc     =',minval(swupbc_p(its:ite,jms:jme))
        write(0,*) 'max swupt      =',maxval(swupt_p(its:ite,jms:jme))
-       write(0,*) 'min swupt      =',minval(swupt_p(its:ite,jms:jme))
        write(0,*) 'max swuptc     =',maxval(swuptc_p(its:ite,jms:jme))
-       write(0,*) 'min swuptc     =',minval(swuptc_p(its:ite,jms:jme))
        write(0,*) 'max rthratensw =',maxval(rthratensw_p(its:ite,kts:kte,jms:jme))
        write(0,*) 'min rthratensw =',minval(rthratensw_p(its:ite,kts:kte,jms:jme))
+       write(0,*) '--- end subroutine camrad sw'
 
     case default
 
@@ -631,7 +594,10 @@
 !copy all arrays back to MPAS geodesic grid:
  call radiation_sw_to_MPAS(diag_physics,tend_physics)
 
- write(0,*) '--- end subroutine driver_radiation_sw:'
+ write(0,*) '--- end subroutine driver_radiation_sw'
+
+!formats:
+ 200 format(i3,i6,8(1x,e15.8))
 
  end subroutine driver_radiation_sw
 

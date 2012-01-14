@@ -9,7 +9,7 @@
  use mpas_configure, only: restart => config_do_restart,  &
                            mminlu  => input_landuse_data, &
                            mminsl  => input_soil_data   , &
-                           input_sfc_albedo => config_sfc_albedo
+                           input_sfc_albedo => config_sfc_snowalbedo
  use mpas_dmpar
  use mpas_grid_types
 

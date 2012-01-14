@@ -145,10 +145,6 @@ module atm_time_integration
          call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % diag % rtheta_p % array(:,:), &
                                           block % mesh % nVertLevels, block % mesh % nCells, &
                                           block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-!surface_pressure
-         call mpas_dmpar_exch_halo_field1d_real(domain % dminfo, block % diag % surface_pressure % array(:), &
-                                          block % mesh % nCells, &
-                                          block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
          block => block % next
       end do
 
@@ -192,7 +188,7 @@ module atm_time_integration
         block => domain % blocklist
         do while (associated(block))
            call physics_addtend( domain % dminfo , block % parinfo % cellsToSend, block % parinfo % cellsToRecv, &
-                        block % mesh , block % state % time_levs(2) % state, block % diag, block % tend, &
+                        block % mesh , block % state % time_levs(1) % state, block % diag, block % tend, &
                         block % tend_physics , block % state % time_levs(2) % state % rho_zz % array(:,:), &
                         block % diag % rho_edge % array(:,:) )
            block => block % next
@@ -1010,7 +1006,7 @@ module atm_time_integration
                                                     rho_pp, rho_zz, rho_base, ruAvg, ru_save, ru_p, u, ru, &
                                                     exner, exner_base, rtheta_base, pressure_p,         &
                                                     zz, theta_m, pressure_b, qvapor
-      real (kind=RKIND), dimension(:), pointer :: fzm, fzp, dvEdge, AreaCell, rdzw, surface_pressure
+      real (kind=RKIND), dimension(:), pointer :: fzm, fzp, dvEdge, AreaCell
       real (kind=RKIND), dimension(:,:,:), pointer :: zb, zb3 
       integer, dimension(:,:), pointer :: cellsOnEdge
 
@@ -1053,9 +1049,7 @@ module atm_time_integration
 
        pressure_p => diag % pressure_p % array
        pressure_b => diag % pressure_base % array
-       surface_pressure => diag % surface_pressure % array
 
-       rdzw => grid % rdzw % array
        zz => grid % zz % array
        zb => grid % zb % array
        zb3 => grid % zb3 % array
@@ -1129,13 +1123,6 @@ module atm_time_integration
             pressure_p(k,iCell) = zz(k,iCell) * rgas * (exner(k,iCell)*rtheta_p(k,iCell)+rtheta_base(k,iCell)  &
                                                           * (exner(k,iCell)-exner_base(k,iCell)))
           end do
-
-         !calculation of the surface pressure:
-         surface_pressure(iCell) = 0.5*gravity/rdzw(1)                                              &
-                       * (1.25* rho_zz(1,iCell) * (1. + qvapor(1,iCell))  &
-                       -  0.25* rho_zz(2,iCell) * (1. + qvapor(2,iCell)))
-         surface_pressure(iCell) = surface_pressure(iCell) + pressure_p(1,iCell) + pressure_b(1,iCell)
-
 
       end do
 
@@ -1872,7 +1859,8 @@ module atm_time_integration
       real (kind=RKIND) :: r_earth
       real (kind=RKIND), dimension(:,:), pointer :: ur_cell, vr_cell
 
-      real (kind=RKIND), parameter :: c_s = 0.25
+      real (kind=RKIND), parameter :: c_s = 0.125
+!     real (kind=RKIND), parameter :: c_s = 0.25
       real (kind=RKIND), dimension( grid % nVertLevels ) :: d_diag, d_off_diag, flux_arr
       real (kind=RKIND), dimension(:,:), pointer :: defc_a, defc_b
       logical :: delsq_horiz_mixing, newpx

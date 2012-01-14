@@ -98,7 +98,7 @@
 
  write(0,*)
  write(0,*) '--- enter subroutine monthly_interp_to_date:'
- write(0,*) '--- current_date =',date_str
+ write(0,*) '--- current_date  = ',date_str
 
  write(day15,fmt='(I2.2)') 15
  do l = 1 , 12
@@ -131,8 +131,8 @@
              month2 = month1 + 1
           endif
           if(n == 1) then
-             write(0,*) '--- month1=',month1
-             write(0,*) '--- month2=',month2
+             write(0,*) '--- month1 =',month1
+             write(0,*) '--- month2 =',month2
           endif
           field_out(n) = ( field_in(month2,n) * (target_date - middle(l))    &
                        +   field_in(month1,n) * (middle(l+1) - target_date)) &

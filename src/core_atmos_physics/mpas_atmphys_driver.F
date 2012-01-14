@@ -71,7 +71,7 @@
 
     !call to short wave radiation scheme:
     if(l_radtsw) then
-       call allocate_radiation_sw
+       call allocate_radiation_sw(xtime_s)
        call driver_radiation_sw(itimestep,block%mesh,block%state%time_levs(1)%state,  &
                                block%diag_physics,block%sfc_input,block%tend_physics, &
                                xtime_s)
@@ -79,7 +79,7 @@
 
     !call to long wave radiation scheme:
     if(l_radtlw) then
-       call allocate_radiation_lw
+       call allocate_radiation_lw(xtime_s)
        call driver_radiation_lw(itimestep,block%mesh,block%state%time_levs(1)%state,  &
                                block%diag_physics,block%sfc_input,block%tend_physics, &
                                xtime_s)
@@ -89,7 +89,7 @@
     if(config_radt_sw_scheme.ne.'off' .or. config_radt_lw_scheme.ne.'off') &
        call deallocate_cloudiness
     if(config_radt_sw_scheme.ne.'off') call deallocate_radiation_sw
-    if(config_radt_lw_scheme.ne.'off') call deallocate_radiation_lw
+    if(config_radt_lw_scheme.ne.'off') call deallocate_radiation_lw(xtime_s)
 
     !call to surface-layer scheme:
     if(config_sfclayer_scheme .ne. 'off') then

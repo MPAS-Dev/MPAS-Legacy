@@ -1,5 +1,6 @@
 !=============================================================================================
  module mpas_atmphys_driver_radiation_lw
+ use mpas_configure, only: config_do_restart
  use mpas_grid_types
  use mpas_timer
 
@@ -26,11 +27,16 @@
  contains
 
 !=============================================================================================
- subroutine allocate_radiation_lw
+ subroutine allocate_radiation_lw(xtime_s)
 !=============================================================================================
 
- if(.not.allocated(f_ice)        ) allocate(f_ice(ims:ime,kms:kme,jms:jme)                )
- if(.not.allocated(f_rain)       ) allocate(f_rain(ims:ime,kms:kme,jms:jme)               )
+!input arguments:
+ real(kind=RKIND),intent(in):: xtime_s
+
+!---------------------------------------------------------------------------------------------
+
+ if(.not.allocated(f_ice)        ) allocate(f_ice(ims:ime,kms:kme,jms:jme)        )
+ if(.not.allocated(f_rain)       ) allocate(f_rain(ims:ime,kms:kme,jms:jme)       )
 
  if(.not.allocated(sfc_emiss_p)  ) allocate(sfc_emiss_p(ims:ime,jms:jme)          )
  if(.not.allocated(snow_p)       ) allocate(snow_p(ims:ime,jms:jme)               )
@@ -93,11 +99,20 @@
        if(.not.allocated(aerosolcp_p)  ) &
           allocate(aerosolcp_p(ims:ime,1:num_aerlevels,jms:jme,num_aerosols) )
 
-       if(.not.allocated(emstot_p) ) allocate(emstot_p(ims:ime,kms:kme,jms:jme) )
-       if(.not.allocated(abstot_p) ) &
-          allocate(abstot_p(ims:ime,kms:kme,cam_abs_dim2,jms:jme) )
-       if(.not.allocated(absnxt_p) ) &
-          allocate(absnxt_p(ims:ime,kms:kme,cam_abs_dim1,jms:jme) )
+       !allocate these arrays on the first time step, only:
+       if(xtime_s .lt. 1.e-12) then
+
+          write(0,*) 
+          write(0,*) '--- end subroutine allocate_radiation_lw:'
+          write(0,*) '--- allocate emstot_p,abstot_p,absnxt_p'
+
+          if(.not.allocated(emstot_p) ) allocate(emstot_p(ims:ime,kms:kme,jms:jme) )
+          if(.not.allocated(abstot_p) ) &
+             allocate(abstot_p(ims:ime,kms:kme,cam_abs_dim2,jms:jme) )
+          if(.not.allocated(absnxt_p) ) &
+             allocate(absnxt_p(ims:ime,kms:kme,cam_abs_dim1,jms:jme) )
+
+       endif
 
     case default
 
@@ -106,8 +121,13 @@
  end subroutine allocate_radiation_lw
 
 !=============================================================================================
- subroutine deallocate_radiation_lw
+ subroutine deallocate_radiation_lw(xtime_s)
 !=============================================================================================
+
+!input arguments:
+ real(kind=RKIND),intent(in):: xtime_s
+
+!---------------------------------------------------------------------------------------------
 
  if(allocated(f_ice)        ) deallocate(f_ice        )
  if(allocated(f_rain)       ) deallocate(f_rain       )
@@ -169,10 +189,6 @@
        if(allocated(aerosolcn_p)  ) deallocate(aerosolcn_p  )
        if(allocated(aerosolcp_p)  ) deallocate(aerosolcp_p  )
 
-       if(allocated(abstot_p)     ) deallocate(abstot_p     )
-       if(allocated(absnxt_p)     ) deallocate(absnxt_p     )
-       if(allocated(emstot_p)     ) deallocate(emstot_p     )
-
     case default
 
  end select radiation_lw_select
@@ -180,7 +196,7 @@
  end subroutine deallocate_radiation_lw
 
 !=============================================================================================
- subroutine radiation_lw_from_MPAS(mesh,state,diag_physics,sfc_input)
+ subroutine radiation_lw_from_MPAS(mesh,state,diag_physics,sfc_input,xtime_s)
 !=============================================================================================
 
 !input arguments:
@@ -188,6 +204,8 @@
  type(state_type),intent(in):: state
  type(sfc_input_type)   ,intent(in):: sfc_input
  type(diag_physics_type),intent(in):: diag_physics
+
+ real(kind=RKIND),intent(in):: xtime_s
 
 !---------------------------------------------------------------------------------------------
 
@@ -283,42 +301,34 @@
        enddo
        enddo
 
-       call mpas_timer_start("CAM lw: read arrays for infrared absorption")
-       !infrared absorption:
-       do j = jts,jte
-       do n = 1,cam_abs_dim1
-       do k = kts,kte
-       do i = its,ite
-          absnxt_p(i,k,n,j) = diag_physics % absnxt % array(k,n,i)
-       enddo
-       enddo
-       enddo
-       do n = 1,cam_abs_dim2
-       do k = kts,kte+1
-       do i = its,ite
-          abstot_p(i,k,n,j) = diag_physics % abstot % array(k,n,i)
-       enddo
-       enddo
-       enddo
-       do k = kts,kte+1
-       do i = its,ite
-          emstot_p(i,k,j) = diag_physics % emstot % array(k,i)
-       enddo
-       enddo
-       enddo
-       call mpas_timer_stop("CAM lw: read arrays for infrared absorption")
-!      write(0,*) '--- end radiation_lw_from_MPAS: doabsems=',doabsems
-!      do k = kts,kte+1
-!         write(0,102) k,(maxval(abstot_p(its:ite,k,n,jts:jte)),n=1,10)
-!      enddo
-!      write(0,*)
-!      do k = kts,kte
-!         write(0,102) k,(maxval(absnxt_p(its:ite,k,n,jts:jte)),n=1,cam_abs_dim1)
-!      enddo
-!      write(0,*)
-!      do k = kts,kte+1
-!         write(0,102) k,maxval(emstot_p(its:ite,k,jts:jte))
-!      enddo
+       call mpas_timer_start("CAM lw: fill arrays for infrared absorption")
+       if(xtime_s .lt. 1.e-12) then
+          write(0,*)
+          write(0,*) '--- radiation_lw_from_MPAS:'
+          write(0,*) '--- initialize emstot_p,abstot_p,absnxt_p'
+          !infrared absorption:
+          do j = jts,jte
+          do n = 1,cam_abs_dim1
+          do k = kts,kte
+          do i = its,ite
+             absnxt_p(i,k,n,j) = 0.
+          enddo
+          enddo
+          enddo
+          do n = 1,cam_abs_dim2
+          do k = kts,kte+1
+          do i = its,ite
+             abstot_p(i,k,n,j) = 0.
+          enddo
+          enddo
+          enddo
+          do k = kts,kte+1
+          do i = its,ite
+             emstot_p(i,k,j) = 0.
+          enddo
+          enddo
+          enddo
+       endif
 
        call mpas_timer_start("CAM lw: ozone and aerosols")
        !ozone mixing ratio:
@@ -367,12 +377,14 @@
  end subroutine radiation_lw_from_MPAS
 
 !=============================================================================================
- subroutine radiation_lw_to_MPAS(diag_physics,tend_physics)
+ subroutine radiation_lw_to_MPAS(diag_physics,tend_physics,xtime_s)
 !=============================================================================================
 
 !input arguments:
  type(diag_physics_type),intent(inout):: diag_physics
  type(tend_physics_type),intent(inout):: tend_physics
+
+ real(kind=RKIND),intent(in):: xtime_s
 
 !---------------------------------------------------------------------------------------------
 
@@ -406,48 +418,6 @@
  enddo
  enddo
  enddo
-
- radiation_lw_select: select case (trim(radt_lw_scheme))
-
-    case("cam_lw")
-       !infrared absorption:
-       do j = jts,jte
-       do n = 1,cam_abs_dim1
-       do k = kts,kte
-       do i = its,ite
-          diag_physics % absnxt % array(k,n,i) = absnxt_p(i,k,n,j)
-       enddo
-       enddo
-       enddo
-       do n = 1,cam_abs_dim2
-       do k = kts,kte+1
-       do i = its,ite
-          diag_physics % abstot % array(k,n,i) = abstot_p(i,k,n,j)
-       enddo
-       enddo
-       enddo
-       do k = kts,kte+1
-       do i = its,ite
-          diag_physics % emstot % array(k,i) = emstot_p(i,k,j)
-       enddo
-       enddo
-       enddo
-!      write(0,*) '--- end radiation_lw_to_MPAS: doabsems=',doabsems
-!      do k = kts,kte+1
-!         write(0,102) k,(maxval(abstot_p(its:ite,k,n,jts:jte)),n=1,10)
-!      enddo
-!      write(0,*)
-!      do k = kts,kte
-!        write(0,102) k,(maxval(absnxt_p(its:ite,k,n,jts:jte)),n=1,cam_abs_dim1)
-!      enddo
-!      write(0,*)
-!      do k = kts,kte+1
-!         write(0,102) k,maxval(emstot_p(its:ite,k,jts:jte))
-!      enddo
-
-    case default
-
- end select radiation_lw_select
 
 !format:
  101 format(i3,2i6,12(1x,e15.8))
@@ -517,7 +487,7 @@
  101 format(i8,12(1x,e15.8))
 
 !copy all MPAS arrays to rectangular grid:
- call radiation_lw_from_MPAS(mesh,state,diag_physics,sfc_input)
+ call radiation_lw_from_MPAS(mesh,state,diag_physics,sfc_input,xtime_s)
 
 !call to longwave radiation scheme:
  radiation_lw_select: select case (trim(radt_lw_scheme))
@@ -560,6 +530,8 @@
        radt = dt_radtlw/60.
 
        call mpas_timer_start("camrad")
+       write(0,*) '--- enter subroutine camrad_lw: doabsems=',doabsems
+       call mpas_timer_start("camrad")
        call camrad( dolw = .true. , dosw = .false. ,                                         &
                 rthratenlw    = rthratenlw_p  , rthratensw    = rthratensw_p  ,              &
                 swupt         = swupt_p       , swuptc        = swuptc_p      ,              &
@@ -579,7 +551,7 @@
                 xlat          = xlat_p        , xlong         = xlon_p        ,              &
                 t_phy         = t_p           , pi_phy        = pi_p          ,              &
                 p_phy         = pres_p        , p8w           = pres2_p       ,              &
-                z             = z_p           , dz8w          = dz_p          ,              &            
+                z             = zmid_p        , dz8w          = dz_p          ,              &            
                 rho_phy       = rho_p         , qv3d          = qv_p          ,              & 
                 qc3d          = qc_p          , qr3d          = qr_p          ,              &
                 qi3d          = qi_p          , qs3d          = qs_p          ,              &
@@ -609,27 +581,26 @@
                 its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte        &
                   )
        call mpas_timer_stop("camrad")
-       write(0,*) '--- end subroutince camrad lw: doabsems=',doabsems
        write(0,*) 'max lwupb      =',maxval(lwupb_p(its:ite,jms:jme))
-       write(0,*) 'min lwupb      =',minval(lwupb_p(its:ite,jms:jme))
        write(0,*) 'max lwupbc     =',maxval(lwupbc_p(its:ite,jms:jme))
-       write(0,*) 'min lwupbc     =',minval(lwupbc_p(its:ite,jms:jme))
        write(0,*) 'max lwupt      =',maxval(lwupt_p(its:ite,jms:jme))
-       write(0,*) 'min lwupt      =',minval(lwupt_p(its:ite,jms:jme))
        write(0,*) 'max lwuptc     =',maxval(lwuptc_p(its:ite,jms:jme))
-       write(0,*) 'min lwuptc     =',minval(lwuptc_p(its:ite,jms:jme))
        write(0,*) 'max rthratenlw =',maxval(rthratenlw_p(its:ite,kts:kte,jms:jme))
        write(0,*) 'min rthratenlw =',minval(rthratenlw_p(its:ite,kts:kte,jms:jme))
+       write(0,*) '--- end subroutine camrad lw: doabsems=',doabsems
 
     case default
 
  end select radiation_lw_select
 
 !copy all arrays back to MPAS geodesic grid:
- call radiation_lw_to_MPAS(diag_physics,tend_physics)
+ call radiation_lw_to_MPAS(diag_physics,tend_physics,xtime_s)
 
- write(0,*) '--- end subroutine driver_radiation_lw:'
+ write(0,*) '--- end subroutine driver_radiation_lw'
  call mpas_timer_stop("radiation_lw")
+
+!formats:
+ 200 format(i3,i3,8(1x,e15.8))
 
  end subroutine driver_radiation_lw
 

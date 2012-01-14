@@ -34,7 +34,7 @@
  integer,public:: its,ite,jts,jte,kts,kte
  integer,public:: n_microp
 
- integer,public:: num_months          !number of months                                     [-]
+ integer,public:: num_months          !number of months                                    [-]
 
  real(kind=RKIND),public:: dt_dyn     !time-step for dynamics
  real(kind=RKIND),public:: dt_microp  !time-step for cloud microphysics parameterization.
@@ -44,15 +44,19 @@
  real(kind=RKIND),public:: xice_threshold
 
  real(kind=RKIND),dimension(:,:),allocatable:: &
-    area_p             !grid cell area                                                     [m2]
+    area_p             !grid cell area                                                    [m2]
 
 !... arrays related to surface:
  real(kind=RKIND),dimension(:,:),allocatable:: &
     psfc_p,           &!surface pressure                                                  [Pa]
     ptop_p             !model-top pressure                                                [Pa]
 
-!... arrays related to u- and v-velocities interpolated to theta points:
  real(kind=RKIND),dimension(:,:,:),allocatable:: &
+    fzm_p,            &!weight for interpolation to w points                               [-]
+    fzp_p              !weight for interpolation to w points                               [-]
+
+ real(kind=RKIND),dimension(:,:,:),allocatable:: &
+!... arrays related to u- and v-velocities interpolated to theta points:
     u_p,              &!u-velocity interpolated to theta points                          [m/s]
     v_p                !v-velocity interpolated to theta points                          [m/s]
     
@@ -62,16 +66,13 @@
     pres_p,           &!pressure                                                          [Pa]
     pi_p,             &!(p_phy/p0)**(r_d/cp)                                               [-]
     z_p,              &!height of layer                                                    [m]
+    zmid_p,           &!height of middle of layer                                          [m]
     dz_p,             &!layer thickness                                                    [m]
     t_p,              &!temperature                                                        [K]
     th_p,             &!potential temperature                                              [K]
     al_p,             &!inverse of air density                                         [m3/kg]
     rho_p,            &!air density                                                    [kg/m3]
     rh_p               !relative humidity                                                  [-]
-
- real(kind=RKIND),dimension(:,:,:),allocatable:: &
-    pres_hyd_p,       &!hydrostatic pressure at theta points                              [Pa]
-    pres2_hyd_p        !hydrostatic pressure at w points                                  [Pa]
 
  real(kind=RKIND),dimension(:,:,:),allocatable:: &
     qv_p,             &!water vapor mixing ratio                                       [kg/kg]
@@ -325,6 +326,7 @@
 
  integer,public:: &
     num_soils          !number of soil layers                                              [-]
+    
  integer,dimension(:,:),allocatable:: &
     isltyp_p,         &!dominant soil type category                                        [-]
     ivgtyp_p           !dominant vegetation category                                       [-]

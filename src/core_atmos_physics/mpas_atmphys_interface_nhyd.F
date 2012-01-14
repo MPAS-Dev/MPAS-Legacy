@@ -23,15 +23,18 @@
  subroutine allocate_forall_physics
 !=============================================================================================
 
- if(.not.allocated(psfc_p))  allocate(psfc_p(ims:ime,jms:jme)           )
- if(.not.allocated(ptop_p))  allocate(ptop_p(ims:ime,jms:jme)           )
+ if(.not.allocated(psfc_p) )   allocate(psfc_p(ims:ime,jms:jme)         )
+ if(.not.allocated(ptop_p) )   allocate(ptop_p(ims:ime,jms:jme)         )
 
  if(.not.allocated(u_p)    )  allocate(u_p(ims:ime,kms:kme,jms:jme)     )
  if(.not.allocated(v_p)    )  allocate(v_p(ims:ime,kms:kme,jms:jme)     )
+ if(.not.allocated(fzm_p)  )   allocate(fzm_p(ims:ime,kms:kme,jms:jme)  )
+ if(.not.allocated(fzp_p)  )   allocate(fzp_p(ims:ime,kms:kme,jms:jme)  )
  if(.not.allocated(zz_p)   )  allocate(zz_p(ims:ime,kms:kme,jms:jme)    )
  if(.not.allocated(pres_p) )  allocate(pres_p(ims:ime,kms:kme,jms:jme)  )
  if(.not.allocated(pi_p)   )  allocate(pi_p(ims:ime,kms:kme,jms:jme)    )
  if(.not.allocated(z_p)    )  allocate(z_p(ims:ime,kms:kme,jms:jme)     )
+ if(.not.allocated(zmid_p) )  allocate(zmid_p(ims:ime,kms:kme,jms:jme)  )
  if(.not.allocated(dz_p)   )  allocate(dz_p(ims:ime,kms:kme,jms:jme)    )
  if(.not.allocated(t_p)    )  allocate(t_p(ims:ime,kms:kme,jms:jme)     )
  if(.not.allocated(th_p)   )  allocate(th_p(ims:ime,kms:kme,jms:jme)    )
@@ -42,44 +45,7 @@
  if(.not.allocated(w_p)    )  allocate(w_p(ims:ime,kms:kme,jms:jme)     )
  if(.not.allocated(pres2_p))  allocate(pres2_p(ims:ime,kms:kme,jms:jme) )
  if(.not.allocated(t2_p)   )  allocate(t2_p(ims:ime,kms:kme,jms:jme)    )
-
- if(.not.allocated(pres_hyd_p) ) allocate(pres_hyd_p(ims:ime,kms:kme,jms:jme)  )
- if(.not.allocated(pres2_hyd_p)) allocate(pres2_hyd_p(ims:ime,kms:kme,jms:jme) )
  
- do j = jms,jme
- do i = ims,ime
-    psfc_p(i,j)   = 0.
-    ptop_p(i,j)   = 0.
- enddo
- enddo
-
- do j = jms,jme
- do k = kms,kme
- do i = ims,ime
-    u_p(i,k,j)     = 0.
-    v_p(i,k,j)     = 0.
-    w_p(i,k,j)     = 0.
-    pres_p(i,k,j)  = 0.
-    pi_p(i,k,j)    = 0.
-    z_p(i,k,j)     = 0.
-    dz_p(i,k,j)    = 0.
-    t_p(i,k,j)     = 0.
-    th_p(i,k,j)    = 0.
-    al_p(i,k,j)    = 0.
-    rho_p(i,k,j)   = 0.
-    rh_p(i,k,j)    = 0.
-
-    w_p(i,k,j)     = 0.
-    pres2_p(i,k,j) = 0.
-    t2_p(i,k,j)    = 0.
-
-    pres_hyd_p(i,k,j)  = 0.
-    pres2_hyd_p(i,k,j) = 0.
- enddo
- enddo
- enddo
-
-!allocate moist species (to be revisited!):
  if(.not.allocated(qv_p)   ) allocate(qv_p(ims:ime,kms:kme,jms:jme)     )
  if(.not.allocated(qc_p)   ) allocate(qc_p(ims:ime,kms:kme,jms:jme)     )
  if(.not.allocated(qr_p)   ) allocate(qr_p(ims:ime,kms:kme,jms:jme)     )
@@ -93,16 +59,18 @@
  subroutine deallocate_forall_physics
 !=============================================================================================
 
-!de-allocation of all physics arrays:
  if(allocated(psfc_p)  ) deallocate(psfc_p  )
  if(allocated(ptop_p)  ) deallocate(ptop_p  )
 
  if(allocated(u_p)     ) deallocate(u_p     )
  if(allocated(v_p)     ) deallocate(v_p     )
+ if(allocated(fzm_p)   ) deallocate(fzm_p   )
+ if(allocated(fzp_p)   ) deallocate(fzp_p   )
  if(allocated(zz_p)    ) deallocate(zz_p    )
  if(allocated(pres_p)  ) deallocate(pres_p  )
  if(allocated(pi_p)    ) deallocate(pi_p    )
  if(allocated(z_p)     ) deallocate(z_p     )
+ if(allocated(zmid_p)  ) deallocate(zmid_p  )
  if(allocated(dz_p)    ) deallocate(dz_p    )
  if(allocated(t_p)     ) deallocate(t_p     )
  if(allocated(th_p)    ) deallocate(th_p    )
@@ -114,9 +82,6 @@
  if(allocated(pres2_p) ) deallocate(pres2_p )
  if(allocated(t2_p)    ) deallocate(t2_p    )
 
- if(allocated(pres_hyd_p) ) deallocate(pres_hyd_p  )
- if(allocated(pres2_hyd_p)) deallocate(pres2_hyd_p )
- 
  if(allocated(qv_p)    ) deallocate(qv_p    )
  if(allocated(qc_p)    ) deallocate(qc_p    )
  if(allocated(qr_p)    ) deallocate(qr_p    )
@@ -141,12 +106,13 @@
 
  real(kind=RKIND),dimension(:),pointer:: latCell,lonCell
  real(kind=RKIND),dimension(:),pointer  :: fzm,fzp,rdzw
+ real(kind=RKIND),dimension(:),pointer  :: sfc_pressure
  real(kind=RKIND),dimension(:,:),pointer:: zgrid
  real(kind=RKIND),dimension(:,:),pointer:: zz,exner,pressure_b,rtheta_p,rtheta_b
  real(kind=RKIND),dimension(:,:),pointer:: rho_zz,theta_m,qv,pressure_p,u,v,w
  real(kind=RKIND),dimension(:,:),pointer:: qvs,rh
 
- integer:: ip,iEdg
+ real(kind=RKIND):: rho1,rho2,tem1,tem2
 
 !---------------------------------------------------------------------------------------------
 
@@ -164,24 +130,49 @@
  latCell   => mesh % latCell % array
  lonCell   => mesh % lonCell % array
 
- fzm        => mesh % fzm % array
- fzp        => mesh % fzp % array
- rdzw       => mesh % rdzw % array
- zgrid      => mesh % zgrid % array
- zz         => mesh % zz % array
- exner      => diag % exner % array
- pressure_b => diag % pressure_base % array
- pressure_p => diag % pressure_p % array
- rtheta_p   => diag % rtheta_p % array
- rtheta_b   => diag % rtheta_base % array
+ fzm          => mesh % fzm % array
+ fzp          => mesh % fzp % array
+ rdzw         => mesh % rdzw % array
+ zgrid        => mesh % zgrid % array
+ zz           => mesh % zz % array
+ sfc_pressure => diag % surface_pressure % array
+ exner        => diag % exner % array
+ pressure_b   => diag % pressure_base % array
+ pressure_p   => diag % pressure_p % array
+ rtheta_p     => diag % rtheta_p % array
+ rtheta_b     => diag % rtheta_base % array
 
- rho_zz     => state % rho_zz % array
- theta_m    => state % theta_m % array
- qv         => state % scalars % array(state%index_qv,:,:)
+ rho_zz  => state % rho_zz % array
+ theta_m => state % theta_m % array
+ qv      => state % scalars % array(state%index_qv,:,:)
 
- w          => state % w % array
- u          => diag  % uReconstructZonal % array
- v          => diag  % uReconstructMeridional % array
+ w => state % w % array
+ u => diag  % uReconstructZonal % array
+ v => diag  % uReconstructMeridional % array
+
+!ldf (2012-01-06): updates the surface pressure as is done in subroutine microphysics_to_MPAS.
+!do j = jts,jte
+!do i = its,ite
+!   sfc_pressure(i) = 0.5*g*(zgrid(2,i)-zgrid(1,i)) &
+!                   * (1.25 * rho_zz(1,i) * zz(1,i) * (1. + qv(1,i))  &
+!                   -  0.25 * rho_zz(2,i) * zz(2,i) * (1. + qv(1,i)))
+!   sfc_pressure(i) = sfc_pressure(i) + pressure_p(1,i) + pressure_b(1,i)
+!enddo
+!enddo
+!ldf end.
+!ldf (2012-01-09): updates the surface pressure using zgrid.
+ do j = jts,jte
+ do i = its,ite
+    tem1 = zgrid(2,i)-zgrid(1,i)
+    tem2 = zgrid(3,i)-zgrid(2,i)
+    rho1 = rho_zz(1,i) * zz(1,i) * (1. + qv(1,i))
+    rho2 = rho_zz(2,i) * zz(2,i) * (1. + qv(2,i))
+    sfc_pressure(i) = 0.5*g*(zgrid(2,i)-zgrid(1,i)) &
+                    * (rho1 + 0.5*(rho2-rho1)*tem1/(tem1+tem2))
+    sfc_pressure(i) = sfc_pressure(i) + pressure_p(1,i) + pressure_b(1,i)
+ enddo
+ enddo
+!ldf end.
 
 !copy sounding variables from the geodesic grid to the rectangular grid:
  do j = jts, jte
@@ -215,11 +206,18 @@
     pi_p(i,k,j)   = exner(k,i)
     pres_p(i,k,j) = pressure_p(k,i) + pressure_b(k,i)
 
-    dz_p(i,k,j) = zgrid(k+1,i)-zgrid(k,i)
+    zmid_p(i,k,j) = 0.5*(zgrid(k+1,i)+zgrid(k,i))
+    dz_p(i,k,j)   = zgrid(k+1,i)-zgrid(k,i)
 
-    !arrays located at w points:
+ enddo
+ enddo
+ enddo
+
+ do j = jts, jte
+ do k = kts,kte+1
+ do i = its,ite
     w_p(i,k,j) = w(k,i)
-   
+    z_p(i,k,j) = zgrid(k,i)
  enddo
  enddo
  enddo
@@ -247,11 +245,23 @@
  enddo
 
 !interpolation of pressure and temperature from theta points to w points:
+!do j = jts,jte
+!do k = kts+1,kte
+!do i = its,ite
+!   t2_p(i,k,j)    = fzm(k)*t_p(i,k,j) + fzp(k)*t_p(i,k-1,j)
+!   pres2_p(i,k,j) = fzm(k)*pres_p(i,k,j) + fzp(k)*pres_p(i,k-1,j)
+!enddo
+!enddo
+!enddo
+!ldf(2011-01-10):
  do j = jts,jte
  do k = kts+1,kte
  do i = its,ite
-    t2_p(i,k,j)    = fzm(k)*t_p(i,k,j) + fzp(k)*t_p(i,k-1,j)
-    pres2_p(i,k,j) = fzm(k)*pres_p(i,k,j) + fzp(k)*pres_p(i,k-1,j)
+    tem1 = 1./(zgrid(k+1,i)-zgrid(k-1,i))
+    fzm_p(i,k,j) = (zgrid(k,i)-zgrid(k-1,i)) * tem1
+    fzp_p(i,k,j) = (zgrid(k+1,i)-zgrid(k,i)) * tem1
+    t2_p(i,k,j)    = fzm_p(i,k,j)*t_p(i,k,j) + fzp_p(i,k,j)*t_p(i,k-1,j)
+    pres2_p(i,k,j) = fzm_p(i,k,j)*pres_p(i,k,j) + fzp_p(i,k,j)*pres_p(i,k-1,j)
  enddo
  enddo
  enddo
@@ -308,17 +318,6 @@
 !      enddo
        stop
     endif
- enddo
- enddo
-
-!calculation of the hydrostatic pressure at w points:
- do j = jts,jte
- do i = its,ite
-    pres2_hyd_p(i,1,j) = psfc_p(i,j)
-    do k = kts+1,kte+1
-       pres2_hyd_p(i,k,j) = pres2_hyd_p(i,k-1,j) &
-                          - rho_p(i,k-1,j)*(1+qv_p(i,k-1,j))*g*dz_p(i,k-1,j)
-    enddo
  enddo
  enddo
 
@@ -480,6 +479,13 @@
  real(kind=RKIND),dimension(:,:),pointer:: rho_zz,theta_m,pressure_p
  real(kind=RKIND),dimension(:,:),pointer:: rt_diabatic_tend
 
+!ldf(2011-11-12): surface pressure.
+ real(kind=RKIND):: rho1,rho2,tem1,tem2
+ real(kind=RKIND),dimension(:),pointer:: rdzw
+ real(kind=RKIND),dimension(:),pointer:: sfc_pressure
+ real(kind=RKIND),dimension(:,:),pointer:: zgrid
+!ldf end.
+
 !---------------------------------------------------------------------------------------------
 
  write(0,*)
@@ -487,6 +493,7 @@
 
 !initialization:
  zz         => mesh % zz % array
+ zgrid      => mesh % zgrid % array
  exner      => diag % exner % array
  exner_b    => diag % exner_base % array
  pressure_b => diag % pressure_base % array
@@ -498,6 +505,11 @@
  theta_m    => state % theta_m % array
 
  rt_diabatic_tend => tend % rt_diabatic_tend % array
+
+!ldf (2011-11-12): update surface pressure.
+ rdzw => mesh % rdzw % array
+ sfc_pressure => diag % surface_pressure % array
+!ldf end.
 
 !variables common to all cloud microphysics schemes:
 
@@ -529,7 +541,30 @@
  enddo
  enddo
  enddo
- 
+
+!updates the surface pressure.
+!do j = jts,jte
+!do i = its,ite
+!   sfc_pressure(i) = 0.5*g*(zgrid(2,i)-zgrid(1,i)) &
+!                   * (1.25 * rho_zz(1,i) * zz(1,i) * (1. + qv_p(i,1,j))  &
+!                   -  0.25 * rho_zz(2,i) * zz(2,i) * (1. + qv_p(i,2,j)))
+!   sfc_pressure(i) = sfc_pressure(i) + pressure_p(1,i) + pressure_b(1,i)
+!enddo
+!enddo
+!ldf (2012-01-09):
+ do j = jts,jte
+ do i = its,ite
+    tem1 = zgrid(2,i)-zgrid(1,i)
+    tem2 = zgrid(3,i)-zgrid(2,i)
+    rho1 = rho_zz(1,i) * zz(1,i) * (1. + qv_p(i,1,j))
+    rho2 = rho_zz(2,i) * zz(2,i) * (1. + qv_P(i,2,j))
+    sfc_pressure(i) = 0.5*g*(zgrid(2,i)-zgrid(1,i)) &
+                    * (rho1 + 0.5*(rho2-rho1)*tem1/(tem1+tem2))
+    sfc_pressure(i) = sfc_pressure(i) + pressure_p(1,i) + pressure_b(1,i)
+ enddo
+ enddo
+!ldf end.
+
 !variables specific to different cloud microphysics schemes:
 
  microp_select_init: select case(microp_scheme)

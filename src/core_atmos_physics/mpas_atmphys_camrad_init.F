@@ -327,36 +327,6 @@
  DM_BCAST_MACRO(ln_ah2ow)
  DM_BCAST_MACRO(ln_eh2ow)
 
-!101 format(i4,7(1x,e19.12))
-!write(0,*) 'ah2onw'
-!do i_te = 1,21
-!   write(0,101) i_te,(ah2onw(1,1,1,i_te,i_rh),i_rh=1,n_rh)
-!enddo
-!write(0,*) 'eh2onw'
-!do i_te = 1,21
-!   write(0,101) i_te,(eh2onw(1,1,1,i_te,i_rh),i_rh=1,n_rh)
-!enddo
-!write(0,*) 'ah2ow'
-!do i_te = 1,21
-!   write(0,101) i_te,(ah2ow(1,1,1,i_te,i_rh),i_rh=1,n_rh)
-!enddo
-!write(0,*) 'cn_ah2ow'
-!do i_te = 1,21
-!   write(0,101) i_te,(cn_ah2ow(1,1,1,i_te,i_rh),i_rh=1,n_rh)
-!enddo
-!write(0,*) 'cn_eh2ow'
-!do i_te = 1,21
-!   write(0,101) i_te,(cn_eh2ow(1,1,1,i_te,i_rh),i_rh=1,n_rh)
-!enddo
-!write(0,*) 'ln_ah2ow'
-!do i_te = 1,21
-!   write(0,101) i_te,(ln_ah2ow(1,1,1,i_te,i_rh),i_rh=1,n_rh)
-!enddo
-!write(0,*) 'ln_eh2ow'
-!do i_te = 1,21
-!   write(0,101) i_te,(ln_eh2ow(1,1,1,i_te,i_rh),i_rh=1,n_rh)
-!enddo
-
  if(dminfo % my_proc_id == IO_NODE) close(cam_abs_unit)
 
 ! Set up table of H2O saturation vapor pressures for use in calculation effective path RH.  
@@ -612,14 +582,15 @@
  DM_BCAST_MACRO(kcb)
  DM_BCAST_MACRO(wcb)
  DM_BCAST_MACRO(gcb)
- DM_BCAST_MACRO(kvolc)
- DM_BCAST_MACRO(wvolc)
  DM_BCAST_MACRO(kdst)
  DM_BCAST_MACRO(wdst)
  DM_BCAST_MACRO(gdst)
  DM_BCAST_MACRO(kbg)
  DM_BCAST_MACRO(wbg)
  DM_BCAST_MACRO(gbg)
+ DM_BCAST_MACRO(kvolc)
+ DM_BCAST_MACRO(wvolc)
+ DM_BCAST_MACRO(gvolc)
 
  if(dminfo % my_proc_id == IO_NODE) close(cam_aer_unit)
 
@@ -676,7 +647,7 @@
     enddo
  enddo
 
-!write(0,*) '--- end subroutine aer_optics_initialize:'
+ write(0,*) '--- end subroutine aer_optics_initialize:'
 
  end subroutine aer_optics_initialize
 

@@ -329,6 +329,7 @@ dim nVertLevelsP2 nVertLevels+2
 %... NAMELIST VARIABLES ADDED FOR PHYSICS CONFIGURATION:
 namelist logical   physics  config_frac_seaice          false
 namelist logical   physics  config_sfc_albedo           false
+namelist logical   physics  config_sfc_snowalbedo       false
 namelist logical   physics  config_sst_update           false
 namelist logical   physics  config_sstdiurn_update      false
 namelist logical   physics  config_deepsoiltemp_update  false

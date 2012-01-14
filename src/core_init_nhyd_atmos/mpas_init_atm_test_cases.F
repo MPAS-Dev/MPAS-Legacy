@@ -6,6 +6,8 @@ module init_atm_test_cases
    use mpas_dmpar
    use atm_advection
    use mpas_atmphys_initialize_real
+   use mpas_RBF_interpolation
+   use mpas_vector_reconstruction
 
    ! Added only clause to keep xlf90 from getting confused from the overloaded abs intrinsic in mpas_timekeeping
    use mpas_timekeeping !, only: MPAS_Time_type, MPAS_TimeInterval_type, MPAS_Clock_type, &
@@ -3306,6 +3308,13 @@ if (y > 1249.0) y = 1249.0
 
       if (config_met_interp) then
 
+      !ldf (2011-11-19): added initialization of the sea-surface temperature, seaice fraction, and
+      !seaice flag:
+       fg % sst % array    = 0.
+       fg % xice % array   = 0.
+       fg % seaice % array = 0.
+      !ldf end.
+
       !
       ! First, try to locate the LANDSEA field for use as an interpolation mask
       !
@@ -3823,7 +3832,8 @@ write(0,*) 'Interpolating SKINTEMP'
       ! Set SST based on SKINTEMP field if it wasn't found in input data
       if (minval(fg % sst % array) == 0.0 .and. maxval(fg % sst % array) == 0.0) then
          write(0,*) 'Setting SST from SKINTEMP'
-         where (grid % landmask % array == 0) fg % sst % array = fg % skintemp % array
+         !where (grid % landmask % array == 0) fg % sst % array = fg % skintemp % array
+         fg % sst % array = fg % skintemp % array
       end if
 
       ! Set SNOWC (snow-cover flag) based on SNOW
@@ -4085,6 +4095,20 @@ write(0,*) 'PROCESSING SEAICE'
 
 
       !
+      ! Reconstruct zonal and meridional winds for diagnostic puposes:
+      !
+      call mpas_rbf_interp_initialize(grid)
+      call mpas_init_reconstruct(grid)
+      call mpas_reconstruct(grid, state % u % array,                        &
+                            diag % uReconstructX % array,                   &
+                            diag % uReconstructY % array,                   &
+                            diag % uReconstructZ % array,                   &
+                            diag % uReconstructZonal % array,               &
+                            diag % uReconstructMeridional % array           &
+                           )
+   
+
+      !
       ! Adjust surface pressure for difference in topography
       !
       do sfc_k=1,config_nfglevels
@@ -4243,7 +4267,8 @@ write(0,*) 'PROCESSING SEAICE'
       end if    ! config_met_interp
 
      
-      ! Calculate surface pressure
+      ! Calculate surface pressure (This is an ad-hoc calculation. The actual surface pressure is actually re-calculated at
+      !the top of the subroutine MPAS_to_physics in ../core_atmos_physics/mpas_atmphys_interface_nhyd.F
       do iCell=1,grid%nCells
          diag % surface_pressure % array(iCell) = 0.5*gravity/rdzw(1)                                              &
                                                 * (1.25* rho_zz(1,iCell) * (1. + scalars(state % index_qv, 1, iCell))  &

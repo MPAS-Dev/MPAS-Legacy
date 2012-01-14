@@ -229,7 +229,7 @@ var persistent real    theta_base ( nVertLevels nCells Time ) 1 io theta_base di
 
 var persistent real    cqw  ( nVertLevels nCells Time ) 1 - cqw diag - -
 
-var persistent real    surface_pressure    ( nCells Time    ) 1  o surface_pressure    diag - -
+var persistent real    surface_pressure    ( nCells Time    ) 1  io surface_pressure    diag - -
 
 %  coupled variables needed by the solver, but not output...
 var persistent real    ru ( nVertLevels nEdges Time ) 1 - ru diag - -
