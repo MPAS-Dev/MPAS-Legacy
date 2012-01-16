@@ -10,6 +10,7 @@ namelist character sw_model config_start_time          0000-01-01_00:00:00
 namelist character sw_model config_stop_time           none
 namelist character sw_model config_run_duration        none
 namelist integer   sw_model config_stats_interval      100
+namelist logical   sw_model config_initial_stats       false
 namelist character io       config_input_name          grid.nc
 namelist character io       config_output_name         output.nc
 namelist character io       config_restart_name        restart.nc
@@ -21,16 +22,13 @@ namelist character restart  config_restart_interval    none
 namelist character grid     config_vert_grid_type      isopycnal
 namelist real      grid     config_rho0                1028
 namelist integer   split_explicit_ts config_n_ts_iter     2
-namelist integer   split_explicit_ts config_n_bcl_iter_beg   4
-namelist integer   split_explicit_ts config_n_bcl_iter_mid   4
-namelist integer   split_explicit_ts config_n_bcl_iter_end   4
-namelist integer   split_explicit_ts config_n_btr_subcycles  10
-namelist integer   split_explicit_ts config_n_btr_cor_iter  1
+namelist integer   split_explicit_ts config_n_bcl_iter_beg   2
+namelist integer   split_explicit_ts config_n_bcl_iter_mid   2
+namelist integer   split_explicit_ts config_n_bcl_iter_end   2
+namelist integer   split_explicit_ts config_n_btr_subcycles  20
+namelist integer   split_explicit_ts config_n_btr_cor_iter  2
 namelist logical   split_explicit_ts config_u_correction true
 namelist logical   split_explicit_ts config_filter_btr_mode false
-namelist logical   split_explicit_ts config_btr_mom_decay         false 
-namelist real      split_explicit_ts config_btr_mom_decay_time    3600.0
-namelist real      split_explicit_ts config_btr_mom_eddy_visc2    0.0
 namelist integer   split_explicit_ts config_btr_subcycle_loop_factor  2
 namelist character split_explicit_ts config_SSH_from  avg_flux
 namelist character split_explicit_ts config_new_btr_variables_from  btr_avg
@@ -182,6 +180,9 @@ var persistent real hRatioZLevelKm1 ( nVertLevels ) 0 - hRatioZLevelKm1 mesh - -
 var persistent integer boundaryEdge ( nVertLevels nEdges ) 0 iro boundaryEdge mesh - -
 var persistent integer boundaryVertex ( nVertLevels nVertices ) 0 iro boundaryVertex mesh - -
 var persistent integer boundaryCell ( nVertLevels nCells ) 0 iro boundaryCell mesh - -
+var persistent integer edgeMask ( nVertLevels nEdges ) 0 o edgeMask mesh - -
+var persistent integer vertexMask ( nVertLevels nVertices ) 0 o vertexMask mesh - -
+var persistent integer cellMask ( nVertLevels nCells ) 0 o cellMask mesh - -
 var persistent real    u_src ( nVertLevels nEdges ) 0 ir u_src mesh - -
 var persistent real    temperatureRestore ( nCells ) 0 ir temperatureRestore mesh - -
 var persistent real    salinityRestore ( nCells ) 0 ir salinityRestore mesh - -
