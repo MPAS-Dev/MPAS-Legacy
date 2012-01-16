@@ -103,9 +103,10 @@ contains
 
       integer :: nEdgesSolve, iEdge, k, cell1, cell2
       integer, dimension(:), pointer :: maxLevelEdgeTop
-      integer, dimension(:,:), pointer :: cellsOnEdge
+      integer, dimension(:,:), pointer :: cellsOnEdge, edgeMask
 
       real (kind=RKIND), dimension(:), pointer :: dcEdge
+      real (kind=RKIND) :: invdcEdge
 
       err = 0
 
@@ -113,29 +114,20 @@ contains
       maxLevelEdgeTop => grid % maxLevelEdgeTop % array
       cellsOnEdge => grid % cellsOnEdge % array
       dcEdge => grid % dcEdge % array
+      edgeMask => grid % edgeMask % array
 
-      if (config_vert_grid_type.eq.'isopycnal') then
-        do iEdge=1,nEdgesSolve
-          cell1 = cellsOnEdge(1,iEdge)
-          cell2 = cellsOnEdge(2,iEdge)
-          do k=1,maxLevelEdgeTop(iEdge)
-             tend(k,iEdge) = tend(k,iEdge)     &
-               - (pressure(k,cell2) - pressure(k,cell1))/dcEdge(iEdge)
-           end do
-        enddo
-      elseif (config_vert_grid_type.eq.'zlevel') then
-        do iEdge=1,nEdgesSolve
-          cell1 = cellsOnEdge(1,iEdge)
-          cell2 = cellsOnEdge(2,iEdge)
-          do k=1,maxLevelEdgeTop(iEdge)
+!    dwj: 10/25/2011 - Need to explore isopycnal vs zlevel flags
+     do iEdge=1,nEdgesSolve
+       cell1 = cellsOnEdge(1,iEdge)
+       cell2 = cellsOnEdge(2,iEdge)
 
-            tend(k,iEdge) = tend(k,iEdge)     &
-              - rho0Inv*(  pressure(k,cell2) &
-                         - pressure(k,cell1) )/dcEdge(iEdge)
-          end do
+       invdcEdge = 1.0 / dcEdge(iEdge)
+       do k=1,maxLevelEdgeTop(iEdge)
 
-        enddo
-      endif
+         tend(k,iEdge) = tend(k,iEdge) - edgeMask(k,iEdge) * rho0Inv*(  pressure(k,cell2) - pressure(k,cell1) ) * invdcEdge
+       end do
+
+     enddo
 
 
    !--------------------------------------------------------------------

@@ -16,7 +16,6 @@ module ocn_tracer_hadv4
 
    use mpas_grid_types
    use mpas_configure
-   use mpas_timer
 
    implicit none
    private
@@ -106,12 +105,13 @@ contains
       !
       !-----------------------------------------------------------------
 
-      integer :: iEdge, nEdges, cell1, cell2, iTracer, num_tracers, i, k
+      integer :: iEdge, nEdges, cell1, cell2, iTracer, num_tracers, i, k, &
+                 boundaryMask
 
-      integer, dimension(:), pointer :: maxLevelEdgeTop
-      integer, dimension(:,:), pointer :: cellsOnEdge, cellsOnCell, boundaryCell
+      integer, dimension(:), pointer :: maxLevelEdgeTop, nEdgesOnCell
+      integer, dimension(:,:), pointer :: cellsOnEdge, cellsOnCell, cellMask
 
-      real (kind=RKIND) :: flux, tracer_edge, d2fdx2_cell1, d2fdx2_cell2
+      real (kind=RKIND) :: flux, tracer_edge, d2fdx2_cell1, d2fdx2_cell2, invAreaCell1, invAreaCell2
 
       real (kind=RKIND), dimension(:), pointer :: dvEdge, dcEdge, areaCell
       real (kind=RKIND), dimension(:,:,:), pointer :: deriv_two
@@ -131,7 +131,8 @@ contains
       nEdges = grid % nEdges
       num_tracers = size(tracers, dim=1)
       maxLevelEdgeTop => grid % maxLevelEdgeTop % array
-      boundaryCell => grid % boundaryCell % array
+      nEdgesOnCell = grid % nEdgesOnCell % array
+      cellMask => grid % cellMask % array
       cellsOnEdge => grid % cellsOnEdge % array
       cellsOnCell => grid % cellsOnCell % array
       dvEdge => grid % dvEdge % array
@@ -139,51 +140,46 @@ contains
       areaCell => grid % areaCell % array
       deriv_two => grid % deriv_two % array
 
-      call mpas_timer_start("compute_scalar_tend-horiz adv 4")
-
       do iEdge=1,nEdges
          cell1 = cellsOnEdge(1,iEdge)
          cell2 = cellsOnEdge(2,iEdge)
+
+         invAreaCell1 = 1.0 / areaCell(cell1)
+         invAreaCell2 = 1.0 / areaCell(cell2)
 
          do k=1,maxLevelEdgeTop(iEdge)
 
             d2fdx2_cell1 = 0.0
             d2fdx2_cell2 = 0.0
 
+            boundaryMask = abs(transfer(cellMask(k,cell1) == 1 .and. cellMask(k, cell2) == 1, boundaryMask))
+
             do iTracer=1,num_tracers
+               d2fdx2_cell1 = deriv_two(1,1,iEdge) * tracers(iTracer,k,cell1) * boundaryMask
+               d2fdx2_cell2 = deriv_two(1,2,iEdge) * tracers(iTracer,k,cell2) * boundaryMask
 
-               !-- if not a boundary cell
-               if(boundaryCell(k,cell1).eq.0.and.boundaryCell(k,cell2).eq.0) then
+               !-- all edges of cell 1
+               do i=1,nEdgesOnCell(cell1) * boundaryMask
+                  d2fdx2_cell1 = d2fdx2_cell1 + &
+                  deriv_two(i+1,1,iEdge) * tracers(iTracer,k,cellsOnCell(i,cell1))
+               end do
 
-                  d2fdx2_cell1 = deriv_two(1,1,iEdge) * tracers(iTracer,k,cell1)
-                  d2fdx2_cell2 = deriv_two(1,2,iEdge) * tracers(iTracer,k,cell2)
-
-                  !-- all edges of cell 1
-                  do i=1, grid % nEdgesOnCell % array (cell1)
-                     d2fdx2_cell1 = d2fdx2_cell1 + &
-                     deriv_two(i+1,1,iEdge) * tracers(iTracer,k,cellsOnCell(i,cell1))
-                  end do
-
-                  !-- all edges of cell 2
-                  do i=1, grid % nEdgesOnCell % array (cell2)
-                      d2fdx2_cell2 = d2fdx2_cell2 + &
-                      deriv_two(i+1,2,iEdge) * tracers(iTracer,k,cellsOnCell(i,cell2))
-                  end do
-
-               endif
+               !-- all edges of cell 2
+               do i=1,nEdgesOnCell(cell2) * boundaryMask
+                   d2fdx2_cell2 = d2fdx2_cell2 + &
+                   deriv_two(i+1,2,iEdge) * tracers(iTracer,k,cellsOnCell(i,cell2))
+               end do
 
                flux = dvEdge(iEdge) *  u(k,iEdge) * h_edge(k,iEdge) * (          &
                     0.5*(tracers(iTracer,k,cell1) + tracers(iTracer,k,cell2))      &
                        -(dcEdge(iEdge) **2) * (d2fdx2_cell1 + d2fdx2_cell2) / 12. )
 
                !-- update tendency
-               tend(iTracer,k,cell1) = tend(iTracer,k,cell1) - flux/areaCell(cell1)
-               tend(iTracer,k,cell2) = tend(iTracer,k,cell2) + flux/areaCell(cell2)
+               tend(iTracer,k,cell1) = tend(iTracer,k,cell1) - flux * invAreaCell1
+               tend(iTracer,k,cell2) = tend(iTracer,k,cell2) + flux * invAreaCell2
             enddo
          end do
       end do
-      call mpas_timer_stop("compute_scalar_tend-horiz adv 4")
-
    !--------------------------------------------------------------------
 
    end subroutine ocn_tracer_hadv4_tend!}}}

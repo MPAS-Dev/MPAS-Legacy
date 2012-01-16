@@ -16,6 +16,7 @@ module ocn_tracer_vadv_stencil
 
    use mpas_grid_types
    use mpas_configure
+   use mpas_timer
 
    use ocn_tracer_vadv_stencil2
    use ocn_tracer_vadv_stencil3
@@ -45,6 +46,8 @@ module ocn_tracer_vadv_stencil
    ! Private module variables
    !
    !--------------------------------------------------------------------
+
+   type (timer_node), pointer :: stencil2_timer, stencil3_timer, stencil4_timer
 
    logical :: stencilOn
 
@@ -123,11 +126,17 @@ contains
 
       err = 0
 
-      if(.not. stencilOn) return
+      if(.not.stencilOn) return
 
+      call mpas_timer_start("stencil 2", .false., stencil2_timer)
       call ocn_tracer_vadv_stencil2_tend(grid, wTop, tracers, tend, err1)
+      call mpas_timer_stop("stencil 2", stencil2_timer)
+      call mpas_timer_start("stencil 3", .false., stencil3_timer)
       call ocn_tracer_vadv_stencil3_tend(grid, wTop, tracers, tend, err2)
+      call mpas_timer_stop("stencil 3", stencil3_timer)
+      call mpas_timer_start("stencil 4", .false., stencil4_timer)
       call ocn_tracer_vadv_stencil4_tend(grid, wTop, tracers, tend, err3)
+      call mpas_timer_stop("stencil 4", stencil4_timer)
 
       err = ior(err1, ior(err2, err3))
 

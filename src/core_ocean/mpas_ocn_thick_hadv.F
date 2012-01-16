@@ -107,7 +107,7 @@ contains
       integer, dimension(:), pointer :: maxLevelEdgeTop
       integer, dimension(:,:), pointer :: cellsOnEdge
 
-      real (kind=RKIND) :: flux
+      real (kind=RKIND) :: flux, invAreaCell1, invAreaCell2
       real (kind=RKIND), dimension(:), pointer :: dvEdge, areaCell
 
       !-----------------------------------------------------------------
@@ -129,20 +129,20 @@ contains
       dvEdge => grid % dvEdge % array
       areaCell => grid % areaCell % array
 
+      !dwj: 10/25/2011 - Need to explore isopycnal vs zlevel flags
       if (config_vert_grid_type.eq.'isopycnal') then
  
          do iEdge=1,nEdges
             cell1 = cellsOnEdge(1,iEdge)
             cell2 = cellsOnEdge(2,iEdge)
+
+            invAreaCell1 = 1.0 / areaCell(cell1)
+            invAreaCell2 = 1.0 / areaCell(cell2)
+
             do k=1,nVertLevels
                flux = u(k,iEdge) * dvEdge(iEdge) * h_edge(k,iEdge)
-               tend(k,cell1) = tend(k,cell1) - flux
-               tend(k,cell2) = tend(k,cell2) + flux
-            end do
-         end do
-         do iCell=1,nCells
-            do k=1,nVertLevels
-               tend(k,iCell) = tend(k,iCell) / areaCell(iCell)
+               tend(k,cell1) = tend(k,cell1) - flux * invAreaCell1
+               tend(k,cell2) = tend(k,cell2) + flux * invAreaCell2
             end do
          end do
 
@@ -151,14 +151,15 @@ contains
          do iEdge=1,nEdges
             cell1 = cellsOnEdge(1,iEdge)
             cell2 = cellsOnEdge(2,iEdge)
+
+            invAreaCell1 = 1.0 / areaCell(cell1)
+            invAreaCell2 = 1.0 / areaCell(cell2)
+
             do k=1,min(1,maxLevelEdgeTop(iEdge))
                flux = u(k,iEdge) * dvEdge(iEdge) * h_edge(k,iEdge)
-               tend(k,cell1) = tend(k,cell1) - flux
-               tend(k,cell2) = tend(k,cell2) + flux
+               tend(k,cell1) = tend(k,cell1) - flux * invAreaCell1
+               tend(k,cell2) = tend(k,cell2) + flux * invAreaCell2
             end do
-         end do
-         do iCell=1,nCells
-           tend(1,iCell) = tend(1,iCell) / areaCell(iCell)
          end do
 
       endif ! config_vert_grid_type

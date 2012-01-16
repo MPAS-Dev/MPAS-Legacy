@@ -16,7 +16,6 @@ module ocn_equation_of_state
 
    use mpas_grid_types
    use mpas_configure
-   use mpas_timer
    use ocn_equation_of_state_linear
    use ocn_equation_of_state_jm
 
@@ -99,8 +98,6 @@ contains
 
       if(.not.eosOn) return
 
-      call mpas_timer_start("ocn_equation_of_state_rho")
-
       tracers => s % tracers % array
       indexT = s % index_temperature
       indexS = s % index_salinity
@@ -121,8 +118,6 @@ contains
          call ocn_equation_of_state_jm_rho(grid, k_displaced, displacement_type, indexT, indexS, tracers, rho, err)
 
       endif
-
-      call mpas_timer_stop("ocn_equation_of_state_rho")
 
    end subroutine ocn_equation_of_state_rho!}}}
 

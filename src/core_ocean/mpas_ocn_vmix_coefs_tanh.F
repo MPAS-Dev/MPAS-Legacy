@@ -308,7 +308,7 @@ contains
           tanhDiffOn = .true.
       endif
 
-      if(tanhViscOn .or. tanhDiffOn) then
+      if((tanhViscOn) .or. (tanhDiffOn)) then
          if (config_vert_grid_type.ne.'zlevel') then
             write(0,*) 'Abort: config_vert_diff_type.eq.tanh may only', &
                        ' use config_vert_grid_type of zlevel at this time'

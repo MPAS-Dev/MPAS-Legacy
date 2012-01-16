@@ -109,6 +109,7 @@ contains
 
       integer :: iEdge, nEdgesSolve, k
       integer, dimension(:), pointer :: maxLevelEdgeTop
+      integer, dimension(:,:), pointer :: edgeMask
 
       !-----------------------------------------------------------------
       !
@@ -124,26 +125,17 @@ contains
 
       nEdgesSolve = grid % nEdgesSolve
       maxLevelEdgeTop => grid % maxLevelEdgeTop % array
+      edgeMask => grid % edgeMask % array
 
       do iEdge=1,grid % nEdgesSolve
 
-        k = maxLevelEdgeTop(iEdge)
+        k = max(maxLevelEdgeTop(iEdge), 1)
 
-        ! efficiency note: it would be nice to avoid this
-        ! if within a do.  This could be done with
-        ! k =  max(maxLevelEdgeTop(iEdge),1)
-        ! and then tend_u(1,iEdge) is just not used for land cells.
+        ! bottom drag is the same as POP:
+        ! -c |u| u  where c is unitless and 1.0e-3.
+        ! see POP Reference guide, section 3.4.4.
 
-        if (k>0) then
-           ! bottom drag is the same as POP:
-           ! -c |u| u  where c is unitless and 1.0e-3.
-           ! see POP Reference guide, section 3.4.4.
-
-           tend(k,iEdge) = tend(k,iEdge)  &
-               -bottomDragCoef*u(k,iEdge) &
-               *sqrt(2.0*ke_edge(k,iEdge))/h_edge(k,iEdge)
-
-        endif
+        tend(k,iEdge) = tend(k,iEdge)-edgeMask(k,iEdge)*(bottomDragCoef*u(k,iEdge)*sqrt(2.0*ke_edge(k,iEdge))/h_edge(k,iEdge))
 
       enddo
 

@@ -179,7 +179,6 @@ module ocn_time_integration_rk4
            endif
 
            call ocn_tend_scalar(block % tend, provis, block % diagnostics, block % mesh)
-           call enforce_boundaryEdge(block % tend, block % mesh)
            block => block % next
         end do
         call mpas_timer_stop("RK4-tendency computations")
@@ -296,8 +295,6 @@ module ocn_time_integration_rk4
 
          if (config_implicit_vertical_mix) then
             call mpas_timer_start("RK4-implicit vert mix")
-            allocate(A(nVertLevels),C(nVertLevels),uTemp(nVertLevels), &
-               tracersTemp(num_tracers,nVertLevels))
 
             call ocn_vmix_coefs(block % mesh, block % state % time_levs(2) % state, block % diagnostics, err)
 
@@ -587,51 +584,6 @@ module ocn_time_integration_rk4
       call mpas_timer_stop("filter_btr_mode_u")
 
    end subroutine filter_btr_mode_u!}}}
-
-   subroutine enforce_boundaryEdge(tend, grid)!{{{
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   ! Enforce any boundary conditions on the normal velocity at each edge
-   !
-   ! Input: grid - grid metadata
-   !
-   ! Output: tend_u set to zero at boundaryEdge == 1 locations
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-
-      implicit none
-
-      type (tend_type), intent(inout) :: tend
-      type (mesh_type), intent(in) :: grid
-
-      integer, dimension(:,:), pointer :: boundaryEdge
-      real (kind=RKIND), dimension(:,:), pointer :: tend_u
-      integer :: nCells, nEdges, nVertices, nVertLevels
-      integer :: iEdge, k
-
-      call mpas_timer_start("enforce_boundaryEdge")
-
-      nCells      = grid % nCells
-      nEdges      = grid % nEdges
-      nVertices   = grid % nVertices
-      nVertLevels = grid % nVertLevels
-
-      boundaryEdge         => grid % boundaryEdge % array
-      tend_u      => tend % u % array
-
-      if(maxval(boundaryEdge).le.0) return
-
-      do iEdge = 1,nEdges
-        do k = 1,nVertLevels
-
-          if(boundaryEdge(k,iEdge).eq.1) then
-             tend_u(k,iEdge) = 0.0
-          endif
-
-        enddo
-       enddo
-      call mpas_timer_stop("enforce_boundaryEdge")
-
-   end subroutine enforce_boundaryEdge!}}}
 
 end module ocn_time_integration_rk4
 

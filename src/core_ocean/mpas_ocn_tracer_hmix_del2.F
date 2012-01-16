@@ -18,7 +18,6 @@ module ocn_tracer_hmix_del2
 
    use mpas_grid_types
    use mpas_configure
-   use mpas_timer
 
    implicit none
    private
@@ -114,10 +113,10 @@ contains
       integer, dimension(:,:), allocatable :: boundaryMask
 
       integer, dimension(:), pointer :: maxLevelEdgeTop
-      integer, dimension(:,:), pointer :: cellsOnEdge, boundaryEdge
+      integer, dimension(:,:), pointer :: cellsOnEdge, edgeMask
 
       real (kind=RKIND) :: invAreaCell1, invAreaCell2
-      real (kind=RKIND) :: tracer_turb_flux, flux
+      real (kind=RKIND) :: tracer_turb_flux, flux, r_tmp
 
       real (kind=RKIND), dimension(:), pointer :: areaCell, dvEdge, dcEdge
       real (kind=RKIND), dimension(:), pointer :: meshScalingDel2
@@ -134,15 +133,13 @@ contains
 
       if (.not.del2On) return
 
-      call mpas_timer_start("compute_scalar_tend-horiz diff 2")
-
       nEdges = grid % nEdges
       nVertLevels = grid % nVertLevels
       num_tracers = size(tracers, dim=1)
 
       maxLevelEdgeTop => grid % maxLevelEdgeTop % array
       cellsOnEdge => grid % cellsOnEdge % array
-      boundaryEdge => grid % boundaryEdge % array
+      edgeMask => grid % edgeMask % array
       areaCell => grid % areaCell % array
       dvEdge => grid % dvEdge % array
       dcEdge => grid % dcEdge % array
@@ -151,36 +148,28 @@ contains
       !
       ! compute a boundary mask to enforce insulating boundary conditions in the horizontal
       !
-      allocate(boundaryMask(nVertLevels, nEdges+1))
-      boundaryMask = 1.0
-      where(boundaryEdge.eq.1) boundaryMask=0.0
-
       do iEdge=1,nEdges
          cell1 = cellsOnEdge(1,iEdge)
          cell2 = cellsOnEdge(2,iEdge)
          invAreaCell1 = 1.0/areaCell(cell1)
          invAreaCell2 = 1.0/areaCell(cell2)
 
+         r_tmp = meshScalingDel2(iEdge) * eddyDiff2 * dvEdge(iEdge) / dcEdge(iEdge)
+
          do k=1,maxLevelEdgeTop(iEdge)
            do iTracer=1,num_tracers
               ! \kappa_2 \nabla \phi on edge
-              tracer_turb_flux = meshScalingDel2(iEdge) * eddyDiff2 &
-                 *(  tracers(iTracer,k,cell2) &
-                   - tracers(iTracer,k,cell1))/dcEdge(iEdge)
+              tracer_turb_flux = tracers(iTracer,k,cell2) - tracers(iTracer,k,cell1)
 
               ! div(h \kappa_2 \nabla \phi) at cell center
-              flux = dvEdge (iEdge) * h_edge(k,iEdge) &
-                 * tracer_turb_flux * boundaryMask(k, iEdge)
+              flux = h_edge(k,iEdge) * tracer_turb_flux * edgeMask(k, iEdge) * r_tmp
+
               tend(iTracer,k,cell1) = tend(iTracer,k,cell1) + flux * invAreaCell1
               tend(iTracer,k,cell2) = tend(iTracer,k,cell2) - flux * invAreaCell2
            end do
          end do
 
       end do
-
-      deallocate(boundaryMask)
-      call mpas_timer_stop("compute_scalar_tend-horiz diff 2")
-
    !--------------------------------------------------------------------
 
    end subroutine ocn_tracer_hmix_del2_tend!}}}

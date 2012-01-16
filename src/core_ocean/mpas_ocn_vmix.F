@@ -199,8 +199,6 @@ contains
 
       if(implicitOn) return
 
-      call mpas_timer_start("compute_tend_u-explicit vert mix")
-
       nEdgessolve = grid % nEdgesSolve
       nVertLevels = grid % nVertLevels
       maxLevelEdgeTop => grid % maxLevelEdgeTop % array
@@ -223,9 +221,6 @@ contains
 
       end do
       deallocate(fluxVertTop)
-
-      call mpas_timer_stop("compute_tend_u-explicit vert mix")
-
    !--------------------------------------------------------------------
 
    end subroutine ocn_vel_vmix_tend_explicit!}}}
@@ -347,6 +342,8 @@ contains
         end if
       end do
 
+      deallocate(A,C,uTemp)
+
    !--------------------------------------------------------------------
 
    end subroutine ocn_vel_vmix_tend_implicit!}}}
@@ -418,8 +415,6 @@ contains
 
       if(implicitOn) return
 
-      call mpas_timer_start("compute_scalar_tend-explicit vert diff")
-
       nCellsSolve = grid % nCellsSolve
       nVertLevels = grid % nVertLevels
       num_tracers = size(tracers, dim=1)
@@ -454,9 +449,6 @@ contains
 !print '(a,50e12.2)', 'tend_tr    ',tend_tr(3,1,1:maxLevelCell(iCell))
       enddo ! iCell loop
       deallocate(fluxVertTop)
-
-      call mpas_timer_stop("compute_scalar_tend-explicit vert diff")
-
    !--------------------------------------------------------------------
 
    end subroutine ocn_tracer_vmix_tend_explicit!}}}
@@ -558,8 +550,8 @@ contains
          tracers(:,1:maxLevelCell(iCell),iCell) = tracersTemp(:,1:maxLevelCell(iCell))
          tracers(:,maxLevelCell(iCell)+1:nVertLevels,iCell) = -1e34
       end do
-      deallocate(A,C,tracersTemp)
 
+      deallocate(A,C,tracersTemp)
 
    !--------------------------------------------------------------------
 
@@ -602,7 +594,7 @@ contains
 
       if(config_implicit_vertical_mix) then
           explicitOn = .false.
-          implicitOn =.true.
+          implicitOn = .true.
       end if
 
       call ocn_vmix_coefs_const_init(err1)

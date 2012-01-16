@@ -111,6 +111,7 @@ contains
       integer :: iCell, nCellsSolve, k
 
       real (kind=RKIND), dimension(:), pointer :: temperatureRestore, salinityRestore
+      real (kind=RKIND) :: invTemp, invSalinity
 
       err = 0
 
@@ -121,16 +122,13 @@ contains
       temperatureRestore => grid % temperatureRestore % array
       salinityRestore => grid % salinityRestore % array
 
+      invTemp = 1.0 / (temperatureTimeScale * 86400.0)
+      invSalinity = 1.0 / (salinityTimeScale * 86400.0)
+
       k = 1  ! restoring only in top layer
       do iCell=1,nCellsSolve
-
-        tend(indexT, k, iCell) = tend(indexT, k, iCell)  &
-             - h(k,iCell)*(tracers(indexT, k, iCell) - temperatureRestore(iCell)) &
-             / (temperatureTimeScale * 86400.0)
-
-        tend(indexS, k, iCell) = tend(indexS, k, iCell)  &
-             - h(k,iCell)*(tracers(indexS, k, iCell) - salinityRestore(iCell)) &
-             / (salinityTimeScale * 86400.0)
+        tend(indexT, k, iCell) = tend(indexT, k, iCell) - h(k,iCell)*(tracers(indexT, k, iCell) - temperatureRestore(iCell)) * invTemp
+        tend(indexS, k, iCell) = tend(indexS, k, iCell) - h(k,iCell)*(tracers(indexS, k, iCell) - salinityRestore(iCell)) * invSalinity
 
 !       write(6,10) iCell, tracers(indexT, k, iCell), &
 !              temperatureRestore(iCell), tracers(indexT, k, iCell), &

@@ -106,13 +106,13 @@ contains
       !-----------------------------------------------------------------
 
       integer, dimension(:), pointer :: maxLevelEdgeTop, nEdgesOnEdge
-      integer, dimension(:,:), pointer :: cellsOnEdge, edgesOnEdge
+      integer, dimension(:,:), pointer :: cellsOnEdge, edgesOnEdge, edgeMask
       real (kind=RKIND), dimension(:,:), pointer :: weightsOnEdge
       real (kind=RKIND), dimension(:), pointer :: dcEdge
 
       integer :: j, k
       integer :: cell1, cell2, nEdgesSolve, iEdge, eoe
-      real (kind=RKIND) :: workpv, q
+      real (kind=RKIND) :: workpv, q, invLength
 
       err = 0
 
@@ -123,11 +123,15 @@ contains
       weightsOnEdge => grid % weightsOnEdge % array
       dcEdge => grid % dcEdge % array
 
+      edgeMask => grid % edgeMask % array
+
       nEdgesSolve = grid % nEdgesSolve
 
       do iEdge=1,grid % nEdgesSolve
          cell1 = cellsOnEdge(1,iEdge)
          cell2 = cellsOnEdge(2,iEdge)
+
+         invLength = 1.0 / dcEdge(iEdgE)
 
          do k=1,maxLevelEdgeTop(iEdge)
 
@@ -138,9 +142,7 @@ contains
                q = q + weightsOnEdge(j,iEdge) * u(k,eoe) * workpv * h_edge(k,eoe) 
             end do
 
-           tend(k,iEdge) = tend(k,iEdge)     &
-                  + q     &
-                  - (   ke(k,cell2) - ke(k,cell1) ) / dcEdge(iEdge)
+           tend(k,iEdge) = tend(k,iEdge) + edgeMask(k, iEdge) * (q - (   ke(k,cell2) - ke(k,cell1) ) * invLength )
 
          end do
       end do

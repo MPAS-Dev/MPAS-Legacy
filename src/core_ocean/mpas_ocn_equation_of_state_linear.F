@@ -16,7 +16,6 @@ module ocn_equation_of_state_linear
 
    use mpas_grid_types
    use mpas_configure
-   use mpas_timer
 
    implicit none
    private
@@ -87,8 +86,6 @@ contains
       integer :: nCells, iCell, k
       type (dm_info) :: dminfo
 
-      call mpas_timer_start("ocn_equation_of_state_linear")
-
       maxLevelCell      => grid % maxLevelCell % array
       nCells      = grid % nCells
 
@@ -102,8 +99,6 @@ contains
                + 7.6e-4*tracers(indexS,k,iCell))
          end do
       end do
-
-      call mpas_timer_stop("ocn_equation_of_state_linear")
 
    end subroutine ocn_equation_of_state_linear_rho!}}}
 

@@ -16,7 +16,6 @@ module ocn_tracer_vadv_stencil2
 
    use mpas_grid_types
    use mpas_configure
-   use mpas_timer
 
    implicit none
    private
@@ -122,10 +121,7 @@ contains
 
       err = 0
 
-      if(.not. stencil2On) return
-
-
-      call mpas_timer_start("compute_scalar_tend-vert adv stencil 2")
+      if(.not.stencil2On) return
 
       nCells = grid % nCells
       nCellsSolve = grid % nCellsSolve
@@ -160,8 +156,6 @@ contains
       end do
 
       deallocate(tracerTop)
-      call mpas_timer_stop("compute_scalar_tend-vert adv stencil 2")
-
    !--------------------------------------------------------------------
 
    end subroutine ocn_tracer_vadv_stencil2_tend!}}}

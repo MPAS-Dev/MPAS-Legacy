@@ -18,7 +18,6 @@ module ocn_tracer_hmix_del4
 
    use mpas_grid_types
    use mpas_configure
-   use mpas_timer
 
    implicit none
    private
@@ -45,7 +44,7 @@ module ocn_tracer_hmix_del4
    !
    !--------------------------------------------------------------------
 
-   logical :: Del4On
+   logical :: del4On
 
    real (kind=RKIND) :: eddyDiff4
 
@@ -111,12 +110,10 @@ contains
       integer :: iEdge, nEdges, num_tracers, nVertLevels, nCells
       integer :: iTracer, k, iCell, cell1, cell2
 
-      integer, dimension(:,:), allocatable :: boundaryMask
-
       integer, dimension(:), pointer :: maxLevelEdgeTop, maxLevelCell
-      integer, dimension(:,:), pointer :: boundaryEdge, cellsOnEdge
+      integer, dimension(:,:), pointer :: edgeMask, cellsOnEdge
 
-      real (kind=RKIND) :: invAreaCell1, invAreaCell2, r, tracer_turb_flux, flux
+      real (kind=RKIND) :: invAreaCell1, invAreaCell2, tracer_turb_flux, flux, invdcEdge, r_tmp1, r_tmp2
 
       real (kind=RKIND), dimension(:,:,:), allocatable :: delsq_tracer
 
@@ -133,9 +130,7 @@ contains
 
       err = 0
 
-      if (.not.Del4On) return
-
-      call mpas_timer_start("compute_scalar_tend-horiz diff 4")
+      if (.not.del4On) return
 
       nEdges = grid % nEdges
       nCells = grid % nCells
@@ -144,7 +139,6 @@ contains
 
       maxLevelEdgeTop => grid % maxLevelEdgeTop % array
       maxLevelCell => grid % maxLevelCell % array
-      boundaryEdge => grid % boundaryEdge % array
       cellsOnEdge => grid % cellsOnEdge % array
 
       dcEdge => grid % dcEdge % array
@@ -152,39 +146,33 @@ contains
       areaCell => grid % areaCell % array
       meshScalingDel4 => grid % meshScalingDel4 % array
 
-      allocate(boundaryMask(nVertLevels, nEdges+1))
-      boundaryMask = 1.0
-      where(boundaryEdge.eq.1) boundaryMask=0.0
+      edgeMask => grid % edgeMask % array
 
       allocate(delsq_tracer(num_tracers,nVertLevels, nCells+1))
 
-      delsq_tracer(:,:,:) = 0.
+      delsq_tracer(:,:,:) = 0.0
 
       ! first del2: div(h \nabla \phi) at cell center
       do iEdge=1,nEdges
          cell1 = cellsOnEdge(1,iEdge)
          cell2 = cellsOnEdge(2,iEdge)
 
-         do k=1,maxLevelEdgeTop(iEdge)
-           do iTracer=1,num_tracers
-              delsq_tracer(iTracer,k,cell1) = delsq_tracer(iTracer,k,cell1) &
-                 + dvEdge(iEdge)*h_edge(k,iEdge) &
-                   *(tracers(iTracer,k,cell2) - tracers(iTracer,k,cell1)) &
-                   /dcEdge(iEdge) * boundaryMask(k,iEdge)
-              delsq_tracer(iTracer,k,cell2) = delsq_tracer(iTracer,k,cell2) &
-                 - dvEdge(iEdge)*h_edge(k,iEdge) &
-                 *(tracers(iTracer,k,cell2) - tracers(iTracer,k,cell1)) &
-                 /dcEdge(iEdge) * boundaryMask(k,iEdge)
-           end do
-         end do
-      end do
+         invdcEdge = 1.0 / dcEdge(iEdge)
 
-      do iCell = 1,nCells
-         r = 1.0 / areaCell(iCell)
-         do k=1,maxLevelCell(iCell)
-            do iTracer=1,num_tracers
-               delsq_tracer(iTracer,k,iCell) = delsq_tracer(iTracer,k,iCell) * r
-            end do
+         invAreaCell1 = 1.0 / areaCell(cell1)
+         invAreaCell2 = 1.0 / areaCell(cell2)
+
+         do k=1,maxLevelEdgeTop(iEdge)
+           do iTracer=1,num_tracers * edgeMask(k, iEdge)
+
+              r_tmp1 = dvEdge(iEdge) * h_edge(k,iEdge) * invdcEdge
+
+              r_tmp2 = r_tmp1 * tracers(iTracer,k,cell2)
+              r_tmp1 = r_tmp1 * tracers(iTracer,k,cell1)
+
+              delsq_tracer(iTracer,k,cell1) = delsq_tracer(iTracer,k,cell1) + (r_tmp2 - r_tmp1) * invAreaCell1
+              delsq_tracer(iTracer,k,cell2) = delsq_tracer(iTracer,k,cell2) - (r_tmp2 - r_tmp1) * invAreaCell2
+           end do
          end do
       end do
 
@@ -192,28 +180,27 @@ contains
       do iEdge=1,grid % nEdges
          cell1 = grid % cellsOnEdge % array(1,iEdge)
          cell2 = grid % cellsOnEdge % array(2,iEdge)
+
          invAreaCell1 = 1.0 / areaCell(cell1)
          invAreaCell2 = 1.0 / areaCell(cell2)
 
+         invdcEdge = 1.0 / dcEdge(iEdge)
+
          do k=1,maxLevelEdgeTop(iEdge)
-            do iTracer=1,num_tracers
+            do iTracer=1,num_tracers * edgeMask(k,iEdge)
                tracer_turb_flux = meshScalingDel4(iEdge) * eddyDiff4 &
-                  *(  delsq_tracer(iTracer,k,cell2)  &
-                    - delsq_tracer(iTracer,k,cell1))/dcEdge(iEdge)
+                  * (delsq_tracer(iTracer,k,cell2) - delsq_tracer(iTracer,k,cell1)) &
+                  * invdcEdge
+
                flux = dvEdge (iEdge) * tracer_turb_flux
 
-               tend(iTracer,k,cell1) = tend(iTracer,k,cell1) & 
-                  - flux * invAreaCell1 * boundaryMask(k,iEdge)
-               tend(iTracer,k,cell2) = tend(iTracer,k,cell2) &
-                  + flux * invAreaCell2 * boundaryMask(k,iEdge)
-
+               tend(iTracer,k,cell1) = tend(iTracer,k,cell1) - flux * invAreaCell1
+               tend(iTracer,k,cell2) = tend(iTracer,k,cell2) + flux * invAreaCell2
             enddo
          enddo
       end do
 
       deallocate(delsq_tracer)
-      deallocate(boundaryMask)
-      call mpas_timer_stop("compute_scalar_tend-horiz diff 4")
    !--------------------------------------------------------------------
 
    end subroutine ocn_tracer_hmix_del4_tend!}}}
@@ -245,10 +232,10 @@ contains
       integer, intent(out) :: err !< Output: error flag
 
       err = 0
-      Del4on = .false.
+      del4on = .false.
 
       if ( config_h_tracer_eddy_diff4 > 0.0 ) then
-          Del4On = .true.
+          del4On = .true.
           eddyDiff4 = config_h_tracer_eddy_diff4
       endif
 

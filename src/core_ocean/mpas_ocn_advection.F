@@ -9,7 +9,7 @@ module ocn_advection
    contains
 
 
-   subroutine ocn_initialize_advection_rk( grid )
+   subroutine ocn_initialize_advection_rk( grid )!{{{
                                       
 !
 ! compute the cell coefficients for the polynomial fit.
@@ -382,7 +382,7 @@ module ocn_advection
 !      end do
 !      stop
 
-   end subroutine ocn_initialize_advection_rk
+   end subroutine ocn_initialize_advection_rk!}}}
 
 
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -391,7 +391,7 @@ module ocn_advection
    ! Computes the angle between arcs AB and AC, given points A, B, and C
    ! Equation numbers w.r.t. http://mathworld.wolfram.com/SphericalTrigonometry.html
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   real (kind=RKIND) function sphere_angle(ax, ay, az, bx, by, bz, cx, cy, cz)
+   real (kind=RKIND) function sphere_angle(ax, ay, az, bx, by, bz, cx, cy, cz)!{{{
    
       implicit none
    
@@ -437,7 +437,7 @@ module ocn_advection
          sphere_angle = -2.0 * asin(max(min(sin_angle,1.0_RKIND),-1.0_RKIND))
       end if
    
-   end function sphere_angle
+   end function sphere_angle!}}}
    
 
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -446,7 +446,7 @@ module ocn_advection
    ! Computes the angle between vectors AB and AC, given points A, B, and C, and
    !   a vector (u,v,w) normal to the plane.
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   real (kind=RKIND) function plane_angle(ax, ay, az, bx, by, bz, cx, cy, cz, u, v, w)
+   real (kind=RKIND) function plane_angle(ax, ay, az, bx, by, bz, cx, cy, cz, u, v, w)!{{{
    
       implicit none
    
@@ -486,7 +486,7 @@ module ocn_advection
          plane_angle = -acos(max(min(cos_angle,1.0_RKIND),-1.0_RKIND))
       end if
    
-   end function plane_angle
+   end function plane_angle!}}}
 
 
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -496,7 +496,7 @@ module ocn_advection
    !    B=(bx, by, bz). It is assumed that both A and B lie on the surface of the
    !    same sphere centered at the origin.
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   real (kind=RKIND) function arc_length(ax, ay, az, bx, by, bz)
+   real (kind=RKIND) function arc_length(ax, ay, az, bx, by, bz)!{{{
    
       implicit none
    
@@ -519,7 +519,7 @@ module ocn_advection
 !      arc_length = sqrt(r) * 2.0 * asin(c/(2.0*r))
       arc_length = r * 2.0 * asin(c/(2.0*r))
 
-   end function arc_length
+   end function arc_length!}}}
    
    
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -529,7 +529,7 @@ module ocn_advection
    !   A=(ax, ay, az) to B=(bx, by, bz). It is assumed that A and B lie on the
    !   surface of a sphere centered at the origin.
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   subroutine ocn_arc_bisect(ax, ay, az, bx, by, bz, cx, cy, cz)
+   subroutine ocn_arc_bisect(ax, ay, az, bx, by, bz, cx, cy, cz)!{{{
    
       implicit none
    
@@ -554,10 +554,10 @@ module ocn_advection
          cz = r * cz / d
       end if
    
-   end subroutine ocn_arc_bisect
+   end subroutine ocn_arc_bisect!}}}
 
 
-   subroutine ocn_poly_fit_2(a_in,b_out,weights_in,m,n,ne)
+   subroutine ocn_poly_fit_2(a_in,b_out,weights_in,m,n,ne)!{{{
 
       implicit none
 
@@ -612,7 +612,7 @@ module ocn_advection
 !
 !     write(6,*) ' '
 
-   end subroutine ocn_poly_fit_2
+   end subroutine ocn_poly_fit_2!}}}
 
 
 ! Updated 10/24/2001.
@@ -631,119 +631,119 @@ module ocn_advection
 !                                                                       !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-SUBROUTine ocn_migs (A,N,X,INDX)
+subroutine ocn_migs (a,n,x,indx)!{{{
 !
-! Subroutine to invert matrix A(N,N) with the inverse stored
-! in X(N,N) in the output.  Copyright (c) Tao Pang 2001.
+! subroutine to invert matrix a(n,n) with the inverse stored
+! in x(n,n) in the output.  copyright (c) tao pang 2001.
 !
-  IMPLICIT NONE
-  INTEGER, INTENT (IN) :: N
-  INTEGER :: I,J,K
-  INTEGER, INTENT (OUT), DIMENSION (N) :: INDX
-  REAL (kind=RKIND), INTENT (INOUT), DIMENSION (N,N):: A
-  REAL (kind=RKIND), INTENT (OUT), DIMENSION (N,N):: X
-  REAL (kind=RKIND), DIMENSION (N,N) :: B
+  implicit none
+  integer, intent (in) :: n
+  integer :: i,j,k
+  integer, intent (out), dimension (n) :: indx
+  real (kind=RKIND), intent (inout), dimension (n,n):: a
+  real (kind=RKIND), intent (out), dimension (n,n):: x
+  real (kind=RKIND), dimension (n,n) :: b
 !
-  DO I = 1, N
-    DO J = 1, N
-      B(I,J) = 0.0
-    END DO
-  END DO
-  DO I = 1, N
-    B(I,I) = 1.0
-  END DO
+  do i = 1, n
+    do j = 1, n
+      b(i,j) = 0.0
+    end do
+  end do
+  do i = 1, n
+    b(i,i) = 1.0
+  end do
 !
-  call ocn_elgs (A,N,INDX)
+  call ocn_elgs (a,n,indx)
 !
-  DO I = 1, N-1
-    DO J = I+1, N
-      DO K = 1, N
-        B(INDX(J),K) = B(INDX(J),K)-A(INDX(J),I)*B(INDX(I),K)
-      END DO
-    END DO
-  END DO
+  do i = 1, n-1
+    do j = i+1, n
+      do k = 1, n
+        b(indx(j),k) = b(indx(j),k)-a(indx(j),i)*b(indx(i),k)
+      end do
+    end do
+  end do
 !
-  DO I = 1, N
-    X(N,I) = B(INDX(N),I)/A(INDX(N),N)
-    DO J = N-1, 1, -1
-      X(J,I) = B(INDX(J),I)
-      DO K = J+1, N
-        X(J,I) = X(J,I)-A(INDX(J),K)*X(K,I)
-      END DO
-      X(J,I) =  X(J,I)/A(INDX(J),J)
-    END DO
-  END DO
-END SUBROUTine ocn_migs
+  do i = 1, n
+    x(n,i) = b(indx(n),i)/a(indx(n),n)
+    do j = n-1, 1, -1
+      x(j,i) = b(indx(j),i)
+      do k = j+1, n
+        x(j,i) = x(j,i)-a(indx(j),k)*x(k,i)
+      end do
+      x(j,i) =  x(j,i)/a(indx(j),j)
+    end do
+  end do
+end subroutine ocn_migs!}}}
 
 
-SUBROUTine ocn_elgs (A,N,INDX)
+subroutine ocn_elgs (a,n,indx)!{{{
 !
-! Subroutine to perform the partial-pivoting Gaussian elimination.
-! A(N,N) is the original matrix in the input and transformed matrix
+! subroutine to perform the partial-pivoting gaussian elimination.
+! a(n,n) is the original matrix in the input and transformed matrix
 ! plus the pivoting element ratios below the diagonal in the output.
-! INDX(N) records the pivoting order.  Copyright (c) Tao Pang 2001.
+! indx(n) records the pivoting order.  copyright (c) tao pang 2001.
 !
-  IMPLICIT NONE
-  INTEGER, INTENT (IN) :: N
-  INTEGER :: I,J,K,ITMP
-  INTEGER, INTENT (OUT), DIMENSION (N) :: INDX
-  REAL (kind=RKIND) :: C1,PI,PI1,PJ
-  REAL (kind=RKIND), INTENT (INOUT), DIMENSION (N,N) :: A
-  REAL (kind=RKIND), DIMENSION (N) :: C
+  implicit none
+  integer, intent (in) :: n
+  integer :: i,j,k,itmp
+  integer, intent (out), dimension (n) :: indx
+  real (kind=RKIND) :: c1,pi,pi1,pj
+  real (kind=RKIND), intent (inout), dimension (n,n) :: a
+  real (kind=RKIND), dimension (n) :: c
 !
-! Initialize the index
+! initialize the index
 !
-  DO I = 1, N
-    INDX(I) = I
-  END DO
+  do i = 1, n
+    indx(i) = i
+  end do
 !
-! Find the rescaling factors, one from each row
+! find the rescaling factors, one from each row
 !
-  DO I = 1, N
-    C1= 0.0
-    DO J = 1, N
-      C1 = MAX(C1,ABS(A(I,J)))
-    END DO
-    C(I) = C1
-  END DO
+  do i = 1, n
+    c1= 0.0
+    do j = 1, n
+      c1 = max(c1,abs(a(i,j)))
+    end do
+    c(i) = c1
+  end do
 !
-! Search the pivoting (largest) element from each column
+! search the pivoting (largest) element from each column
 !
-  DO J = 1, N-1
-    PI1 = 0.0
-    DO I = J, N
-      PI = ABS(A(INDX(I),J))/C(INDX(I))
-      IF (PI.GT.PI1) THEN
-        PI1 = PI
-        K   = I
-      ENDIF
-    END DO
+  do j = 1, n-1
+    pi1 = 0.0
+    do i = j, n
+      pi = abs(a(indx(i),j))/c(indx(i))
+      if (pi.gt.pi1) then
+        pi1 = pi
+        k   = i
+      endif
+    end do
 !
-! Interchange the rows via INDX(N) to record pivoting order
+! interchange the rows via indx(n) to record pivoting order
 !
-    ITMP    = INDX(J)
-    INDX(J) = INDX(K)
-    INDX(K) = ITMP
-    DO I = J+1, N
-      PJ  = A(INDX(I),J)/A(INDX(J),J)
+    itmp    = indx(j)
+    indx(j) = indx(k)
+    indx(k) = itmp
+    do i = j+1, n
+      pj  = a(indx(i),j)/a(indx(j),j)
 !
-! Record pivoting ratios below the diagonal
+! record pivoting ratios below the diagonal
 !
-      A(INDX(I),J) = PJ
+      a(indx(i),j) = pj
 !
-! Modify other elements accordingly
+! modify other elements accordingly
 !
-      DO K = J+1, N
-        A(INDX(I),K) = A(INDX(I),K)-PJ*A(INDX(J),K)
-      END DO
-    END DO
-  END DO
+      do k = j+1, n
+        a(indx(i),k) = a(indx(i),k)-pj*a(indx(j),k)
+      end do
+    end do
+  end do
 !
-END SUBROUTine ocn_elgs
+end subroutine ocn_elgs!}}}
 
 !-------------------------------------------------------------
 
-   subroutine ocn_initialize_deformation_weights( grid )
+   subroutine ocn_initialize_deformation_weights( grid )!{{{
                                       
 !
 ! compute the cell coefficients for the deformation calculations
@@ -930,6 +930,6 @@ END SUBROUTine ocn_elgs
 
       if (debug) write(0,*) ' exiting def weight calc '
 
-   end subroutine ocn_initialize_deformation_weights
+   end subroutine ocn_initialize_deformation_weights!}}}
 
 end module ocn_advection

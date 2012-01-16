@@ -4,14 +4,17 @@ module ocn_global_diagnostics
    use mpas_configure
    use mpas_constants
    use mpas_dmpar
+   use mpas_timer
 
    implicit none
    save
    public
 
+   type (timer_node), pointer :: diagBlockTimer, diagMPITimer
+
    contains
 
-   subroutine ocn_compute_global_diagnostics(dminfo, state, grid, timeIndex, dt)
+   subroutine ocn_compute_global_diagnostics(domain, timeLevel, timeIndex, dt)!{{{
 
       ! Note: this routine assumes that there is only one block per processor. No looping
       ! is preformed over blocks.
@@ -26,196 +29,299 @@ module ocn_global_diagnostics
 
       implicit none
 
-      type (dm_info), intent(in) :: dminfo
-      type (state_type), intent(inout) :: state
-      type (mesh_type), intent(in) :: grid
+      type (domain_type), intent(inout) :: domain !< Input/Output: domain information
       integer, intent(in) :: timeIndex
       real (kind=RKIND), intent(in) :: dt
 
-      integer :: nVertLevels, nCellsSolve, nEdgesSolve, nVerticesSolve, nCellsGlobal, nEdgesGlobal, nVerticesGlobal, iTracer
+      type (block_type), pointer :: block
+      type (dm_info), pointer :: dminfo
+      type (state_type), pointer :: state
+      type (mesh_type), pointer :: grid
 
-      real (kind=RKIND) ::  areaCellGlobal, areaEdgeGlobal, areaTriangleGlobal
+      integer :: nVertLevels, nCellsSolve, nEdgesSolve, nVerticesSolve, nCellsGlobal, nEdgesGlobal, nVerticesGlobal, iTracer
+      integer :: elementIndex, variableIndex, nVariables, nSums, nMaxes, nMins
+      integer :: timeLevel,k,i, num_tracers
+      integer :: fileID
+      integer, parameter :: kMaxVariables = 1024 ! this must be a little more than double the number of variables to be reduced
+
+      real (kind=RKIND) :: volumeCellGlobal, volumeEdgeGlobal, CFLNumberGlobal, localCFL, localSum, areaCellGlobal, areaEdgeGlobal, areaTriangleGlobal
       real (kind=RKIND), dimension(:), pointer ::  areaCell, dcEdge, dvEdge, areaTriangle, areaEdge
       real (kind=RKIND), dimension(:,:), pointer :: h, u, v, h_edge, circulation, vorticity, ke, pv_edge, pv_vertex, &
          pv_cell, gradPVn, gradPVt, pressure, MontPot, wTop, rho, tracerTemp
       real (kind=RKIND), dimension(:,:,:), pointer :: tracers
-
-      real (kind=RKIND) :: volumeCellGlobal, volumeEdgeGlobal, CFLNumberGlobal
-      real (kind=RKIND) ::  localCFL, localSum
-      integer :: elementIndex, variableIndex, nVariables, nSums, nMaxes, nMins
-      integer :: timeLevel,k,i, num_tracers
-
-      integer, parameter :: kMaxVariables = 1024 ! this must be a little more than double the number of variables to be reduced
-
+      
       real (kind=RKIND), dimension(kMaxVariables) :: sums, mins, maxes, averages, verticalSumMins, verticalSumMaxes, reductions
+      real (kind=RKIND), dimension(kMaxVariables) :: sums_tmp, mins_tmp, maxes_tmp, averages_tmp, verticalSumMins_tmp, verticalSumMaxes_tmp
 
-      integer :: fileID
+      block => domain % blocklist
+      dminfo => domain % dminfo
 
-      num_tracers = state % num_tracers
+      sums = 0.0
+      mins = 0.0
+      maxes = 0.0
+      averages = 0.0
+      verticalSumMins = 0.0
+      verticalSumMaxes = 0.0
+      reductions = 0.0
 
-      nVertLevels = grid % nVertLevels
-      nCellsSolve = grid % nCellsSolve
-      nEdgesSolve = grid % nEdgesSolve
-      nVerticesSolve = grid % nVerticesSolve
+      call mpas_timer_start("diagnostic block loop", .false., diagBlockTimer)
+      do while (associated(block))
+         state => block % state % time_levs(timeLevel) % state
+         grid => block % mesh
+         
+         num_tracers = state % num_tracers
 
-      areaCell => grid % areaCell % array
-      dcEdge => grid % dcEdge % array
-      dvEdge => grid % dvEdge % array
-      areaTriangle => grid % areaTriangle % array
-      allocate(areaEdge(1:nEdgesSolve))
-      areaEdge = dcEdge(1:nEdgesSolve)*dvEdge(1:nEdgesSolve)
+         nVertLevels = grid % nVertLevels
+         nCellsSolve = grid % nCellsSolve
+         nEdgesSolve = grid % nEdgesSolve
+         nVerticesSolve = grid % nVerticesSolve
 
-      h => state % h % array
-      u => state % u % array
-      rho => state % rho % array
-      tracers => state % tracers % array
-      v => state % v % array
-      wTop => state % wTop % array
-      h_edge => state % h_edge % array
-      circulation => state % circulation % array
-      vorticity => state % vorticity % array
-      ke => state % ke % array
-      pv_edge => state % pv_edge % array
-      pv_vertex => state % pv_vertex % array
-      pv_cell => state % pv_cell % array
-      gradPVn => state % gradPVn % array
-      gradPVt => state % gradPVt % array
-      MontPot => state % MontPot % array
-      pressure => state % pressure % array
+         areaCell => grid % areaCell % array
+         dcEdge => grid % dcEdge % array
+         dvEdge => grid % dvEdge % array
+         areaTriangle => grid % areaTriangle % array
+         allocate(areaEdge(1:nEdgesSolve))
+         areaEdge = dcEdge(1:nEdgesSolve)*dvEdge(1:nEdgesSolve)
 
-      variableIndex = 0
-      ! h
-      variableIndex = variableIndex + 1
-      call ocn_compute_field_area_weighted_local_stats(dminfo, nVertLevels, nCellsSolve, areaCell(1:nCellsSolve), h(:,1:nCellsSolve), &
-        sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), verticalSumMaxes(variableIndex))
+         h => state % h % array
+         u => state % u % array
+         rho => state % rho % array
+         tracers => state % tracers % array
+         v => state % v % array
+         wTop => state % wTop % array
+         h_edge => state % h_edge % array
+         circulation => state % circulation % array
+         vorticity => state % vorticity % array
+         ke => state % ke % array
+         pv_edge => state % pv_edge % array
+         pv_vertex => state % pv_vertex % array
+         pv_cell => state % pv_cell % array
+         gradPVn => state % gradPVn % array
+         gradPVt => state % gradPVt % array
+         MontPot => state % MontPot % array
+         pressure => state % pressure % array
 
-      ! u
-      variableIndex = variableIndex + 1
-      call ocn_compute_field_volume_weighted_local_stats(dminfo, nVertLevels, nEdgesSolve, areaEdge(1:nEdgesSolve), h_edge(:,1:nEdgesSolve), &
-        u(:,1:nEdgesSolve), sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), &
-        verticalSumMaxes(variableIndex))
+         variableIndex = 0
+         ! h
+         variableIndex = variableIndex + 1
+         call ocn_compute_field_area_weighted_local_stats(dminfo, nVertLevels, nCellsSolve, areaCell(1:nCellsSolve), h(:,1:nCellsSolve), &
+            sums_tmp(variableIndex), mins_tmp(variableIndex), maxes_tmp(variableIndex), verticalSumMins_tmp(variableIndex), verticalSumMaxes_tmp(variableIndex))
+         sums(variableIndex) = sums(variableIndex) + sums_tmp(variableIndex)
+         mins(variableIndex) = min(mins(variableIndex), mins_tmp(variableIndex))
+         maxes(variableIndex) = max(maxes(variableIndex), maxes_tmp(variableIndex))
+         verticalSumMins(variableIndex) = min(verticalSumMins(variableIndex), verticalSumMins_tmp(variableIndex))
+         verticalSumMaxes(variableIndex) = max(verticalSumMaxes(variableIndex), verticalSumMaxes_tmp(variableIndex))
 
-      ! v
-      variableIndex = variableIndex + 1
-      call ocn_compute_field_volume_weighted_local_stats(dminfo, nVertLevels, nEdgesSolve, areaEdge(1:nEdgesSolve), h_edge(:,1:nEdgesSolve), &
-        v(:,1:nEdgesSolve), sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), &
-        verticalSumMaxes(variableIndex))
+         ! u
+         variableIndex = variableIndex + 1
+         call ocn_compute_field_volume_weighted_local_stats(dminfo, nVertLevels, nEdgesSolve, areaEdge(1:nEdgesSolve), h_edge(:,1:nEdgesSolve), &
+            u(:,1:nEdgesSolve), sums_tmp(variableIndex), mins_tmp(variableIndex), maxes_tmp(variableIndex), verticalSumMins_tmp(variableIndex), &
+            verticalSumMaxes_tmp(variableIndex))
+         sums(variableIndex) = sums(variableIndex) + sums_tmp(variableIndex)
+         mins(variableIndex) = min(mins(variableIndex), mins_tmp(variableIndex))
+         maxes(variableIndex) = max(maxes(variableIndex), maxes_tmp(variableIndex))
+         verticalSumMins(variableIndex) = min(verticalSumMins(variableIndex), verticalSumMins_tmp(variableIndex))
+         verticalSumMaxes(variableIndex) = max(verticalSumMaxes(variableIndex), verticalSumMaxes_tmp(variableIndex))
 
-      ! h_edge
-      variableIndex = variableIndex + 1
-      call ocn_compute_field_area_weighted_local_stats(dminfo, nVertLevels, nEdgesSolve, areaEdge(1:nEdgesSolve), h_edge(:,1:nEdgesSolve), &
-        sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), verticalSumMaxes(variableIndex))
+         ! v
+         variableIndex = variableIndex + 1
+         call ocn_compute_field_volume_weighted_local_stats(dminfo, nVertLevels, nEdgesSolve, areaEdge(1:nEdgesSolve), h_edge(:,1:nEdgesSolve), &
+            v(:,1:nEdgesSolve), sums_tmp(variableIndex), mins_tmp(variableIndex), maxes_tmp(variableIndex), verticalSumMins_tmp(variableIndex), &
+            verticalSumMaxes_tmp(variableIndex))
+         sums(variableIndex) = sums(variableIndex) + sums_tmp(variableIndex)
+         mins(variableIndex) = min(mins(variableIndex), mins_tmp(variableIndex))
+         maxes(variableIndex) = max(maxes(variableIndex), maxes_tmp(variableIndex))
+         verticalSumMins(variableIndex) = min(verticalSumMins(variableIndex), verticalSumMins_tmp(variableIndex))
+         verticalSumMaxes(variableIndex) = max(verticalSumMaxes(variableIndex), verticalSumMaxes_tmp(variableIndex))
 
-      ! circulation
-      variableIndex = variableIndex + 1
-      call ocn_compute_field_local_stats(dminfo, nVertLevels, nVerticesSolve, circulation(:,1:nVerticesSolve), &
-        sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), verticalSumMaxes(variableIndex))
+         ! h_edge
+         variableIndex = variableIndex + 1
+         call ocn_compute_field_area_weighted_local_stats(dminfo, nVertLevels, nEdgesSolve, areaEdge(1:nEdgesSolve), h_edge(:,1:nEdgesSolve), &
+            sums_tmp(variableIndex), mins_tmp(variableIndex), maxes_tmp(variableIndex), verticalSumMins_tmp(variableIndex), verticalSumMaxes_tmp(variableIndex))
+         sums(variableIndex) = sums(variableIndex) + sums_tmp(variableIndex)
+         mins(variableIndex) = min(mins(variableIndex), mins_tmp(variableIndex))
+         maxes(variableIndex) = max(maxes(variableIndex), maxes_tmp(variableIndex))
+         verticalSumMins(variableIndex) = min(verticalSumMins(variableIndex), verticalSumMins_tmp(variableIndex))
+         verticalSumMaxes(variableIndex) = max(verticalSumMaxes(variableIndex), verticalSumMaxes_tmp(variableIndex))
 
-      ! vorticity
-      variableIndex = variableIndex + 1
-      call ocn_compute_field_area_weighted_local_stats(dminfo, nVertLevels, nVerticesSolve, areaTriangle(1:nVerticesSolve), &
-        vorticity(:,1:nVerticesSolve), sums(variableIndex), mins(variableIndex), maxes(variableIndex), &
-        verticalSumMins(variableIndex), verticalSumMaxes(variableIndex))
+         ! circulation
+         variableIndex = variableIndex + 1
+         call ocn_compute_field_local_stats(dminfo, nVertLevels, nVerticesSolve, circulation(:,1:nVerticesSolve), &
+            sums_tmp(variableIndex), mins_tmp(variableIndex), maxes_tmp(variableIndex), verticalSumMins_tmp(variableIndex), verticalSumMaxes_tmp(variableIndex))
+            sums(variableIndex) = sums(variableIndex) + sums_tmp(variableIndex)
+         mins(variableIndex) = min(mins(variableIndex), mins_tmp(variableIndex))
+         maxes(variableIndex) = max(maxes(variableIndex), maxes_tmp(variableIndex))
+         verticalSumMins(variableIndex) = min(verticalSumMins(variableIndex), verticalSumMins_tmp(variableIndex))
+         verticalSumMaxes(variableIndex) = max(verticalSumMaxes(variableIndex), verticalSumMaxes_tmp(variableIndex))
 
-      ! ke
-      variableIndex = variableIndex + 1
-      call ocn_compute_field_volume_weighted_local_stats(dminfo, nVertLevels, nCellsSolve, areaCell(1:nCellsSolve), h(:,1:nCellsSolve), &
-        ke(:,1:nCellsSolve), sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), &
-        verticalSumMaxes(variableIndex))
+         ! vorticity
+         variableIndex = variableIndex + 1
+         call ocn_compute_field_area_weighted_local_stats(dminfo, nVertLevels, nVerticesSolve, areaTriangle(1:nVerticesSolve), &
+            vorticity(:,1:nVerticesSolve), sums_tmp(variableIndex), mins_tmp(variableIndex), maxes_tmp(variableIndex), &
+            verticalSumMins_tmp(variableIndex), verticalSumMaxes_tmp(variableIndex))
+         sums(variableIndex) = sums(variableIndex) + sums_tmp(variableIndex)
+         mins(variableIndex) = min(mins(variableIndex), mins_tmp(variableIndex))
+         maxes(variableIndex) = max(maxes(variableIndex), maxes_tmp(variableIndex))
+         verticalSumMins(variableIndex) = min(verticalSumMins(variableIndex), verticalSumMins_tmp(variableIndex))
+         verticalSumMaxes(variableIndex) = max(verticalSumMaxes(variableIndex), verticalSumMaxes_tmp(variableIndex))
 
-      ! pv_edge
-      variableIndex = variableIndex + 1
-      call ocn_compute_field_volume_weighted_local_stats(dminfo, nVertLevels, nEdgesSolve, areaEdge(1:nEdgesSolve), h_edge(:,1:nEdgesSolve), &
-        pv_edge(:,1:nEdgesSolve), sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), &
-        verticalSumMaxes(variableIndex))
+         ! ke
+         variableIndex = variableIndex + 1
+         call ocn_compute_field_volume_weighted_local_stats(dminfo, nVertLevels, nCellsSolve, areaCell(1:nCellsSolve), h(:,1:nCellsSolve), &
+            ke(:,1:nCellsSolve), sums_tmp(variableIndex), mins_tmp(variableIndex), maxes_tmp(variableIndex), verticalSumMins_tmp(variableIndex), &
+            verticalSumMaxes_tmp(variableIndex))
+         sums(variableIndex) = sums(variableIndex) + sums_tmp(variableIndex)
+         mins(variableIndex) = min(mins(variableIndex), mins_tmp(variableIndex))
+         maxes(variableIndex) = max(maxes(variableIndex), maxes_tmp(variableIndex))
+         verticalSumMins(variableIndex) = min(verticalSumMins(variableIndex), verticalSumMins_tmp(variableIndex))
+         verticalSumMaxes(variableIndex) = max(verticalSumMaxes(variableIndex), verticalSumMaxes_tmp(variableIndex))
 
-      ! pv_vertex
-      variableIndex = variableIndex + 1
-      call ocn_compute_field_area_weighted_local_stats(dminfo, nVertLevels, nVerticesSolve, areaTriangle(1:nVerticesSolve), &
-        pv_vertex(:,1:nVerticesSolve), sums(variableIndex), mins(variableIndex), maxes(variableIndex), &
-        verticalSumMins(variableIndex), verticalSumMaxes(variableIndex))
+         ! pv_edge
+         variableIndex = variableIndex + 1
+         call ocn_compute_field_volume_weighted_local_stats(dminfo, nVertLevels, nEdgesSolve, areaEdge(1:nEdgesSolve), h_edge(:,1:nEdgesSolve), &
+            pv_edge(:,1:nEdgesSolve), sums_tmp(variableIndex), mins_tmp(variableIndex), maxes_tmp(variableIndex), verticalSumMins_tmp(variableIndex), &
+            verticalSumMaxes_tmp(variableIndex))
+         sums(variableIndex) = sums(variableIndex) + sums_tmp(variableIndex)
+         mins(variableIndex) = min(mins(variableIndex), mins_tmp(variableIndex))
+         maxes(variableIndex) = max(maxes(variableIndex), maxes_tmp(variableIndex))
+         verticalSumMins(variableIndex) = min(verticalSumMins(variableIndex), verticalSumMins_tmp(variableIndex))
+         verticalSumMaxes(variableIndex) = max(verticalSumMaxes(variableIndex), verticalSumMaxes_tmp(variableIndex))
 
-      ! pv_cell
-      variableIndex = variableIndex + 1
-      call ocn_compute_field_volume_weighted_local_stats(dminfo, nVertLevels, nCellsSolve, areaCell(1:nCellsSolve), h(:,1:nCellsSolve), &
-        pv_cell(:,1:nCellsSolve), sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), &
-        verticalSumMaxes(variableIndex))
+         ! pv_vertex
+         variableIndex = variableIndex + 1
+         call ocn_compute_field_area_weighted_local_stats(dminfo, nVertLevels, nVerticesSolve, areaTriangle(1:nVerticesSolve), &
+            pv_vertex(:,1:nVerticesSolve), sums_tmp(variableIndex), mins_tmp(variableIndex), maxes_tmp(variableIndex), &
+            verticalSumMins_tmp(variableIndex), verticalSumMaxes_tmp(variableIndex))
+         sums(variableIndex) = sums(variableIndex) + sums_tmp(variableIndex)
+         mins(variableIndex) = min(mins(variableIndex), mins_tmp(variableIndex))
+         maxes(variableIndex) = max(maxes(variableIndex), maxes_tmp(variableIndex))
+         verticalSumMins(variableIndex) = min(verticalSumMins(variableIndex), verticalSumMins_tmp(variableIndex))
+         verticalSumMaxes(variableIndex) = max(verticalSumMaxes(variableIndex), verticalSumMaxes_tmp(variableIndex))
 
-      ! gradPVn
-      variableIndex = variableIndex + 1
-      call ocn_compute_field_volume_weighted_local_stats(dminfo, nVertLevels, nEdgesSolve, areaEdge(1:nEdgesSolve), h_edge(:,1:nEdgesSolve), &
-        gradPVn(:,1:nEdgesSolve), sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), &
-        verticalSumMaxes(variableIndex))
+         ! pv_cell
+         variableIndex = variableIndex + 1
+         call ocn_compute_field_volume_weighted_local_stats(dminfo, nVertLevels, nCellsSolve, areaCell(1:nCellsSolve), h(:,1:nCellsSolve), &
+            pv_cell(:,1:nCellsSolve), sums_tmp(variableIndex), mins_tmp(variableIndex), maxes_tmp(variableIndex), verticalSumMins_tmp(variableIndex), &
+            verticalSumMaxes_tmp(variableIndex))
+         sums(variableIndex) = sums(variableIndex) + sums_tmp(variableIndex)
+         mins(variableIndex) = min(mins(variableIndex), mins_tmp(variableIndex))
+         maxes(variableIndex) = max(maxes(variableIndex), maxes_tmp(variableIndex))
+         verticalSumMins(variableIndex) = min(verticalSumMins(variableIndex), verticalSumMins_tmp(variableIndex))
+         verticalSumMaxes(variableIndex) = max(verticalSumMaxes(variableIndex), verticalSumMaxes_tmp(variableIndex))
 
-      ! gradPVt
-      variableIndex = variableIndex + 1
-      call ocn_compute_field_volume_weighted_local_stats(dminfo, nVertLevels, nEdgesSolve, areaEdge(1:nEdgesSolve), h_edge(:,1:nEdgesSolve), &
-        gradPVt(:,1:nEdgesSolve), sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), &
-        verticalSumMaxes(variableIndex))
+         ! gradPVn
+         variableIndex = variableIndex + 1
+         call ocn_compute_field_volume_weighted_local_stats(dminfo, nVertLevels, nEdgesSolve, areaEdge(1:nEdgesSolve), h_edge(:,1:nEdgesSolve), &
+            gradPVn(:,1:nEdgesSolve), sums_tmp(variableIndex), mins_tmp(variableIndex), maxes_tmp(variableIndex), verticalSumMins_tmp(variableIndex), &
+            verticalSumMaxes_tmp(variableIndex))
+         sums(variableIndex) = sums(variableIndex) + sums_tmp(variableIndex)
+         mins(variableIndex) = min(mins(variableIndex), mins_tmp(variableIndex))
+         maxes(variableIndex) = max(maxes(variableIndex), maxes_tmp(variableIndex))
+         verticalSumMins(variableIndex) = min(verticalSumMins(variableIndex), verticalSumMins_tmp(variableIndex))
+         verticalSumMaxes(variableIndex) = max(verticalSumMaxes(variableIndex), verticalSumMaxes_tmp(variableIndex))
 
-      ! pressure
-      variableIndex = variableIndex + 1
-      call ocn_compute_field_volume_weighted_local_stats(dminfo, nVertLevels, nCellsSolve, areaCell(1:nCellsSolve), h(:,1:nCellsSolve), &
-        pressure(:,1:nCellsSolve), sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), &
-        verticalSumMaxes(variableIndex))
+         ! gradPVt
+         variableIndex = variableIndex + 1
+         call ocn_compute_field_volume_weighted_local_stats(dminfo, nVertLevels, nEdgesSolve, areaEdge(1:nEdgesSolve), h_edge(:,1:nEdgesSolve), &
+            gradPVt(:,1:nEdgesSolve), sums_tmp(variableIndex), mins_tmp(variableIndex), maxes_tmp(variableIndex), verticalSumMins_tmp(variableIndex), &
+            verticalSumMaxes_tmp(variableIndex))
+         sums(variableIndex) = sums(variableIndex) + sums_tmp(variableIndex)
+         mins(variableIndex) = min(mins(variableIndex), mins_tmp(variableIndex))
+         maxes(variableIndex) = max(maxes(variableIndex), maxes_tmp(variableIndex))
+         verticalSumMins(variableIndex) = min(verticalSumMins(variableIndex), verticalSumMins_tmp(variableIndex))
+         verticalSumMaxes(variableIndex) = max(verticalSumMaxes(variableIndex), verticalSumMaxes_tmp(variableIndex))
 
-      ! MontPot
-      variableIndex = variableIndex + 1
-      call ocn_compute_field_volume_weighted_local_stats(dminfo, nVertLevels, nCellsSolve, areaCell(1:nCellsSolve), h(:,1:nCellsSolve), &
-        MontPot(:,1:nCellsSolve), sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), &
-        verticalSumMaxes(variableIndex))
+         ! pressure
+         variableIndex = variableIndex + 1
+         call ocn_compute_field_volume_weighted_local_stats(dminfo, nVertLevels, nCellsSolve, areaCell(1:nCellsSolve), h(:,1:nCellsSolve), &
+            pressure(:,1:nCellsSolve), sums_tmp(variableIndex), mins_tmp(variableIndex), maxes_tmp(variableIndex), verticalSumMins_tmp(variableIndex), &
+            verticalSumMaxes_tmp(variableIndex))
+         sums(variableIndex) = sums(variableIndex) + sums_tmp(variableIndex)
+         mins(variableIndex) = min(mins(variableIndex), mins_tmp(variableIndex))
+         maxes(variableIndex) = max(maxes(variableIndex), maxes_tmp(variableIndex))
+         verticalSumMins(variableIndex) = min(verticalSumMins(variableIndex), verticalSumMins_tmp(variableIndex))
+         verticalSumMaxes(variableIndex) = max(verticalSumMaxes(variableIndex), verticalSumMaxes_tmp(variableIndex))
 
-      ! wTop vertical velocity
-      variableIndex = variableIndex + 1
-      call ocn_compute_field_volume_weighted_local_stats(dminfo, nVertLevels+1, nCellsSolve, areaCell(1:nCellsSolve), h(:,1:nCellsSolve), &
-        wTop(:,1:nCellsSolve), sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), &
-        verticalSumMaxes(variableIndex))
+         ! MontPot
+         variableIndex = variableIndex + 1
+         call ocn_compute_field_volume_weighted_local_stats(dminfo, nVertLevels, nCellsSolve, areaCell(1:nCellsSolve), h(:,1:nCellsSolve), &
+            MontPot(:,1:nCellsSolve), sums_tmp(variableIndex), mins_tmp(variableIndex), maxes_tmp(variableIndex), verticalSumMins_tmp(variableIndex), &
+            verticalSumMaxes_tmp(variableIndex))
+         sums(variableIndex) = sums(variableIndex) + sums_tmp(variableIndex)
+         mins(variableIndex) = min(mins(variableIndex), mins_tmp(variableIndex))
+         maxes(variableIndex) = max(maxes(variableIndex), maxes_tmp(variableIndex))
+         verticalSumMins(variableIndex) = min(verticalSumMins(variableIndex), verticalSumMins_tmp(variableIndex))
+         verticalSumMaxes(variableIndex) = max(verticalSumMaxes(variableIndex), verticalSumMaxes_tmp(variableIndex))
 
-      ! Tracers
-      allocate(tracerTemp(nVertLevels,nCellsSolve))
-      do iTracer=1,num_tracers
-        variableIndex = variableIndex + 1
-        tracerTemp = Tracers(iTracer,:,1:nCellsSolve)
-        call ocn_compute_field_volume_weighted_local_stats(dminfo, nVertLevels, nCellsSolve, areaCell(1:nCellsSolve), h(:,1:nCellsSolve), &
-          tracerTemp, sums(variableIndex), mins(variableIndex), maxes(variableIndex), verticalSumMins(variableIndex), &
-          verticalSumMaxes(variableIndex))
-      enddo
-      deallocate(tracerTemp)
+         ! wTop vertical velocity
+         variableIndex = variableIndex + 1
+         call ocn_compute_field_volume_weighted_local_stats(dminfo, nVertLevels+1, nCellsSolve, areaCell(1:nCellsSolve), h(:,1:nCellsSolve), &
+            wTop(:,1:nCellsSolve), sums_tmp(variableIndex), mins_tmp(variableIndex), maxes_tmp(variableIndex), verticalSumMins_tmp(variableIndex), &
+            verticalSumMaxes_tmp(variableIndex))
+         sums(variableIndex) = sums(variableIndex) + sums_tmp(variableIndex)
+         mins(variableIndex) = min(mins(variableIndex), mins_tmp(variableIndex))
+         maxes(variableIndex) = max(maxes(variableIndex), maxes_tmp(variableIndex))
+         verticalSumMins(variableIndex) = min(verticalSumMins(variableIndex), verticalSumMins_tmp(variableIndex))
+         verticalSumMaxes(variableIndex) = max(verticalSumMaxes(variableIndex), verticalSumMaxes_tmp(variableIndex))
 
-      nVariables = variableIndex
-      nSums = nVariables
-      nMins = nVariables
-      nMaxes = nVariables
+         ! Tracers
+         allocate(tracerTemp(nVertLevels,nCellsSolve))
+         do iTracer=1,num_tracers
+            variableIndex = variableIndex + 1
+            tracerTemp = Tracers(iTracer,:,1:nCellsSolve)
+            call ocn_compute_field_volume_weighted_local_stats(dminfo, nVertLevels, nCellsSolve, areaCell(1:nCellsSolve), h(:,1:nCellsSolve), &
+               tracerTemp, sums_tmp(variableIndex), mins_tmp(variableIndex), maxes_tmp(variableIndex), verticalSumMins_tmp(variableIndex), &
+               verticalSumMaxes_tmp(variableIndex))
+            sums(variableIndex) = sums(variableIndex) + sums_tmp(variableIndex)
+            mins(variableIndex) = min(mins(variableIndex), mins_tmp(variableIndex))
+            maxes(variableIndex) = max(maxes(variableIndex), maxes_tmp(variableIndex))
+            verticalSumMins(variableIndex) = min(verticalSumMins(variableIndex), verticalSumMins_tmp(variableIndex))
+            verticalSumMaxes(variableIndex) = max(verticalSumMaxes(variableIndex), verticalSumMaxes_tmp(variableIndex))
+         enddo
+         deallocate(tracerTemp)
 
-      nSums = nSums + 1
-      sums(nSums) = sum(areaCell(1:nCellsSolve))
+         nVariables = variableIndex
+         nSums = nVariables
+         nMins = nVariables
+         nMaxes = nVariables
 
-      nSums = nSums + 1
-      sums(nSums) = sum(dcEdge(1:nEdgesSolve)*dvEdge(1:nEdgesSolve))
+         nSums = nSums + 1
+         sums(nSums) = sums(nSums) + sum(areaCell(1:nCellsSolve))
 
-      nSums = nSums + 1
-      sums(nSums) = sum(areaTriangle(1:nVerticesSolve))
+         nSums = nSums + 1
+         sums(nSums) = sums(nSums) + sum(dcEdge(1:nEdgesSolve)*dvEdge(1:nEdgesSolve))
 
-      nSums = nSums + 1
-      sums(nSums) = nCellsSolve
+         nSums = nSums + 1
+         sums(nSums) = sums(nSums) + sum(areaTriangle(1:nVerticesSolve))
 
-      nSums = nSums + 1
-      sums(nSums) = nEdgesSolve
+         nSums = nSums + 1
+         sums(nSums) = sums(nSums) + nCellsSolve
 
-      nSums = nSums + 1
-      sums(nSums) = nVerticesSolve
+         nSums = nSums + 1
+         sums(nSums) = sums(nSums) + nEdgesSolve
 
-      localCFL = 0.0
-      do elementIndex = 1,nEdgesSolve
-         localCFL = max(localCFL, maxval(dt*u(:,elementIndex)/dcEdge(elementIndex)))
+         nSums = nSums + 1
+         sums(nSums) = sums(nSums) + nVerticesSolve
+
+         localCFL = 0.0
+         do elementIndex = 1,nEdgesSolve
+            localCFL = max(localCFL, maxval(dt*u(:,elementIndex)/dcEdge(elementIndex)))
+         end do
+         nMaxes = nMaxes + 1
+         maxes(nMaxes) = localCFL
+
+         do i = 1, nVariables
+            mins(nMins+i) = min(mins(nMins+i),verticalSumMins_tmp(i))
+            maxes(nMaxes+i) = max(maxes(nMaxes+i),verticalSumMaxes_tmp(i))
+         end do
+
+         nMins = nMins + nVariables
+         nMaxes = nMaxes + nVariables
+
+         block => block % next
       end do
-      nMaxes = nMaxes + 1
-      maxes(nMaxes) = localCFL
-
-      mins(nMins+1:nMins+nVariables) = verticalSumMins(1:nVariables)
-      nMins = nMins + nVariables
-      maxes(nMaxes+1:nMaxes+nVariables) = verticalSumMaxes(1:nVariables)
-      nMaxes = nMaxes + nVariables
+      call mpas_timer_stop("diagnostic block loop", diagBlockTimer)
+      call mpas_timer_start("diagnostics mpi", .false., diagMPITimer)
 
       ! global reduction of the 5 arrays (packed into 3 to minimize global communication)
       call mpas_dmpar_sum_real_array(dminfo, nSums, sums(1:nSums), reductions(1:nSums))
@@ -306,6 +412,8 @@ module ocn_global_diagnostics
         averages(variableIndex) = sums(variableIndex)/volumeCellGlobal
       enddo
 
+      call mpas_timer_stop("diagnostics mpi", diagMPITimer)
+
       ! write out the data to files
       if (dminfo % my_proc_id == IO_NODE) then
          fileID = getFreeUnit()
@@ -343,9 +451,9 @@ module ocn_global_diagnostics
       state % CFLNumberGlobal % scalar = CFLNumberGlobal
       deallocate(areaEdge)
 
-   end subroutine ocn_compute_global_diagnostics
+   end subroutine ocn_compute_global_diagnostics!}}}
 
-   integer function getFreeUnit()
+   integer function getFreeUnit()!{{{
       implicit none
 
       integer :: index
@@ -361,9 +469,9 @@ module ocn_global_diagnostics
             end if
          end if
       end do
-   end function getFreeUnit
+   end function getFreeUnit!}}}
 
-   subroutine ocn_compute_field_local_stats(dminfo, nVertLevels, nElements, field, localSum, localMin, localMax, localVertSumMin, &
+   subroutine ocn_compute_field_local_stats(dminfo, nVertLevels, nElements, field, localSum, localMin, localMax, localVertSumMin, &!{{{
       localVertSumMax)
 
       implicit none
@@ -380,9 +488,9 @@ module ocn_global_diagnostics
       localVertSumMin = minval(sum(field,1))
       localVertSumMax = maxval(sum(field,1))
 
-   end subroutine ocn_compute_field_local_stats
+   end subroutine ocn_compute_field_local_stats!}}}
 
-   subroutine ocn_compute_field_area_weighted_local_stats(dminfo, nVertLevels, nElements, areas, field, localSum, localMin, &
+   subroutine ocn_compute_field_area_weighted_local_stats(dminfo, nVertLevels, nElements, areas, field, localSum, localMin, &!{{{
       localMax, localVertSumMin, localVertSumMax)
 
       implicit none
@@ -406,9 +514,9 @@ module ocn_global_diagnostics
       localVertSumMin = minval(sum(field,1))
       localVertSumMax = maxval(sum(field,1))
 
-   end subroutine ocn_compute_field_area_weighted_local_stats
+   end subroutine ocn_compute_field_area_weighted_local_stats!}}}
 
-   subroutine ocn_compute_field_thickness_weighted_local_stats(dminfo, nVertLevels, nElements, h, field, &
+   subroutine ocn_compute_field_thickness_weighted_local_stats(dminfo, nVertLevels, nElements, h, field, &!{{{
       localSum, localMin, localMax, localVertSumMin, localVertSumMax)
 
       implicit none
@@ -430,9 +538,9 @@ module ocn_global_diagnostics
       localVertSumMin = minval(sum(h*field,1))
       localVertSumMax = maxval(sum(h*field,1))
 
-   end subroutine ocn_compute_field_thickness_weighted_local_stats
+   end subroutine ocn_compute_field_thickness_weighted_local_stats!}}}
 
-   subroutine ocn_compute_field_volume_weighted_local_stats(dminfo, nVertLevels, nElements, areas, h, field, &
+   subroutine ocn_compute_field_volume_weighted_local_stats(dminfo, nVertLevels, nElements, areas, h, field, &!{{{
       localSum, localMin, localMax, localVertSumMin, localVertSumMax)
 
       implicit none
@@ -459,10 +567,9 @@ module ocn_global_diagnostics
       localVertSumMin = minval(sum(h*field,1))
       localVertSumMax = maxval(sum(h*field,1))
 
-   end subroutine ocn_compute_field_volume_weighted_local_stats
+   end subroutine ocn_compute_field_volume_weighted_local_stats!}}}
 
-
-   subroutine ocn_compute_global_sum(dminfo, nVertLevels, nElements, field, globalSum)
+   subroutine ocn_compute_global_sum(dminfo, nVertLevels, nElements, field, globalSum)!{{{
 
       implicit none
 
@@ -476,9 +583,9 @@ module ocn_global_diagnostics
       localSum = sum(field)
       call mpas_dmpar_sum_real(dminfo, localSum, globalSum)
 
-   end subroutine ocn_compute_global_sum
+   end subroutine ocn_compute_global_sum!}}}
 
-   subroutine ocn_compute_area_weighted_global_sum(dminfo, nVertLevels, nElements, areas, field, globalSum)
+   subroutine ocn_compute_area_weighted_global_sum(dminfo, nVertLevels, nElements, areas, field, globalSum)!{{{
 
       implicit none
 
@@ -498,9 +605,9 @@ module ocn_global_diagnostics
    
       call mpas_dmpar_sum_real(dminfo, localSum, globalSum)
        
-   end subroutine ocn_compute_area_weighted_global_sum
+   end subroutine ocn_compute_area_weighted_global_sum!}}}
 
-   subroutine ocn_compute_volume_weighted_global_sum(dminfo, nVertLevels, nElements, areas, h, field, globalSum)
+   subroutine ocn_compute_volume_weighted_global_sum(dminfo, nVertLevels, nElements, areas, h, field, globalSum)!{{{
 
       implicit none
 
@@ -517,9 +624,9 @@ module ocn_global_diagnostics
 
       call ocn_compute_area_weighted_global_sum(dminfo, nVertLevels, nElements, areas, hTimesField, globalSum)
 
-   end subroutine ocn_compute_volume_weighted_global_sum
+   end subroutine ocn_compute_volume_weighted_global_sum!}}}
 
-   subroutine ocn_compute_global_min(dminfo, nVertLevels, nElements, field, globalMin)
+   subroutine ocn_compute_global_min(dminfo, nVertLevels, nElements, field, globalMin)!{{{
 
       implicit none
 
@@ -533,9 +640,9 @@ module ocn_global_diagnostics
       localMin = minval(field)
       call mpas_dmpar_min_real(dminfo, localMin, globalMin)
 
-   end subroutine ocn_compute_global_min
+   end subroutine ocn_compute_global_min!}}}
 
-   subroutine ocn_compute_global_max(dminfo, nVertLevels, nElements, field, globalMax)
+   subroutine ocn_compute_global_max(dminfo, nVertLevels, nElements, field, globalMax)!{{{
 
       implicit none
 
@@ -549,9 +656,9 @@ module ocn_global_diagnostics
       localMax = maxval(field)
       call mpas_dmpar_max_real(dminfo, localMax, globalMax)
 
-   end subroutine ocn_compute_global_max
+   end subroutine ocn_compute_global_max!}}}
 
-   subroutine ocn_compute_global_vert_sum_horiz_min(dminfo, nVertLevels, nElements, field, globalMin)
+   subroutine ocn_compute_global_vert_sum_horiz_min(dminfo, nVertLevels, nElements, field, globalMin)!{{{
 
       implicit none
 
@@ -565,9 +672,9 @@ module ocn_global_diagnostics
       localMin = minval(sum(field,1))
       call mpas_dmpar_min_real(dminfo, localMin, globalMin)
 
-   end subroutine ocn_compute_global_vert_sum_horiz_min
+   end subroutine ocn_compute_global_vert_sum_horiz_min!}}}
 
-   subroutine ocn_compute_global_vert_sum_horiz_max(dminfo, nVertLevels, nElements, field, globalMax)
+   subroutine ocn_compute_global_vert_sum_horiz_max(dminfo, nVertLevels, nElements, field, globalMax)!{{{
 
       implicit none
 
@@ -581,9 +688,9 @@ module ocn_global_diagnostics
       localMax = maxval(sum(field,1))
       call mpas_dmpar_max_real(dminfo, localMax, globalMax)
 
-   end subroutine ocn_compute_global_vert_sum_horiz_max
+   end subroutine ocn_compute_global_vert_sum_horiz_max!}}}
 
-   subroutine ocn_compute_global_vert_thickness_weighted_sum_horiz_min(dminfo, nVertLevels, nElements, h, field, globalMin)
+   subroutine ocn_compute_global_vert_thickness_weighted_sum_horiz_min(dminfo, nVertLevels, nElements, h, field, globalMin)!{{{
 
       implicit none
 
@@ -597,9 +704,9 @@ module ocn_global_diagnostics
       localMin = minval(sum(h*field,1))
       call mpas_dmpar_min_real(dminfo, localMin, globalMin)
 
-   end subroutine ocn_compute_global_vert_thickness_weighted_sum_horiz_min
+   end subroutine ocn_compute_global_vert_thickness_weighted_sum_horiz_min!}}}
 
-   subroutine ocn_compute_global_vert_thickness_weighted_sum_horiz_max(dminfo, nVertLevels, nElements, h, field, globalMax)
+   subroutine ocn_compute_global_vert_thickness_weighted_sum_horiz_max(dminfo, nVertLevels, nElements, h, field, globalMax)!{{{
 
       implicit none
 
@@ -613,6 +720,6 @@ module ocn_global_diagnostics
       localMax = maxval(sum(h*field,1))
       call mpas_dmpar_max_real(dminfo, localMax, globalMax)
 
-   end subroutine ocn_compute_global_vert_thickness_weighted_sum_horiz_max
+   end subroutine ocn_compute_global_vert_thickness_weighted_sum_horiz_max!}}}
 
 end module ocn_global_diagnostics

@@ -112,6 +112,7 @@ contains
 
       nCells = grid % nCells
 
+      ! dwj 10/25/2011 - Need to explore isopycnal vs zlevel flags
       if (config_vert_grid_type.eq.'zlevel') then
         do iCell=1,nCells
            tend(1,iCell) =   tend(1,iCell) + wTop(2,iCell)

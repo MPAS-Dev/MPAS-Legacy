@@ -1,10 +1,12 @@
 module mpas_core
 
+   use mpas_configure
    use mpas_framework
    use mpas_timekeeping
    use mpas_dmpar
    use mpas_timer
 
+   use ocn_global_diagnostics
    use ocn_test_cases
    use ocn_time_integration
    use ocn_tendency
@@ -35,11 +37,13 @@ module mpas_core
    integer, parameter :: restartAlarmID = 2
    integer, parameter :: statsAlarmID = 3
 
+   type (timer_node), pointer :: globalDiagTimer, timeIntTimer
+   type (timer_node), pointer :: initDiagSolveTimer
+
    contains
 
    subroutine mpas_core_init(domain, startTimeStamp)!{{{
 
-      use mpas_configure
       use mpas_grid_types
 
       implicit none
@@ -81,6 +85,9 @@ module mpas_core
       call ocn_equation_of_state_init(err_tmp)
       err = ior(err, err_tmp)
 
+      call ocn_tendency_init(err_tmp)
+      err = ior(err,err_tmp)
+
       call mpas_timer_init(domain)
 
       if(err.eq.1) then
@@ -89,13 +96,13 @@ module mpas_core
 
       if (.not. config_do_restart) call setup_sw_test_case(domain)
 
-      call compute_maxLevel(domain)
+      call ocn_compute_max_level(domain)
 
       if (config_vert_grid_type.eq.'isopycnal') then
          print *, ' Using isopycnal coordinates'
       elseif (config_vert_grid_type.eq.'zlevel') then
          print *, ' Using z-level coordinates'
-         call init_ZLevel(domain)
+         call ocn_init_z_level(domain)
       else 
          print *, ' Incorrect choice of config_vert_grid_type:',&
            config_vert_grid_type
@@ -114,33 +121,32 @@ module mpas_core
       !
       dt = config_dt
 
-      call simulation_clock_init(domain, dt, startTimeStamp)
+      call ocn_simulation_clock_init(domain, dt, startTimeStamp)
 
       block => domain % blocklist
       do while (associated(block))
          call mpas_init_block(block, block % mesh, dt)
          block % state % time_levs(1) % state % xtime % scalar = startTimeStamp 
          block => block % next
-
-         !dwj 110919 This allows the restorings to grab the indices for
-         ! temperature and salinity tracers from state.
       end do
 
    ! mrp 100316 In order for this to work, we need to pass domain % dminfo as an 
    ! input arguement into mpas_init.  Ask about that later.  For now, there will be
    ! no initial statistics write.
    
-   !   call mpas_timer_start("global diagnostics")
-   !   call ocn_compute_global_diagnostics(domain % dminfo, block % state % time_levs(1) % state, mesh, 0, dt)
-   !   call mpas_timer_stop("global diagnostics")
-   !   call mpas_output_state_init(output_obj, domain, "OUTPUT")
-   !   call write_output_frame(output_obj, domain)
+      if (config_initial_stats) then
+          call mpas_timer_start("global diagnostics", .false., globalDiagTimer)
+          call ocn_compute_global_diagnostics(domain, 1 , 0, dt)
+          call mpas_timer_stop("global diagnostics", globalDiagTimer)
+!         call mpas_output_state_init(output_obj, domain, "OUTPUT")
+!         call ocn_write_output_frame(output_obj, output_frame, domain)
+      endif
 
       current_outfile_frames = 0
 
    end subroutine mpas_core_init!}}}
 
-   subroutine simulation_clock_init(domain, dt, startTimeStamp)!{{{
+   subroutine ocn_simulation_clock_init(domain, dt, startTimeStamp)!{{{
 
       implicit none
 
@@ -196,7 +202,7 @@ module mpas_core
 
       call mpas_get_time(curr_time=startTime, dateTimeString=startTimeStamp, ierr=ierr)
 
-   end subroutine simulation_clock_init!}}}
+   end subroutine ocn_simulation_clock_init!}}}
 
    subroutine mpas_init_block(block, mesh, dt)!{{{
    
@@ -213,9 +219,11 @@ module mpas_core
    
       call ocn_time_average_init(block % state % time_levs(1) % state)
    
+      call mpas_timer_start("diagnostic solve", .false., initDiagSolveTimer)
       call ocn_diagnostic_solve(dt, block % state % time_levs(1) % state, mesh)
+      call mpas_timer_stop("diagnostic solve", initDiagSolveTimer)
 
-      call compute_mesh_scaling(mesh)
+      call ocn_compute_mesh_scaling(mesh)
  
       call mpas_rbf_interp_initialize(mesh)
       call mpas_init_reconstruct(mesh)
@@ -303,7 +311,7 @@ module mpas_core
       call mpas_get_time(curr_time=currTime, dateTimeString=timeStamp, ierr=ierr)
       write(0,*) 'Initial time ', timeStamp
 
-      call write_output_frame(output_obj, output_frame, domain)
+      call ocn_write_output_frame(output_obj, output_frame, domain)
       block_ptr => domain % blocklist
 
       do while(associated(block_ptr))
@@ -323,9 +331,9 @@ module mpas_core
          call mpas_get_time(curr_time=currTime, dateTimeString=timeStamp, ierr=ierr)
          write(0,*) 'Doing timestep ', timeStamp
 
-         call mpas_timer_start("time integration")
+         call mpas_timer_start("time integration", .false., timeIntTimer)
          call mpas_timestep(domain, itimestep, dt, timeStamp)
-         call mpas_timer_stop("time integration")
+         call mpas_timer_stop("time integration", timeIntTimer)
    
          ! Move time level 2 fields back into time level 1 for next time step
          call mpas_shift_time_levels_state(domain % blocklist % state)
@@ -343,7 +351,9 @@ module mpas_core
                 call ocn_time_average_normalize(block_ptr % state % time_levs(1) % state)
                 block_ptr => block_ptr % next
             end do
-            call write_output_frame(output_obj, output_frame, domain)
+
+            call ocn_write_output_frame(output_obj, output_frame, domain)
+
             block_ptr => domain % blocklist
             do while (associated(block_ptr))
                 call ocn_time_average_init(block_ptr % state % time_levs(1) % state)
@@ -364,7 +374,7 @@ module mpas_core
 
    end subroutine mpas_core_run!}}}
    
-   subroutine write_output_frame(output_obj, output_frame, domain)!{{{
+   subroutine ocn_write_output_frame(output_obj, output_frame, domain)!{{{
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! Compute diagnostic fields for a domain and write model state to output file
    !
@@ -387,7 +397,7 @@ module mpas_core
    
       block_ptr => domain % blocklist
       do while (associated(block_ptr))
-         call compute_output_diagnostics(block_ptr % state % time_levs(1) % state, block_ptr % mesh)
+         call ocn_compute_output_diagnostics(block_ptr % state % time_levs(1) % state, block_ptr % mesh)
          block_ptr => block_ptr % next
       end do
    
@@ -403,9 +413,9 @@ module mpas_core
          end if
       end if
    
-   end subroutine write_output_frame!}}}
+   end subroutine ocn_write_output_frame!}}}
    
-   subroutine compute_output_diagnostics(state, grid)!{{{
+   subroutine ocn_compute_output_diagnostics(state, grid)!{{{
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! Compute diagnostic fields for a domain
    !
@@ -425,13 +435,11 @@ module mpas_core
       integer :: i, eoe
       integer :: iEdge, k
    
-   end subroutine compute_output_diagnostics!}}}
+   end subroutine ocn_compute_output_diagnostics!}}}
    
    subroutine mpas_timestep(domain, itimestep, dt, timeStamp)!{{{
    
       use mpas_grid_types
-      use mpas_timer
-      use ocn_global_diagnostics
    
       implicit none
    
@@ -447,17 +455,9 @@ module mpas_core
 
       if (config_stats_interval > 0) then
           if (mod(itimestep, config_stats_interval) == 0) then
-              block_ptr => domain % blocklist
-              if (associated(block_ptr % next)) then
-                  write(0,*) 'Error: computeGlobalDiagnostics assumes ',&
-                     'that there is only one block per processor.'
-              end if
-
-          call mpas_timer_start("global diagnostics")
-          call ocn_compute_global_diagnostics(domain % dminfo, &
-             block_ptr % state % time_levs(2) % state, block_ptr % mesh, &
-             itimestep, dt)
-          call mpas_timer_stop("global diagnostics")
+             call mpas_timer_start("global diagnostics", .false., globalDiagTimer)
+             call ocn_compute_global_diagnostics(domain, 2, itimestep, dt);
+             call mpas_timer_stop("global diagnostics", globalDiagTimer)
           end if
       end if
 
@@ -480,7 +480,7 @@ module mpas_core
 
    end subroutine mpas_timestep!}}}
 
-subroutine init_ZLevel(domain)!{{{
+subroutine ocn_init_z_level(domain)!{{{
 ! Initialize maxLevel and bouncary grid variables.
 
    use mpas_grid_types
@@ -642,9 +642,9 @@ subroutine init_ZLevel(domain)!{{{
 
    end do
 
-end subroutine init_ZLevel!}}}
+end subroutine ocn_init_z_level!}}}
 
-subroutine compute_maxLevel(domain)!{{{
+subroutine ocn_compute_max_level(domain)!{{{
 ! Initialize maxLevel and bouncary grid variables.
 
    use mpas_grid_types
@@ -669,7 +669,7 @@ subroutine compute_maxLevel(domain)!{{{
       maxLevelVertexTop, maxLevelVertexBot
    integer, dimension(:,:), pointer :: &
       cellsOnEdge, cellsOnVertex, boundaryEdge, boundaryCell, &
-      boundaryVertex, verticesOnEdge
+      boundaryVertex, verticesOnEdge, edgeMask, cellMask, vertexMask
 
    ! Initialize z-level grid variables from h, read in from input file.
    block => domain % blocklist
@@ -686,6 +686,9 @@ subroutine compute_maxLevel(domain)!{{{
       boundaryEdge   => block % mesh % boundaryEdge % array
       boundaryCell   => block % mesh % boundaryCell % array
       boundaryVertex => block % mesh % boundaryVertex % array
+      edgeMask => block % mesh % edgeMask % array
+      cellMask => block % mesh % cellMask % array
+      vertexMask => block % mesh % vertexMask % array
 
       nCells      = block % mesh % nCells
       nEdges      = block % mesh % nEdges
@@ -739,22 +742,31 @@ subroutine compute_maxLevel(domain)!{{{
       maxLevelVertexTop(nVertices+1) = 0
 
       ! set boundary edge
-      boundaryEdge=1
+      boundaryEdge(:,1:nEdges+1)=1
+      edgeMask(:,1:nEdges+1)=0
       do iEdge=1,nEdges
          boundaryEdge(1:maxLevelEdgeTop(iEdge),iEdge)=0
+         edgeMask(1:maxLevelEdgeTop(iEdge),iEdge)=1
       end do 
 
       !
       ! Find cells and vertices that have an edge on the boundary
       !
-      boundaryCell(:,:) = 0
+      boundaryCell(:,1:nCells+1) = 0
+      cellMask(:,1:nCells+1) = 1
+      boundaryVertex(:,1:nVertices+1) = 0
+      vertexMask(:,1:nVertices+1) = 1
       do iEdge=1,nEdges
          do k=1,nVertLevels
             if (boundaryEdge(k,iEdge).eq.1) then
                boundaryCell(k,cellsOnEdge(1,iEdge)) = 1
                boundaryCell(k,cellsOnEdge(2,iEdge)) = 1
+               cellMask(k,cellsOnEdge(1,iEdge)) = 0
+               cellMask(k,cellsOnEdge(2,iEdge)) = 0
                boundaryVertex(k,verticesOnEdge(1,iEdge)) = 1
                boundaryVertex(k,verticesOnEdge(2,iEdge)) = 1
+               vertexMask(k,verticesOnEdge(1,iEdge)) = 0
+               vertexMask(k,verticesOnEdge(2,iEdge)) = 0
             endif
          end do
       end do
@@ -765,7 +777,7 @@ subroutine compute_maxLevel(domain)!{{{
    ! Note: We do not update halos on maxLevel* variables.  I want the
    ! outside edge of a halo to be zero on each processor.
 
-end subroutine compute_maxLevel!}}}
+end subroutine ocn_compute_max_level!}}}
    
    subroutine mpas_core_finalize(domain)!{{{
    
@@ -780,7 +792,7 @@ end subroutine compute_maxLevel!}}}
 
    end subroutine mpas_core_finalize!}}}
 
-   subroutine compute_mesh_scaling(mesh)!{{{
+   subroutine ocn_compute_mesh_scaling(mesh)!{{{
 
       use mpas_grid_types
       use mpas_configure
@@ -810,7 +822,7 @@ end subroutine compute_maxLevel!}}}
          end do
       end if
 
-   end subroutine compute_mesh_scaling!}}}
+   end subroutine ocn_compute_mesh_scaling!}}}
 
 end module mpas_core
 

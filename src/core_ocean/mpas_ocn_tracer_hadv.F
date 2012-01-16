@@ -16,6 +16,7 @@ module ocn_tracer_hadv
 
    use mpas_grid_types
    use mpas_configure
+   use mpas_timer
 
    use ocn_tracer_hadv2
    use ocn_tracer_hadv3
@@ -45,6 +46,8 @@ module ocn_tracer_hadv
    ! Private module variables
    !
    !--------------------------------------------------------------------
+
+   type (timer_node), pointer :: hadv2Timer, hadv3Timer, hadv4Timer
 
 
 !***********************************************************************
@@ -122,9 +125,15 @@ contains
       !
       !-----------------------------------------------------------------
 
+      call mpas_timer_start("hadv2", .false., hadv2Timer);
       call ocn_tracer_hadv2_tend(grid, u, h_edge, tracers, tend, err1)
+      call mpas_timer_stop("hadv2", hadv2Timer);
+      call mpas_timer_start("hadv3", .false., hadv3Timer);
       call ocn_tracer_hadv3_tend(grid, u, h_edge, tracers, tend, err2)
+      call mpas_timer_stop("hadv3", hadv3Timer);
+      call mpas_timer_start("hadv4", .false., hadv4Timer);
       call ocn_tracer_hadv4_tend(grid, u, h_edge, tracers, tend, err3)
+      call mpas_timer_stop("hadv4", hadv4Timer);
 
       err = ior(err1, ior(err2, err3))
 

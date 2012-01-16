@@ -16,7 +16,6 @@ module ocn_vel_hmix_del2
 
    use mpas_grid_types
    use mpas_configure
-   use mpas_timer
 
    implicit none
    private
@@ -43,8 +42,7 @@ module ocn_vel_hmix_del2
    !
    !--------------------------------------------------------------------
 
-   logical :: &
-      hmixDel2On         !< local flag to determine whether del2 chosen
+   logical ::  hmixDel2On  !< integer flag to determine whether del2 chosen
 
    real (kind=RKIND) :: &
       eddyVisc2,        &!< base eddy diffusivity for Laplacian
@@ -116,9 +114,9 @@ contains
       integer :: iEdge, nEdgesSolve, cell1, cell2, vertex1, vertex2
       integer :: k
       integer, dimension(:), pointer :: maxLevelEdgeTop
-      integer, dimension(:,:), pointer :: cellsOnEdge, verticesOnEdge
+      integer, dimension(:,:), pointer :: cellsOnEdge, verticesOnEdge, edgeMask
 
-      real (kind=RKIND) :: u_diffusion
+      real (kind=RKIND) :: u_diffusion, invLength1, invLength2
       real (kind=RKIND), dimension(:), pointer :: meshScalingDel2, &
               dcEdge, dvEdge
 
@@ -132,13 +130,12 @@ contains
 
       if(.not.hmixDel2On) return
 
-      call mpas_timer_start("compute_tend_u-horiz mix-del2")
-      
       nEdgesSolve = grid % nEdgesSolve
       maxLevelEdgeTop => grid % maxLevelEdgeTop % array
       cellsOnEdge => grid % cellsOnEdge % array
       verticesOnEdge => grid % verticesOnEdge % array
       meshScalingDel2 => grid % meshScalingDel2 % array
+      edgeMask => grid % edgeMask % array
       dcEdge => grid % dcEdge % array
       dvEdge => grid % dvEdge % array
 
@@ -148,24 +145,25 @@ contains
          vertex1 = verticesOnEdge(1,iEdge)
          vertex2 = verticesOnEdge(2,iEdge)
 
+         invLength1 = 1.0 / dcEdge(iEdge)
+         invLength2 = 1.0 / dvEdge(iEdge)
+
          do k=1,maxLevelEdgeTop(iEdge)
 
             ! Here -( vorticity(k,vertex2) - vorticity(k,vertex1) ) / dvEdge(iEdge)
             ! is - \nabla vorticity pointing from vertex 2 to vertex 1, or equivalently 
             !    + k \times \nabla vorticity pointing from cell1 to cell2.
 
-            u_diffusion = ( divergence(k,cell2)  - divergence(k,cell1) ) / dcEdge(iEdge)  &
+            u_diffusion = ( divergence(k,cell2)  - divergence(k,cell1) ) * invLength1 &
                           -viscVortCoef &
-                          *( vorticity(k,vertex2) - vorticity(k,vertex1) ) / dvEdge(iEdge)
+                          *( vorticity(k,vertex2) - vorticity(k,vertex1) ) * invLength2
 
             u_diffusion = meshScalingDel2(iEdge) * eddyVisc2 * u_diffusion
 
-            tend(k,iEdge) = tend(k,iEdge) + u_diffusion
+            tend(k,iEdge) = tend(k,iEdge) + edgeMask(k, iEdge) * u_diffusion
 
          end do
       end do
-
-      call mpas_timer_stop("compute_tend_u-horiz mix-del2")
 
    !--------------------------------------------------------------------
 

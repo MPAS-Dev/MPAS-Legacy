@@ -26,6 +26,8 @@ module ocn_vmix_coefs_rich
    private
    save
 
+   type (timer_node), pointer :: richEOSTimer
+
    !--------------------------------------------------------------------
    !
    ! Public parameters
@@ -139,8 +141,10 @@ contains
       rhoDisplaced => s % rhoDisplaced % array
       tracers => s % tracers % array
 
+      call mpas_timer_start("eos rich", .false., richEOSTimer)
       call ocn_equation_of_state_rho(s, grid, 0, 'relative', err)
       call ocn_equation_of_state_rho(s, grid, 1, 'relative', err)
+      call mpas_timer_stop("eos rich", richEOSTimer)
 
       call ocn_vmix_get_rich_numbers(grid, indexT, indexS, u, h, h_edge, & 
                                   rho, rhoDisplaced, tracers, RiTopOfEdge, RiTopOfCell, err1)
@@ -440,7 +444,7 @@ contains
 
       err = 0
 
-      if(.not.richViscOn .and. .not.richDiffOn) return
+      if((.not.richViscOn) .and. (.not.richDiffOn)) return
 
       nVertLevels = grid % nVertLevels
       nCells = grid % nCells

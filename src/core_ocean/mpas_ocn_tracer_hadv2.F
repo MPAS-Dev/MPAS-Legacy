@@ -16,7 +16,6 @@ module ocn_tracer_hadv2
 
    use mpas_grid_types
    use mpas_configure
-   use mpas_timer
 
    implicit none
    private
@@ -111,7 +110,7 @@ contains
       integer, dimension(:), pointer :: maxLevelEdgeTop
       integer, dimension(:,:), pointer :: cellsOnEdge
 
-      real (kind=RKIND) :: flux, tracer_edge
+      real (kind=RKIND) :: flux, tracer_edge, invAreaCell1, invAreaCell2, r_tmp
 
       real (kind=RKIND), dimension(:), pointer :: dvEdge, areaCell
 
@@ -127,8 +126,6 @@ contains
 
       if(.not.hadv2On) return
 
-      call mpas_timer_start("compute_scalar_tend-horiz adv 2")
-
       nEdges = grid % nEdges
       maxLevelEdgeTop => grid % maxLevelEdgeTop % array
       cellsOnEdge => grid % cellsOnEdge % array
@@ -139,17 +136,19 @@ contains
       do iEdge=1,nEdges
          cell1 = cellsOnEdge(1,iEdge)
          cell2 = cellsOnEdge(2,iEdge)
+
+         invAreaCell1 = 1.0 / areaCell(cell1)
+         invAreaCell2 = 1.0 / areaCell(cell2)
          do k=1,maxLevelEdgeTop(iEdge)
+            r_tmp = u(k,iEdge) * dvEdge(iEdge) * h_edge(k,iEdge)
             do iTracer=1,num_tracers
                tracer_edge = 0.5 * (tracers(iTracer,k,cell1) + tracers(iTracer,k,cell2))
-               flux = u(k,iEdge) * dvEdge(iEdge) * h_edge(k,iEdge) * tracer_edge
-               tend(iTracer,k,cell1) = tend(iTracer,k,cell1) - flux/areaCell(cell1)
-               tend(iTracer,k,cell2) = tend(iTracer,k,cell2) + flux/areaCell(cell2)
+               flux = r_tmp * tracer_edge
+               tend(iTracer,k,cell1) = tend(iTracer,k,cell1) - flux * invAreaCell1
+               tend(iTracer,k,cell2) = tend(iTracer,k,cell2) + flux * invAreaCell2
             end do
          end do
       end do
-
-      call mpas_timer_stop("compute_scalar_tend-horiz adv 2")
    !--------------------------------------------------------------------
 
    end subroutine ocn_tracer_hadv2_tend!}}}

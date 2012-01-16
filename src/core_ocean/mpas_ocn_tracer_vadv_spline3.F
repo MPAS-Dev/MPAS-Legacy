@@ -16,7 +16,6 @@ module ocn_tracer_vadv_spline3
 
    use mpas_grid_types
    use mpas_configure
-   use mpas_timer
    use mpas_spline_interpolation
 
    implicit none
@@ -129,8 +128,6 @@ contains
       if(.not.spline3On) return
       ! Compute tracerTop using linear interpolation.
 
-      call mpas_timer_start("compute_scalar_tend-vert adv spline 3")
-
       nCells = grid % nCells
       nCellsSolve = grid % nCellsSolve
       nVertLevels = grid % nVertLevels
@@ -191,8 +188,6 @@ contains
       deallocate(tracer2ndDer)
       deallocate(tracersIn,tracersOut, posZMidZLevel, posZTopZLevel)
       deallocate(tracerTop)
-
-      call mpas_timer_stop("compute_scalar_tend-vert adv spline 3")
    !--------------------------------------------------------------------
 
    end subroutine ocn_tracer_vadv_spline3_tend!}}}

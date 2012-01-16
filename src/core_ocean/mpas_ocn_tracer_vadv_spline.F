@@ -16,6 +16,7 @@ module ocn_tracer_vadv_spline
 
    use mpas_grid_types
    use mpas_configure
+   use mpas_timer
 
    use ocn_tracer_vadv_spline2
    use ocn_tracer_vadv_spline3
@@ -45,6 +46,7 @@ module ocn_tracer_vadv_spline
    !
    !--------------------------------------------------------------------
 
+   type (timer_node), pointer :: spline2_timer, spline3_timer
    logical :: splineOn
 
 
@@ -124,8 +126,12 @@ contains
 
       if(.not.splineOn) return
 
+      call mpas_timer_start("spline 2", .false., spline2_timer)
       call ocn_tracer_vadv_spline2_tend(grid, wTop, tracers, tend, err1)
+      call mpas_timer_stop("spline 2", spline2_timer)
+      call mpas_timer_start("spline 3", .false., spline3_timer)
       call ocn_tracer_vadv_spline3_tend(grid, wTop, tracers, tend, err2)
+      call mpas_timer_stop("spline 3", spline3_timer)
 
       err = ior(err1, err2)
 

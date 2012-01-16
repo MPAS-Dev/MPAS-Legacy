@@ -16,7 +16,6 @@ module ocn_vel_hmix_del4
 
    use mpas_grid_types
    use mpas_configure
-   use mpas_timer
 
    implicit none
    private
@@ -43,8 +42,7 @@ module ocn_vel_hmix_del4
    !
    !--------------------------------------------------------------------
 
-   logical :: &
-      hmixDel4On       !< local flag to determine whether del4 chosen
+   logical :: hmixDel4On       !< local flag to determine whether del4 chosen
 
    real (kind=RKIND) :: &
       eddyVisc4,        &!< base eddy diffusivity for biharmonic
@@ -114,30 +112,30 @@ contains
       !
       !-----------------------------------------------------------------
 
-      integer :: iEdge, nEdges, cell1, cell2, vertex1, vertex2, k
+      integer :: iEdge, cell1, cell2, vertex1, vertex2, k
       integer :: iCell, iVertex
-      integer :: nVertices, nVertLevels, nCells
+      integer :: nVertices, nVertLevels, nCells, nEdges, nEdgesSolve
 
       integer, dimension(:), pointer :: maxLevelEdgeTop, maxLevelVertexBot, &
             maxLevelCell
-      integer, dimension(:,:), pointer :: cellsOnEdge, verticesOnEdge
+      integer, dimension(:,:), pointer :: cellsOnEdge, verticesOnEdge, edgeMask
 
 
-      real (kind=RKIND) :: u_diffusion, r
+      real (kind=RKIND) :: u_diffusion, invAreaCell1, invAreaCell2, invAreaTri1, &
+            invAreaTri2, invDcEdge, invDvEdge, r_tmp, delsq_u
       real (kind=RKIND), dimension(:), pointer :: dcEdge, dvEdge, areaTriangle, &
             meshScalingDel4, areaCell
 
       real (kind=RKIND), dimension(:,:), allocatable :: delsq_divergence, &
-            delsq_u, delsq_circulation, delsq_vorticity
+            delsq_circulation, delsq_vorticity
 
       err = 0
 
       if(.not.hmixDel4On) return
 
-      call mpas_timer_start("compute_tend-horiz mix-del4")
-
       nCells = grid % nCells
       nEdges = grid % nEdges
+      nEdgesSolve = grid % nEdgessolve
       nVertices = grid % nVertices
       nVertLevels = grid % nVertLevels
       maxLevelEdgeTop => grid % maxLevelEdgeTop % array
@@ -150,101 +148,69 @@ contains
       areaTriangle => grid % areaTriangle % array
       areaCell => grid % areaCell % array
       meshScalingDel4 => grid % meshScalingDel4 % array
+      edgeMask => grid % edgeMask % array
 
       allocate(delsq_divergence(nVertLevels, nCells+1))
-      allocate(delsq_u(nVertLevels, nEdges+1))
-      allocate(delsq_circulation(nVertLevels, nVertices+1))
       allocate(delsq_vorticity(nVertLevels, nVertices+1))
 
-      delsq_u(:,:) = 0.0
-      delsq_circulation(:,:) = 0.0
       delsq_vorticity(:,:) = 0.0
       delsq_divergence(:,:) = 0.0
 
-      ! Compute \nabla^2 u = \nabla divergence + k \times \nabla vorticity
-      do iEdge=1,grid % nEdges
-         cell1 = cellsOnEdge(1,iEdge)
-         cell2 = cellsOnEdge(2,iEdge)
-         vertex1 = verticesOnEdge(1,iEdge)
-         vertex2 = verticesOnEdge(2,iEdge)
-
-         do k=1,maxLevelEdgeTop(iEdge)
-
-            delsq_u(k,iEdge) = & 
-               ( divergence(k,cell2)  - divergence(k,cell1) ) / dcEdge(iEdge)  &
-               -viscVortCoef &
-               *( vorticity(k,vertex2) - vorticity(k,vertex1)) / dvEdge(iEdge)
-
-         end do
-      end do
-
-      ! vorticity using \nabla^2 u
-      do iEdge=1,nEdges
-         vertex1 = verticesOnEdge(1,iEdge)
-         vertex2 = verticesOnEdge(2,iEdge)
-         do k=1,maxLevelEdgeTop(iEdge)
-            delsq_circulation(k,vertex1) = delsq_circulation(k,vertex1) &
-               - dcEdge(iEdge) * delsq_u(k,iEdge)
-            delsq_circulation(k,vertex2) = delsq_circulation(k,vertex2) &
-               + dcEdge(iEdge) * delsq_u(k,iEdge)
-         end do
-      end do
-      do iVertex=1,nVertices
-         r = 1.0 / areaTriangle(iVertex)
-         do k=1,maxLevelVertexBot(iVertex)
-            delsq_vorticity(k,iVertex) = delsq_circulation(k,iVertex) * r
-         end do
-      end do
-
-      ! Divergence using \nabla^2 u
       do iEdge=1,nEdges
          cell1 = cellsOnEdge(1,iEdge)
          cell2 = cellsOnEdge(2,iEdge)
+
+         vertex1 = verticesOnEdge(1,iEdge)
+         vertex2 = verticesOnEdge(2,iEdge)
+
+         invAreaTri1 = 1.0 / areaTriangle(vertex1)
+         invAreaTri2 = 1.0 / areaTriangle(vertex2)
+
+         invAreaCell1 = 1.0 / areaCell(cell1)
+         invAreaCell2 = 1.0 / areaCell(cell2)
+
+         invDcEdge = 1.0 / dcEdge(iEdge)
+         invDvEdge = 1.0 / dvEdge(iEdge)
+
          do k=1,maxLevelEdgeTop(iEdge)
-           delsq_divergence(k,cell1) = delsq_divergence(k,cell1) &
-             + delsq_u(k,iEdge)*dvEdge(iEdge)
-           delsq_divergence(k,cell2) = delsq_divergence(k,cell2) &
-             - delsq_u(k,iEdge)*dvEdge(iEdge)
-         end do
-      end do
-      do iCell = 1,nCells
-         r = 1.0 / areaCell(iCell)
-         do k = 1,maxLevelCell(iCell)
-            delsq_divergence(k,iCell) = delsq_divergence(k,iCell) * r
+            ! Compute \nabla^2 u = \nabla divergence + k \times \nabla vorticity
+            delsq_u =          ( divergence(k,cell2)  - divergence(k,cell1) ) * invDcEdge  &
+                -viscVortCoef *( vorticity(k,vertex2) - vorticity(k,vertex1)) * invDvEdge 
+
+            ! vorticity using \nabla^2 u
+            r_tmp = dcEdge(iEdge) * delsq_u
+            delsq_vorticity(k,vertex1) = delsq_vorticity(k,vertex1) - r_tmp * invAreaTri1
+            delsq_vorticity(k,vertex2) = delsq_vorticity(k,vertex2) + r_tmp * invAreaTri2
+
+            ! Divergence using \nabla^2 u
+            r_tmp = dvEdge(iEdge) * delsq_u
+            delsq_divergence(k, cell1) = delsq_divergence(k,cell1) + r_tmp * invAreaCell1
+            delsq_divergence(k, cell2) = delsq_divergence(k,cell2) - r_tmp * invAreaCell2
          end do
       end do
 
       ! Compute - \kappa \nabla^4 u 
       ! as  \nabla div(\nabla^2 u) + k \times \nabla ( k \cross curl(\nabla^2 u) )
-      do iEdge=1,grid % nEdgesSolve
+      do iEdge=1,nEdgesSolve
          cell1 = cellsOnEdge(1,iEdge)
          cell2 = cellsOnEdge(2,iEdge)
          vertex1 = verticesOnEdge(1,iEdge)
          vertex2 = verticesOnEdge(2,iEdge)
 
+         invDcEdge = 1.0 / dcEdge(iEdge)
+         invDvEdge = 1.0 / dvEdge(iEdge)
+         r_tmp = meshScalingDel4(iEdge) * eddyVisc4
+
          do k=1,maxLevelEdgeTop(iEdge)
-            delsq_u(k,iEdge) = & 
-               ( divergence(k,cell2)  - divergence(k,cell1) ) / dcEdge(iEdge)  &
-              -( vorticity(k,vertex2) - vorticity(k,vertex1)) / dvEdge(iEdge)
+            u_diffusion = (delsq_divergence(k,cell2) - delsq_divergence(k,cell1)) * invDcEdge  &
+                -viscVortCoef * (delsq_vorticity(k,vertex2) - delsq_vorticity(k,vertex1) ) * invDvEdge
 
-            u_diffusion = (  delsq_divergence(k,cell2) &
-                           - delsq_divergence(k,cell1) ) / dcEdge(iEdge)  &
-                         -viscVortCoef &
-                         *(  delsq_vorticity(k,vertex2) &
-                           - delsq_vorticity(k,vertex1) ) / dvEdge(iEdge)
-
-            u_diffusion = meshScalingDel4(iEdge) * eddyVisc4 * u_diffusion
-
-            tend(k,iEdge) = tend(k,iEdge) - u_diffusion
+            tend(k,iEdge) = tend(k,iEdge) - edgeMask(k, iEdge) * u_diffusion * r_tmp
          end do
       end do
 
       deallocate(delsq_divergence)
-      deallocate(delsq_u)
-      deallocate(delsq_circulation)
       deallocate(delsq_vorticity)
-
-      call mpas_timer_stop("compute_tend-horiz mix-del4")
 
    !--------------------------------------------------------------------
 

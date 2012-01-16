@@ -106,7 +106,7 @@ contains
       integer :: iEdge, nEdgesSolve, cell1, cell2, k
       integer :: nVertLevels
       integer, dimension(:), pointer :: maxLevelEdgeTop
-      integer, dimension(:,:), pointer :: cellsOnEdge
+      integer, dimension(:,:), pointer :: cellsOnEdge, edgeMask
 
       real (kind=RKIND) :: wTopEdge
       real (kind=RKIND), dimension(:), allocatable :: w_dudzTopEdge
@@ -121,6 +121,7 @@ contains
       maxLevelEdgeTop => grid % maxLevelEdgeTop % array
       cellsOnEdge => grid % cellsOnEdge % array
       zMidZLevel => grid % zMidZLevel % array
+      edgeMask => grid % edgeMask % array
 
       allocate(w_dudzTopEdge(nVertLevels+1))
       w_dudzTopEdge = 0.0
@@ -140,8 +141,7 @@ contains
         ! Average w*du/dz from vertical interface to vertical middle of cell
         do k=1,maxLevelEdgeTop(iEdge)
 
-          tend(k,iEdge) = tend(k,iEdge) &
-             - 0.5 * (w_dudzTopEdge(k) + w_dudzTopEdge(k+1))
+          tend(k,iEdge) = tend(k,iEdge) - edgeMask(k, iEdge) * 0.5 * (w_dudzTopEdge(k) + w_dudzTopEdge(k+1))
         enddo
       enddo
       deallocate(w_dudzTopEdge)

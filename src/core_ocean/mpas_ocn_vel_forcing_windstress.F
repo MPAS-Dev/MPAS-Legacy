@@ -106,7 +106,7 @@ contains
 
       integer :: iEdge, nEdgesSolve, k
       integer, dimension(:), pointer :: maxLevelEdgeTop
-
+      integer, dimension(:,:), pointer :: edgeMask
 
       !-----------------------------------------------------------------
       !
@@ -122,21 +122,19 @@ contains
 
       nEdgesSolve = grid % nEdgesSolve
       maxLevelEdgeTop => grid % maxLevelEdgeTop % array
+      edgeMask => grid % edgeMask % array
 
       do iEdge=1,nEdgesSolve
-
-        k = maxLevelEdgeTop(iEdge)
 
         ! efficiency note: it would be nice to avoid this
         ! if within a do.  This could be done with
         ! k =  max(maxLevelEdgeTop(iEdge),1)
         ! and then tend_u(1,iEdge) is just not used for land cells.
 
-        if (k>0) then
+        do k = 1,min(maxLevelEdgeTop(iEdge),1)
            ! forcing in top layer only
-           tend(1,iEdge) =  tend(1,iEdge) &
-              + u_src(1,iEdge)/rho_ref/h_edge(1,iEdge)
-        endif
+           tend(k,iEdge) =  tend(k,iEdge) + edgeMask(k, iEdge) * (u_src(k,iEdge)/rho_ref/h_edge(k,iEdge))
+        enddo
 
       enddo
 
@@ -171,12 +169,10 @@ contains
 
       integer, intent(out) :: err !< Output: error flag
 
-
       windStressOn = .true.
       rho_ref = 1000.0
 
       err = 0
-
 
    !--------------------------------------------------------------------
 
