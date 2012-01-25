@@ -508,91 +508,82 @@ contains
       ! mrp 110516 efficiency note: For z-level, only do this on level 1.  h_edge for all
       ! lower levels is defined by hZlevel.
 
-!     coef_3rd_order = 0.
-!     if (config_thickness_adv_order == 3) coef_3rd_order = 1.0
-!     if (config_thickness_adv_order == 3 .and. config_monotonic) coef_3rd_order = 0.25
+      h_edge = -1.0e34
 
-!     if (config_thickness_adv_order == 2) then
-         do iEdge=1,nEdges*hadv2nd
-            cell1 = cellsOnEdge(1,iEdge)
-            cell2 = cellsOnEdge(2,iEdge)
-            do k=1,maxLevelEdgeTop(iEdge)
-               h_edge(k,iEdge) = 0.5 * (h(k,cell1) + h(k,cell2))
-            end do
+      do iEdge=1,nEdges*hadv2nd
+         cell1 = cellsOnEdge(1,iEdge)
+         cell2 = cellsOnEdge(2,iEdge)
+         do k=1,maxLevelEdgeTop(iEdge)
+            h_edge(k,iEdge) = 0.5 * (h(k,cell1) + h(k,cell2))
          end do
+      end do
 
-!     else if (config_thickness_adv_order == 3) then
+      do iEdge=1,nEdges*hadv3rd
+         cell1 = cellsOnEdge(1,iEdge)
+         cell2 = cellsOnEdge(2,iEdge)
 
-         do iEdge=1,nEdges*hadv3rd
-            cell1 = cellsOnEdge(1,iEdge)
-            cell2 = cellsOnEdge(2,iEdge)
+         do k=1,maxLevelEdgeTop(iEdge)
 
-            do k=1,maxLevelEdgeTop(iEdge)
+            d2fdx2_cell1 = 0.0
+            d2fdx2_cell2 = 0.0
 
-               d2fdx2_cell1 = 0.0
-               d2fdx2_cell2 = 0.0
+            boundaryMask = abs(transfer(.not.(boundaryCell(k,cell1) == 0 .and. boundaryCell(k,cell2) == 0), boundaryMask))
 
-               boundaryMask = abs(transfer(.not.(boundaryCell(k,cell1) == 0 .and. boundaryCell(k,cell2) == 0), boundaryMask))
+            d2fdx2_cell1 = deriv_two(1,1,iEdge) * h(k,cell1) * boundaryMask
+            d2fdx2_cell2 = deriv_two(1,2,iEdge) * h(k,cell2) * boundaryMask
 
-               d2fdx2_cell1 = deriv_two(1,1,iEdge) * h(k,cell1) * boundaryMask
-               d2fdx2_cell2 = deriv_two(1,2,iEdge) * h(k,cell2) * boundaryMask
+            !-- all edges of cell 1
+            do i=1, nEdgesOnCell(cell1) * boundaryMask
+               d2fdx2_cell1 = d2fdx2_cell1 + &
+               deriv_two(i+1,1,iEdge) * h(k,grid % CellsOnCell % array (i,cell1))
+            end do
 
-               !-- all edges of cell 1
-               do i=1, nEdgesOnCell(cell1) * boundaryMask
-                  d2fdx2_cell1 = d2fdx2_cell1 + &
-                  deriv_two(i+1,1,iEdge) * h(k,grid % CellsOnCell % array (i,cell1))
-               end do
+            !-- all edges of cell 2
+            do i=1, nEdgesOnCell(cell2) * boundaryMask
+               d2fdx2_cell2 = d2fdx2_cell2 + &
+               deriv_two(i+1,2,iEdge) * h(k,grid % CellsOnCell % array (i,cell2))
+            end do
 
-               !-- all edges of cell 2
-               do i=1, nEdgesOnCell(cell2) * boundaryMask
-                  d2fdx2_cell2 = d2fdx2_cell2 + &
-                  deriv_two(i+1,2,iEdge) * h(k,grid % CellsOnCell % array (i,cell2))
-               end do
+            velMask = 2*(abs(transfer(u(k,iEdge) <= 0, velMask))) - 1
 
-               velMask = 2*(abs(transfer(u(k,iEdge) <= 0, velMask))) - 1
+            h_edge(k,iEdge) = 0.5*(h(k,cell1) + h(k,cell2)) - (dcEdge(iEdge) **2) * (d2fdx2_cell1 + d2fdx2_cell2) / 12.          &
+                            + velMask * (dcEdge(iEdge) **2) * coef_3rd_order*(d2fdx2_cell1 - d2fdx2_cell2) / 12.
 
-               h_edge(k,iEdge) = 0.5*(h(k,cell1) + h(k,cell2)) - (dcEdge(iEdge) **2) * (d2fdx2_cell1 + d2fdx2_cell2) / 12.          &
-                               + velMask * (dcEdge(iEdge) **2) * coef_3rd_order*(d2fdx2_cell1 - d2fdx2_cell2) / 12.
+         end do   ! do k
+      end do         ! do iEdge
 
-            end do   ! do k
-         end do         ! do iEdge
+      do iEdge=1,nEdges*hadv4th
+         cell1 = cellsOnEdge(1,iEdge)
+         cell2 = cellsOnEdge(2,iEdge)
 
-!     else  if (config_thickness_adv_order == 4) then
+         do k=1,maxLevelEdgeTop(iEdge)
 
-         do iEdge=1,nEdges*hadv4th
-            cell1 = cellsOnEdge(1,iEdge)
-            cell2 = cellsOnEdge(2,iEdge)
+            d2fdx2_cell1 = 0.0
+            d2fdx2_cell2 = 0.0
 
-            do k=1,maxLevelEdgeTop(iEdge)
+            boundaryMask = abs(transfer(.not.(boundaryCell(k,cell1) == 0 .and. boundaryCell(k,cell2) == 0), boundaryMask))
 
-               d2fdx2_cell1 = 0.0
-               d2fdx2_cell2 = 0.0
+            d2fdx2_cell1 = deriv_two(1,1,iEdge) * h(k,cell1) * boundaryMask
+            d2fdx2_cell2 = deriv_two(1,2,iEdge) * h(k,cell2) * boundaryMask
 
-               boundaryMask = abs(transfer(.not.(boundaryCell(k,cell1) == 0 .and. boundaryCell(k,cell2) == 0), boundaryMask))
+            !-- all edges of cell 1
+            do i=1, nEdgesOnCell(cell1) * boundaryMask
+               d2fdx2_cell1 = d2fdx2_cell1 + &
+               deriv_two(i+1,1,iEdge) * h(k,grid % CellsOnCell % array (i,cell1))
+            end do
 
-               d2fdx2_cell1 = deriv_two(1,1,iEdge) * h(k,cell1) * boundaryMask
-               d2fdx2_cell2 = deriv_two(1,2,iEdge) * h(k,cell2) * boundaryMask
+            !-- all edges of cell 2
+            do i=1, nEdgesOnCell(cell2) * boundaryMask
+               d2fdx2_cell2 = d2fdx2_cell2 + &
+               deriv_two(i+1,2,iEdge) * h(k,grid % CellsOnCell % array (i,cell2))
+            end do
 
-               !-- all edges of cell 1
-               do i=1, nEdgesOnCell(cell1) * boundaryMask
-                  d2fdx2_cell1 = d2fdx2_cell1 + &
-                  deriv_two(i+1,1,iEdge) * h(k,grid % CellsOnCell % array (i,cell1))
-               end do
+            h_edge(k,iEdge) =   &
+                 0.5*(h(k,cell1) + h(k,cell2))      &
+                    -(dcEdge(iEdge) **2) * (d2fdx2_cell1 + d2fdx2_cell2) / 12.
 
-               !-- all edges of cell 2
-               do i=1, nEdgesOnCell(cell2) * boundaryMask
-                  d2fdx2_cell2 = d2fdx2_cell2 + &
-                  deriv_two(i+1,2,iEdge) * h(k,grid % CellsOnCell % array (i,cell2))
-               end do
-
-               h_edge(k,iEdge) =   &
-                    0.5*(h(k,cell1) + h(k,cell2))      &
-                       -(dcEdge(iEdge) **2) * (d2fdx2_cell1 + d2fdx2_cell2) / 12.
-
-            end do   ! do k
-         end do         ! do iEdge
-
-!     endif   ! if(config_thickness_adv_order == 2)
+         end do   ! do k
+      end do         ! do iEdge
 
       !
       ! set the velocity and height at dummy address
