@@ -131,7 +131,7 @@ contains
       nEdges = grid % nEdges
       num_tracers = size(tracers, dim=1)
       maxLevelEdgeTop => grid % maxLevelEdgeTop % array
-      nEdgesOnCell = grid % nEdgesOnCell % array
+      nEdgesOnCell => grid % nEdgesOnCell % array
       cellMask => grid % cellMask % array
       cellsOnEdge => grid % cellsOnEdge % array
       cellsOnCell => grid % cellsOnCell % array
