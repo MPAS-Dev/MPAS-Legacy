@@ -172,9 +172,6 @@ var persistent integer maxLevelVertexBot ( nVertices ) 0 - maxLevelVertexBot mes
 var persistent real hZLevel ( nVertLevels ) 0 iro hZLevel mesh - -
 var persistent real zMidZLevel ( nVertLevels ) 0 - zMidZLevel mesh - -
 var persistent real zTopZLevel ( nVertLevelsP1 ) 0 - zTopZLevel mesh - -
-var persistent real hMeanTopZLevel ( nVertLevels ) 0 - hMeanTopZLevel mesh - -
-var persistent real hRatioZLevelK ( nVertLevels ) 0 - hRatioZLevelK mesh - -
-var persistent real hRatioZLevelKm1 ( nVertLevels ) 0 - hRatioZLevelKm1 mesh - -
 
 % Boundary conditions: read from input, saved in restart and written to output
 var persistent integer boundaryEdge ( nVertLevels nEdges ) 0 iro boundaryEdge mesh - -
@@ -189,7 +186,7 @@ var persistent real    salinityRestore ( nCells ) 0 ir salinityRestore mesh - -
 
 % Prognostic variables: read from input, saved in restart, and written to output
 var persistent real    u ( nVertLevels nEdges Time ) 2 ir u state - -
-var persistent real    h ( nVertLevels nCells Time ) 2 ir h state - -
+var persistent real    h ( nVertLevels nCells Time ) 2 iro h state - -
 var persistent real    rho ( nVertLevels nCells Time ) 2 iro rho state - -
 var persistent real    temperature ( nVertLevels nCells Time ) 2 iro temperature state tracers dynamics
 var persistent real    salinity ( nVertLevels nCells Time ) 2 iro salinity state tracers dynamics
@@ -217,6 +214,7 @@ var persistent real   vorticityBtr ( nVertices Time ) 2 - vorticityBtr state - -
 var persistent real   u_diffusionBtr ( nEdges Time ) 2 - u_diffusionBtr state - -
 
 % Diagnostic fields: only written to output
+var persistent real    zMid ( nVertLevels nCells Time ) 2 io zMid state - -
 var persistent real    v ( nVertLevels nEdges Time ) 2 - v state - -
 var persistent real    divergence ( nVertLevels nCells Time ) 2 o divergence state - -
 var persistent real    vorticity ( nVertLevels nVertices Time ) 2 o vorticity state - -

@@ -17,6 +17,7 @@ module ocn_vel_pressure_grad
 
    use mpas_grid_types
    use mpas_configure
+   use mpas_constants
 
    implicit none
    private
@@ -43,7 +44,7 @@ module ocn_vel_pressure_grad
    !
    !--------------------------------------------------------------------
 
-   real (kind=RKIND) :: rho0Inv
+   real (kind=RKIND) :: rho0Inv, grho0Inv
 
 
 !***********************************************************************
@@ -64,7 +65,7 @@ contains
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_vel_pressure_grad_tend(grid, pressure, tend, err)!{{{
+   subroutine ocn_vel_pressure_grad_tend(grid, pressure, zMid, rho, tend, err)!{{{
 
       !-----------------------------------------------------------------
       !
@@ -73,7 +74,9 @@ contains
       !-----------------------------------------------------------------
 
       real (kind=RKIND), dimension(:,:), intent(in) :: &
-         pressure !< Input: Pressure field or Mongomery potential
+         pressure, & !< Input: Pressure field or Mongomery potential
+         zMid, &     !< Input: z-coordinate at mid-depth of layer
+         rho         !< Input: density
 
       type (mesh_type), intent(in) :: &
          grid          !< Input: grid information
@@ -116,18 +119,31 @@ contains
       dcEdge => grid % dcEdge % array
       edgeMask => grid % edgeMask % array
 
-!    dwj: 10/25/2011 - Need to explore isopycnal vs zlevel flags
-     do iEdge=1,nEdgesSolve
-       cell1 = cellsOnEdge(1,iEdge)
-       cell2 = cellsOnEdge(2,iEdge)
+      ! pressure for generalized coordinates
+      ! -1/rho_0 (grad p_k + rho g grad z_k^{mid})
 
-       invdcEdge = 1.0 / dcEdge(iEdge)
-       do k=1,maxLevelEdgeTop(iEdge)
+      ! For pure isopycnal coordinates, we are still using 
+      ! grad(M), the gradient of Montgomery Potential, because
+      ! we have set rho0Inv=1 and grho0Inv=0 in the init routine,
+      ! and pressure is passed in as MontPot.
 
-         tend(k,iEdge) = tend(k,iEdge) - edgeMask(k,iEdge) * rho0Inv*(  pressure(k,cell2) - pressure(k,cell1) ) * invdcEdge
-       end do
+      do iEdge=1,nEdgesSolve
+         cell1 = cellsOnEdge(1,iEdge)
+         cell2 = cellsOnEdge(2,iEdge)
+         invdcEdge = 1.0 / dcEdge(iEdge)
 
-     enddo
+         do k=1,maxLevelEdgeTop(iEdge)
+            tend(k,iEdge) = tend(k,iEdge)     &
+              - edgeMask(k,iEdge) * rho0Inv*(  pressure(k,cell2) &
+                         - pressure(k,cell1) )* invdcEdge &
+              - edgeMask(k,iEdge) * grho0Inv*  0.5*(rho(k,cell1)+rho(k,cell2)) &
+                        *(  zMid(k,cell2) &
+                          - zMid(k,cell1) )* invdcEdge
+                      
+         end do
+
+      end do
+
 
 
    !--------------------------------------------------------------------
@@ -172,9 +188,13 @@ contains
 
       if (config_vert_grid_type.eq.'isopycnal') then
         rho0Inv = 1.0
-      elseif (config_vert_grid_type.eq.'zlevel') then
+        grho0Inv = 0.0
+      else 
         rho0Inv = 1.0/config_rho0
+        grho0Inv = gravity/config_rho0
       end if
+
+
 
    !--------------------------------------------------------------------
 

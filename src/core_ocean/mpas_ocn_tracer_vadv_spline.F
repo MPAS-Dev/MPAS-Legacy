@@ -72,7 +72,7 @@ contains
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_tracer_vadv_spline_tend(grid, wTop, tracers, tend, err)!{{{
+   subroutine ocn_tracer_vadv_spline_tend(grid, h, wTop, tracers, tend, err)!{{{
 
       !-----------------------------------------------------------------
       !
@@ -81,6 +81,7 @@ contains
       !-----------------------------------------------------------------
 
       real (kind=RKIND), dimension(:,:), intent(in) :: &
+         h, &    !< Input: layer thickness
          wTop    !< Input: vertical tracer in top layer
 
       real (kind=RKIND), dimension(:,:,:), intent(in) :: &
@@ -127,10 +128,11 @@ contains
       if(.not.splineOn) return
 
       call mpas_timer_start("spline 2", .false., spline2_timer)
-      call ocn_tracer_vadv_spline2_tend(grid, wTop, tracers, tend, err1)
+      call ocn_tracer_vadv_spline2_tend(grid, h, wTop, tracers, tend, err1)
       call mpas_timer_stop("spline 2", spline2_timer)
+
       call mpas_timer_start("spline 3", .false., spline3_timer)
-      call ocn_tracer_vadv_spline3_tend(grid, wTop, tracers, tend, err2)
+      call ocn_tracer_vadv_spline3_tend(grid, h, wTop, tracers, tend, err2)
       call mpas_timer_stop("spline 3", spline3_timer)
 
       err = ior(err1, err2)

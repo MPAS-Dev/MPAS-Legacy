@@ -64,7 +64,7 @@ contains
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_vel_vadv_tend(grid, u, wTop, tend, err)!{{{
+   subroutine ocn_vel_vadv_tend(grid, u, h_edge, wTop, tend, err)!{{{
 
       !-----------------------------------------------------------------
       !
@@ -75,6 +75,7 @@ contains
       real (kind=RKIND), dimension(:,:), intent(in) :: &
          u     !< Input: Horizontal velocity
       real (kind=RKIND), dimension(:,:), intent(in) :: &
+         h_edge,&!< Input: thickness at edge
          wTop  !< Input: Vertical velocity on top layer
 
       type (mesh_type), intent(in) :: &
@@ -110,7 +111,6 @@ contains
 
       real (kind=RKIND) :: wTopEdge
       real (kind=RKIND), dimension(:), allocatable :: w_dudzTopEdge
-      real (kind=RKIND), dimension(:), pointer :: zMidZLevel
 
       if(.not.velVadvOn) return
 
@@ -120,7 +120,6 @@ contains
       nEdgesSolve = grid % nEdgesSolve
       maxLevelEdgeTop => grid % maxLevelEdgeTop % array
       cellsOnEdge => grid % cellsOnEdge % array
-      zMidZLevel => grid % zMidZLevel % array
       edgeMask => grid % edgeMask % array
 
       allocate(w_dudzTopEdge(nVertLevels+1))
@@ -135,7 +134,7 @@ contains
 
           ! compute dudz at vertical interface with first order derivative.
           w_dudzTopEdge(k) = wTopEdge * (u(k-1,iEdge)-u(k,iEdge)) &
-                       / (zMidZLevel(k-1) - zMidZLevel(k))
+                       / (0.5*(h_edge(k-1,iEdge) + h_edge(k,iEdge)))
         end do
         w_dudzTopEdge(maxLevelEdgeTop(iEdge)+1) = 0.0
         ! Average w*du/dz from vertical interface to vertical middle of cell
@@ -179,7 +178,7 @@ contains
       err = 0
       velVadvOn = .false.
 
-      if (config_vert_grid_type.eq.'zlevel') then
+      if (config_vert_grid_type.ne.'isopycnal') then
           velVadvOn = .true.
       end if
 

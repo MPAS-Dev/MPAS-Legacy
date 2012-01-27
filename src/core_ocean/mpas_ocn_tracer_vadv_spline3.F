@@ -64,7 +64,7 @@ contains
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_tracer_vadv_spline3_tend(grid, wTop, tracers, tend, err)!{{{
+   subroutine ocn_tracer_vadv_spline3_tend(grid, h, wTop, tracers, tend, err)!{{{
 
       !-----------------------------------------------------------------
       !
@@ -73,6 +73,7 @@ contains
       !-----------------------------------------------------------------
 
       real (kind=RKIND), dimension(:,:), intent(in) :: &
+         h, &    !< Input: layer thickness
          wTop    !< Input: vertical tracer in top layer
 
       real (kind=RKIND), dimension(:,:,:), intent(in) :: &
@@ -108,11 +109,8 @@ contains
 
       integer, dimension(:), pointer :: maxLevelCell
 
-      real (kind=RKIND), dimension(:), pointer :: hRatioZLevelK, &
-            hRatioZLevelKm1, zTopZLevel, zMidZLevel
-
       real (kind=RKIND), dimension(:), allocatable :: tracer2ndDer,  &
-            tracersIn, tracersOut, posZMidZLevel, posZTopZLevel
+            tracersIn, tracersOut, depthTop, depthMid
       real (kind=RKIND), dimension(:,:,:), allocatable :: tracerTop
 
       !-----------------------------------------------------------------
@@ -134,26 +132,24 @@ contains
       num_tracers = size(tracers, 1)
       maxLevelCell => grid % maxLevelCell % array
 
-      hRatioZLevelK => grid % hRatioZLevelK % array
-      hRatioZLevelKm1 => grid % hRatioZLevelKm1 % array
-      zMidZLevel => grid % zMidZLevel % array
-      zTopZLevel => grid % zTopZLevel % array
-
       allocate(tracerTop(num_tracers,nVertLevels+1,nCells))
 
       ! Compute tracerTop using cubic spline interpolation.
 
       allocate(tracer2ndDer(nVertLevels))
       allocate(tracersIn(nVertLevels),tracersOut(nVertLevels), &
-            posZMidZLevel(nVertLevels), posZTopZLevel(nVertLevels-1))
-
-      ! For the ocean, zlevel coordinates are negative and decreasing, 
-      ! but spline functions assume increasing, so flip to positive.
-
-      posZMidZLevel = -zMidZLevel(1:nVertLevels)
-      posZTopZLevel = -zTopZLevel(2:nVertLevels)
+            depthMid(nVertLevels), depthTop(nVertLevels+1))
 
       do iCell=1,nCellsSolve 
+
+         ! Here depth considers SSH to be depth=0.  We don't need to 
+         ! have true z-coordinate depths because it is just for interpolation.
+         depthTop(1) = 0.0
+         do k=1,maxLevelCell(iCell)
+            depthMid(k  ) = depthTop(k) + 0.5*h(k,iCell)
+            depthTop(k+1) = depthTop(k) +     h(k,iCell)
+         enddo
+
          ! mrp 110201 efficiency note: push tracer loop down
          ! into spline subroutines to improve efficiency
          do iTracer=1,num_tracers
@@ -162,12 +158,12 @@ contains
             ! subroutine call.  
             tracersIn(1:maxLevelCell(iCell))=tracers(iTracer,1:maxLevelCell(iCell),iCell)
 
-            call mpas_cubic_spline_coefficients(posZMidZLevel, &
+            call mpas_cubic_spline_coefficients(depthMid, &
                tracersIn, maxLevelCell(iCell), tracer2ndDer)
 
             call mpas_interpolate_cubic_spline( &
-               posZMidZLevel, tracersIn, tracer2ndDer, maxLevelCell(iCell), &
-               posZTopZLevel, tracersOut, maxLevelCell(iCell)-1 )
+               depthMid, tracersIn, tracer2ndDer, maxLevelCell(iCell), &
+               depthTop(2:maxLevelCell(iCell)), tracersOut, maxLevelCell(iCell)-1 )
 
             tracerTop(itracer,1,iCell) = tracers(iTracer,1,iCell)
             tracerTop(iTracer,2:maxLevelCell(iCell),iCell) = tracersOut(1:maxLevelCell(iCell)-1)
@@ -186,7 +182,7 @@ contains
       end do
 
       deallocate(tracer2ndDer)
-      deallocate(tracersIn,tracersOut, posZMidZLevel, posZTopZLevel)
+      deallocate(tracersIn,tracersOut, depthMid, depthTop)
       deallocate(tracerTop)
    !--------------------------------------------------------------------
 

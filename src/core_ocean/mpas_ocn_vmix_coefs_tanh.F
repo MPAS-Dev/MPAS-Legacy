@@ -186,6 +186,9 @@ contains
       nVertLevels = grid % nVertLevels
       zTopZLevel => grid % zTopZLevel % array
 
+      ! zTopZLevel is used here for simplicity.  Using zMid and h, which 
+      ! vary in time, would give the exact location of the top, but it
+      ! would only change the diffusion value very slightly.
       do k=1,nVertLevels+1
           vertViscTopOfEdge(k,:) = -(config_max_visc_tanh-config_min_visc_tanh)/2.0 &
             *tanh(-(zTopZLevel(k)-config_ZMid_tanh) &
@@ -255,6 +258,9 @@ contains
       nVertLevels = grid % nVertLevels
       zTopZLevel => grid % zTopZLevel % array
 
+      ! zTopZLevel is used here for simplicity.  Using zMid and h, which 
+      ! vary in time, would give the exact location of the top, but it
+      ! would only change the diffusion value very slightly.
       do k=1,nVertLevels+1
          vertDiffTopOfCell(k,:) = -(config_max_diff_tanh-config_min_diff_tanh)/2.0 &
             *tanh(-(zTopZLevel(k)-config_ZMid_tanh) &
@@ -306,14 +312,6 @@ contains
 
       if (config_vert_diff_type.eq.'tanh') then
           tanhDiffOn = .true.
-      endif
-
-      if((tanhViscOn) .or. (tanhDiffOn)) then
-         if (config_vert_grid_type.ne.'zlevel') then
-            write(0,*) 'Abort: config_vert_diff_type.eq.tanh may only', &
-                       ' use config_vert_grid_type of zlevel at this time'
-            err = 1
-         endif
       endif
 
    !--------------------------------------------------------------------

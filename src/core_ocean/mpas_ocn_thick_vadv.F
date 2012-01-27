@@ -98,7 +98,8 @@ contains
       !
       !-----------------------------------------------------------------
 
-      integer :: iCell, nCells
+      integer :: iCell, nCells, nVertLevels, k
+      integer, dimension(:), pointer :: MaxLevelCell
 
       !-----------------------------------------------------------------
       !
@@ -110,15 +111,16 @@ contains
 
       err = 0
 
+      maxLevelCell      => grid % maxLevelCell % array
+
       nCells = grid % nCells
+      nVertLevels = grid % nVertLevels
 
-      ! dwj 10/25/2011 - Need to explore isopycnal vs zlevel flags
-      if (config_vert_grid_type.eq.'zlevel') then
-        do iCell=1,nCells
-           tend(1,iCell) =   tend(1,iCell) + wTop(2,iCell)
-        end do
-      endif ! coordinate type
-
+      do iCell=1,nCells
+         do k=1,maxLevelCell(iCell)
+            tend(k,iCell) = tend(k,iCell) + wTop(k+1,iCell) - wTop(k,iCell)
+         end do
+      end do
 
    !--------------------------------------------------------------------
 

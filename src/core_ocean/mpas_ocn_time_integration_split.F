@@ -1054,8 +1054,8 @@ module ocn_time_integration_split
       integer :: nCells, nEdges, nVertices, nVertLevels, nEdgesSolve
       real (kind=RKIND) :: vertSum, uhSum, hSum, sshEdge
       real (kind=RKIND), dimension(:), pointer :: &
-        h_s, fVertex, fEdge, dvEdge, dcEdge, areaCell, areaTriangle, &
-        zMidZLevel, zTopZLevel, meshScalingDel2, meshScalingDel4
+        h_s, dvEdge, dcEdge, areaCell, areaTriangle, &
+        meshScalingDel2, meshScalingDel4
       real (kind=RKIND), dimension(:,:), pointer :: &
         weightsOnEdge, kiteAreasOnVertex, h_edge, h, u, v, pressure, &
         tend_u, circulation, vorticity, ke, ke_edge, pv_edge, &
@@ -1110,11 +1110,6 @@ module ocn_time_integration_split
       areaCell          => grid % areaCell % array
       areaTriangle      => grid % areaTriangle % array
       h_s               => grid % h_s % array
-! mrp 110516 cleanup fvertex fedge not used in this subroutine
-      fVertex           => grid % fVertex % array
-      fEdge             => grid % fEdge % array
-      zMidZLevel        => grid % zMidZLevel % array
-      zTopZLevel        => grid % zTopZLevel % array
       maxLevelCell      => grid % maxLevelCell % array
       maxLevelEdgeTop      => grid % maxLevelEdgeTop % array
       maxLevelVertexBot    => grid % maxLevelVertexBot % array
@@ -1174,8 +1169,8 @@ module ocn_time_integration_split
       integer :: nCells, nEdges, nVertices, nVertLevels, nEdgesSolve
       real (kind=RKIND) :: vertSum, uhSum, hSum, sshEdge
       real (kind=RKIND), dimension(:), pointer :: &
-        h_s, fVertex, fEdge, dvEdge, dcEdge, areaCell, areaTriangle, &
-        zMidZLevel, zTopZLevel, meshScalingDel2, meshScalingDel4
+        h_s, dvEdge, dcEdge, areaCell, areaTriangle, &
+        meshScalingDel2, meshScalingDel4
       real (kind=RKIND), dimension(:,:), pointer :: &
         weightsOnEdge, kiteAreasOnVertex, h_edge, h, u, v, pressure, &
         tend_u, circulation, vorticity, ke, ke_edge, pv_edge, &
@@ -1229,11 +1224,6 @@ module ocn_time_integration_split
       areaCell          => grid % areaCell % array
       areaTriangle      => grid % areaTriangle % array
       h_s               => grid % h_s % array
-! mrp 110516 cleanup fvertex fedge not used in this subroutine
-      fVertex           => grid % fVertex % array
-      fEdge             => grid % fEdge % array
-      zMidZLevel        => grid % zMidZLevel % array
-      zTopZLevel        => grid % zTopZLevel % array
       maxLevelCell      => grid % maxLevelCell % array
       maxLevelEdgeTop      => grid % maxLevelEdgeTop % array
       maxLevelVertexBot    => grid % maxLevelVertexBot % array

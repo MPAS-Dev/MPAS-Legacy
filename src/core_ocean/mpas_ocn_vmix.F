@@ -314,7 +314,6 @@ contains
          ! mrp 110315 efficiency note: for z-level, could precompute
          ! -2.0*dt/(h(k)_h(k+1))/h(k) in setup
          ! h_edge is computed in compute_solve_diag, and is not available yet.
-         ! This could be removed if hZLevel used instead.
          cell1 = cellsOnEdge(1,iEdge)
          cell2 = cellsOnEdge(2,iEdge)
          do k=1,maxLevelEdgeTop(iEdge)

@@ -70,7 +70,7 @@ contains
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_tracer_vadv_tend(grid, wTop, tracers, tend, err)!{{{
+   subroutine ocn_tracer_vadv_tend(grid, h, wTop, tracers, tend, err)!{{{
 
       !-----------------------------------------------------------------
       !
@@ -79,6 +79,7 @@ contains
       !-----------------------------------------------------------------
 
       real (kind=RKIND), dimension(:,:), intent(in) :: &
+         h, &    !< Input: layer thickness
          wTop    !< Input: vertical tracer in top layer
 
       real (kind=RKIND), dimension(:,:,:), intent(in) :: &
@@ -124,8 +125,8 @@ contains
 
       if(.not.vadvOn) return
 
-      call ocn_tracer_vadv_stencil_tend(grid, wTop, tracers, tend, err1)
-      call ocn_tracer_vadv_spline_tend(grid, wTop, tracers, tend, err2)
+      call ocn_tracer_vadv_stencil_tend(grid, h, wTop, tracers, tend, err1)
+      call ocn_tracer_vadv_spline_tend(grid, h, wTop, tracers, tend, err2)
 
       err = ior(err1, err2)
 
@@ -166,7 +167,7 @@ contains
       err = 0
       vadvOn = .false.
 
-      if (config_vert_grid_type.eq.'zlevel') then
+      if (config_vert_grid_type.ne.'isopycnal') then
           vadvOn = .true.
           call ocn_tracer_vadv_stencil_init(err1)
           call ocn_tracer_vadv_spline_init(err2)

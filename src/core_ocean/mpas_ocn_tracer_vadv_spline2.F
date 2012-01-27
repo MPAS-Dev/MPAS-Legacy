@@ -63,7 +63,7 @@ contains
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_tracer_vadv_spline2_tend(grid, wTop, tracers, tend, err)!{{{
+   subroutine ocn_tracer_vadv_spline2_tend(grid, h, wTop, tracers, tend, err)!{{{
 
       !-----------------------------------------------------------------
       !
@@ -72,6 +72,7 @@ contains
       !-----------------------------------------------------------------
 
       real (kind=RKIND), dimension(:,:), intent(in) :: &
+         h, &    !< Input: layer thickness
          wTop    !< Input: vertical tracer in top layer
 
       real (kind=RKIND), dimension(:,:,:), intent(in) :: &
@@ -107,8 +108,6 @@ contains
 
       integer, dimension(:), pointer :: maxLevelCell
 
-      real (kind=RKIND), dimension(:), pointer :: hRatioZLevelK, hRatioZLevelKm1
-
       real (kind=RKIND), dimension(:,:,:), allocatable :: tracerTop
 
       !-----------------------------------------------------------------
@@ -130,20 +129,18 @@ contains
       num_tracers = size(tracers, 1)
       maxLevelCell => grid % maxLevelCell % array
 
-      hRatioZLevelK => grid % hRatioZLevelK % array
-      hRatioZLevelKm1 => grid % hRatioZLevelKm1 % array
-
       allocate(tracerTop(num_tracers,nVertLevels+1,nCells))
 
       do iCell=1,nCellsSolve 
          tracerTop(:,1,iCell) = tracers(:,1,iCell) 
          do k=2,maxLevelCell(iCell)
             do iTracer=1,num_tracers
-               ! Note hRatio on the k side is multiplied by tracer at k-1
-               ! and hRatio on the Km1 (k-1) side is mult. by tracer at k.
+               ! Note h on the k side is multiplied by tracer at k-1
+               ! and h on the Km1 (k-1) side is mult. by tracer at k.
                tracerTop(iTracer,k,iCell) = &
-                    hRatioZLevelK(k)  *tracers(iTracer,k-1,iCell) &
-                  + hRatioZLevelKm1(k)*tracers(iTracer,k  ,iCell)
+                  (  h(k  ,iCell)*tracers(iTracer,k-1,iCell) &
+                   + h(k-1,iCell)*tracers(iTracer,k  ,iCell) ) &
+                  / (h(k-1,iCell) + h(k,iCell))   
             end do
          end do
          tracerTop(:,maxLevelCell(iCell)+1,iCell) = tracers(:,maxLevelCell(iCell),iCell)

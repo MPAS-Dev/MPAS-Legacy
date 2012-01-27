@@ -186,7 +186,8 @@ contains
       type (mesh_type), intent(in) :: grid
 
       real (kind=RKIND), dimension(:,:), pointer :: &
-        h_edge, u, pressure, tend_u, vorticity, ke, ke_edge, pv_edge, &
+        h_edge, h, u, rho, zMid, pressure, &
+        tend_u, circulation, vorticity, ke, ke_edge, pv_edge, &
         MontPot, wTop, divergence, vertViscTopOfEdge
 
       real (kind=RKIND), dimension(:,:), pointer :: u_src
@@ -196,7 +197,9 @@ contains
       call mpas_timer_start("ocn_tend_u")
 
       u           => s % u % array
+      rho         => s % rho % array
       wTop        => s % wTop % array
+      zMid        => s % zMid % array
       h_edge      => s % h_edge % array
       vorticity   => s % vorticity % array
       divergence  => s % divergence % array
@@ -229,7 +232,7 @@ contains
       ! velocity tendency: vertical advection term -w du/dz
       !
       call mpas_timer_start("vadv", .false., velVadvTimer)
-      call ocn_vel_vadv_tend(grid, u, wtop, tend_u, err)
+      call ocn_vel_vadv_tend(grid, u, h_edge, wtop, tend_u, err)
       call mpas_timer_stop("vadv", velVadvTimer)
 
       !
@@ -237,9 +240,9 @@ contains
       !
       call mpas_timer_start("pressure grad", .false., velPgradTimer)
       if (config_vert_grid_type.eq.'isopycnal') then
-          call ocn_vel_pressure_grad_tend(grid, MontPot, tend_u, err)
-      elseif (config_vert_grid_type.eq.'zlevel') then
-          call ocn_vel_pressure_grad_tend(grid, pressure, tend_u, err)
+          call ocn_vel_pressure_grad_tend(grid, MontPot,  zMid, rho, tend_u, err)
+      else
+          call ocn_vel_pressure_grad_tend(grid, pressure, zMid, rho, tend_u, err)
       end if
       call mpas_timer_stop("pressure grad", velPgradTimer)
 
@@ -322,7 +325,7 @@ contains
       vertDiffTopOfCell => d % vertDiffTopOfCell % array
 
       tend_tr     => tend % tracers % array
-                  
+
       !
       ! initialize tracer tendency (RHS of tracer equation) to zero.
       !
@@ -346,7 +349,7 @@ contains
       !
 
       call mpas_timer_start("vadv", .false., tracerVadvTimer)
-      call ocn_tracer_vadv_tend(grid, wtop, tracers, tend_tr, err)
+      call ocn_tracer_vadv_tend(grid, h, wtop, tracers, tend_tr, err)
       call mpas_timer_stop("vadv", tracerVadvTimer)
 
       !
@@ -437,10 +440,10 @@ contains
 
       real (kind=RKIND), dimension(:), pointer :: &
         h_s, fVertex, dvEdge, dcEdge, areaCell, areaTriangle, &
-        hZLevel
+        zTopZLevel
       real (kind=RKIND), dimension(:,:), pointer :: &
         weightsOnEdge, kiteAreasOnVertex, h_edge, h, u, v, pressure,&
-        circulation, vorticity, ke, ke_edge, MontPot, &
+        circulation, vorticity, ke, ke_edge, MontPot, wTop, zMid, &
         pv_edge, pv_vertex, pv_cell, gradPVn, gradPVt, divergence, &
         rho, temperature, salinity, kev, kevc
       real (kind=RKIND), dimension(:,:,:), pointer :: tracers, deriv_two
@@ -466,6 +469,7 @@ contains
       rho         => s % rho % array
       MontPot     => s % MontPot % array
       pressure    => s % pressure % array
+      zMid        => s % zMid % array
       tracers     => s % tracers % array
 
       weightsOnEdge     => grid % weightsOnEdge % array
@@ -483,7 +487,7 @@ contains
       areaTriangle      => grid % areaTriangle % array
       h_s               => grid % h_s % array
       fVertex           => grid % fVertex % array
-      hZLevel           => grid % hZLevel % array
+      zTopZLevel        => grid % zTopZLevel % array
       deriv_two         => grid % deriv_two % array
       maxLevelCell      => grid % maxLevelCell % array
       maxLevelEdgeTop   => grid % maxLevelEdgeTop % array
@@ -505,8 +509,8 @@ contains
       ! mrp 101115 note: in order to include flux boundary conditions, we will need to 
       ! assign h_edge for maxLevelEdgeTop:maxLevelEdgeBot in the following section
 
-      ! mrp 110516 efficiency note: For z-level, only do this on level 1.  h_edge for all
-      ! lower levels is defined by hZlevel.
+      ! initialize h_edge to avoid divide by zero and NaN problems.
+      h_edge = -1.0e34
 
       h_edge = -1.0e34
 
@@ -773,7 +777,7 @@ contains
       !
       ! For an isopycnal model, density should remain constant.
       ! For zlevel, calculate in-situ density
-      if (config_vert_grid_type.eq.'zlevel') then
+      if (config_vert_grid_type.ne.'isopycnal') then
          call mpas_timer_start("equation of state", .false., diagEOSTimer)
          call ocn_equation_of_state_rho(s, grid, 0, 'relative', err)
       ! mrp 110324 In order to visualize rhoDisplaced, include the following
@@ -813,31 +817,37 @@ contains
         end do
         deallocate(pTop)
 
-      elseif (config_vert_grid_type.eq.'zlevel') then
-
-        ! For z-level model.
-        ! Compute pressure at middle of each level.  
-        ! At k=1, where p is pressure at a depth of hZLevel(1)/2, not
-        ! pressure at middle of layer including SSH.
+      else
 
         do iCell=1,nCells
-           ! compute pressure for z-level coordinates
+           ! pressure for generalized coordinates
            ! assume atmospheric pressure at the surface is zero for now.
-
            pressure(1,iCell) = rho(1,iCell)*gravity &
-              * (h(1,iCell)-0.5*hZLevel(1)) 
+              * 0.5*h(1,iCell)
 
            do k=2,maxLevelCell(iCell)
               pressure(k,iCell) = pressure(k-1,iCell)  &
-                + 0.5*gravity*(  rho(k-1,iCell)*hZLevel(k-1) &
-                               + rho(k  ,iCell)*hZLevel(k  ))
+                + 0.5*gravity*(  rho(k-1,iCell)*h(k-1,iCell) &
+                               + rho(k  ,iCell)*h(k  ,iCell))
+           end do
+
+           ! Compute zMid, the z-coordinate of the middle of the layer.
+           ! This is used for the rho g grad z momentum term.
+           k = maxLevelCell(iCell)
+           zMid(k:nVertLevels,iCell) = zTopZLevel(k+1) + 0.5*h(k,iCell)
+
+           do k=maxLevelCell(iCell)-1, 1, -1
+              zMid(k,iCell) = zMid(k+1,iCell)  &
+                + 0.5*(  h(k+1,iCell) &
+                       + h(k  ,iCell))
            end do
 
         end do
 
       endif
 
-      call ocn_wtop(s,grid)
+! mrp 111206 remove
+!      call ocn_wtop(s,grid)
 
    end subroutine ocn_diagnostic_solve!}}}
 
@@ -870,16 +880,16 @@ contains
 
       ! mrp 110512 could clean this out, remove pointers?
       integer :: iEdge, iCell, iVertex, k, cell1, cell2, vertex1, vertex2, eoe, i, j, cov
-      real (kind=RKIND) :: flux, vorticity_abs, h_vertex, workpv, rho0Inv, invAreaCell
+      real (kind=RKIND) :: flux, vorticity_abs, h_vertex, workpv, rho0Inv, hSum
 
       integer :: nCells, nEdges, nVertices, nVertLevels, vertexDegree
 
 
       real (kind=RKIND), dimension(:), pointer :: &
-        h_s, fVertex, fEdge, dvEdge, dcEdge, areaCell, areaTriangle, &
-        hZLevel
-      real (kind=RKIND), dimension(:,:), pointer :: u,wTop
-      real (kind=RKIND), dimension(:,:), allocatable:: div_u
+        h_s, fVertex, fEdge, dvEdge, dcEdge, areaCell, areaTriangle
+      real (kind=RKIND), dimension(:,:), pointer :: u,h,wTop, h_edge
+      real (kind=RKIND), dimension(:,:), allocatable:: div_hu
+      real (kind=RKIND), dimension(:), allocatable:: div_hu_btr, h_tend_col, h_weights
 
       integer, dimension(:,:), pointer :: cellsOnEdge, cellsOnVertex, &
         verticesOnEdge, edgesOnCell, edgesOnEdge, edgesOnVertex, &
@@ -888,13 +898,13 @@ contains
         maxLevelCell, maxLevelEdgeTop, maxLevelEdgeBot, &
         maxLevelVertexBot,  maxLevelVertexTop
 
-
       u           => s % u % array
+      h           => s % h % array
       wTop        => s % wTop % array
+      h_edge      => s % h_edge % array
 
       areaCell          => grid % areaCell % array
       cellsOnEdge       => grid % cellsOnEdge % array
-      hZLevel           => grid % hZLevel % array
       maxLevelCell      => grid % maxLevelCell % array
       maxLevelEdgeBot   => grid % maxLevelEdgeBot % array
       dvEdge            => grid % dvEdge % array
@@ -902,6 +912,32 @@ contains
       nCells      = grid % nCells
       nEdges      = grid % nEdges
       nVertLevels = grid % nVertLevels
+
+      allocate(div_hu(nVertLevels,nCells+1), div_hu_btr(nCells+1), &
+          h_tend_col(nVertLevels), h_weights(nVertLevels))
+
+      !
+      ! Compute div(h^{edge} u) for each cell
+      ! See Ringler et al. (2010) jcp paper, eqn 19, 21, and fig. 3.
+      !
+      div_hu(:,:) = 0.0
+      do iEdge=1,nEdges
+         cell1 = cellsOnEdge(1,iEdge)
+         cell2 = cellsOnEdge(2,iEdge)
+         do k=1,maxLevelEdgeBot(iEdge)
+            flux = u(k,iEdge) * dvEdge(iEdge) * h_edge(k,iEdge) 
+            div_hu(k,cell1) = div_hu(k,cell1) + flux
+            div_hu(k,cell2) = div_hu(k,cell2) - flux
+         end do 
+      end do 
+
+      do iCell=1,nCells
+         div_hu_btr(iCell) = 0.0
+         do k=1,maxLevelCell(iCell)
+            div_hu(k,iCell) = div_hu(k,iCell) / areaCell(iCell)
+            div_hu_btr(iCell) = div_hu_btr(iCell) + div_hu(k,iCell)
+         end do
+      end do
 
       !
       ! vertical velocity through layer interface
@@ -913,37 +949,92 @@ contains
 
       elseif (config_vert_grid_type.eq.'zlevel') then
 
-        !
-        ! Compute div(u) for each cell
-        ! See Ringler et al. (2010) jcp paper, eqn 19, 21, and fig. 3.
-        !
-        allocate(div_u(nVertLevels,nCells+1))
-        div_u(:,:) = 0.0
-        do iEdge=1,nEdges
-           cell1 = cellsOnEdge(1,iEdge)
-           cell2 = cellsOnEdge(2,iEdge)
-           do k=2,maxLevelEdgeBot(iEdge)
-              flux = u(k,iEdge) * dvEdge(iEdge) 
-              div_u(k,cell1) = div_u(k,cell1) + flux
-              div_u(k,cell2) = div_u(k,cell2) - flux
-           end do 
-        end do 
-
         do iCell=1,nCells
            ! Vertical velocity through layer interface at top and 
            ! bottom is zero.
            wTop(1,iCell) = 0.0
            wTop(maxLevelCell(iCell)+1,iCell) = 0.0
-           invAreaCell = 1.0 / areaCell(iCell)
-
            do k=maxLevelCell(iCell),2,-1
-              wTop(k,iCell) = wTop(k+1,iCell) &
-                 - div_u(k,iCell)*invAreaCell*hZLevel(k)
+              wTop(k,iCell) = wTop(k+1,iCell) - div_hu(k,iCell)
            end do
         end do
-        deallocate(div_u)
+
+      elseif (config_vert_grid_type.eq.'zstar1') then
+
+        ! This is a testing setting.  The computation is similar to zstar,
+        ! but the weights are all in the top layer, so is a bit-for-bit 
+        ! match with zlevel.
+
+        do iCell=1,nCells
+
+           h_tend_col = 0.0
+           h_tend_col(1) = - div_hu_btr(iCell)
+
+           ! Vertical velocity through layer interface at top and 
+           ! bottom is zero.
+           wTop(1,iCell) = 0.0
+           wTop(maxLevelCell(iCell)+1,iCell) = 0.0
+
+           do k=maxLevelCell(iCell),2,-1
+              wTop(k,iCell) = wTop(k+1,iCell) - div_hu(k,iCell) - h_tend_col(k)
+           end do
+        end do
+
+      elseif (config_vert_grid_type.eq.'zstar') then
+
+        ! Distribute the change in total column height due to the external
+        ! mode, div_hu_btr, among all the layers.  Distribute in proportion
+        ! to the layer thickness.
+
+        do iCell=1,nCells
+
+           hSum = 0.0
+           do k=1,maxLevelCell(iCell)
+              h_tend_col(k) = - h(k,iCell)*div_hu_btr(iCell)
+              hSum = hSum + h(k,iCell)
+           end do
+           h_tend_col = h_tend_col / hSum
+
+           ! Vertical velocity through layer interface at top and 
+           ! bottom is zero.
+           wTop(1,iCell) = 0.0
+           wTop(maxLevelCell(iCell)+1,iCell) = 0.0
+           do k=maxLevelCell(iCell),2,-1
+              wTop(k,iCell) = wTop(k+1,iCell) - div_hu(k,iCell) - h_tend_col(k)
+           end do
+        end do
+
+      elseif (config_vert_grid_type.eq.'zstarWeights') then
+
+        ! This is a test with other weights, not meant to be permanent.
+
+        h_weights = 0.0
+        h_weights(1:5) = 1.0
+        do k=1,10
+           h_weights(5+k) = 1.0-k*0.1
+        end do
+
+        do iCell=1,nCells
+
+           hSum = 0.0
+           do k=1,maxLevelCell(iCell)
+              h_tend_col(k) = - h_weights(k)*h(k,iCell)*div_hu_btr(iCell)
+              hSum = hSum + h_weights(k)*h(k,iCell)
+           end do
+           h_tend_col = h_tend_col / hSum
+
+           ! Vertical velocity through layer interface at top and 
+           ! bottom is zero.
+           wTop(1,iCell) = 0.0
+           wTop(maxLevelCell(iCell)+1,iCell) = 0.0
+           do k=maxLevelCell(iCell),2,-1
+              wTop(k,iCell) = wTop(k+1,iCell) - div_hu(k,iCell) - h_tend_col(k)
+           end do
+        end do
 
       endif
+
+      deallocate(div_hu, div_hu_btr, h_tend_col, h_weights)
 
    end subroutine ocn_wtop!}}}
 

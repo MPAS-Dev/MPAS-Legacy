@@ -98,15 +98,19 @@ module mpas_core
 
       call ocn_compute_max_level(domain)
 
-      if (config_vert_grid_type.eq.'isopycnal') then
-         print *, ' Using isopycnal coordinates'
-      elseif (config_vert_grid_type.eq.'zlevel') then
-         print *, ' Using z-level coordinates'
-         call ocn_init_z_level(domain)
-      else 
-         print *, ' Incorrect choice of config_vert_grid_type:',&
-           config_vert_grid_type
+      print *, ' Vertical grid type is: ',config_vert_grid_type
+
+      if (config_vert_grid_type.ne.'isopycnal'.and. &
+          config_vert_grid_type.ne.'zlevel'.and. &
+          config_vert_grid_type.ne.'zstar1'.and. &
+          config_vert_grid_type.ne.'zstar'.and. &
+          config_vert_grid_type.ne.'zstarWeights') then
+         print *, ' Incorrect choice of config_vert_grid_type.'
          call mpas_dmpar_abort(dminfo)
+      endif
+
+      if (config_vert_grid_type.ne.'isopycnal') then
+         call ocn_init_z_level(domain)
       endif
 
       if (trim(config_new_btr_variables_from) == 'btr_avg' &
@@ -261,7 +265,7 @@ module mpas_core
 !              :block % mesh % nVertLevels,iCell) =  -1e34
 
 ! mrp 110516, added just to test for conservation of tracers
-!         block % state % time_levs(1) % state % tracers % array(block % state % time_levs(1) % state % index_tracer1,:,iCell) = 1.0
+         block % state % time_levs(1) % state % tracers % array(block % state % time_levs(1) % state % index_tracer1,:,iCell) = 1.0
 
       end do
 
@@ -494,10 +498,9 @@ subroutine ocn_init_z_level(domain)!{{{
    type (block_type), pointer :: block
 
    integer :: iTracer, cell, cell1, cell2
-   real (kind=RKIND) :: uhSum, hSum, sshEdge
+   real (kind=RKIND) :: uhSum, hSum, hEdge1
    real (kind=RKIND), dimension(:), pointer :: &
-      hZLevel, zMidZLevel, zTopZLevel, &
-      hMeanTopZLevel, hRatioZLevelK, hRatioZLevelKm1
+      hZLevel, zTopZLevel, zMidZLevel
    real (kind=RKIND), dimension(:,:), pointer :: h
    integer :: nVertLevels
 
@@ -507,41 +510,25 @@ subroutine ocn_init_z_level(domain)!{{{
 
       h          => block % state % time_levs(1) % state % h % array
       hZLevel    => block % mesh % hZLevel % array
-      zMidZLevel => block % mesh % zMidZLevel % array
       zTopZLevel => block % mesh % zTopZLevel % array
+      zMidZLevel => block % mesh % zMidZLevel % array
       nVertLevels = block % mesh % nVertLevels
-      hMeanTopZLevel    => block % mesh % hMeanTopZLevel % array
-      hRatioZLevelK    => block % mesh % hRatioZLevelK % array
-      hRatioZLevelKm1    => block % mesh % hRatioZLevelKm1 % array
 
-      ! These should eventually be in an input file.  For now
-      ! I just read them in from h(:,1).
-      ! Upon restart, the correct hZLevel should be in restart.nc
-      if (.not. config_do_restart) hZLevel = h(:,1)
+      ! hZLevel should be in the grid.nc or restart.nc file.
 
-      ! hZLevel should be in the grid.nc and restart.nc file, 
-      ! and h for k=1 must be specified there as well.
- 
+      ! zTopZLevel is used for the z-coordinate of the bottom of
+      ! the water column.  This is used to compute zMid from bottom
+      ! up at each timestep.
+
+      ! zMidZLevel is used in the EOS computation to compute pressure.
       zTopZLevel(1) = 0.0
       do k = 1,nVertLevels
          zMidZLevel(k) = zTopZLevel(k)-0.5*hZLevel(k)
          zTopZLevel(k+1) = zTopZLevel(k)-  hZLevel(k)
       end do
 
-      hMeanTopZLevel(1) = 0.0
-      hRatioZLevelK(1) = 0.0
-      hRatioZLevelKm1(1) = 0.0
-      do k = 2,nVertLevels
-         hMeanTopZLevel(k) = 0.5*(hZLevel(k-1) + hZLevel(k))
-         hRatioZLevelK(k) = 0.5*hZLevel(k)/hMeanTopZLevel(k)
-         hRatioZLevelKm1(k) = 0.5*hZLevel(k-1)/hMeanTopZLevel(k)
-      end do
-
-      ! mrp 110601 For now, h is the variable saved in the restart file
-      ! I am computing SSH here.  In the future, could make smaller 
-      ! restart files for z-Level runs by saving SSH only.
+      ! Compute ssh from h at level 1.
       do iCell=1,block % mesh % nCells
-
           block % state % time_levs(1) % state % ssh % array(iCell) & 
         = block % state % time_levs(1) % state % h % array(1,iCell) & 
         - block % mesh % hZLevel % array(1)
@@ -570,21 +557,20 @@ subroutine ocn_init_z_level(domain)!{{{
                cell1 = block % mesh % cellsOnEdge % array(1,iEdge)
                cell2 = block % mesh % cellsOnEdge % array(2,iEdge)
 
-               sshEdge = 0.5*( &
-                   block % state % time_levs(1) % state % ssh % array(cell1) & 
-                 + block % state % time_levs(1) % state % ssh % array(cell2) ) 
-
                ! uBtr = sum(u)/sum(h) on each column
-               uhSum = (sshEdge + block % mesh % hZLevel % array(1)) &
-                  * block % state % time_levs(1) % state % u % array(1,iEdge)
-               hSum = sshEdge + block % mesh % hZLevel % array(1)
+               uhSum = 0.0
+               hSum  = 0.0
 
-               do k=2,block % mesh % maxLevelEdgeTop % array(iEdge)
+               do k=1,block % mesh % maxLevelEdgeTop % array(iEdge)
+                  ! ocn_diagnostic_solve has not yet been called, so compute hEdge 
+                  ! just for this edge.
+                  hEdge1 = 0.5*( &
+                      block % state % time_levs(1) % state % h % array(k,cell1) & 
+                    + block % state % time_levs(1) % state % h % array(k,cell2) ) 
+
                   uhSum = uhSum &
-                     + block % mesh % hZLevel % array(k) &
-                      *block % state % time_levs(1) % state % u % array(k,iEdge)
-                  hSum = hSum &
-                     + block % mesh % hZLevel % array(k)
+                     + hEdge1*block % state % time_levs(1) % state % u % array(k,iEdge)
+                  hSum = hSum + hEdge1
                enddo
                block % state % time_levs(1) % state % uBtr % array(iEdge) = uhSum/hsum
 
@@ -611,32 +597,6 @@ subroutine ocn_init_z_level(domain)!{{{
             endif 
 
          endif
-
-!print *, '11 u ',minval(domain % blocklist % state % time_levs(1) % state % u % array(:,1:domain % blocklist % mesh % nEdgesSolve)), &
-!                maxval(domain % blocklist % state % time_levs(1) % state % u % array(:,1:domain % blocklist % mesh % nEdgesSolve))
-!print *, '11 uBtr ',minval(domain % blocklist % state % time_levs(1) % state % uBtr % array(1:domain % blocklist % mesh % nEdgesSolve)), &
-!                    maxval(domain % blocklist % state % time_levs(1) % state % uBtr % array(1:domain % blocklist % mesh % nEdgesSolve))
-!print *, '11 uBcl ',minval(domain % blocklist % state % time_levs(1) % state % uBcl % array(:,1:domain % blocklist % mesh % nEdgesSolve)), &
-!                    maxval(domain % blocklist % state % time_levs(1) % state % uBcl % array(:,1:domain % blocklist % mesh % nEdgesSolve))
-
-
-! mrp temp testing - is uBcl vert sum zero?
-!            do iEdge=1,block % mesh % nEdges
-!              uhSum = (sshEdge + block % mesh % hZLevel % array(1)) * block % state % time_levs(1) % state % uBcl % array(1,iEdge)
-!              hSum  =  sshEdge + block % mesh % hZLevel % array(1)
-
-!              do k=2,block % mesh % maxLevelEdgeTop % array(iEdge)
-!                 uhSum = uhSum + block % mesh % hZLevel % array(k) *  block % state % time_levs(1) % state % uBcl % array(k,iEdge)
-!                 hSum  =  hSum + block % mesh % hZLevel % array(k)
-!              enddo
-!              block % state % time_levs(1) % state % FBtr % array(iEdge) = uhSum/hSum
-
-!           enddo ! iEdge
-
-!print *, 'uBcl vert sum IC',minval(block % state % time_levs(1) % state % FBtr % array(1:block % mesh % nEdgesSolve)), &
-!                            maxval(block % state % time_levs(1) % state % FBtr % array(1:block % mesh % nEdgesSolve))
-
-! mrp temp testing - is uBcl vert sum zero? end
 
       block => block % next
 

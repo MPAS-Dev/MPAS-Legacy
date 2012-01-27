@@ -63,7 +63,7 @@ contains
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_tracer_vadv_stencil3_tend(grid, wTop, tracers, tend, err)!{{{
+   subroutine ocn_tracer_vadv_stencil3_tend(grid, h, wTop, tracers, tend, err)!{{{
 
       !-----------------------------------------------------------------
       !
@@ -72,6 +72,7 @@ contains
       !-----------------------------------------------------------------
 
       real (kind=RKIND), dimension(:,:), intent(in) :: &
+         h, &    !< Input: layer thickness
          wTop    !< Input: vertical tracer in top layer
 
       real (kind=RKIND), dimension(:,:,:), intent(in) :: &
@@ -109,7 +110,6 @@ contains
       integer, dimension(:), pointer :: maxLevelCell
 
       real (kind=RKIND) :: cSignWTop, flux3Coef
-      real (kind=RKIND), dimension(:), pointer :: hRatioZLevelK, hRatioZLevelKm1
       real (kind=RKIND), dimension(:,:,:), allocatable :: tracerTop
 
 
@@ -130,8 +130,6 @@ contains
       num_tracers = size(tracers, 1)
       nVertLevels = grid % nVertLevels
       maxLevelCell => grid % maxLevelCell % array
-      hRatioZLevelK => grid % hRatioZLevelK % array
-      hRatioZLevelKm1 => grid % hRatioZLevelKm1 % array
 
       allocate(tracerTop(num_tracers,nVertLevels+1,nCells))
 
@@ -145,9 +143,10 @@ contains
          tracerTop(:,1,iCell) = tracers(:,1,iCell)
          k=2
          do iTracer=1,num_tracers
-           tracerTop(iTracer,k,iCell) = &
-                hRatioZLevelK(k)  *tracers(iTracer,k-1,iCell) &
-              + hRatioZLevelKm1(k)*tracers(iTracer,k  ,iCell)
+            tracerTop(iTracer,k,iCell) = &
+               (  h(k,iCell)*tracers(iTracer,k-1,iCell) &
+                + h(k-1,iCell)*tracers(iTracer,k  ,iCell) ) &
+               / (h(k-1,iCell) + h(k,iCell))   
          end do
          do k=3,maxLevelCell(iCell)-1
             cSignWTop = sign(flux3Coef,wTop(k,iCell))
@@ -162,9 +161,10 @@ contains
          end do
          k=maxLevelCell(iCell)
             do iTracer=1,num_tracers
-              tracerTop(iTracer,k,iCell) = &
-                   hRatioZLevelK(k)  *tracers(iTracer,k-1,iCell) &
-                 + hRatioZLevelKm1(k)*tracers(iTracer,k  ,iCell)
+            tracerTop(iTracer,k,iCell) = &
+               (  h(k,iCell)*tracers(iTracer,k-1,iCell) &
+                + h(k-1,iCell)*tracers(iTracer,k  ,iCell) ) &
+               / (h(k-1,iCell) + h(k,iCell))   
             end do
         tracerTop(:,maxLevelCell(iCell)+1,iCell) = tracers(:,maxLevelCell(iCell),iCell)
       end do

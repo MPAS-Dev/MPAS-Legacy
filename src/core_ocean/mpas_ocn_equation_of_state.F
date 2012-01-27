@@ -154,7 +154,7 @@ contains
       linearEos = .false.
       jmEos = .false.
 
-      if(config_vert_grid_type.eq.'zlevel') then
+      if(config_vert_grid_type.ne.'isopycnal') then
           eosON = .true.
 
           if (config_eos_type.eq.'linear') then

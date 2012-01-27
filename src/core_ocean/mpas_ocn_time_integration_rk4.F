@@ -166,6 +166,10 @@ module ocn_time_integration_rk4
         call mpas_timer_start("RK4-tendency computations")
         block => domain % blocklist
         do while (associated(block))
+
+           ! mrp 111206 put ocn_wtop call at top for ALE
+           call ocn_wtop(provis, block % mesh)
+
            if (.not.config_implicit_vertical_mix) then
               call ocn_vmix_coefs(block % mesh, provis, block % diagnostics, err)
            end if
@@ -366,8 +370,8 @@ module ocn_time_integration_rk4
       integer :: nCells, nEdges, nVertices, nVertLevels, nEdgesSolve
       real (kind=RKIND) :: vertSum, uhSum, hSum, sshEdge
       real (kind=RKIND), dimension(:), pointer :: &
-        h_s, fVertex, fEdge, dvEdge, dcEdge, areaCell, areaTriangle, &
-        zMidZLevel, zTopZLevel, meshScalingDel2, meshScalingDel4
+        h_s, dvEdge, dcEdge, areaCell, areaTriangle, &
+        meshScalingDel2, meshScalingDel4
       real (kind=RKIND), dimension(:,:), pointer :: &
         weightsOnEdge, kiteAreasOnVertex, h_edge, h, u, v, pressure, &
         tend_u, circulation, vorticity, ke, ke_edge, pv_edge, &
@@ -422,11 +426,6 @@ module ocn_time_integration_rk4
       areaCell          => grid % areaCell % array
       areaTriangle      => grid % areaTriangle % array
       h_s               => grid % h_s % array
-! mrp 110516 cleanup fvertex fedge not used in this subroutine
-      fVertex           => grid % fVertex % array
-      fEdge             => grid % fEdge % array
-      zMidZLevel        => grid % zMidZLevel % array
-      zTopZLevel        => grid % zTopZLevel % array
       maxLevelCell      => grid % maxLevelCell % array
       maxLevelEdgeTop      => grid % maxLevelEdgeTop % array
       maxLevelVertexBot    => grid % maxLevelVertexBot % array
@@ -443,15 +442,12 @@ module ocn_time_integration_rk4
 
            do iEdge=1,grid % nEdges
 
-              ! I am using hZLevel here.  This assumes that SSH is zero everywhere already,
-              ! which should be the case if the barotropic mode is filtered.
-              ! The more general case is to use sshEdge or h_edge.
-              uhSum = (grid % hZLevel % array(1)) * tend_u(1,iEdge)
-              hSum  =  grid % hZLevel % array(1)
+              uhSum = (h_edge(1,iEdge)) * tend_u(1,iEdge)
+              hSum  =  h_edge(1,iEdge)
 
               do k=2,grid % maxLevelEdgeTop % array(iEdge)
-                 uhSum = uhSum + grid % hZLevel % array(k) * tend_u(k,iEdge)
-                 hSum  =  hSum + grid % hZLevel % array(k)
+                 uhSum = uhSum + h_edge(k,iEdge) * tend_u(k,iEdge)
+                 hSum  =  hSum + h_edge(k,iEdge)
               enddo
 
               vertSum = uhSum/hSum
@@ -489,8 +485,8 @@ module ocn_time_integration_rk4
       integer :: nCells, nEdges, nVertices, nVertLevels, nEdgesSolve
       real (kind=RKIND) :: vertSum, uhSum, hSum, sshEdge
       real (kind=RKIND), dimension(:), pointer :: &
-        h_s, fVertex, fEdge, dvEdge, dcEdge, areaCell, areaTriangle, &
-        zMidZLevel, zTopZLevel, meshScalingDel2, meshScalingDel4
+        h_s, dvEdge, dcEdge, areaCell, areaTriangle, &
+        meshScalingDel2, meshScalingDel4
       real (kind=RKIND), dimension(:,:), pointer :: &
         weightsOnEdge, kiteAreasOnVertex, h_edge, h, u, v, pressure, &
         tend_u, circulation, vorticity, ke, ke_edge, pv_edge, &
@@ -544,11 +540,6 @@ module ocn_time_integration_rk4
       areaCell          => grid % areaCell % array
       areaTriangle      => grid % areaTriangle % array
       h_s               => grid % h_s % array
-! mrp 110516 cleanup fvertex fedge not used in this subroutine
-      fVertex           => grid % fVertex % array
-      fEdge             => grid % fEdge % array
-      zMidZLevel        => grid % zMidZLevel % array
-      zTopZLevel        => grid % zTopZLevel % array
       maxLevelCell      => grid % maxLevelCell % array
       maxLevelEdgeTop      => grid % maxLevelEdgeTop % array
       maxLevelVertexBot    => grid % maxLevelVertexBot % array
@@ -563,15 +554,12 @@ module ocn_time_integration_rk4
 
            do iEdge=1,grid % nEdges
 
-              ! I am using hZLevel here.  This assumes that SSH is zero everywhere already,
-              ! which should be the case if the barotropic mode is filtered.
-              ! The more general case is to use sshedge or h_edge.
-              uhSum = (grid % hZLevel % array(1)) * u(1,iEdge)
-              hSum  =  grid % hZLevel % array(1)
+              uhSum = (h_edge(1,iEdge)) * u(1,iEdge)
+              hSum  =  h_edge(1,iEdge)
 
               do k=2,grid % maxLevelEdgeTop % array(iEdge)
-                 uhSum = uhSum + grid % hZLevel % array(k) * u(k,iEdge)
-                 hSum  =  hSum + grid % hZLevel % array(k)
+                 uhSum = uhSum + h_edge(k,iEdge) * u(k,iEdge)
+                 hSum  =  hSum + h_edge(k,iEdge)
               enddo
 
               vertSum = uhSum/hSum
