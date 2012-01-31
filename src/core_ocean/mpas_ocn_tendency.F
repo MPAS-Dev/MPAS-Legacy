@@ -512,8 +512,6 @@ contains
       ! initialize h_edge to avoid divide by zero and NaN problems.
       h_edge = -1.0e34
 
-      h_edge = -1.0e34
-
       do iEdge=1,nEdges*hadv2nd
          cell1 = cellsOnEdge(1,iEdge)
          cell2 = cellsOnEdge(2,iEdge)
@@ -593,7 +591,6 @@ contains
       ! set the velocity and height at dummy address
       !    used -1e34 so error clearly occurs if these values are used.
       !
-!mrp 110516 change to zero, change back later:
       u(:,nEdges+1) = -1e34
       h(:,nCells+1) = -1e34
       tracers(s % index_temperature,:,nCells+1) = -1e34

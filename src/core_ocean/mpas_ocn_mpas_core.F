@@ -243,6 +243,8 @@ module mpas_core
       ! The reconstructed velocity on land will have values not exactly
       ! -1e34 due to the interpolation of reconstruction.
 
+      block % mesh % areaCell % array(block % mesh % nCells+1) = -1.0e34
+
       do iEdge=1,block % mesh % nEdges
          ! mrp 101115 note: in order to include flux boundary conditions, the following
          ! line will need to change.  Right now, set boundary edges between land and 
@@ -558,10 +560,19 @@ subroutine ocn_init_z_level(domain)!{{{
                cell2 = block % mesh % cellsOnEdge % array(2,iEdge)
 
                ! uBtr = sum(u)/sum(h) on each column
-               uhSum = 0.0
-               hSum  = 0.0
+                  ! ocn_diagnostic_solve has not yet been called, so compute hEdge 
+                  ! just for this edge.
 
-               do k=1,block % mesh % maxLevelEdgeTop % array(iEdge)
+               ! I took out k=1 so that hSum always has a nonzero value, to avoid
+               ! nans in uBtr.
+               hEdge1 = 0.5*( &
+                   block % state % time_levs(1) % state % h % array(1,cell1) & 
+                 + block % state % time_levs(1) % state % h % array(1,cell2) ) 
+
+               uhSum = hEdge1*block % state % time_levs(1) % state % u % array(1,iEdge)
+               hSum = hEdge1
+
+               do k=2,block % mesh % maxLevelEdgeTop % array(iEdge)
                   ! ocn_diagnostic_solve has not yet been called, so compute hEdge 
                   ! just for this edge.
                   hEdge1 = 0.5*( &
@@ -571,6 +582,7 @@ subroutine ocn_init_z_level(domain)!{{{
                   uhSum = uhSum &
                      + hEdge1*block % state % time_levs(1) % state % u % array(k,iEdge)
                   hSum = hSum + hEdge1
+
                enddo
                block % state % time_levs(1) % state % uBtr % array(iEdge) = uhSum/hsum
 

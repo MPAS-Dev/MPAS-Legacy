@@ -859,9 +859,14 @@ module ocn_time_integration_split
             ! This overwrites u^{tr}, the tracer transport velocity, which was in uNew.
             ! The following must occur after  call OcnTendScalar
             do iEdge=1,block % mesh % nEdges
-              block % state % time_levs(2) % state % u % array(:,iEdge) &
-                  = block % state % time_levs(2) % state % uBtr % array(iEdge) &
-                  + block % state % time_levs(2) % state % uBcl % array(:,iEdge) 
+                do k=1,block % mesh % maxLevelEdgeTop % array(iEdge)
+                       block % state % time_levs(2) % state % u % array(k,iEdge) &
+                     = block % state % time_levs(2) % state % uBtr % array(iEdge) &
+                     + block % state % time_levs(2) % state % uBcl % array(k,iEdge) 
+                end do
+                do k=block % mesh % maxLevelEdgeTop % array(iEdge)+1,block % mesh % nVertLevels
+                   block % state % time_levs(2) % state % u % array(k,iEdge) = 0.0
+                end do
             end do ! iEdge
 
           elseif (split_explicit_step == config_n_ts_iter) then
@@ -1012,7 +1017,6 @@ module ocn_time_integration_split
         if (config_test_case == 1) then    ! For case 1, wind field should be fixed
           block % state % time_levs(2) % state % u % array(:,:) = block % state % time_levs(1) % state % u % array(:,:)
         end if
-
         call ocn_diagnostic_solve(dt, block % state % time_levs(2) % state, block % mesh)
 
         call mpas_reconstruct(block % mesh, block % state % time_levs(2) % state % u % array,          &
@@ -1023,6 +1027,7 @@ module ocn_time_integration_split
             block % state % time_levs(2) % state % uReconstructMeridional % array)
 
         call ocn_time_average_accumulate(block % state % time_levs(2) % state, block % state % time_levs(1) % state)
+
 
         block => block % next
       end do

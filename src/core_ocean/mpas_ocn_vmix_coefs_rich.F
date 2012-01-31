@@ -459,8 +459,8 @@ contains
       areaCell => grid % areaCell % array
 
       allocate( &
-         drhoTopOfCell(nVertLevels+1,nCells+1), drhoTopOfEdge(nVertLevels+1,nEdges+1), &
-         du2TopOfCell(nVertLevels+1,nCells+1), du2TopOfEdge(nVertLevels+1,nEdges+1))
+         drhoTopOfCell(nVertLevels+1,nCells+1), drhoTopOfEdge(nVertLevels+1,nEdges), &
+         du2TopOfCell(nVertLevels+1,nCells+1), du2TopOfEdge(nVertLevels+1,nEdges))
 
       ! compute density of parcel displaced to next deeper z-level,
       ! in state % rhoDisplaced
