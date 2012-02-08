@@ -123,6 +123,11 @@ contains
 
       err = 0
 
+      ! mrp 120202 efficiency note:
+      ! The following if statement is not needed, since wTop is set to 
+      ! zero for isopycnal coordinates.  This if statment saves flops
+      ! for isopycnal coordinates.  However, if the loops are pushed
+      ! out, we could get rid of this if statement.
       if(.not.vadvOn) return
 
       call ocn_tracer_vadv_stencil_tend(grid, h, wTop, tracers, tend, err1)

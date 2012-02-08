@@ -186,7 +186,7 @@ contains
 
       err = 0
 
-      if (config_vert_grid_type.eq.'isopycnal') then
+      if (config_pressure_type.eq.'MontgomeryPotential') then
         rho0Inv = 1.0
         grho0Inv = 0.0
       else 

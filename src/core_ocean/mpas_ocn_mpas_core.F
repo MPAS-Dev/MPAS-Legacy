@@ -98,6 +98,8 @@ module mpas_core
 
       call ocn_compute_max_level(domain)
 
+      call ocn_init_z_level(domain)
+
       print *, ' Vertical grid type is: ',config_vert_grid_type
 
       if (config_vert_grid_type.ne.'isopycnal'.and. &
@@ -109,14 +111,17 @@ module mpas_core
          call mpas_dmpar_abort(dminfo)
       endif
 
-      if (config_vert_grid_type.ne.'isopycnal') then
-         call ocn_init_z_level(domain)
+      print *, ' Pressure type is: ',config_pressure_type
+      if (config_pressure_type.ne.'pressure'.and. &
+          config_pressure_type.ne.'MontgomeryPotential') then
+         print *, ' Incorrect choice of config_pressure_type.'
+         call mpas_dmpar_abort(dminfo)
       endif
 
-      if (trim(config_new_btr_variables_from) == 'btr_avg' &
-           .and.trim(config_time_integration) == 'unsplit_explicit') then
-         print *, ' unsplit_explicit option must use',&
-           ' config_new_btr_variables_from==last_subcycle'
+      if (config_filter_btr_mode.and. &
+          config_vert_grid_type.ne.'zlevel')then
+         print *, 'filter_btr_mode has only been tested with'// &
+            ' config_vert_grid_type=zlevel.'
          call mpas_dmpar_abort(dminfo)
       endif
 
@@ -226,6 +231,8 @@ module mpas_core
       call mpas_timer_start("diagnostic solve", .false., initDiagSolveTimer)
       call ocn_diagnostic_solve(dt, block % state % time_levs(1) % state, mesh)
       call mpas_timer_stop("diagnostic solve", initDiagSolveTimer)
+
+      call ocn_wtop(block % state % time_levs(1) % state,block % state % time_levs(1) % state, mesh)
 
       call ocn_compute_mesh_scaling(mesh)
  
@@ -486,59 +493,46 @@ module mpas_core
 
    end subroutine mpas_timestep!}}}
 
-subroutine ocn_init_z_level(domain)!{{{
-! Initialize maxLevel and bouncary grid variables.
+   subroutine ocn_init_z_level(domain)!{{{
+   ! Initialize maxLevel and bouncary grid variables.
 
-   use mpas_grid_types
-   use mpas_configure
+      use mpas_grid_types
+      use mpas_configure
 
-   implicit none
+      implicit none
 
-   type (domain_type), intent(inout) :: domain
+      type (domain_type), intent(inout) :: domain
 
-   integer :: i, iCell, iEdge, iVertex, k
-   type (block_type), pointer :: block
+      integer :: i, iCell, iEdge, iVertex, k
+      type (block_type), pointer :: block
 
-   integer :: iTracer, cell, cell1, cell2
-   real (kind=RKIND) :: uhSum, hSum, hEdge1
-   real (kind=RKIND), dimension(:), pointer :: &
-      hZLevel, zTopZLevel, zMidZLevel
-   real (kind=RKIND), dimension(:,:), pointer :: h
-   integer :: nVertLevels
+      integer :: iTracer, cell, cell1, cell2
+      real (kind=RKIND) :: uhSum, hSum, hEdge1
+      real (kind=RKIND), dimension(:), pointer :: referenceBottomDepth
+      real (kind=RKIND), dimension(:,:), pointer :: h
+      integer :: nVertLevels
 
-   ! Initialize z-level grid variables from h, read in from input file.
-   block => domain % blocklist
-   do while (associated(block))
+      ! Initialize z-level grid variables from h, read in from input file.
+      block => domain % blocklist
+      do while (associated(block))
 
-      h          => block % state % time_levs(1) % state % h % array
-      hZLevel    => block % mesh % hZLevel % array
-      zTopZLevel => block % mesh % zTopZLevel % array
-      zMidZLevel => block % mesh % zMidZLevel % array
-      nVertLevels = block % mesh % nVertLevels
+         h          => block % state % time_levs(1) % state % h % array
+         referenceBottomDepth => block % mesh % referenceBottomDepth % array
+         nVertLevels = block % mesh % nVertLevels
 
-      ! hZLevel should be in the grid.nc or restart.nc file.
-
-      ! zTopZLevel is used for the z-coordinate of the bottom of
-      ! the water column.  This is used to compute zMid from bottom
-      ! up at each timestep.
-
-      ! zMidZLevel is used in the EOS computation to compute pressure.
-      zTopZLevel(1) = 0.0
-      do k = 1,nVertLevels
-         zMidZLevel(k) = zTopZLevel(k)-0.5*hZLevel(k)
-         zTopZLevel(k+1) = zTopZLevel(k)-  hZLevel(k)
-      end do
-
-      ! Compute ssh from h at level 1.
-      do iCell=1,block % mesh % nCells
-          block % state % time_levs(1) % state % ssh % array(iCell) & 
-        = block % state % time_levs(1) % state % h % array(1,iCell) & 
-        - block % mesh % hZLevel % array(1)
-      enddo
+         ! mrp 120208 right now hZLevel is in the grid.nc file.
+         ! We would like to transition to using referenceBottomDepth
+         ! as the defining variable instead, and will transition soon.
+         ! When the transition is done, hZLevel can be removed from
+         ! registry and the following four lines deleted.
+         referenceBottomDepth(1) = block % mesh % hZLevel % array(1)
+         do k = 2,nVertLevels
+            referenceBottomDepth(k) = referenceBottomDepth(k-1) + block % mesh % hZLevel % array(k)
+         end do
 
          ! Compute barotropic velocity at first timestep
          ! This is only done upon start-up.
-         if     (trim(config_time_integration) == 'unsplit_explicit') then
+         if (trim(config_time_integration) == 'unsplit_explicit') then
             block % state % time_levs(1) % state % uBtr % array(:) = 0.0
 
               block % state % time_levs(1) % state % uBcl % array(:,:) &
@@ -549,9 +543,7 @@ subroutine ocn_init_z_level(domain)!{{{
             if (config_filter_btr_mode) then
                do iCell=1,block % mesh % nCells
                   block % state % time_levs(1) % state % h % array(1,iCell) & 
-                = block % mesh % hZLevel % array(1)
- 
-                  block % state % time_levs(1) % state % ssh % array(iCell) = 0.0
+                = block % mesh % referenceBottomDepth % array(1)
                enddo
             endif 
 
@@ -560,15 +552,15 @@ subroutine ocn_init_z_level(domain)!{{{
                cell2 = block % mesh % cellsOnEdge % array(2,iEdge)
 
                ! uBtr = sum(u)/sum(h) on each column
-                  ! ocn_diagnostic_solve has not yet been called, so compute hEdge 
-                  ! just for this edge.
+               ! ocn_diagnostic_solve has not yet been called, so compute hEdge 
+               ! just for this edge.
 
-               ! I took out k=1 so that hSum always has a nonzero value, to avoid
-               ! nans in uBtr.
+               ! hSum is initialized outside the loop because on land boundaries 
+               ! maxLevelEdgeTop=0, but I want to initialize hSum with a 
+               ! nonzero value to avoid a NaN.
                hEdge1 = 0.5*( &
                    block % state % time_levs(1) % state % h % array(1,cell1) & 
                  + block % state % time_levs(1) % state % h % array(1,cell2) ) 
-
                uhSum = hEdge1*block % state % time_levs(1) % state % u % array(1,iEdge)
                hSum = hEdge1
 
@@ -611,10 +603,9 @@ subroutine ocn_init_z_level(domain)!{{{
          endif
 
       block => block % next
+      end do
 
-   end do
-
-end subroutine ocn_init_z_level!}}}
+   end subroutine ocn_init_z_level!}}}
 
 subroutine ocn_compute_max_level(domain)!{{{
 ! Initialize maxLevel and bouncary grid variables.

@@ -168,7 +168,7 @@ module ocn_time_integration_rk4
         do while (associated(block))
 
            ! mrp 111206 put ocn_wtop call at top for ALE
-           call ocn_wtop(provis, block % mesh)
+           call ocn_wtop(provis, provis, block % mesh)
 
            if (.not.config_implicit_vertical_mix) then
               call ocn_vmix_coefs(block % mesh, provis, block % diagnostics, err)

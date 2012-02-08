@@ -95,7 +95,7 @@ contains
 
 
       real (kind=RKIND), dimension(:), pointer :: &
-        zMidZLevel, pRefEOS
+        referenceBottomDepth, pRefEOS
       real (kind=RKIND), dimension(:,:), intent(inout) :: &
         rho
       real (kind=RKIND), dimension(:,:,:), intent(in) :: tracers
@@ -196,7 +196,7 @@ contains
       nCells      = grid % nCells
       maxLevelCell      => grid % maxLevelCell % array
       nVertLevels = grid % nVertLevels
-      zMidZLevel        => grid % zMidZLevel % array
+      referenceBottomDepth => grid % referenceBottomDepth % array
 
 
 !  Jackett and McDougall
@@ -205,20 +205,24 @@ contains
       smin =  0.0  ! valid salinity, in psu   
       smax = 42.0 
 
-      ! This could be put in a startup routine.
-      ! Note I am using zMidZlevel, so pressure on top level does
-      ! not include SSH contribution.  I am not sure if that matters.
-
 !  This function computes pressure in bars from depth in meters
 !  using a mean density derived from depth-dependent global 
 !  average temperatures and salinities from Levitus 1994, and 
 !  integrating using hydrostatic balance.
 
       allocate(pRefEOS(nVertLevels),p(nVertLevels),p2(nVertLevels))
-      do k = 1,nVertLevels
-        depth = -zMidZLevel(k)
-        pRefEOS(k) = 0.059808*(exp(-0.025*depth) - 1.0) &
-            + 0.100766*depth + 2.28405e-7*depth**2
+
+      ! This could be put in the init routine.
+      ! Note I am using referenceBottomDepth, so pressure on top level does
+      ! not include SSH contribution.  I am not sure if that matters, but
+      ! POP does it the same way.
+      depth = 0.5*referenceBottomDepth(1)
+      pRefEOS(1) = 0.059808*(exp(-0.025*depth) - 1.0) &
+          + 0.100766*depth + 2.28405e-7*depth**2
+      do k = 2,nVertLevels
+         depth = 0.5*(referenceBottomDepth(k)+referenceBottomDepth(k-1))
+         pRefEOS(k) = 0.059808*(exp(-0.025*depth) - 1.0) &
+             + 0.100766*depth + 2.28405e-7*depth**2
       enddo
 
       !  If k_displaced=0, in-situ density is returned (no displacement)

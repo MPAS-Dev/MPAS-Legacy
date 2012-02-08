@@ -137,8 +137,6 @@ contains
       ! See Ringler et al. (2010) jcp paper, eqn 19, 21, and fig. 3. 
       ! for explanation of divergence operator.
       !
-      ! for z-level, only compute height tendency for top layer.
-
       call mpas_timer_start("hadv", .false., thickHadvTimer)
       call ocn_thick_hadv_tend(grid, u, h_edge, tend_h, err)
       call mpas_timer_stop("hadv", thickHadvTimer)
@@ -146,7 +144,6 @@ contains
       !
       ! height tendency: vertical advection term -d/dz(hw)
       !
-      ! Vertical advection computed for top layer of a z grid only.
       call mpas_timer_start("vadv", .false., thickVadvTimer)
       call ocn_thick_vadv_tend(grid, wtop, tend_h, err)
       call mpas_timer_stop("vadv", thickVadvTimer)
@@ -239,7 +236,7 @@ contains
       ! velocity tendency: pressure gradient
       !
       call mpas_timer_start("pressure grad", .false., velPgradTimer)
-      if (config_vert_grid_type.eq.'isopycnal') then
+      if (config_pressure_type.eq.'MontgomeryPotential') then
           call ocn_vel_pressure_grad_tend(grid, MontPot,  zMid, rho, tend_u, err)
       else
           call ocn_vel_pressure_grad_tend(grid, pressure, zMid, rho, tend_u, err)
@@ -440,7 +437,7 @@ contains
 
       real (kind=RKIND), dimension(:), pointer :: &
         h_s, fVertex, dvEdge, dcEdge, areaCell, areaTriangle, &
-        zTopZLevel
+        referenceBottomDepth, ssh
       real (kind=RKIND), dimension(:,:), pointer :: &
         weightsOnEdge, kiteAreasOnVertex, h_edge, h, u, v, pressure,&
         circulation, vorticity, ke, ke_edge, MontPot, wTop, zMid, &
@@ -470,6 +467,7 @@ contains
       MontPot     => s % MontPot % array
       pressure    => s % pressure % array
       zMid        => s % zMid % array
+      ssh         => s % ssh % array
       tracers     => s % tracers % array
 
       weightsOnEdge     => grid % weightsOnEdge % array
@@ -487,7 +485,7 @@ contains
       areaTriangle      => grid % areaTriangle % array
       h_s               => grid % h_s % array
       fVertex           => grid % fVertex % array
-      zTopZLevel        => grid % zTopZLevel % array
+      referenceBottomDepth        => grid % referenceBottomDepth % array
       deriv_two         => grid % deriv_two % array
       maxLevelCell      => grid % maxLevelCell % array
       maxLevelEdgeTop   => grid % maxLevelEdgeTop % array
@@ -787,7 +785,7 @@ contains
       ! This section must be after computing rho
       !
       ! dwj: 10/25/2011 - Need to explore isopycnal vs zlevel flags
-      if (config_vert_grid_type.eq.'isopycnal') then
+      if (config_pressure_type.eq.'MontgomeryPotential') then
 
         ! For Isopycnal model.
         ! Compute pressure at top of each layer, and then
@@ -830,8 +828,10 @@ contains
 
            ! Compute zMid, the z-coordinate of the middle of the layer.
            ! This is used for the rho g grad z momentum term.
+           ! Note the negative sign, since referenceBottomDepth is positive
+           ! and z-coordinates are negative below the surface.
            k = maxLevelCell(iCell)
-           zMid(k:nVertLevels,iCell) = zTopZLevel(k+1) + 0.5*h(k,iCell)
+           zMid(k:nVertLevels,iCell) = -referenceBottomDepth(k) + 0.5*h(k,iCell)
 
            do k=maxLevelCell(iCell)-1, 1, -1
               zMid(k,iCell) = zMid(k+1,iCell)  &
@@ -843,8 +843,20 @@ contains
 
       endif
 
-! mrp 111206 remove
-!      call ocn_wtop(s,grid)
+      !
+      ! Sea Surface Height
+      !
+      do iCell=1,nCells
+         ! Start at the bottom where we know the depth, and go up.
+         ! The bottom depth for this cell is 
+         ! referenceBottomDepth(maxLevelCell(iCell)).
+         ! Note the negative sign, since referenceBottomDepth is positive
+         ! and z-coordinates are negative below the surface.
+
+         ssh(iCell) = -referenceBottomDepth(maxLevelCell(iCell)) &
+           + sum(h(1:maxLevelCell(iCell),iCell))
+
+      end do
 
    end subroutine ocn_diagnostic_solve!}}}
 
@@ -861,7 +873,7 @@ contains
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_wtop(s, grid)!{{{
+   subroutine ocn_wtop(s1,s2, grid)!{{{
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! Compute diagnostic fields used in the tendency computations
    !
@@ -872,7 +884,8 @@ contains
 
       implicit none
 
-      type (state_type), intent(inout) :: s
+      type (state_type), intent(inout) :: s1
+      type (state_type), intent(inout) :: s2
       type (mesh_type), intent(in) :: grid
 
       ! mrp 110512 could clean this out, remove pointers?
@@ -895,10 +908,10 @@ contains
         maxLevelCell, maxLevelEdgeTop, maxLevelEdgeBot, &
         maxLevelVertexBot,  maxLevelVertexTop
 
-      u           => s % u % array
-      h           => s % h % array
-      wTop        => s % wTop % array
-      h_edge      => s % h_edge % array
+      h           => s1 % h % array
+      h_edge      => s1 % h_edge % array
+      u           => s2 % u % array
+      wTop        => s2 % wTop % array
 
       areaCell          => grid % areaCell % array
       cellsOnEdge       => grid % cellsOnEdge % array

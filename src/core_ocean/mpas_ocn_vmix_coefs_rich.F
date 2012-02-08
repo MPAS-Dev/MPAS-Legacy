@@ -248,8 +248,6 @@ contains
                else
                   ! for Ri<0 and explicit vertical mix, 
                   ! use maximum diffusion allowed by CFL criterion
-                  ! mrp 110324 efficiency note: for z-level, could use fixed
-                  ! grid array hMeanTopZLevel and compute maxdiff on startup.
                   vertViscTopOfEdge(k,iEdge) = &
                       ((h_edge(k-1,iEdge)+h_edge(k,iEdge))/2.0)**2/config_dt/4.0
                end if
@@ -357,8 +355,6 @@ contains
                else
                   ! for Ri<0 and explicit vertical mix, 
                   ! use maximum diffusion allowed by CFL criterion
-                  ! mrp 110324 efficiency note: for z-level, could use fixed
-                  ! grid array hMeanTopZLevel and compute maxdiff on startup.
                   vertDiffTopOfCell(k,iCell) = &
                      ((h(k-1,iCell)+h(k,iCell))/2.0)**2/config_dt/4.0
                end if

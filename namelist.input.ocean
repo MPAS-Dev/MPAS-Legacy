@@ -20,6 +20,7 @@
 /
 &grid
    config_vert_grid_type = 'zlevel'
+   config_pressure_type = 'pressure'
    config_rho0 = 1000
 /
 &split_explicit_ts
@@ -35,8 +36,6 @@
    config_btr_mom_decay_time =   3600.0
    config_btr_mom_eddy_visc2 =   0.0
    config_btr_subcycle_loop_factor =  2
-   config_SSH_from =  'avg_flux'
-   config_new_btr_variables_from = 'btr_avg'
    config_btr_gam1_uWt1   = 0.5
    config_btr_gam2_SSHWt1 = 1.0
    config_btr_gam3_uWt2   = 1.0

@@ -177,21 +177,22 @@ contains
 
       integer :: k, nVertLevels
 
-      real (kind=RKIND), dimension(:), pointer :: zTopZLevel
+      real (kind=RKIND), dimension(:), pointer :: referenceBottomDepth
 
       err = 0
 
       if(.not.tanhViscOn) return
 
       nVertLevels = grid % nVertLevels
-      zTopZLevel => grid % zTopZLevel % array
+      referenceBottomDepth => grid % referenceBottomDepth % array
 
-      ! zTopZLevel is used here for simplicity.  Using zMid and h, which 
+      ! referenceBottomDepth is used here for simplicity.  Using zMid and h, which 
       ! vary in time, would give the exact location of the top, but it
       ! would only change the diffusion value very slightly.
-      do k=1,nVertLevels+1
-          vertViscTopOfEdge(k,:) = -(config_max_visc_tanh-config_min_visc_tanh)/2.0 &
-            *tanh(-(zTopZLevel(k)-config_ZMid_tanh) &
+      vertViscTopOfEdge = 0.0
+      do k=2,nVertLevels
+         vertViscTopOfEdge(k,:) = -(config_max_visc_tanh-config_min_visc_tanh)/2.0 &
+            *tanh((referenceBottomDepth(k-1)+config_ZMid_tanh) &
                   /config_zWidth_tanh) &
             + (config_max_visc_tanh+config_min_visc_tanh)/2
       end do
@@ -249,21 +250,22 @@ contains
 
       integer :: k, nVertLevels
 
-      real (kind=RKIND), dimension(:), pointer :: zTopZLevel
+      real (kind=RKIND), dimension(:), pointer :: referenceBottomDepth
 
       err = 0
 
       if(.not.tanhDiffOn) return
 
       nVertLevels = grid % nVertLevels
-      zTopZLevel => grid % zTopZLevel % array
+      referenceBottomDepth => grid % referenceBottomDepth % array
 
-      ! zTopZLevel is used here for simplicity.  Using zMid and h, which 
+      ! referenceBottomDepth is used here for simplicity.  Using zMid and h, which 
       ! vary in time, would give the exact location of the top, but it
       ! would only change the diffusion value very slightly.
-      do k=1,nVertLevels+1
+      vertDiffTopOfCell = 0.0
+      do k=2,nVertLevels
          vertDiffTopOfCell(k,:) = -(config_max_diff_tanh-config_min_diff_tanh)/2.0 &
-            *tanh(-(zTopZLevel(k)-config_ZMid_tanh) &
+            *tanh((referenceBottomDepth(k-1)+config_ZMid_tanh) &
                   /config_zWidth_tanh) &
             + (config_max_diff_tanh+config_min_diff_tanh)/2
       end do

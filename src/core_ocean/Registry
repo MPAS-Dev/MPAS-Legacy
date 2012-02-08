@@ -20,6 +20,7 @@ namelist character io       config_decomp_file_prefix  graph.info.part.
 namelist logical   restart  config_do_restart          false
 namelist character restart  config_restart_interval    none
 namelist character grid     config_vert_grid_type      isopycnal
+namelist character grid     config_pressure_type       pressure
 namelist real      grid     config_rho0                1028
 namelist integer   split_explicit_ts config_n_ts_iter     2
 namelist integer   split_explicit_ts config_n_bcl_iter_beg   2
@@ -30,8 +31,6 @@ namelist integer   split_explicit_ts config_n_btr_cor_iter  2
 namelist logical   split_explicit_ts config_u_correction true
 namelist logical   split_explicit_ts config_filter_btr_mode false
 namelist integer   split_explicit_ts config_btr_subcycle_loop_factor  2
-namelist character split_explicit_ts config_SSH_from  avg_flux
-namelist character split_explicit_ts config_new_btr_variables_from  btr_avg
 namelist real      split_explicit_ts config_btr_gam1_uWt1    0.5
 namelist real      split_explicit_ts config_btr_gam2_SSHWt1  1.0
 namelist real      split_explicit_ts config_btr_gam3_uWt2    1.0
@@ -169,9 +168,8 @@ var persistent integer maxLevelEdgeTop ( nEdges ) 0 - maxLevelEdgeTop mesh - -
 var persistent integer maxLevelEdgeBot ( nEdges ) 0 - maxLevelEdgeBot mesh - -
 var persistent integer maxLevelVertexTop ( nVertices ) 0 - maxLevelVertexTop mesh - -
 var persistent integer maxLevelVertexBot ( nVertices ) 0 - maxLevelVertexBot mesh - -
+var persistent real referenceBottomDepth ( nVertLevels ) 0 iro referenceBottomDepth mesh - -
 var persistent real hZLevel ( nVertLevels ) 0 iro hZLevel mesh - -
-var persistent real zMidZLevel ( nVertLevels ) 0 - zMidZLevel mesh - -
-var persistent real zTopZLevel ( nVertLevelsP1 ) 0 - zTopZLevel mesh - -
 
 % Boundary conditions: read from input, saved in restart and written to output
 var persistent integer boundaryEdge ( nVertLevels nEdges ) 0 iro boundaryEdge mesh - -
@@ -208,10 +206,6 @@ var persistent real   sshSubcycle ( nCells Time )  2 -  sshSubcycle state - -
 var persistent real   FBtr ( nEdges Time )         2 -  FBtr state - - 
 var persistent real   GBtrForcing ( nEdges Time )  2 -  GBtrForcing state - -
 var persistent real   uBcl ( nVertLevels nEdges Time )  2 - uBcl state - - 
-var persistent real   circulationBtr ( nVertices Time ) 2 - circulationBtr state - -
-var persistent real   divergenceBtr ( nCells Time ) 2 - divergenceBtr state - -
-var persistent real   vorticityBtr ( nVertices Time ) 2 - vorticityBtr state - -
-var persistent real   u_diffusionBtr ( nEdges Time ) 2 - u_diffusionBtr state - -
 
 % Diagnostic fields: only written to output
 var persistent real    zMid ( nVertLevels nCells Time ) 2 io zMid state - -

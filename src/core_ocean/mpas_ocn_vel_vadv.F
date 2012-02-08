@@ -112,6 +112,11 @@ contains
       real (kind=RKIND) :: wTopEdge
       real (kind=RKIND), dimension(:), allocatable :: w_dudzTopEdge
 
+      ! mrp 120202 efficiency note:
+      ! The following if statement is not needed, since wTop is set to 
+      ! zero for isopycnal coordinates.  This if statment saves flops
+      ! for isopycnal coordinates.  However, if the loops are pushed
+      ! out, we could get rid of this if statement.
       if(.not.velVadvOn) return
 
       err = 0
