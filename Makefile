@@ -111,9 +111,9 @@ ifort-serial:
 	"CC = gcc" \
 	"SFC = ifort" \
 	"SCC = gcc" \
-	"FFLAGS = -real-size 64 -O3 -convert big_endian -FR" \
+	"FFLAGS = -real-size 64 -g -convert big_endian -FR" \
 	"CFLAGS = -O3 -m64" \
-	"LDFLAGS = -O3" \
+	"LDFLAGS = -g" \
 	"CORE = $(CORE)" \
 	"CPPFLAGS = $(MODEL_FORMULATION) -DUNDERSCORE -m64 $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
 
