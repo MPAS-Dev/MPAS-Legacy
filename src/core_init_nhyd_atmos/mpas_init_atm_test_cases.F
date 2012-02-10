@@ -83,8 +83,7 @@ module init_atm_test_cases
          do while (associated(block_ptr))
             call init_atm_test_case_gfs(domain % dminfo, block_ptr % mesh, block_ptr % fg, block_ptr % state % time_levs(1) % state, &
                                     block_ptr % diag, config_test_case, block_ptr % parinfo)
-            if(config_physics_init) &
-               call physics_initialize_real(block_ptr % mesh, block_ptr % fg)
+            call physics_initialize_real(block_ptr % mesh, block_ptr % fg)
             block_ptr => block_ptr % next
          end do
 
@@ -93,7 +92,7 @@ module init_atm_test_cases
          write(0,*) ' real-data surface (SST) update test case '
          block_ptr => domain % blocklist
          do while (associated(block_ptr))
-            call init_atm_test_case_sst(domain, domain % dminfo, block_ptr % mesh, block_ptr % fg, block_ptr % state % time_levs(1) % state, &
+            call init_atm_test_case_sfc(domain, domain % dminfo, block_ptr % mesh, block_ptr % fg, block_ptr % state % time_levs(1) % state, &
                                     block_ptr % diag, config_test_case, block_ptr % parinfo)
             block_ptr => block_ptr % next
          end do
@@ -154,7 +153,7 @@ module init_atm_test_cases
       real (kind=RKIND), dimension(:), pointer :: surface_pressure
       real (kind=RKIND), dimension(:,:), pointer :: zgrid, zx, zz, hx
       real (kind=RKIND), dimension(:,:), pointer :: pressure, ppb, pb, rho_zz, rb, rr, tb, rtb, p, pp, dss, t, rt
-      real (kind=RKIND), dimension(:,:,:), pointer :: zf, zf3, zb, zb3
+      real (kind=RKIND), dimension(:,:,:), pointer :: zb, zb3
       real (kind=RKIND), dimension(:,:,:), pointer :: deriv_two
       
 !.. initialization of moisture:
@@ -232,8 +231,6 @@ module init_atm_test_cases
       CellsOnEdge       => grid % CellsOnEdge % array
 
       deriv_two  => grid % deriv_two % array
-      zf  => grid % zf % array
-      zf3 => grid % zf3% array
       zb  => grid % zb % array
       zb3 => grid % zb3% array
       
@@ -778,13 +775,6 @@ module init_atm_test_cases
                zb3(k,1,iEdge)=  z_edge3*dvEdge(iEdge)/AreaCell(cell1)
                zb3(k,2,iEdge)=  z_edge3*dvEdge(iEdge)/AreaCell(cell2)
 
-               if (k /= 1) then
-                  zf(k,1,iEdge) = ( fzm(k)*zz(k,cell1)+fzp(k)*zz(k-1,cell1))*zb(k,1,iEdge)
-                  zf(k,2,iEdge) = ( fzm(k)*zz(k,cell2)+fzp(k)*zz(k-1,cell2))*zb(k,2,iEdge)
-                  zf3(k,1,iEdge)= ( fzm(k)*zz(k,cell1)+fzp(k)*zz(k-1,cell1))*zb3(k,1,iEdge)
-                  zf3(k,2,iEdge)= ( fzm(k)*zz(k,cell2)+fzp(k)*zz(k-1,cell2))*zb3(k,2,iEdge)
-               end if
-
          end do
 
       end do
@@ -799,14 +789,16 @@ module init_atm_test_cases
 
          do k = 2, grid%nVertLevels
             flux =  (fzm(k)*diag % ru % array(k,iEdge)+fzp(k)*diag % ru % array(k-1,iEdge))
-            diag % rw % array(k,cell2) = diag % rw % array(k,cell2) + zf(k,2,iEdge)*flux
-            diag % rw % array(k,cell1) = diag % rw % array(k,cell1) - zf(k,1,iEdge)*flux
+            diag % rw % array(k,cell2) = diag % rw % array(k,cell2) + (fzm(k)*zz(k,cell2)+fzp(k)*zz(k-1,cell2))*zb(k,2,iEdge)*flux
+            diag % rw % array(k,cell1) = diag % rw % array(k,cell1) - (fzm(k)*zz(k,cell1)+fzp(k)*zz(k-1,cell1))*zb(k,1,iEdge)*flux
 
             if (config_theta_adv_order ==3) then 
                diag % rw % array(k,cell2) = diag % rw % array(k,cell2)    &
-                                            - sign(1.0_RKIND,diag % ru % array(k,iEdge))*config_coef_3rd_order*zf3(k,2,iEdge)*flux
+                                            - sign(1.0_RKIND,diag % ru % array(k,iEdge))*config_coef_3rd_order* &
+                                              (fzm(k)*zz(k,cell2)+fzp(k)*zz(k-1,cell2))*zb3(k,2,iEdge)*flux
                diag % rw % array(k,cell1) = diag % rw % array(k,cell1)    &
-                                            + sign(1.0_RKIND,diag % ru % array(k,iEdge))*config_coef_3rd_order*zf3(k,1,iEdge)*flux
+                                            + sign(1.0_RKIND,diag % ru % array(k,iEdge))*config_coef_3rd_order* &
+                                              (fzm(k)*zz(k,cell1)+fzp(k)*zz(k-1,cell1))*zb3(k,1,iEdge)*flux
             end if
 
          end do
@@ -1487,8 +1479,6 @@ module init_atm_test_cases
        diag % rw % array = 0.
        state % w % array = 0.
 
-       grid % zf % array = 0.
-       grid % zf3% array = 0.
        grid % zb % array = 0.
        grid % zb3% array = 0.
 
@@ -1554,7 +1544,7 @@ module init_atm_test_cases
       real (kind=RKIND), dimension(:), pointer :: rdzw, dzu, rdzu, fzm, fzp
       real (kind=RKIND), dimension(:,:), pointer :: zgrid, zx, zz, hx, cqw
       real (kind=RKIND), dimension(:,:), pointer :: ppb, pb, rho_zz, rb, rr, tb, rtb, p, pp, dss, t, rt, u, ru 
-      real (kind=RKIND), dimension(:,:,:), pointer :: scalars, deriv_two, zf, zf3, zb, zb3
+      real (kind=RKIND), dimension(:,:,:), pointer :: scalars, deriv_two, zb, zb3
 
       !This is temporary variable here. It just need when calculate tangential velocity v.
       integer :: eoe, j
@@ -1621,8 +1611,6 @@ module init_atm_test_cases
       nCellsSolve = grid % nCellsSolve
 
       zgrid => grid % zgrid % array
-      zf => grid % zf % array
-      zf3 => grid % zf3 % array
       zb => grid % zb % array
       zb3 => grid % zb3 % array
       rdzw => grid % rdzw % array
@@ -2054,13 +2042,6 @@ module init_atm_test_cases
                   zb3(k,1,iEdge)=  z_edge3*dvEdge(iEdge)/AreaCell(cell1) 
                   zb3(k,2,iEdge)=  z_edge3*dvEdge(iEdge)/AreaCell(cell2) 
   
-                  if (k /= 1) then
-                     zf(k,1,iEdge) = ( fzm(k)*zz(k,cell1)+fzp(k)*zz(k-1,cell1) )*zb(k,1,iEdge)
-                     zf(k,2,iEdge) = ( fzm(k)*zz(k,cell2)+fzp(k)*zz(k-1,cell2) )*zb(k,2,iEdge)
-                     zf3(k,1,iEdge)= ( fzm(k)*zz(k,cell1)+fzp(k)*zz(k-1,cell1) )*zb3(k,1,iEdge)
-                     zf3(k,2,iEdge)= ( fzm(k)*zz(k,cell2)+fzp(k)*zz(k-1,cell2) )*zb3(k,2,iEdge)
-                  end if
-
             end do
 
          end if
@@ -2082,14 +2063,16 @@ module init_atm_test_cases
          if (cell1 <= nCellsSolve .or. cell2 <= nCellsSolve ) then
          do k = 2, grid%nVertLevels
             flux =  (fzm(k)*ru(k,iEdge)+fzp(k)*ru(k-1,iEdge))  
-            diag % rw % array(k,cell2) = diag % rw % array(k,cell2) + zf(k,2,iEdge)*flux 
-            diag % rw % array(k,cell1) = diag % rw % array(k,cell1) - zf(k,1,iEdge)*flux 
+            diag % rw % array(k,cell2) = diag % rw % array(k,cell2) + (fzm(k)*zz(k,cell2)+fzp(k)*zz(k-1,cell2))*zb(k,2,iEdge)*flux 
+            diag % rw % array(k,cell1) = diag % rw % array(k,cell1) - (fzm(k)*zz(k,cell1)+fzp(k)*zz(k-1,cell1))*zb(k,1,iEdge)*flux 
 
             if (config_theta_adv_order ==3) then
                diag % rw % array(k,cell2) = diag % rw % array(k,cell2)    &
-                                            - sign(1.0_RKIND,ru(k,iEdge))*config_coef_3rd_order*zf3(k,2,iEdge)*flux
+                                            - sign(1.0_RKIND,ru(k,iEdge))*config_coef_3rd_order* &
+                                              (fzm(k)*zz(k,cell2)+fzp(k)*zz(k-1,cell2))*zb3(k,2,iEdge)*flux
                diag % rw % array(k,cell1) = diag % rw % array(k,cell1)    &
-                                            + sign(1.0_RKIND,ru(k,iEdge))*config_coef_3rd_order*zf3(k,1,iEdge)*flux
+                                            + sign(1.0_RKIND,ru(k,iEdge))*config_coef_3rd_order* &
+                                              (fzm(k)*zz(k,cell1)+fzp(k)*zz(k-1,cell1))*zb3(k,1,iEdge)*flux
             end if
 
          end do
@@ -2183,7 +2166,7 @@ module init_atm_test_cases
       real (kind=RKIND), dimension(:,:), pointer :: pressure, ppb, pb, rho_zz, rb, rr, tb, rtb, p, pp, dss, t, rt
       real (kind=RKIND), dimension(:), pointer :: destField1d
       real (kind=RKIND), dimension(:,:), pointer :: destField2d
-      real (kind=RKIND), dimension(:,:,:), pointer :: zf, zf3, zb, zb3
+      real (kind=RKIND), dimension(:,:,:), pointer :: zb, zb3
       real (kind=RKIND), dimension(:,:,:), pointer :: scalars
       real (kind=RKIND), dimension(:,:,:), pointer :: deriv_two
 
@@ -2276,8 +2259,6 @@ module init_atm_test_cases
       cellsOnCell       => grid % cellsOnCell % array
 
       deriv_two  => grid % deriv_two % array
-      zf  => grid % zf % array
-      zf3 => grid % zf3% array
       zb  => grid % zb % array
       zb3 => grid % zb3% array
 
@@ -3182,7 +3163,7 @@ if (y > 1249.0) y = 1249.0
                                                 parinfo % cellsToSend, parinfo % cellsToRecv)
 
              !  dzmina = minval(hs(:)-hx(k-1,:))
-               dzmina = minval(zw(k)+ah(k)*hs(:)-zw(k-1)-ah(k-1)*hx(k-1,:))
+               dzmina = minval(zw(k)+ah(k)*hs(1:grid%nCellsSolve)-zw(k-1)-ah(k-1)*hx(k-1,1:grid%nCellsSolve))
                call mpas_dmpar_min_real(dminfo, dzmina, dzmina_global)
              !  write(0,*) ' k,i, dzmina, dzmin, zw(k)-zw(k-1) ', k,i, dzmina, dzmin, zw(k)-zw(k-1)
                if (dzmina_global >= dzmin*(zw(k)-zw(k-1))) then
@@ -3289,13 +3270,6 @@ if (y > 1249.0) y = 1249.0
                   zb3(k,1,iEdge)=  z_edge3*dvEdge(iEdge)/AreaCell(cell1) 
                   zb3(k,2,iEdge)=  z_edge3*dvEdge(iEdge)/AreaCell(cell2) 
   
-                  if (k /= 1) then
-                     zf(k,1,iEdge) = ( fzm(k)*zz(k,cell1)+fzp(k)*zz(k-1,cell1) )*zb(k,1,iEdge)
-                     zf(k,2,iEdge) = ( fzm(k)*zz(k,cell2)+fzp(k)*zz(k-1,cell2) )*zb(k,2,iEdge)
-                     zf3(k,1,iEdge)= ( fzm(k)*zz(k,cell1)+fzp(k)*zz(k-1,cell1) )*zb3(k,1,iEdge)
-                     zf3(k,2,iEdge)= ( fzm(k)*zz(k,cell2)+fzp(k)*zz(k-1,cell2) )*zb3(k,2,iEdge)
-                  end if
-
             end do
 
          end if
@@ -3883,7 +3857,7 @@ write(0,*) 'PROCESSING SEAICE'
           
                if (field % iproj == PROJ_PS) then
                   call map_set(PROJ_PS, proj, &
-                               dx = real(field % dx * 1000.0,RKIND), &
+                               dx = real(field % dx,RKIND), &
                                truelat1 = real(field % truelat1,RKIND), &
                                stdlon = real(field % xlonc,RKIND), &
                                knowni = real(field % nx / 2.0,RKIND), &
@@ -4239,14 +4213,16 @@ write(0,*) 'PROCESSING SEAICE'
          if (cell1 <= nCellsSolve .or. cell2 <= nCellsSolve ) then
          do k = 2, grid%nVertLevels
             flux =  (fzm(k)*diag % ru % array(k,iEdge)+fzp(k)*diag % ru % array(k-1,iEdge))
-            diag % rw % array(k,cell2) = diag % rw % array(k,cell2) + zf(k,2,iEdge)*flux
-            diag % rw % array(k,cell1) = diag % rw % array(k,cell1) - zf(k,1,iEdge)*flux
+            diag % rw % array(k,cell2) = diag % rw % array(k,cell2) + (fzm(k)*zz(k,cell2)+fzp(k)*zz(k-1,cell2))*zb(k,2,iEdge)*flux
+            diag % rw % array(k,cell1) = diag % rw % array(k,cell1) - (fzm(k)*zz(k,cell1)+fzp(k)*zz(k-1,cell1))*zb(k,1,iEdge)*flux
 
             if (config_theta_adv_order ==3) then 
                diag % rw % array(k,cell2) = diag % rw % array(k,cell2)    &
-                                            - sign(1.0_RKIND,diag % ru % array(k,iEdge))*config_coef_3rd_order*zf3(k,2,iEdge)*flux
+                                            - sign(1.0_RKIND,diag % ru % array(k,iEdge))*config_coef_3rd_order* &
+                                              (fzm(k)*zz(k,cell2)+fzp(k)*zz(k-1,cell2))*zb3(k,2,iEdge)*flux
                diag % rw % array(k,cell1) = diag % rw % array(k,cell1)    &
-                                            + sign(1.0_RKIND,diag % ru % array(k,iEdge))*config_coef_3rd_order*zf3(k,1,iEdge)*flux
+                                            + sign(1.0_RKIND,diag % ru % array(k,iEdge))*config_coef_3rd_order* &
+                                              (fzm(k)*zz(k,cell1)+fzp(k)*zz(k-1,cell1))*zb3(k,1,iEdge)*flux
             end if
 
          end do
@@ -4286,7 +4262,7 @@ write(0,*) 'PROCESSING SEAICE'
 
    end subroutine init_atm_test_case_gfs
 
-   subroutine init_atm_test_case_sst(domain, dminfo, grid, fg, state, diag, test_case, parinfo)
+   subroutine init_atm_test_case_sfc(domain, dminfo, grid, fg, state, diag, test_case, parinfo)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! Real-data test case using SST data
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -4346,18 +4322,23 @@ write(0,*) 'PROCESSING SEAICE'
       curr_time = mpas_get_clock_time(fg_clock, MPAS_NOW) 
       do while (curr_time <= stop_time)
          call mpas_get_time(curr_time, dateTimeString=timeString)
-         write(0,*) 'Processing ',trim(config_met_prefix)//':'//timeString(1:13)
+         write(0,*) 'Processing ',trim(config_sfc_prefix)//':'//timeString(1:13)
 
          ! Open intermediate file
-         call read_met_init(trim(config_met_prefix), .false., timeString(1:13), istatus)
+         call read_met_init(trim(config_sfc_prefix), .false., timeString(1:13), istatus)
          if (istatus /= 0) then
-            write(0,*) 'Error reading ',trim(config_met_prefix)//':'//timeString(1:13)
+            write(0,*) 'Error reading ',trim(config_sfc_prefix)//':'//timeString(1:13)
             exit
          end if
 
          ! Scan through all fields in the file, looking for the SST or SKINTEMP field
          call read_next_met_field(field, istatus)
          do while (istatus == 0)
+
+            !initialization of sea-surface temperature (SST) and sea-ice fraction (XICE) arrays,
+            !prior to reading the input data:
+            fg % sst  % array (1:grid%nCells) = 0.0
+            fg % xice % array (1:grid%nCells) = 0.0
 
             if (index(field % field, 'SKINTEMP') /= 0 .or. index(field % field, 'SST') /= 0) then
 
@@ -4389,6 +4370,15 @@ write(0,*) 'PROCESSING SEAICE'
                                lat1 = real(field % startlat,RKIND), &
                                lon1 = real(field % startlon,RKIND))
 !                               nxmax = nint(360.0 / field % deltalon), &
+               else if (field % iproj == PROJ_PS) then
+                  call map_set(PROJ_PS, proj, &
+                               dx = real(field % dx,RKIND), &
+                               truelat1 = real(field % truelat1,RKIND), &
+                               stdlon = real(field % xlonc,RKIND), &
+                               knowni = real(field % nx / 2.0,RKIND), &
+                               knownj = real(field % ny / 2.0,RKIND), &
+                               lat1 = real(field % startlat,RKIND), &
+                               lon1 = real(field % startlon,RKIND))
                end if
    
                ! Interpolate SST/SKINTEMP field to each MPAS grid cell
@@ -4413,10 +4403,8 @@ write(0,*) 'PROCESSING SEAICE'
 
                deallocate(slab_r8)
                deallocate(field % slab)
-               exit
-            end if
 
-            if (index(field % field, 'SEAICE') /= 0) then
+            else if (index(field % field, 'SEAICE') /= 0) then
 
                ! Interpolation routines use real(kind=RKIND), so copy from default real array
                allocate(slab_r8(field % nx, field % ny))
@@ -4446,6 +4434,15 @@ write(0,*) 'PROCESSING SEAICE'
                                lat1 = real(field % startlat,RKIND), &
                                lon1 = real(field % startlon,RKIND))
 !                               nxmax = nint(360.0 / field % deltalon), &
+               else if (field % iproj == PROJ_PS) then
+                  call map_set(PROJ_PS, proj, &
+                               dx = real(field % dx,RKIND), &
+                               truelat1 = real(field % truelat1,RKIND), &
+                               stdlon = real(field % xlonc,RKIND), &
+                               knowni = real(field % nx / 2.0,RKIND), &
+                               knownj = real(field % ny / 2.0,RKIND), &
+                               lat1 = real(field % startlat,RKIND), &
+                               lon1 = real(field % startlon,RKIND))
                end if
    
                ! Interpolate SEAICE/SKINTEMP field to each MPAS grid cell
@@ -4466,15 +4463,18 @@ write(0,*) 'PROCESSING SEAICE'
                      call latlon_to_ij(proj, lat, lon, x, y)
                   end if
                   fg % xice % array(iCell) = interp_sequence(x, y, 1, slab_r8, 1, field % nx, 1, field % ny, 1, 1, -1.e30_RKIND, interp_list, 1)
+                  if (fg % xice % array(iCell) == -1.e30_RKIND) fg % xice % array(iCell) = 0.0_RKIND
 
                end do
 
                deallocate(slab_r8)
                deallocate(field % slab)
-               exit
+
+            else
+
+               deallocate(field % slab)
             end if
 
-            deallocate(field % slab)
             call read_next_met_field(field, istatus)
          end do
 
@@ -4495,62 +4495,8 @@ write(0,*) 'PROCESSING SEAICE'
 
       call mpas_output_state_finalize(sfc_update_obj, dminfo)
       
-   end subroutine init_atm_test_case_sst
+   end subroutine init_atm_test_case_sfc
 
-#if 0
-   real function four_pt(nx, ny, array, xx, yy)
-
-      implicit none
-
-      integer, intent(in) :: nx, ny 
-      real (kind=4), dimension(nx, ny), intent(in) :: array
-      real (kind=4), intent(in) :: xx, yy
-
-      integer :: min_x, max_x, min_y, max_y
-
-      min_x = floor(xx)
-      min_y = floor(yy)
-      max_x = ceiling(xx)
-      max_y = ceiling(yy)
-
-      if (min_x == 0) min_x = max_x
-      if (max_x == nx+1) max_x = min_x
-      if (min_y == 0) min_y = max_y
-      if (max_y == ny+1) max_y = min_y
-
-      if ((min_x < 1) .or. (max_x > nx) .or. (min_y < 1) .or. (max_y > ny)) then
-         write(0,*) '(x,y) location out of bounds'
-         four_pt = 0.0
-         return
-      end if 
-
-      if (min_x == max_x) then
-         if (min_y == max_y) then
-            four_pt = array(min_x,min_y)
-         else
-            four_pt = array(min_x,min_y)*(real(max_y)-yy) + &
-                      array(min_x,max_y)*(yy-real(min_y))
-         end if
-      else if (min_y == max_y) then
-         if (min_x == max_x) then
-            four_pt = array(min_x,min_y)
-         else
-            four_pt = array(min_x,min_y)*(real(max_x)-xx) + &
-                      array(max_x,min_y)*(xx-real(min_x))
-         end if
-      else
-         four_pt = (yy - min_y) * (array(min_x,max_y)*(real(max_x)-xx) + &
-                                   array(max_x,max_y)*(xx-real(min_x))) + &
-                   (max_y - yy) * (array(min_x,min_y)*(real(max_x)-xx) + &
-                                   array(max_x,min_y)*(xx-real(min_x)));
-      end if
-
-      return
-
-   end function four_pt
-#endif
-
-!----------------------------------------------------------------------------------------------------------
 
    integer function nearest_cell(target_lat, target_lon, &
                                  start_cell, &

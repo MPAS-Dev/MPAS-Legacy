@@ -30,7 +30,6 @@ namelist logical   nhyd_model config_positive_definite    false
 namelist logical   nhyd_model config_monotonic            true
 namelist logical   nhyd_model config_mix_full             true
 namelist real      nhyd_model config_len_disp             0.
-namelist integer   nhyd_model config_mp_physics           0.
 namelist real      nhyd_model config_epssm                0.1
 namelist real      nhyd_model config_smdiv                0.1
 namelist logical   nhyd_model config_newpx                false
@@ -146,10 +145,10 @@ var persistent real    fzm ( nVertLevels ) 0 iro fzm mesh - -
 var persistent real    fzp ( nVertLevels ) 0 iro fzp mesh - -
 var persistent real    zx ( nVertLevelsP1 nEdges ) 0 iro zx mesh - -
 var persistent real    zz ( nVertLevelsP1 nCells ) 0 iro zz mesh - -
-var persistent real    zf ( nVertLevelsP1 TWO nEdges ) 0 iro zf mesh - -
-var persistent real    zf3 ( nVertLevelsP1 TWO nEdges ) 0 iro zf3 mesh - -
 var persistent real    zb ( nVertLevelsP1 TWO nEdges ) 0 iro zb mesh - -
 var persistent real    zb3 ( nVertLevelsP1 TWO nEdges ) 0 iro zb3 mesh - -
+var persistent real    pzm ( nVertLevels nCells ) 0 r pzm mesh - -
+var persistent real    pzp ( nVertLevels nCells ) 0 r pzp mesh - -
 
 % coefficients for the vertical tridiagonal solve
 % Note:  these could be local but...
@@ -411,37 +410,46 @@ var persistent real    relhum     ( nVertLevels nCells Time ) 1  o  relhum      
 %... PARAMETERIZATION OF CONVECTION:
 %--------------------------------------------------------------------------------------------------
 
-% cubot     : lowest level of convection                                                        (-)
-% cutop     : highest level of convection                                                       (-)
 % cuprec    : convective precipitation rate                                                  (mm/s)
 % rainc     : accumulated time-step convective precipitation                                   (mm)
 % raincv    : time-step convective precipitation                                               (mm)
 % rthcuten  : tendency of potential temperature due to cumulus convection                   (K s-1)
 % rqvcuten  : tendency of water vapor mixing ratio due to cumulus convection            (kg/kg s-1)
 % rqccuten  : tendency of cloud water mixing ratio due to cumulus convection            (kg/kg s-1)
-% rqrcuten  : tendency of rain mixing ratio due to cumulus convection                   (kg/kg s-1)
 % rqicuten  : tendency of cloud ice mixing ratio due to cumulus convection              (kg/kg s-1)
-% rqscuten  : tendency of snow mixing ratio due to cumulus convection                   (kg/kg s-1)
 
-var persistent real    cubot    ( nCells Time              ) 1  ro cubot           diag_physics - -
-var persistent real    cutop    ( nCells Time              ) 1  ro cutop           diag_physics - -
-var persistent real    cuprec   ( nCells Time              ) 1  ro cuprec          diag_physics - -
-var persistent real    rainc    ( nCells Time              ) 1  ro rainc           diag_physics - -
-var persistent real    raincv   ( nCells Time              ) 1  ro raincv          diag_physics - -
+var persistent real   cuprec    ( nCells Time              ) 1  ro cuprec          diag_physics - -
+var persistent real   rainc     ( nCells Time              ) 1  ro rainc           diag_physics - -
+var persistent real   raincv    ( nCells Time              ) 1  ro raincv          diag_physics - -
 
-var persistent real    rthcuten ( nVertLevels nCells Time  ) 1  ro rthcuten        tend_physics - -
-var persistent real    rqvcuten ( nVertLevels nCells Time  ) 1  ro rqvcuten        tend_physics - -
-var persistent real    rqccuten ( nVertLevels nCells Time  ) 1  ro rqccuten        tend_physics - -
-var persistent real    rqrcuten ( nVertLevels nCells Time  ) 1  ro rqrcuten        tend_physics - -
-var persistent real    rqicuten ( nVertLevels nCells Time  ) 1  ro rqicuten        tend_physics - -
-var persistent real    rqscuten ( nVertLevels nCells Time  ) 1  ro rqscuten        tend_physics - -
+var persistent real   rthcuten  ( nVertLevels nCells Time  ) 1  ro rthcuten        tend_physics - -
+var persistent real   rqvcuten  ( nVertLevels nCells Time  ) 1  ro rqvcuten        tend_physics - -
+var persistent real   rqccuten  ( nVertLevels nCells Time  ) 1  ro rqccuten        tend_physics - -
+var persistent real   rqicuten  ( nVertLevels nCells Time  ) 1  ro rqicuten        tend_physics - -
 
-%... KAIN_FRITSCH ONLY:
+%... KAIN_FRITSCH:
+% cubot     : lowest level of convection                                                        (-)
+% cutop     : highest level of convection                                                       (-)
 % nca       : relaxation time for KF parameterization of convection                             (s)
 % wavg0     : average vertical velocity (KF scheme only)                                    (m s-1)
+% rqrcuten  : tendency of rain mixing ratio due to cumulus convection                   (kg/kg s-1)
+% rqscuten  : tendency of snow mixing ratio due to cumulus convection                   (kg/kg s-1)
 
-var persistent real    nca      ( nCells Time              ) 1  ro nca             diag_physics - -
-var persistent real    w0avg    ( nVertLevels nCells Time  ) 1  ro w0avg           diag_physics - -
+var persistent real   nca       ( nCells Time              ) 1  ro nca             diag_physics - -
+var persistent real   cubot     ( nCells Time              ) 1  ro cubot           diag_physics - -
+var persistent real   cutop     ( nCells Time              ) 1  ro cutop           diag_physics - -
+var persistent real   w0avg     ( nVertLevels nCells Time  ) 1  ro w0avg           diag_physics - -
+var persistent real   rqrcuten  ( nVertLevels nCells Time  ) 1  ro rqrcuten        tend_physics - -
+var persistent real   rqscuten  ( nVertLevels nCells Time  ) 1  ro rqscuten        tend_physics - -
+
+%... TIEDTKE:
+% rucuten   : tendency of zonal wind due to cumulus convection                              (m/s-1)
+% rvcuten   : tendency of meridional wind due to cumulus convection                         (m/s-1)
+% rqvdynten : tendency of water vapor due to horizontal and vertical advections         (kg/kg/s-1)
+
+var persistent real   rqvdynten ( nVertLevels nCells Time  ) 1  ro rqvdynten       tend_physics - -
+var persistent real   rucuten   ( nVertLevels nCells Time  ) 1  ro rucuten         tend_physics - -
+var persistent real   rvcuten   ( nVertLevels nCells Time  ) 1  ro rvcuten         tend_physics - -
 
 %--------------------------------------------------------------------------------------------------
 %... PARAMETERIZATION OF PLANETARY BOUNDARY LAYER PROCESSES:

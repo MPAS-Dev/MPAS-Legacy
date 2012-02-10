@@ -7,7 +7,7 @@ MODULE module_cam_support
 ! Author: William.Gustafson@pnl.gov, Nov 2009
 !------------------------------------------------------------------------
 #if (defined(non_hydrostatic_core) || defined(hydrostatic_core))
-  use module_physics_utilities
+  use mpas_atmphys_utilities
 #else
   use module_state_description, only: param_num_moist
 #endif

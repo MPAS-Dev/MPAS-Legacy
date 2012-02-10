@@ -15,7 +15,7 @@
 &data_sources
    config_geog_data_path  = '/mmm/users/wrfhelp/WPS_GEOG/'
    config_met_prefix      = 'CFSR'
-   config_sst_prefix      = 'SST'
+   config_sfc_prefix      = 'SST'
    config_fg_interval     = 21600
 /
 
@@ -29,7 +29,6 @@
    config_static_interp   = .false.
    config_vertical_grid   = .true.
    config_met_interp      = .true.
-   config_physics_init    = .true.
    config_input_sst       = .false.
 /
 

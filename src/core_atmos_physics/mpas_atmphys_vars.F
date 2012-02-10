@@ -43,6 +43,9 @@
  
  real(kind=RKIND),public:: xice_threshold
 
+ real(kind=RKIND),dimension(:),allocatable:: &
+    znu_p
+
  real(kind=RKIND),dimension(:,:),allocatable:: &
     area_p             !grid cell area                                                    [m2]
 
@@ -138,22 +141,36 @@
  logical,dimension(:,:),allocatable:: &
  	cu_act_flag
  real(kind=RKIND),dimension(:,:),allocatable::   &
-    cubot_p,          &!lowest convective level                                            [-]
-    cutop_p,          &!highest convective level                                           [-]
-    nca_p,            &!counter for cloud relaxation time                                  [-]
     rainc_p,          &!
     raincv_p,         &!
     pratec_p           !
- real(kind=RKIND),dimension(:,:,:),allocatable:: &
-    w0avg_p          !
 
  real(kind=RKIND),dimension(:,:,:),allocatable:: &
     rthcuten_p,       &!
     rqvcuten_p,       &!
     rqccuten_p,       &!
+    rqicuten_p         !
+
+!... kain fritsch specific arrays:
+ real(kind=RKIND),dimension(:,:),allocatable::   &
+    cubot_p,          &!lowest convective level                                            [-]
+    cutop_p,          &!highest convective level                                           [-]
+    nca_p              !counter for cloud relaxation time                                  [-]
+ real(kind=RKIND),dimension(:,:,:),allocatable:: &
+    w0avg_p          !
+
+ real(kind=RKIND),dimension(:,:,:),allocatable:: &
     rqrcuten_p,       &!
-    rqicuten_p,       &!
-    rqscuten_p
+    rqscuten_p         !
+
+!... tiedtke specific arrays:
+ real(kind=RKIND),dimension(:,:,:),allocatable:: &
+    rqvdynten_p,      &!
+    rqvdynblten_p      !
+
+ real(kind=RKIND),dimension(:,:,:),allocatable:: &
+    rucuten_p,        &!
+    rvcuten_p          !
 
 !=============================================================================================
 !... variables and arrays related to parameterization of pbl:

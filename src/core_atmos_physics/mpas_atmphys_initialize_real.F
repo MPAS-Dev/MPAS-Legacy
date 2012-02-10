@@ -6,7 +6,7 @@
                            config_input_sst,   &
                            config_nsoillevels, &
                            config_start_time,  &
-                           config_sst_prefix
+                           config_sfc_prefix
  use mpas_grid_types
  use init_atm_hinterp
  use init_atm_llxy
@@ -52,10 +52,10 @@
  interp_list(3) = 0
 
 !open intermediate file:
- call read_met_init(trim(config_sst_prefix),.false.,config_start_time(1:13),istatus)
+ call read_met_init(trim(config_sfc_prefix),.false.,config_start_time(1:13),istatus)
  if(istatus /= 0) &
-    write(0,*) 'Error reading ',trim(config_sst_prefix)//':'//config_start_time(1:13)
- write(0,*) 'Processing ',trim(config_sst_prefix)//':'//config_start_time(1:13)
+    write(0,*) 'Error reading ',trim(config_sfc_prefix)//':'//config_start_time(1:13)
+ write(0,*) 'Processing ',trim(config_sfc_prefix)//':'//config_start_time(1:13)
 
 !scan through all the fields in the file:
  call read_next_met_field(field,istatus)
@@ -87,6 +87,22 @@
                        loninc = real(field % deltalon,RKIND), &
                        knowni = 1.0_RKIND, &
                        knownj = 1.0_RKIND, &
+                       lat1 = real(field % startlat,RKIND), &
+                       lon1 = real(field % startlon,RKIND))
+       else if (field % iproj == PROJ_GAUSS) then
+          call map_set(PROJ_GAUSS, proj, &
+                       nlat = nint(field % deltalat), &
+                       loninc = real(field % deltalon,RKIND), &
+                       lat1 = real(field % startlat,RKIND), &
+                       lon1 = real(field % startlon,RKIND))
+!                       nxmax = nint(360.0 / field % deltalon), &
+       else if (field % iproj == PROJ_PS) then
+          call map_set(PROJ_PS, proj, &
+                       dx = real(field % dx,RKIND), &
+                       truelat1 = real(field % truelat1,RKIND), &
+                       stdlon = real(field % xlonc,RKIND), &
+                       knowni = real(field % nx / 2.0,RKIND), &
+                       knownj = real(field % ny / 2.0,RKIND), &
                        lat1 = real(field % startlat,RKIND), &
                        lon1 = real(field % startlon,RKIND))
        end if

@@ -334,6 +334,12 @@ module mpas_core
          if (mpas_is_alarm_ringing(clock, restartAlarmID, ierr=ierr)) then
             call mpas_reset_clock_alarm(clock, restartAlarmID, ierr=ierr)
 
+            block_ptr => domain % blocklist
+            do while (associated(block_ptr))
+               call atm_compute_restart_diagnostics(block_ptr % state % time_levs(1) % state, block_ptr % diag, block_ptr % mesh)
+               block_ptr => block_ptr % next
+            end do
+
             ! Write one restart time per file
             call mpas_output_state_init(restart_obj, domain, "RESTART", trim(timeStamp))
             call mpas_output_state_for_domain(restart_obj, domain, 1)
@@ -389,7 +395,7 @@ module mpas_core
    
    subroutine atm_compute_output_diagnostics(state, diag, grid)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   ! Compute diagnostic fields for a domain
+   ! Compute diagnostic fields for a domain to be written to history files
    !
    ! Input: state - contains model prognostic fields
    !        grid  - contains grid metadata
@@ -416,6 +422,37 @@ module mpas_core
       end do
    
    end subroutine atm_compute_output_diagnostics
+   
+   
+   subroutine atm_compute_restart_diagnostics(state, diag, grid)
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   ! Compute diagnostic fields for a domain to be written to restart files
+   !
+   ! Input: state - contains model prognostic fields
+   !        grid  - contains grid metadata
+   !
+   ! Output: state - upon returning, diagnostic fields will have be computed
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   
+      use mpas_grid_types
+   
+      implicit none
+   
+      type (state_type), intent(inout) :: state
+      type (diag_type), intent(inout) :: diag
+      type (mesh_type), intent(in) :: grid
+   
+      integer :: i, eoe
+      integer :: iCell, k
+
+      do iCell=1,grid%nCells
+         do k=1,grid%nVertLevels
+            diag % theta % array(k,iCell) = state % theta_m % array(k,iCell) / (1.0 + 1.61 * state % scalars % array(state % index_qv,k,iCell))
+            diag % rho % array(k,iCell) = state % rho_zz % array(k,iCell) * grid % zz % array(k,iCell)
+         end do
+      end do
+   
+   end subroutine atm_compute_restart_diagnostics
    
    
    subroutine atm_do_timestep(domain, dt, itimestep)
@@ -560,12 +597,14 @@ module mpas_core
 
       type (mesh_type), intent(inout) :: mesh
 
-      integer :: iEdge, iCell1, iCell2, k
+      integer :: iEdge, iCell1, iCell2, k, iCell, nz, nz1
       real (kind=RKIND) :: d1, d2, d3
-      real (kind=RKIND), dimension(:,:), pointer :: cpr, cpl, zgrid
+      real (kind=RKIND), dimension(:,:), pointer :: cpr, cpl, zgrid, pzp, pzm
 
       cpr   => mesh % cpr % array
       cpl   => mesh % cpl % array
+      pzp   => mesh % pzp % array
+      pzm   => mesh % pzm % array
       zgrid => mesh % zgrid % array
 
 !**** coefficient arrays for new pressure gradient calculation
@@ -575,27 +614,69 @@ module mpas_core
 
       if (config_newpx) then
          do iEdge=1,mesh%nEdges
+
             iCell1 = mesh % cellsOnEdge % array(1,iEdge)
             iCell2 = mesh % cellsOnEdge % array(2,iEdge)
 
             d1       = .25*(zgrid(1,iCell2)+zgrid(2,iCell2)-zgrid(1,iCell1)-zgrid(2,iCell1))
             d2       = d1+.5*(zgrid(3,iCell2)-zgrid(1,iCell2))
             d3       = d2+.5*(zgrid(4,iCell2)-zgrid(2,iCell2))
-            cpr(1,iEdge) = d2*d3*(d3-d2)/(d2*d3*(d3-d2)+d1*d3*(d1-d3)+d1*d2*(d2-d1))
-            cpr(2,iEdge) = d1*d3*(d1-d3)/(d2*d3*(d3-d2)+d1*d3*(d1-d3)+d1*d2*(d2-d1))
-            cpr(3,iEdge) = d1*d2*(d2-d1)/(d2*d3*(d3-d2)+d1*d3*(d1-d3)+d1*d2*(d2-d1))
+!            cpr(1,iEdge) = d2*d3*(d3-d2)/(d2*d3*(d3-d2)+d1*d3*(d1-d3)+d1*d2*(d2-d1))
+!            cpr(2,iEdge) = d1*d3*(d1-d3)/(d2*d3*(d3-d2)+d1*d3*(d1-d3)+d1*d2*(d2-d1))
+!            cpr(3,iEdge) = d1*d2*(d2-d1)/(d2*d3*(d3-d2)+d1*d3*(d1-d3)+d1*d2*(d2-d1))
+
+            cpr(1,iEdge) =  d2/(d2-d1)
+            cpr(2,iEdge) = -d1/(d2-d1)
+            cpr(3,iEdge) =  0.
 
             d1       = .25*(zgrid(1,iCell1)+zgrid(2,iCell1)-zgrid(1,iCell2)-zgrid(2,iCell2))
             d2       = d1+.5*(zgrid(3,iCell1)-zgrid(1,iCell1))
             d3       = d2+.5*(zgrid(4,iCell1)-zgrid(2,iCell1))
-            cpl(1,iEdge) = d2*d3*(d3-d2)/(d2*d3*(d3-d2)+d1*d3*(d1-d3)+d1*d2*(d2-d1))
-            cpl(2,iEdge) = d1*d3*(d1-d3)/(d2*d3*(d3-d2)+d1*d3*(d1-d3)+d1*d2*(d2-d1))
-            cpl(3,iEdge) = d1*d2*(d2-d1)/(d2*d3*(d3-d2)+d1*d3*(d1-d3)+d1*d2*(d2-d1))
+!            cpl(1,iEdge) = d2*d3*(d3-d2)/(d2*d3*(d3-d2)+d1*d3*(d1-d3)+d1*d2*(d2-d1))
+!            cpl(2,iEdge) = d1*d3*(d1-d3)/(d2*d3*(d3-d2)+d1*d3*(d1-d3)+d1*d2*(d2-d1))
+!            cpl(3,iEdge) = d1*d2*(d2-d1)/(d2*d3*(d3-d2)+d1*d3*(d1-d3)+d1*d2*(d2-d1))
+
+            cpl(1,iEdge) =  d2/(d2-d1)
+            cpl(2,iEdge) = -d1/(d2-d1)
+            cpl(3,iEdge) =  0.
 
          end do
+
 !         write(6,*) 'cpr1 = ',cpr(1,1),'  cpl1 = ',cpl(1,1)
 !         write(6,*) 'cpr2 = ',cpr(2,1),'  cpl2 = ',cpl(2,1)
 !         write(6,*) 'cpr3 = ',cpr(3,1),'  cpl3 = ',cpl(3,1)
+
+      else
+
+!        Coefficients for computing vertical pressure gradient dp/dz
+!        dp/dz (k,iCell) = pzp(k,iCell) * (p(k+1,iCell) - p(k,iCell)) +pzm(k,iCell) * (p(k,iCell) - p(k-1,iCell))
+
+         nz1 = mesh % nVertLevels
+         nz = nz1 + 1
+
+         do iCell=1, mesh % nCells
+
+            d1 = zgrid(3,iCell)-zgrid(1,iCell)
+            d2 = zgrid(4,iCell)-zgrid(2,iCell)
+            d3 = d1+d2
+            pzm(1,iCell) =  2.*d3/(d1*d2)
+            pzp(1,iCell) = -2.*d1/(d2*d3)
+
+            do k=2,nz1-1
+               pzp(k,iCell) = 2.*(zgrid(k+1,iCell)-zgrid(k-1,iCell))/     &
+     &                      ((zgrid(k+2,iCell)-zgrid(k  ,iCell))*     &
+     &                       (zgrid(k+2,iCell)-zgrid(k  ,iCell)       &
+     &                       +zgrid(k+1,iCell)-zgrid(k-1,iCell)))
+               pzm(k,iCell) = 2.*(zgrid(k+2,iCell)-zgrid(k  ,iCell))/     &
+     &                      ((zgrid(k+1,iCell)-zgrid(k-1,iCell))*     &
+     &                       (zgrid(k+2,iCell)-zgrid(k  ,iCell)       &
+     &                       +zgrid(k+1,iCell)-zgrid(k-1,iCell)))
+            end do
+
+            pzp(nz1,iCell) = 0.
+            pzm(nz1,iCell) = 2./(zgrid(nz,iCell)-zgrid(nz1-1,iCell))
+
+         end do
 
       end if
 

@@ -63,13 +63,15 @@ core_physics: $(OBJS)
 
 # DEPENDENCIES:
 mpas_atmphys_driver_cloudines.o: \
-	mpas_atmphys_driver_cloudiness.o            \
+	mpas_atmphys_driver_cloudiness.o    \
 	mpas_atmphys_vars.o
 
 mpas_atmphys_driver_convection_deep.o: \
 	mpas_atmphys_constants.o            \
+	mpas_atmphys_utilities.o            \
 	mpas_atmphys_vars.o                 \
-	./physics_wrf/module_cu_kfeta.o
+	./physics_wrf/module_cu_kfeta.o     \
+	./physics_wrf/module_cu_tiedtke.o
 
 mpas_atmphys_driver_lsm.o: \
 	mpas_atmphys_constants.o            \
@@ -84,22 +86,22 @@ mpas_atmphys_driver_pbl.o: \
 	./physics_wrf/module_bl_ysu.o
 
 mpas_atmphys_driver_radiation_lw.o: \
-	mpas_atmphys_driver_radiation_sw.o          \
+	mpas_atmphys_driver_radiation_sw.o  \
 	mpas_atmphys_camrad_init.o          \
 	mpas_atmphys_constants.o            \
 	mpas_atmphys_manager.o              \
 	mpas_atmphys_rrtmg_lwinit.o         \
 	mpas_atmphys_vars.o                 \
-	./physics_wrf/module_ra_cam.o         \
+	./physics_wrf/module_ra_cam.o       \
 	./physics_wrf/module_ra_rrtmg_lw.o
 
 mpas_atmphys_driver_radiation_sw.o: \
-	mpas_atmphys_camrad_init.o         \
+	mpas_atmphys_camrad_init.o          \
 	mpas_atmphys_constants.o            \
 	mpas_atmphys_manager.o              \
 	mpas_atmphys_rrtmg_swinit.o         \
 	mpas_atmphys_vars.o                 \
-	./physics_wrf/module_ra_cam.o         \
+	./physics_wrf/module_ra_cam.o       \
 	./physics_wrf/module_ra_rrtmg_sw.o
 
 mpas_atmphys_driver_sfclayer.o: \

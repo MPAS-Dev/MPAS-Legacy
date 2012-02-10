@@ -141,7 +141,7 @@ module atm_test_cases
       real (kind=RKIND), dimension(:), pointer :: surface_pressure
       real (kind=RKIND), dimension(:,:), pointer :: zgrid, zx, zz, hx
       real (kind=RKIND), dimension(:,:), pointer :: pressure, ppb, pb, rho_zz, rb, rr, tb, rtb, p, pp, dss, t, rt
-      real (kind=RKIND), dimension(:,:,:), pointer :: zf, zf3, zb, zb3
+      real (kind=RKIND), dimension(:,:,:), pointer :: zb, zb3
       real (kind=RKIND), dimension(:,:,:), pointer :: deriv_two
       
 !.. initialization of moisture:
@@ -219,8 +219,6 @@ module atm_test_cases
       CellsOnEdge       => grid % CellsOnEdge % array
 
       deriv_two  => grid % deriv_two % array
-      zf  => grid % zf % array
-      zf3 => grid % zf3% array
       zb  => grid % zb % array
       zb3 => grid % zb3% array
       
@@ -765,13 +763,6 @@ module atm_test_cases
                zb3(k,1,iEdge)=  z_edge3*dvEdge(iEdge)/AreaCell(cell1)
                zb3(k,2,iEdge)=  z_edge3*dvEdge(iEdge)/AreaCell(cell2)
 
-               if (k /= 1) then
-                  zf(k,1,iEdge) = ( fzm(k)*zz(k,cell1)+fzp(k)*zz(k-1,cell1))*zb(k,1,iEdge)
-                  zf(k,2,iEdge) = ( fzm(k)*zz(k,cell2)+fzp(k)*zz(k-1,cell2))*zb(k,2,iEdge)
-                  zf3(k,1,iEdge)= ( fzm(k)*zz(k,cell1)+fzp(k)*zz(k-1,cell1))*zb3(k,1,iEdge)
-                  zf3(k,2,iEdge)= ( fzm(k)*zz(k,cell2)+fzp(k)*zz(k-1,cell2))*zb3(k,2,iEdge)
-               end if
-
          end do
 
       end do
@@ -786,14 +777,16 @@ module atm_test_cases
 
          do k = 2, grid%nVertLevels
             flux =  (fzm(k)*diag % ru % array(k,iEdge)+fzp(k)*diag % ru % array(k-1,iEdge))
-            diag % rw % array(k,cell2) = diag % rw % array(k,cell2) + zf(k,2,iEdge)*flux
-            diag % rw % array(k,cell1) = diag % rw % array(k,cell1) - zf(k,1,iEdge)*flux
+            diag % rw % array(k,cell2) = diag % rw % array(k,cell2) + (fzm(k)*zz(k,cell2)+fzp(k)*zz(k-1,cell2))*zb(k,2,iEdge)*flux
+            diag % rw % array(k,cell1) = diag % rw % array(k,cell1) - (fzm(k)*zz(k,cell1)+fzp(k)*zz(k-1,cell1))*zb(k,1,iEdge)*flux
 
             if (config_theta_adv_order ==3) then 
                diag % rw % array(k,cell2) = diag % rw % array(k,cell2)    &
-                                            - sign(1.0_RKIND,diag % ru % array(k,iEdge))*config_coef_3rd_order*zf3(k,2,iEdge)*flux
+                                            - sign(1.0_RKIND,diag % ru % array(k,iEdge))*config_coef_3rd_order* &
+                                              (fzm(k)*zz(k,cell2)+fzp(k)*zz(k-1,cell2))*zb3(k,2,iEdge)*flux
                diag % rw % array(k,cell1) = diag % rw % array(k,cell1)    &
-                                            + sign(1.0_RKIND,diag % ru % array(k,iEdge))*config_coef_3rd_order*zf3(k,1,iEdge)*flux
+                                            + sign(1.0_RKIND,diag % ru % array(k,iEdge))*config_coef_3rd_order* &
+                                              (fzm(k)*zz(k,cell1)+fzp(k)*zz(k-1,cell1))*zb3(k,1,iEdge)*flux
             end if
 
          end do
@@ -1474,8 +1467,6 @@ module atm_test_cases
        diag % rw % array = 0.
        state % w % array = 0.
 
-       grid % zf % array = 0.
-       grid % zf3% array = 0.
        grid % zb % array = 0.
        grid % zb3% array = 0.
 
@@ -1541,7 +1532,7 @@ module atm_test_cases
       real (kind=RKIND), dimension(:), pointer :: rdzw, dzu, rdzu, fzm, fzp
       real (kind=RKIND), dimension(:,:), pointer :: zgrid, zx, zz, hx, cqw
       real (kind=RKIND), dimension(:,:), pointer :: ppb, pb, rho_zz, rb, rr, tb, rtb, p, pp, dss, t, rt, u, ru 
-      real (kind=RKIND), dimension(:,:,:), pointer :: scalars, deriv_two, zf, zf3, zb, zb3
+      real (kind=RKIND), dimension(:,:,:), pointer :: scalars, deriv_two, zb, zb3
 
       !This is temporary variable here. It just need when calculate tangential velocity v.
       integer :: eoe, j
@@ -1608,8 +1599,6 @@ module atm_test_cases
       nCellsSolve = grid % nCellsSolve
 
       zgrid => grid % zgrid % array
-      zf => grid % zf % array
-      zf3 => grid % zf3 % array
       zb => grid % zb % array
       zb3 => grid % zb3 % array
       rdzw => grid % rdzw % array
@@ -2041,13 +2030,6 @@ module atm_test_cases
                   zb3(k,1,iEdge)=  z_edge3*dvEdge(iEdge)/AreaCell(cell1) 
                   zb3(k,2,iEdge)=  z_edge3*dvEdge(iEdge)/AreaCell(cell2) 
   
-                  if (k /= 1) then
-                     zf(k,1,iEdge) = ( fzm(k)*zz(k,cell1)+fzp(k)*zz(k-1,cell1) )*zb(k,1,iEdge)
-                     zf(k,2,iEdge) = ( fzm(k)*zz(k,cell2)+fzp(k)*zz(k-1,cell2) )*zb(k,2,iEdge)
-                     zf3(k,1,iEdge)= ( fzm(k)*zz(k,cell1)+fzp(k)*zz(k-1,cell1) )*zb3(k,1,iEdge)
-                     zf3(k,2,iEdge)= ( fzm(k)*zz(k,cell2)+fzp(k)*zz(k-1,cell2) )*zb3(k,2,iEdge)
-                  end if
-
             end do
 
          end if
@@ -2069,14 +2051,16 @@ module atm_test_cases
          if (cell1 <= nCellsSolve .or. cell2 <= nCellsSolve ) then
          do k = 2, grid%nVertLevels
             flux =  (fzm(k)*ru(k,iEdge)+fzp(k)*ru(k-1,iEdge))  
-            diag % rw % array(k,cell2) = diag % rw % array(k,cell2) + zf(k,2,iEdge)*flux 
-            diag % rw % array(k,cell1) = diag % rw % array(k,cell1) - zf(k,1,iEdge)*flux 
+            diag % rw % array(k,cell2) = diag % rw % array(k,cell2) + (fzm(k)*zz(k,cell2)+fzp(k)*zz(k-1,cell2))*zb(k,2,iEdge)*flux 
+            diag % rw % array(k,cell1) = diag % rw % array(k,cell1) - (fzm(k)*zz(k,cell1)+fzp(k)*zz(k-1,cell1))*zb(k,1,iEdge)*flux 
 
             if (config_theta_adv_order ==3) then
                diag % rw % array(k,cell2) = diag % rw % array(k,cell2)    &
-                                            - sign(1.0_RKIND,ru(k,iEdge))*config_coef_3rd_order*zf3(k,2,iEdge)*flux
+                                            - sign(1.0_RKIND,ru(k,iEdge))*config_coef_3rd_order* &
+                                              (fzm(k)*zz(k,cell2)+fzp(k)*zz(k-1,cell2))*zb3(k,2,iEdge)*flux
                diag % rw % array(k,cell1) = diag % rw % array(k,cell1)    &
-                                            + sign(1.0_RKIND,ru(k,iEdge))*config_coef_3rd_order*zf3(k,1,iEdge)*flux
+                                            + sign(1.0_RKIND,ru(k,iEdge))*config_coef_3rd_order* &
+                                              (fzm(k)*zz(k,cell1)+fzp(k)*zz(k-1,cell1))*zb3(k,1,iEdge)*flux
             end if
 
          end do

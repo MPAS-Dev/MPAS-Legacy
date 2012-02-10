@@ -115,7 +115,8 @@
     !call to convection scheme:
     if(config_conv_deep_scheme .ne. 'off') then
        call allocate_convection_deep
-       call driver_convection_deep(itimestep,block%mesh,block%diag_physics,block%tend_physics)
+       call driver_convection_deep(itimestep,block%mesh,block%sfc_input,block%diag_physics, &
+                                  block%tend_physics)
        call deallocate_convection_deep
     endif
 

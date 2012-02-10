@@ -14,7 +14,7 @@ namelist integer   dimensions config_nfgsoillevels        4
 namelist integer   dimensions config_months               12
 namelist character data_sources config_geog_data_path     /data3/mp/wrfhelp/WPS_GEOG/
 namelist character data_sources config_met_prefix         FILE
-namelist character data_sources config_sst_prefix         FILE
+namelist character data_sources config_sfc_prefix         FILE
 namelist integer   data_sources config_fg_interval        21600
 namelist real      vertical_grid  config_ztop             24000.0
 namelist integer   vertical_grid  config_nsmterrain       2
@@ -22,7 +22,6 @@ namelist logical   vertical_grid  config_smooth_surfaces  true
 namelist logical   preproc_stages config_static_interp    true
 namelist logical   preproc_stages config_vertical_grid    true
 namelist logical   preproc_stages config_met_interp       true
-namelist logical   preproc_stages config_physics_init     false
 namelist logical   preproc_stages config_input_sst        false
 namelist logical   preproc_stages config_frac_seaice      false
 namelist character io         config_input_name           grid.nc
@@ -144,8 +143,6 @@ var persistent real    fzm ( nVertLevels ) 0 io fzm mesh - -
 var persistent real    fzp ( nVertLevels ) 0 io fzp mesh - -
 var persistent real    zx ( nVertLevelsP1 nEdges ) 0 io zx mesh - -
 var persistent real    zz ( nVertLevelsP1 nCells ) 0 io zz mesh - -
-var persistent real    zf ( nVertLevelsP1 TWO nEdges ) 0 io zf mesh - -
-var persistent real    zf3 ( nVertLevelsP1 TWO nEdges ) 0 io zf3 mesh - -
 var persistent real    zb ( nVertLevelsP1 TWO nEdges ) 0 io zb mesh - -
 var persistent real    zb3 ( nVertLevelsP1 TWO nEdges ) 0 io zb3 mesh - -
 
