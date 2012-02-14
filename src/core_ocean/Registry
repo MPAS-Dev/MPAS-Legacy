@@ -171,6 +171,7 @@ var persistent integer maxLevelEdgeBot ( nEdges ) 0 - maxLevelEdgeBot mesh - -
 var persistent integer maxLevelVertexTop ( nVertices ) 0 - maxLevelVertexTop mesh - -
 var persistent integer maxLevelVertexBot ( nVertices ) 0 - maxLevelVertexBot mesh - -
 var persistent real referenceBottomDepth ( nVertLevels ) 0 iro referenceBottomDepth mesh - -
+var persistent real referenceBottomDepthTopOfCell ( nVertLevelsP1 ) 0 - referenceBottomDepthTopOfCell mesh - -
 var persistent real hZLevel ( nVertLevels ) 0 iro hZLevel mesh - -
 
 % Boundary conditions: read from input, saved in restart and written to output

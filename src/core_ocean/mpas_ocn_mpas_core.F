@@ -508,7 +508,8 @@ module mpas_core
 
       integer :: iTracer, cell, cell1, cell2
       real (kind=RKIND) :: uhSum, hSum, hEdge1
-      real (kind=RKIND), dimension(:), pointer :: referenceBottomDepth
+      real (kind=RKIND), dimension(:), pointer :: &
+         referenceBottomDepth, referenceBottomDepthTopOfCell
       real (kind=RKIND), dimension(:,:), pointer :: h
       integer :: nVertLevels
 
@@ -518,6 +519,7 @@ module mpas_core
 
          h          => block % state % time_levs(1) % state % h % array
          referenceBottomDepth => block % mesh % referenceBottomDepth % array
+         referenceBottomDepthTopOfCell => block % mesh % referenceBottomDepthTopOfCell % array
          nVertLevels = block % mesh % nVertLevels
 
          ! mrp 120208 right now hZLevel is in the grid.nc file.
@@ -528,6 +530,12 @@ module mpas_core
          referenceBottomDepth(1) = block % mesh % hZLevel % array(1)
          do k = 2,nVertLevels
             referenceBottomDepth(k) = referenceBottomDepth(k-1) + block % mesh % hZLevel % array(k)
+         end do
+
+         ! TopOfCell needed where zero depth for the very top may be referenced.
+         referenceBottomDepthTopOfCell(1) = 0.0
+         do k = 1,nVertLevels
+            referenceBottomDepthTopOfCell(k+1) = referenceBottomDepth(k)
          end do
 
          ! Compute barotropic velocity at first timestep

@@ -432,7 +432,7 @@ module ocn_time_integration_split
       
                    sshEdge = 0.5 * (block % state % time_levs(oldBtrSubcycleTime) % state % sshSubcycle % array(cell1) &
                              + block % state % time_levs(oldBtrSubcycleTime) % state % sshSubcycle % array(cell2) )
-                   hSum = sshEdge + block % mesh % referenceBottomDepth % array (block % mesh % maxLevelEdgeTop % array(iEdge))
+                   hSum = sshEdge + block % mesh % referenceBottomDepthTopOfCell % array (block % mesh % maxLevelEdgeTop % array(iEdge)+1)
       
                    flux = ((1.0-config_btr_gam1_uWt1) * block % state % time_levs(oldBtrSubcycleTime) % state % uBtrSubcycle % array(iEdge) &
                           + config_btr_gam1_uWt1 * block % state % time_levs(newBtrSubcycleTime) % state % uBtrSubcycle % array(iEdge)) &
@@ -546,7 +546,7 @@ module ocn_time_integration_split
                                +   config_btr_gam2_SSHWt1 *block % state % time_levs(newBtrSubcycleTime) % state % sshSubcycle % array(cell2)
 
                      sshEdge = 0.5 * (sshCell1 + sshCell2)
-                     hSum = sshEdge + block % mesh % referenceBottomDepth % array (block % mesh % maxLevelEdgeTop % array(iEdge))
+                     hSum = sshEdge + block % mesh % referenceBottomDepthTopOfCell % array (block % mesh % maxLevelEdgeTop % array(iEdge)+1)
       
                      flux = ((1.0-config_btr_gam3_uWt2) * block % state % time_levs(oldBtrSubcycleTime) % state % uBtrSubcycle % array(iEdge) &
                             + config_btr_gam3_uWt2 * block % state % time_levs(newBtrSubcycleTime) % state % uBtrSubcycle % array(iEdge)) &
