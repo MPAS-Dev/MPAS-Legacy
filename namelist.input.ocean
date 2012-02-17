@@ -2,16 +2,16 @@
    config_test_case = 0
    config_time_integration = 'RK4'
    config_rk_filter_btr_mode = .false.
-   config_dt = 180.0
+   config_dt = 100.0
    config_start_time = '0000-01-01_00:00:00'
-   config_run_duration = '1_00:00:00'
-   config_stats_interval = 480
+   config_run_duration = '2000_00:00:00'
+   config_stats_interval = 1920
 /
 &io
    config_input_name = 'grid.nc'
    config_output_name = 'output.nc'
    config_restart_name = 'restart.nc'
-   config_output_interval = '1_00:00:00'
+   config_output_interval = '20_00:00:00'
    config_frames_per_outfile = 1000000
 /
 &restart
@@ -19,9 +19,9 @@
    config_restart_interval = '120_00:00:00'
 /
 &grid
-   config_vert_grid_type = 'isopycnal'
+   config_vert_grid_type = 'zlevel'
    config_pressure_type = 'pressure'
-   config_rho0 = 1014.65
+   config_rho0 = 1000
 /
 &split_explicit_ts
    config_n_ts_iter  =  2 
@@ -39,29 +39,26 @@
    config_btr_solve_SSH2  = .false.
 /
 &hmix
-   config_h_mom_eddy_visc2 = 0.0
+   config_h_mom_eddy_visc2 = 1.0e5
    config_h_mom_eddy_visc4 = 0.0
-   config_h_kappa = 0.0
-   config_h_kappa_q = 0.0
-   config_apvm_upwinding = 0.0
    config_visc_vorticity_term = .true.
-   config_h_tracer_eddy_diff2 = 0.0
+   config_h_tracer_eddy_diff2 = 1.0e5
    config_h_tracer_eddy_diff4 = 0.0
 /
 &vmix
-   config_vert_visc_type  = 'const'
-   config_vert_diff_type  = 'const'
-   config_implicit_vertical_mix = .false.
+   config_vert_visc_type  = 'rich'
+   config_vert_diff_type  = 'rich'
+   config_implicit_vertical_mix = .true.
    config_convective_visc       = 1.0
    config_convective_diff       = 1.0
    config_bottom_drag_coeff     = 1.0e-3
 /
 &vmix_const
-   config_vert_visc       = 1.0e-4
-   config_vert_diff       = 1.0e-4 
+   config_vert_visc       = 1.0e-5
+   config_vert_diff       = 1.0e-5 
 /
 &vmix_rich
-   config_bkrd_vert_visc  = 1.0e-4
+   config_bkrd_vert_visc  = 1.0e-5
    config_bkrd_vert_diff  = 1.0e-5
    config_rich_mix        = 0.005
 /
@@ -74,7 +71,7 @@
    config_zWidth_tanh  = 100
 /
 &eos
-   config_eos_type = 'linear'
+   config_eos_type = 'jm'
 /
 &advection
    config_vert_tracer_adv = 'stencil'

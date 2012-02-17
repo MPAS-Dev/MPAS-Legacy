@@ -23,7 +23,6 @@ module ocn_tendency
 
    use ocn_thick_hadv
    use ocn_thick_vadv
-   use ocn_gm
 
    use ocn_vel_coriolis
    use ocn_vel_pressure_grad
@@ -111,18 +110,17 @@ contains
       implicit none
 
       type (tend_type), intent(inout) :: tend
-      type (state_type), intent(inout) :: s
+      type (state_type), intent(in) :: s
       type (diagnostics_type), intent(in) :: d
       type (mesh_type), intent(in) :: grid
 
-      real (kind=RKIND), dimension(:,:), pointer :: h_edge, u, wTop, tend_h, uTransport
+      real (kind=RKIND), dimension(:,:), pointer :: h_edge, u, wTop, tend_h
 
       integer :: err
 
       call mpas_timer_start("ocn_tend_h")
 
       u           => s % u % array
-      uTransport  => s % uTransport % array
       wTop        => s % wTop % array
       h_edge      => s % h_edge % array
 
@@ -140,7 +138,7 @@ contains
       ! for explanation of divergence operator.
       !
       call mpas_timer_start("hadv", .false., thickHadvTimer)
-      call ocn_thick_hadv_tend(grid, uTransport, h_edge, tend_h, err)
+      call ocn_thick_hadv_tend(grid, u, h_edge, tend_h, err)
       call mpas_timer_stop("hadv", thickHadvTimer)
 
       !
@@ -308,7 +306,7 @@ contains
       type (mesh_type), intent(in) :: grid
 
       real (kind=RKIND), dimension(:,:), pointer :: &
-        u, uTransport, h,wTop, h_edge, vertDiffTopOfCell
+        u,h,wTop, h_edge, vertDiffTopOfCell
       real (kind=RKIND), dimension(:,:,:), pointer :: &
         tracers, tend_tr
 
@@ -317,7 +315,6 @@ contains
       call mpas_timer_start("ocn_tend_scalar")
 
       u           => s % u % array
-      uTransport           => s % uTransport % array
       h           => s % h % array
       wTop        => s % wTop % array
       tracers     => s % tracers % array
@@ -340,8 +337,9 @@ contains
       ! tracer_edge at the boundary will also need to be defined for flux boundaries.
 
       call mpas_timer_start("hadv", .false., tracerHadvTimer)
-      call ocn_tracer_hadv_tend(grid, uTransport, h_edge, tracers, tend_tr, err)
+      call ocn_tracer_hadv_tend(grid, u, h_edge, tracers, tend_tr, err)
       call mpas_timer_stop("hadv", tracerHadvTimer)
+
 
       !
       ! tracer tendency: vertical advection term -d/dz( h \phi w)
@@ -444,15 +442,13 @@ contains
         weightsOnEdge, kiteAreasOnVertex, h_edge, h, u, v, pressure,&
         circulation, vorticity, ke, ke_edge, MontPot, wTop, zMid, &
         pv_edge, pv_vertex, pv_cell, gradPVn, gradPVt, divergence, &
-        rho, temperature, salinity, kev, kevc, uBolusGM, uTransport
+        rho, temperature, salinity, kev, kevc
       real (kind=RKIND), dimension(:,:,:), pointer :: tracers, deriv_two
       real (kind=RKIND), dimension(:,:), allocatable:: div_u
       character :: c1*6
 
       h           => s % h % array
       u           => s % u % array
-      uTransport  => s % uTransport % array
-      uBolusGM      => s % uBolusGM % array
       v           => s % v % array
       h_edge      => s % h_edge % array
       circulation => s % circulation % array
@@ -503,7 +499,6 @@ contains
       vertexDegree = grid % vertexDegree
 
       boundaryCell => grid % boundaryCell % array
-
 
       !
       ! Compute height on cell edges at velocity locations
@@ -767,7 +762,7 @@ contains
       do iEdge = 1,nEdges
          do k = 1,maxLevelEdgeBot(iEdge)
            pv_edge(k,iEdge) = pv_edge(k,iEdge) &
-             - config_apvm_upwinding * dt* (  u(k,iEdge) * gradPVn(k,iEdge) &
+             - 0.5 * dt* (  u(k,iEdge) * gradPVn(k,iEdge) &
                           + v(k,iEdge) * gradPVt(k,iEdge) )
          enddo
       enddo
@@ -862,16 +857,6 @@ contains
            + sum(h(1:maxLevelCell(iCell),iCell))
 
       end do
-
-      ! Applications of any bolus-like parametrizations should be made after the next line.
-      uTransport(:,:) = u(:,:)
-
-      ! Apply the GM closure as a bolus velocity
-      if(config_h_kappa .GE. epsilon(0D0)) then
-         call ocn_gm_compute_uBolus(s,grid)
-         uTransport(:,:) = uTransport(:,:) + uBolusGM(:,:)
-      end if
-
 
    end subroutine ocn_diagnostic_solve!}}}
 
@@ -1138,7 +1123,6 @@ contains
       call mpas_timer_stop("ocn_fuperp")
 
    end subroutine ocn_fuperp!}}}
-
 
 !***********************************************************************
 !

@@ -5,7 +5,6 @@ OBJS = mpas_ocn_mpas_core.o \
        mpas_ocn_advection.o \
 	   mpas_ocn_thick_hadv.o \
 	   mpas_ocn_thick_vadv.o \
-           mpas_ocn_gm.o \
 	   mpas_ocn_vel_coriolis.o \
 	   mpas_ocn_vel_vadv.o \
 	   mpas_ocn_vel_hmix.o \
@@ -70,8 +69,6 @@ mpas_ocn_time_average.o:
 mpas_ocn_thick_hadv.o:
 
 mpas_ocn_thick_vadv.o:
-
-mpas_ocn_gm.o: 
 
 mpas_ocn_vel_pressure_grad.o:
 
@@ -143,7 +140,6 @@ mpas_ocn_mpas_core.o: mpas_ocn_mpas_core.o \
 			          mpas_ocn_test_cases.o \
 					  mpas_ocn_advection.o \
 					  mpas_ocn_thick_hadv.o \
-                                          mpas_ocn_gm.o \
 					  mpas_ocn_thick_vadv.o \
 					  mpas_ocn_vel_coriolis.o \
 					  mpas_ocn_vel_vadv.o \
