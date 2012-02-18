@@ -734,9 +734,6 @@ module ocn_time_integration_split
                block % mesh % nVertLevels, block % mesh % nCells, &
                block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
 
-            call mpas_dmpar_exch_halo_field3d_real(domain % dminfo, block % tend % tracers % array(:,:,:), &
-               block % tend % num_tracers, block % mesh % nVertLevels, block % mesh % nCells, &
-               block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
             block => block % next
          end do
          call mpas_timer_stop("se halo h", timer_halo_h)
@@ -848,6 +845,22 @@ module ocn_time_integration_split
 
             block => block % next
          end do
+
+        ! Boundary update on tracers.  This is placed here, rather than 
+        ! on tend % tracers as in RK4, because I needed to update 
+        ! afterwards for the del4 diffusion operator.
+         call mpas_timer_start("se halo tracers", .false., timer_halo_tracers)
+         block => domain % blocklist
+         do while (associated(block))
+
+            call mpas_dmpar_exch_halo_field3d_real(domain % dminfo, block % state % time_levs(2) % state % tracers % array(:,:,:), &
+               block % tend % num_tracers, block % mesh % nVertLevels, block % mesh % nCells, block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
+
+            block => block % next
+         end do
+         call mpas_timer_stop("se halo tracers", timer_halo_tracers)
+
+
 
       end do  ! split_explicit_step = 1, config_n_ts_iter
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
