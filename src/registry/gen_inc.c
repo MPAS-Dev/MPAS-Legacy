@@ -125,7 +125,15 @@ void gen_namelists(struct namelist * nls)
    nls_ptr = nls;
    while (nls_ptr) {
       if (!dict_search(dictionary, nls_ptr->record)) {
-         fortprintf(fd, "         read(funit,%s)\n", nls_ptr->record);
+         fortprintf(fd, "         read(funit,%s,iostat=ierr)\n", nls_ptr->record);
+         fortprintf(fd, "         if (ierr > 0) then\n");
+         fortprintf(fd, "            write(0,*) \'Error while reading namelist record &%s\'\n",nls_ptr->record);
+         fortprintf(fd, "            call mpas_dmpar_abort(dminfo)\n");
+         fortprintf(fd, "         else if (ierr < 0) then\n");
+         fortprintf(fd, "            write(0,*) \'Namelist record &%s not found; using default values for this namelist\'\'s variables\'\n",nls_ptr->record);
+         fortprintf(fd, "            rewind(funit)\n");
+         fortprintf(fd, "         end if\n");
+
          dict_insert(dictionary, nls_ptr->record);
       }
       nls_ptr = nls_ptr->next;

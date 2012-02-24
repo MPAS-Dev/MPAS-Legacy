@@ -13,7 +13,7 @@ module mpas_configure
 
       type (dm_info), intent(in) :: dminfo
 
-      integer :: funit
+      integer :: funit, ierr
 
 #include "config_namelist_defs.inc"
 
@@ -23,10 +23,12 @@ module mpas_configure
 #include "config_set_defaults.inc"
 
       if (dminfo % my_proc_id == IO_NODE) then
+         write(0,*) 'Reading namelist.input'
          open(funit,file='namelist.input',status='old',form='formatted')
 
 #include "config_namelist_reads.inc"
          close(funit)
+         write(0,*) ' '
       end if
 
 #include "config_bcast_namelist.inc"
