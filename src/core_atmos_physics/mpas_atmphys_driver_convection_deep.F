@@ -196,7 +196,7 @@
        write(0,*) '--- enter subroutine kf_eta_cps:'
        call  kf_eta_cps ( &
              dt        = dt_dyn     , ktau            = itimestep       ,            &
-             areaCell  = area_p     , cudt            = dt_cu           ,            &
+             areaCell  = area_p     , cudt            = cudt            ,            &
              curr_secs = curr_secs  , adapt_step_flag = adapt_step_flag ,            &
              rho       = rho_p      , raincv          = raincv_p        ,            &
              pratec    = pratec_p   , nca             = nca_p           ,            &

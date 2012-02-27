@@ -1,24 +1,24 @@
 %
 % namelist  type  namelist_record  name  default_value
 %
-namelist integer   nhyd_model config_test_case            5
+namelist integer   nhyd_model config_test_case            7
 namelist integer   nhyd_model config_calendar_type        MPAS_GREGORIAN
 namelist character nhyd_model config_start_time           none
 namelist character nhyd_model config_stop_time            none
-namelist integer   nhyd_model config_theta_adv_order      2
-namelist real      nhyd_model config_coef_3rd_order       1.0
+namelist integer   nhyd_model config_theta_adv_order      3
+namelist real      nhyd_model config_coef_3rd_order       0.25
 namelist integer   dimensions config_nvertlevels          26
 namelist integer   dimensions config_nsoillevels          4
 namelist integer   dimensions config_nfglevels            27
 namelist integer   dimensions config_nfgsoillevels        4
 namelist integer   dimensions config_months               12
-namelist character data_sources config_geog_data_path     /data3/mp/wrfhelp/WPS_GEOG/
+namelist character data_sources config_geog_data_path     /mmm/users/wrfhelp/WPS_GEOG/
 namelist character data_sources config_met_prefix         FILE
 namelist character data_sources config_sfc_prefix         FILE
 namelist integer   data_sources config_fg_interval        21600
-namelist real      vertical_grid  config_ztop             24000.0
+namelist real      vertical_grid  config_ztop             28000.0
 namelist integer   vertical_grid  config_nsmterrain       2
-namelist logical   vertical_grid  config_smooth_surfaces  true
+namelist logical   vertical_grid  config_smooth_surfaces  false
 namelist logical   preproc_stages config_static_interp    true
 namelist logical   preproc_stages config_vertical_grid    true
 namelist logical   preproc_stages config_met_interp       true
@@ -26,7 +26,7 @@ namelist logical   preproc_stages config_input_sst        false
 namelist logical   preproc_stages config_frac_seaice      false
 namelist character io         config_input_name           grid.nc
 namelist character io         config_sfc_update_name      sfc_update.nc
-namelist character io         config_output_name          output.nc
+namelist character io         config_output_name          init.nc
 namelist character io         config_restart_name         restart.nc
 namelist character io         config_decomp_file_prefix   graph.info.part.
 namelist integer   io         config_frames_per_outfile   0

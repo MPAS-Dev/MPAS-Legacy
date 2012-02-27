@@ -93,8 +93,6 @@ module atm_time_integration
       logical, parameter :: debug = .false.
 !      logical, parameter :: debug = .true.
       logical, parameter :: debug_mass_conservation = .true.
-!      logical, parameter :: do_microphysics = .true.
-      logical, parameter :: do_microphysics = .false.
 
       integer :: index_qc
       real (kind=RKIND) :: domain_mass, scalar_mass, scalar_min, scalar_max
@@ -415,13 +413,6 @@ module atm_time_integration
       end do
 #endif
 
-!     if(do_microphysics) then
-!     block => domain % blocklist
-!       do while (associated(block))
-!          call atm_qd_kessler( block % state % time_levs(1) % state, block % state % time_levs(2) % state, block % mesh, dt )
-!          block => block % next
-!       end do
-!     end if
 
 !      if(debug) then
         101 format(' local  min, max scalar',i4,2(1x,e17.10))
@@ -2370,7 +2361,11 @@ module atm_time_integration
             cell2 = cellsOnEdge(2,iEdge)
 
             do k=1,nVertLevels
+#ifdef ROTATED_GRID
+              u_mix(k) = u(k,iEdge) - grid % u_init % array(k) * sin( grid % angleEdge % array(iEdge) )
+#else
               u_mix(k) = u(k,iEdge) - grid % u_init % array(k) * cos( grid % angleEdge % array(iEdge) )
+#endif
             end do
 
             do k=2,nVertLevels-1
@@ -3449,161 +3444,5 @@ module atm_time_integration
 
    end subroutine atm_init_coupled_diagnostics
 
-! ------------------------
-
-   subroutine atm_qd_kessler( state_old, state_new, diag, tend, grid, dt )
-
-      implicit none
-      
-      type (state_type), intent(inout) :: state_old, state_new
-      type (diag_type), intent(inout) :: diag
-      type (tend_type), intent(inout) :: tend
-      type (mesh_type), intent(inout) :: grid
-      real (kind=RKIND), intent(in) :: dt
-   
-      real (kind=RKIND), dimension( grid % nVertLevels ) :: t, rho, p, dzu, qv, qc, qr, qc1, qr1
-   
-      integer :: k,iEdge,i,iCell,nz1
-      real (kind=RKIND) :: p0,rcv
-   
-   
-      write(0,*) ' in qd_kessler '
-   
-      p0 = 1.e+05
-      rcv = rgas/(cp-rgas)
-      nz1 = grid % nVertLevels
-   
-      do iCell = 1, grid % nCellsSolve
-   
-        do k = 1, grid % nVertLevels
-   
-          tend % rt_diabatic_tend % array(k,iCell) = state_new % theta_m % array(k,iCell)
-   
-          t(k) = state_new % theta_m % array(k,iCell)/(1. + 1.61*state_new % scalars % array(state_new % index_qv,k,iCell))
-          rho(k) = grid % zz % array(k,iCell)*state_new % rho_zz % array(k,iCell)
-          p(k) = diag % exner % array(k,iCell)
-          qv(k) = max(0.0_RKIND,state_new % scalars % array(state_new % index_qv,k,iCell))
-          qc(k) = max(0.0_RKIND,state_new % scalars % array(state_new % index_qc,k,iCell))
-          qr(k) = max(0.0_RKIND,state_new % scalars % array(state_new % index_qr,k,iCell))
-          qc1(k) = max(0.0_RKIND,state_old % scalars % array(state_old % index_qc,k,iCell))
-          qr1(k) = max(0.0_RKIND,state_old % scalars % array(state_old % index_qr,k,iCell))
-          dzu(k) = grid % dzu % array(k)
-   
-        end do
-   
-        call atm_kessler( t,qv,qc,qc1,qr,qr1,rho,p,dt,dzu,nz1, 1)
-   
-        do k = 1, grid % nVertLevels
-   
-          state_new % theta_m % array(k,iCell) = t(k)*(1.+1.61*qv(k))
-          tend % rt_diabatic_tend % array(k,iCell) = state_new % rho_zz % array(k,iCell) *  &
-                     (state_new % theta_m % array(k,iCell) - tend % rt_diabatic_tend % array(k,iCell))/dt
-          diag % rtheta_p % array(k,iCell) = state_new % rho_zz % array(k,iCell) * state_new % theta_m % array(k,iCell)  &
-                                         - diag % rtheta_base % array(k,iCell) 
-          state_new % scalars % array(state_new % index_qv,k,iCell) = qv(k)
-          state_new % scalars % array(state_new % index_qc,k,iCell) = qc(k)
-          state_new % scalars % array(state_new % index_qr,k,iCell) = qr(k)
-   
-          diag % exner % array(k,iCell) =                                       &
-                                 ( grid % zz % array(k,iCell)*(rgas/p0) * ( &
-                                     diag % rtheta_p % array(k,iCell)       &
-                                   + diag % rtheta_base % array(k,iCell) ) )**rcv
-   
-          diag % pressure_p % array(k,iCell) =                                                &
-               grid % zz % array(k,iCell) * rgas * (                                        &
-                 diag % exner % array(k,iCell)*diag % rtheta_p % array(k,iCell)             &
-                                   +diag % rtheta_base % array(k,iCell) *                   &
-                        (diag % exner % array(k,iCell) - diag % exner_base % array(k,iCell)) )
-        end do
-   
-      end do
-   
-      write(0,*) ' exiting qd_kessler '
-
-   end subroutine atm_qd_kessler
-
-!-----------------------------------------------------------------------
-      subroutine atm_kessler( t1t, qv1t, qc1t, qc1, qr1t, qr1,        &
-                              rho, pii, dt, dzu, nz1, nx         )
-!-----------------------------------------------------------------------
-!
-      implicit none
-      integer :: nx, nz1
-      real (kind=RKIND) :: t1t (nz1,nx), qv1t(nz1,nx), qc1t(nz1,nx), &
-                            qr1t(nz1,nx), qc1 (nz1,nx), qr1 (nz1,nx), &
-                            rho (nz1,nx), pii (nz1,nx), dzu(nz1)
-      integer, parameter :: mz=200
-      real (kind=RKIND) ::  qrprod(mz), prod (mz), rcgs( mz), rcgsi (mz) &
-                           ,ern   (mz), vt   (mz), vtden(mz), gam   (mz) &
-                           ,r     (mz), rhalf(mz), velqr(mz), buoycy(mz) &
-                           ,pk    (mz), pc   (mz), f0   (mz), qvs   (mz)
-
-      real (kind=RKIND) :: c1, c2, c3, c4, f5, mxfall, dtfall, fudge, dt, velu, veld, artemp, artot
-      real (kind=RKIND) :: cp, product, ackess, ckess, fvel, f2x, xk, xki, psl
-      integer :: nfall
-      integer :: i,k,n
-
-      ackess = 0.001
-      ckess  = 2.2
-      fvel   = 36.34
-      f2x    = 17.27
-      f5     = 237.3*f2x*2.5e6/1003.
-      xk     = .2875          
-      xki    = 1./xk         
-      psl    = 1000.
-
-      do k=1,nz1
-         r(k)     = 0.001*rho(k,1)
-         rhalf(k) = sqrt(rho(1,1)/rho(k,1))
-         pk(k)    = pii(k,1)
-         pc(k)    = 3.8/(pk(k)**xki*psl)
-         f0(k)    = 2.5e6/(1003.*pk(k))
-      end do
-!
-      do i=1,nx
-         do k=1,nz1
-            qrprod(k) = qc1t(k,i)                                  &
-                      -(qc1t(k,i)-dt*max(ackess*(qc1(k,i)-.001), &
-                           0.0_RKIND))/(1.+dt*ckess*qr1(k,i)**.875)       
-			   velqr(k)  = (qr1(k,i)*r(k))**1.1364*rhalf(k)
-            qvs(k)    = pc(k)*exp(f2x*(pk(k)*t1t(k,i)-273.)  &
-                                  /(pk(k)*t1t(k,i)- 36.))
-         end do
-         velu         = (qr1(2,i)*r(2))**1.1364*rhalf(2)
-         veld         = (qr1(1,i)*r(1))**1.1364*rhalf(1)
-         qr1t(1,i)    = qr1t(1,i)+dt*(velu-veld)*fvel/(r(1)*dzu(2))
-         do k=2,nz1-1
-            qr1t(k,i) = qr1t(k,i)+dt*fvel/r(k)                  &
-                         *.5*((velqr(k+1)-velqr(k  ))/dzu(k+1)  &
-                             +(velqr(k  )-velqr(k-1))/dzu(k  ))
-         end do
-         qr1t(nz1,i)  = qr1t(nz1,i)-dt*fvel*velqr(nz1-1)    &
-                                    /(r(nz1)*dzu(nz1)*(1.+1.))
-         artemp       = 36340.*(.5*(velqr(2)+velqr(1))+veld-velu)
-         artot        = artot+dt*artemp
-         do k=1,nz1
-            qc1t(k,i) = max(qc1t(k,i)-qrprod(k),0.0_RKIND)
-            qr1t(k,i) = max(qr1t(k,i)+qrprod(k),0.0_RKIND)
-            prod(k)   = (qv1t(k,i)-qvs(k))/(1.+qvs(k)*f5  &
-                                /(pk(k)*t1t(k,i)-36.)**2)
-         end do
-         do k=1,nz1
-            ern(k)    = min(dt*(((1.6+124.9*(r(k)*qr1t(k,i))**.2046)  &
-                         *(r(k)*qr1t(k,i))**.525)/(2.55e6*pc(k)         &
-                         /(3.8 *qvs(k))+5.4e5))*(dim(qvs(k),qv1t(k,i))  &
-                         /(r(k)*qvs(k))),                               &
-                          max(-prod(k)-qc1t(k,i),0.0_RKIND),qr1t(k,i))
-         end do
-         do k=1,nz1
-            buoycy(k) = f0(k)*(max(prod(k),-qc1t(k,i))-ern(k))
-				qv1t(k,i) = max(qv1t(k,i)    &
-                         -max(prod(k),-qc1t(k,i))+ern(k),0.0_RKIND)
-            qc1t(k,i) = qc1t(k,i)+max(prod(k),-qc1t(k,i))
-            qr1t(k,i) = qr1t(k,i)-ern(k)
-            t1t (k,i) = t1t (k,i)+buoycy(k)
-         end do
-      end do
-
-   end subroutine atm_kessler
 
 end module atm_time_integration

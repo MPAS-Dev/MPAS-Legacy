@@ -1,5 +1,4 @@
 &nhyd_model
-   config_test_case = 0
    config_time_integration = 'SRK3'
    config_dt = 450.0
    config_start_time = '2010-10-23_00:00:00'

@@ -290,7 +290,7 @@
     if(ierr /= 0) &
        call physics_error_fatal('subroutine physics_run_init: error defining dt_pbl')
 
- elseif(trim(config_conv_interval) == "none") then
+ elseif(trim(config_pbl_interval) == "none") then
     dt_pbl = config_dt
 
  else

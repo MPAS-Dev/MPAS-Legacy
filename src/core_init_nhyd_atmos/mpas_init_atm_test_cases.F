@@ -35,6 +35,28 @@ module init_atm_test_cases
       type (block_type), pointer :: block_ptr
 
 
+
+      !
+      ! Do some quick checks to make sure compile options are compatible with the chosen test case
+      !
+      if (config_test_case == 6) then
+#ifndef ROTATED_GRID
+         write(0,*) '*** ERROR ***'
+         write(0,*) 'To initialize and run the mountain wave test case (case 6),'
+         write(0,*) '   you must compile with -DROTATE_GRID added to the specification'
+         write(0,*) '   of MODEL_FORMULATION at the top of the Makefile.'
+         call mpas_dmpar_abort(domain % dminfo)
+#endif
+      else
+#ifdef ROTATED_GRID
+         write(0,*) '*** ERROR ***'
+         write(0,*) 'Only test case 6 should use code compiled with -DROTATE_GRID specified in the Makefile.'
+         call mpas_dmpar_abort(domain % dminfo)
+#endif
+      end if
+
+
+
       if ((config_test_case == 1) .or. (config_test_case == 2) .or. (config_test_case == 3)) then
 
          write(0,*) ' Jablonowski and Williamson baroclinic wave test case '
@@ -83,7 +105,7 @@ module init_atm_test_cases
          do while (associated(block_ptr))
             call init_atm_test_case_gfs(domain % dminfo, block_ptr % mesh, block_ptr % fg, block_ptr % state % time_levs(1) % state, &
                                     block_ptr % diag, config_test_case, block_ptr % parinfo)
-            call physics_initialize_real(block_ptr % mesh, block_ptr % fg)
+            if (config_met_interp) call physics_initialize_real(block_ptr % mesh, block_ptr % fg)
             block_ptr => block_ptr % next
          end do
 
@@ -1877,7 +1899,11 @@ module init_atm_test_cases
                             +zgrid(k,cell2)+zgrid(k+1,cell2))
                u(k,i) = um
                if(i == 1 ) grid % u_init % array(k) = u(k,i) - us
-               u(k,i) = cos(grid % angleEdge % array(i)) * (u(k,i) - us) 
+#ifdef ROTATED_GRID
+               u(k,i) = sin(grid % angleEdge % array(i)) * (u(k,i) - us)
+#else
+               u(k,i) = cos(grid % angleEdge % array(i)) * (u(k,i) - us)
+#endif
             end do
             end if
          end do

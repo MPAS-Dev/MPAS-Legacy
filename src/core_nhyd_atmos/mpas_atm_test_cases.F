@@ -1865,7 +1865,11 @@ module atm_test_cases
                             +zgrid(k,cell2)+zgrid(k+1,cell2))
                u(k,i) = um
                if(i == 1 ) grid % u_init % array(k) = u(k,i) - us
+#ifdef ROTATED_GRID
+               u(k,i) = sin(grid % angleEdge % array(i)) * (u(k,i) - us)
+#else
                u(k,i) = cos(grid % angleEdge % array(i)) * (u(k,i) - us) 
+#endif
             end do
             end if
          end do

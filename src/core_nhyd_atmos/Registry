@@ -1,9 +1,9 @@
 %
 % namelist  type  namelist_record  name  default_value
 %
-namelist integer   nhyd_model config_test_case            5
+namelist integer   nhyd_model config_test_case            0
 namelist character nhyd_model config_time_integration     SRK3
-namelist real      nhyd_model config_dt                   172.8
+namelist real      nhyd_model config_dt                   600.0
 namelist integer   nhyd_model config_calendar_type        MPAS_GREGORIAN
 namelist character nhyd_model config_start_time           0000-01-01_00:00:00
 namelist character nhyd_model config_stop_time            none
@@ -17,19 +17,19 @@ namelist real      nhyd_model config_h_theta_eddy_visc2   0.0
 namelist real      nhyd_model config_h_theta_eddy_visc4   0.0
 namelist real      nhyd_model config_v_theta_eddy_visc2   0.0
 namelist integer   nhyd_model config_number_of_sub_steps  4
-namelist integer   nhyd_model config_w_adv_order          2
-namelist integer   nhyd_model config_theta_adv_order      2
-namelist integer   nhyd_model config_scalar_adv_order     2
-namelist integer   nhyd_model config_u_vadv_order         2
-namelist integer   nhyd_model config_w_vadv_order         2
-namelist integer   nhyd_model config_theta_vadv_order     2
-namelist integer   nhyd_model config_scalar_vadv_order    2
-namelist real      nhyd_model config_coef_3rd_order       1.0
+namelist integer   nhyd_model config_w_adv_order          3
+namelist integer   nhyd_model config_theta_adv_order      3
+namelist integer   nhyd_model config_scalar_adv_order     3
+namelist integer   nhyd_model config_u_vadv_order         3
+namelist integer   nhyd_model config_w_vadv_order         3
+namelist integer   nhyd_model config_theta_vadv_order     3
+namelist integer   nhyd_model config_scalar_vadv_order    3
+namelist real      nhyd_model config_coef_3rd_order       0.25
 namelist logical   nhyd_model config_scalar_advection     true
 namelist logical   nhyd_model config_positive_definite    false
 namelist logical   nhyd_model config_monotonic            true
 namelist logical   nhyd_model config_mix_full             true
-namelist real      nhyd_model config_len_disp             0.
+namelist real      nhyd_model config_len_disp             120000.0
 namelist real      nhyd_model config_epssm                0.1
 namelist real      nhyd_model config_smdiv                0.1
 namelist logical   nhyd_model config_newpx                false
@@ -38,7 +38,7 @@ namelist logical   nhyd_model config_h_ScaleWithMesh      false
 namelist real      damping    config_zd                   22000.0
 namelist real      damping    config_xnutr                0.0
 namelist integer   dimensions config_nvertlevels          26
-namelist character io         config_input_name           grid.nc
+namelist character io         config_input_name           init.nc
 namelist character io         config_sfc_update_name      sfc_update.nc
 namelist character io         config_output_name          output.nc
 namelist character io         config_restart_name         restart.nc
@@ -333,14 +333,14 @@ namelist logical   physics  config_sst_update           false
 namelist logical   physics  config_sstdiurn_update      false
 namelist logical   physics  config_deepsoiltemp_update  false
 
-namelist integer   physics  config_n_physics               01
-namelist integer   physics  config_n_microp                01
-namelist integer   physics  config_n_conv                  01
-namelist integer   physics  config_n_pbl                   01
-namelist integer   physics  config_n_lsm                   01
-namelist integer   physics  config_n_eddy                  01
-namelist integer   physics  config_n_radt_lw               01
-namelist integer   physics  config_n_radt_sw               01
+namelist integer   physics  config_n_physics            1
+namelist integer   physics  config_n_microp             1
+namelist integer   physics  config_n_conv               1
+namelist integer   physics  config_n_pbl                1
+namelist integer   physics  config_n_lsm                1
+namelist integer   physics  config_n_eddy               1
+namelist integer   physics  config_n_radt_lw            1
+namelist integer   physics  config_n_radt_sw            1
 
 namelist character physics  config_radtlw_interval       none
 namelist character physics  config_radtsw_interval       none
