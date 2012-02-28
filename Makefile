@@ -251,7 +251,7 @@ else # SERIAL IF
 	CC=$(CC_PARALLEL)
 	SFC=$(FC_SERIAL)
 	SCC=$(CC_SERIAL)
-	CPPFLAGS += -D_MPI
+	override CPPFLAGS += -D_MPI
 	SERIAL_MESSAGE="Parallel version is on."
 endif # SERIAL IF
 
