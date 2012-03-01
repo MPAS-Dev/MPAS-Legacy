@@ -91,12 +91,16 @@ CONTAINS
 ! NOOP
    SUBROUTINE ESMF_Finalize( rc )
       USE esmf_basemod
+      USE esmf_calendarmod
+
       INTEGER, INTENT(  OUT), OPTIONAL :: rc
 #if (defined SPMD) || (defined COUP_CSM)
 #include <mpif.h>
 #endif
       LOGICAL :: flag
       INTEGER :: ier
+
+      CALL ESMF_CalendarDestroy()
 
       IF ( PRESENT( rc ) ) rc = ESMF_SUCCESS
 #if (defined SPMD) || (defined COUP_CSM)

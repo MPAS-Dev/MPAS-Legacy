@@ -2,7 +2,7 @@
 % namelist  type  namelist_record  name  default_value
 %
 namelist integer   nhyd_model config_test_case            7
-namelist integer   nhyd_model config_calendar_type        MPAS_GREGORIAN
+namelist character nhyd_model config_calendar_type        gregorian
 namelist character nhyd_model config_start_time           none
 namelist character nhyd_model config_stop_time            none
 namelist integer   nhyd_model config_theta_adv_order      3

@@ -4,7 +4,7 @@
 namelist integer   nhyd_model config_test_case            0
 namelist character nhyd_model config_time_integration     SRK3
 namelist real      nhyd_model config_dt                   600.0
-namelist integer   nhyd_model config_calendar_type        MPAS_GREGORIAN
+namelist character nhyd_model config_calendar_type        gregorian
 namelist character nhyd_model config_start_time           0000-01-01_00:00:00
 namelist character nhyd_model config_stop_time            none
 namelist character nhyd_model config_run_duration         none

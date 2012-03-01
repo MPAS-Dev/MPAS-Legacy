@@ -51,14 +51,23 @@
 
 
       INTEGER, PARAMETER :: MONTHS_PER_YEAR = 12
-      INTEGER, PARAMETER :: mday(MONTHS_PER_YEAR)   &
+
+      INTEGER, PARAMETER :: daysPerMonthNoLeap(MONTHS_PER_YEAR)   &
                           = (/31,28,31,30,31,30,31,31,30,31,30,31/)
-      INTEGER, PARAMETER :: mdayleap(MONTHS_PER_YEAR) &
+      INTEGER, PARAMETER :: daysPerMonthLeap(MONTHS_PER_YEAR) &
                           = (/31,29,31,30,31,30,31,31,30,31,30,31/)
-      INTEGER, DIMENSION(365) :: daym
-      INTEGER, DIMENSION(366) :: daymleap
+      INTEGER, PARAMETER :: daysPerMonth360(MONTHS_PER_YEAR) &
+                          = (/30,30,30,30,30,30,30,30,30,30,30,30/)
+
+      INTEGER, DIMENSION(MONTHS_PER_YEAR) :: mday 
+      INTEGER, DIMENSION(MONTHS_PER_YEAR) :: mdayleap 
+
+      INTEGER, DIMENSION(:), POINTER :: daym
+      INTEGER, DIMENSION(:), POINTER :: daymleap
+
       INTEGER :: mdaycum(0:MONTHS_PER_YEAR)
       INTEGER :: mdayleapcum(0:MONTHS_PER_YEAR)
+
       TYPE(ESMF_BaseTime), TARGET :: monthbdys(0:MONTHS_PER_YEAR)
       TYPE(ESMF_BaseTime), TARGET :: monthbdysleap(0:MONTHS_PER_YEAR)
 
@@ -152,6 +161,7 @@
 !
 ! !PUBLIC MEMBER FUNCTIONS:
       public ESMF_CalendarCreate
+      public ESMF_CalendarDestroy
 
 ! Required inherited and overridden ESMF_Base class methods
 
@@ -210,48 +220,59 @@
       type(ESMF_DaysPerYear) :: dayspy
 
       if ( present(rc) ) rc = ESMF_FAILURE
-! Calendar type is hard-coded.  Use ESMF library if more flexibility is 
-! needed.  
-#ifdef NO_LEAP_CALENDAR
-      if ( calendartype%caltype  /= ESMF_CAL_NOLEAP%caltype ) then
+
+      if ( calendartype % caltype  == ESMF_CAL_GREGORIAN % caltype ) then
+            ESMF_CalendarCreate % Type = ESMF_CAL_GREGORIAN
+            mday = daysPerMonthNoLeap
+	    mdayleap = daysPerMonthLeap
+	    allocate(daym(365))
+	    allocate(daymleap(366))
+      else if ( calendartype % caltype  == ESMF_CAL_NOLEAP % caltype ) then
+            ESMF_CalendarCreate % Type = ESMF_CAL_NOLEAP
+	    mday = daysPerMonthNoLeap
+	    mdayleap = daysPerMonthNoLeap
+	    allocate(daym(365))
+	    allocate(daymleap(365))
+      else if ( calendartype % caltype  == ESMF_CAL_360DAY % caltype ) then
+            ESMF_CalendarCreate % Type = ESMF_CAL_360DAY
+            mday = daysPerMonth360
+	    mdayleap = daysPerMonth360
+	    allocate(daym(360))
+	    allocate(daymleap(360))
+      else
          write(6,*) 'Not a valid calendar type for this implementation'
-         write(6,*) 'This implementation only allows ESMF_CAL_NOLEAP'
-         write(6,*) 'calender type set to     = ', calendartype%caltype
-         write(6,*) 'NO_LEAP calendar type is = ', ESMF_CAL_NOLEAP%caltype
+         write(6,*) 'The current implementation only supports ESMF_CAL_NOLEAP, ESMF_CAL_GREGORIAN, ESMF_CAL_360DAY'
          return
       end if
-      ESMF_CalendarCreate%Type = ESMF_CAL_NOLEAP
-#else
-      if ( calendartype%caltype  /= ESMF_CAL_GREGORIAN%caltype ) then
-         write(6,*) 'Not a valid calendar type for this implementation'
-         write(6,*) 'This implementation only allows ESMF_CAL_GREGORIAN'
-         write(6,*) 'calender type set to     = ', calendartype%caltype
-         write(6,*) 'GREGORIAN calendar type is = ', ESMF_CAL_GREGORIAN%caltype
-         return
-      end if
-      ESMF_CalendarCreate%Type = ESMF_CAL_GREGORIAN
-#endif
-! This is a bug on some systems -- need initial value set by compiler at 
-! startup.  
-! However, note that some older compilers do not support compile-time 
-! initialization of data members of Fortran derived data types.  For example, 
-! PGI 5.x compilers do not support this F95 feature.  See 
-! NO_DT_COMPONENT_INIT.  
-      ESMF_CalendarCreate%Set = .true.
-      ESMF_CalendarCreate%SecondsPerDay = SECONDS_PER_DAY
-! DaysPerYear and SecondsPerYear are incorrect for Gregorian calendars...  
-      dayspy%D = size(daym)
-!TBH:  TODO:  Replace DaysPerYear and SecondsPerYear with methods 
-!TBH:  TODO:  since they only make sense for the NO_LEAP calendar!  
-      ESMF_CalendarCreate%DaysPerYear = dayspy
-      ESMF_CalendarCreate%SecondsPerYear = ESMF_CalendarCreate%SecondsPerDay &
-                                       * dayspy%D
-!TBH:  TODO:  use mdayleap for leap-year calendar
-      ESMF_CalendarCreate%DaysPerMonth(:) = mday(:)
+
+      ESMF_CalendarCreate % Set = .true.
+      ESMF_CalendarCreate % DaysPerMonth(:) = mday(:)
+      ESMF_CalendarCreate % SecondsPerDay = SECONDS_PER_DAY
+
+!TBH:  TODO:  Replace DaysPerYear and SecondsPerYear with methods
+!TBH:  TODO:  since they only make sense for the NO_LEAP calendar!
+      dayspy % D = size(daym)
+      ESMF_CalendarCreate % DaysPerYear = dayspy
+      ESMF_CalendarCreate % SecondsPerYear = ESMF_CalendarCreate % SecondsPerDay * dayspy % D
 
       if ( present(rc) ) rc = ESMF_SUCCESS
 
-      end function ESMF_CalendarCreate
+   end function ESMF_CalendarCreate
+
+
+   subroutine ESMF_CalendarDestroy(rc)
+
+      integer, intent(out), optional :: rc
+
+      if ( present(rc) ) rc = ESMF_FAILURE
+
+      deallocate(daym)
+      deallocate(daymleap)
+
+      if ( present(rc) ) rc = ESMF_SUCCESS
+
+   end subroutine ESMF_CalendarDestroy
+
 
 
 !==============================================================================

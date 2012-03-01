@@ -4,7 +4,7 @@
 namelist integer     sw_model  config_test_case             5
 namelist character   sw_model  config_time_integration      RK4
 namelist real        sw_model  config_dt                    172.8
-namelist integer     sw_model  config_calendar_type         MPAS_360DAY
+namelist character   sw_model  config_calendar_type         360day
 namelist character   sw_model  config_start_time            0000-01-01_00:00:00
 namelist character   sw_model  config_stop_time             none
 namelist character   sw_model  config_run_duration          none
