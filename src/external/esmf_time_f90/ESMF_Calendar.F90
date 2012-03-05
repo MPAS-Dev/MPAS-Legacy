@@ -78,7 +78,6 @@
 !     ! F90 "enum" type to match C++ ESMC_CalendarType enum
 
       type ESMF_CalendarType
-      private
         integer :: caltype
       end type
 
@@ -162,6 +161,8 @@
 ! !PUBLIC MEMBER FUNCTIONS:
       public ESMF_CalendarCreate
       public ESMF_CalendarDestroy
+      public ESMF_GetCalendarType
+
 
 ! Required inherited and overridden ESMF_Base class methods
 
@@ -172,6 +173,14 @@
 !==============================================================================
 
       contains
+
+
+!==============================================================================
+
+
+ type(ESMF_CalendarType) function ESMF_GetCalendarType()
+     ESMF_GetCalendarType = defaultCal % Type
+ end function ESMF_GetCalendarType
 
 
 !==============================================================================

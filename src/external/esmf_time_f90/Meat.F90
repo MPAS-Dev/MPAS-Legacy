@@ -169,26 +169,34 @@ END SUBROUTINE timeintchecknormalized
 
 ! added from share/module_date_time in WRF.
 FUNCTION nfeb ( year ) RESULT (num_days)
+      USE ESMF_CalendarMod
+
       ! Compute the number of days in February for the given year
       IMPLICIT NONE
       INTEGER :: year
       INTEGER :: num_days
-! TBH:  TODO:  Replace this hack with run-time decision based on 
-! TBH:  TODO:  passed-in calendar.  
-#ifdef NO_LEAP_CALENDAR
-      num_days = 28 ! By default, February has 28 days ...
-#else
-      num_days = 28 ! By default, February has 28 days ...
-      IF (MOD(year,4).eq.0) THEN
-         num_days = 29  ! But every four years, it has 29 days ...
-         IF (MOD(year,100).eq.0) THEN
-            num_days = 28  ! Except every 100 years, when it has 28 days ...
-            IF (MOD(year,400).eq.0) THEN
-               num_days = 29  ! Except every 400 years, when it has 29 days.
+
+      type(ESMF_CalendarType) :: calendarType
+
+      calendarType = ESMF_GetCalendarType()
+
+      IF (calendarType % caltype == ESMF_CAL_NOLEAP % caltype) then
+         num_days = 28
+      ELSE IF (calendarType % caltype == ESMF_CAL_360DAY % caltype) then
+         num_days = 30 
+      ELSE
+         num_days = 28 ! By default, February has 28 days ...
+         IF (MOD(year,4).eq.0) THEN
+            num_days = 29  ! But every four years, it has 29 days ...
+            IF (MOD(year,100).eq.0) THEN
+               num_days = 28  ! Except every 100 years, when it has 28 days ...
+               IF (MOD(year,400).eq.0) THEN
+                  num_days = 29  ! Except every 400 years, when it has 29 days.
+               END IF
             END IF
          END IF
       END IF
-#endif
+
 END FUNCTION nfeb
 
 
@@ -206,6 +214,8 @@ FUNCTION ndaysinyear ( year ) RESULT (num_diy)
 #else
   IF ( nfeb( year ) .EQ. 29 ) THEN
     num_diy = 366
+  ELSE IF ( nfeb( year ) .EQ. 30 ) THEN
+    num_diy = 360
   ELSE
     num_diy = 365
   ENDIF
