@@ -1,6 +1,6 @@
 &sw_model
    config_test_case = 0
-   config_time_integration = 'RK4'
+   config_time_integration = 'split_explicit'
    config_rk_filter_btr_mode = .false.
    config_dt = 100.0
    config_start_time = '0000-01-01_00:00:00'
@@ -76,9 +76,8 @@
 &advection
    config_vert_tracer_adv = 'stencil'
    config_vert_tracer_adv_order = 2
-   config_tracer_adv_order = 2
+   config_horiz_tracer_adv_order = 2
    config_thickness_adv_order = 2
-   config_positive_definite = .false.
    config_monotonic = .false.
 /
 &restore

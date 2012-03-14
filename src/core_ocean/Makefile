@@ -36,6 +36,15 @@ OBJS = mpas_ocn_mpas_core.o \
 	   mpas_ocn_vmix_coefs_tanh.o \
 	   mpas_ocn_restoring.o \
 	   mpas_ocn_tendency.o \
+	   mpas_ocn_tracer_advection.o \
+	   mpas_ocn_tracer_advection_std.o \
+	   mpas_ocn_tracer_advection_std_hadv.o \
+	   mpas_ocn_tracer_advection_std_vadv.o \
+	   mpas_ocn_tracer_advection_std_vadv2.o \
+	   mpas_ocn_tracer_advection_std_vadv3.o \
+	   mpas_ocn_tracer_advection_std_vadv4.o \
+	   mpas_ocn_tracer_advection_mono.o \
+	   mpas_ocn_tracer_advection_helpers.o \
        mpas_ocn_time_integration.o \
        mpas_ocn_time_integration_rk4.o \
        mpas_ocn_time_integration_split.o \
@@ -120,6 +129,24 @@ mpas_ocn_tracer_hmix_del2.o:
 
 mpas_ocn_tracer_hmix_del4.o:
 
+mpas_ocn_tracer_advection.o: mpas_ocn_tracer_advection_std.o mpas_ocn_tracer_advection_mono.o
+
+mpas_ocn_tracer_advection_std.o: mpas_ocn_tracer_advection_std_hadv.o mpas_ocn_tracer_advection_std_vadv.o
+
+mpas_ocn_tracer_advection_std_hadv.o: mpas_ocn_tracer_advection_helpers.o
+
+mpas_ocn_tracer_advection_std_vadv.o: mpas_ocn_tracer_advection_std_vadv2.o mpas_ocn_tracer_advection_std_vadv3.o mpas_ocn_tracer_advection_std_vadv4.o
+
+mpas_ocn_tracer_advection_std_vadv2.o: mpas_ocn_tracer_advection_helpers.o
+
+mpas_ocn_tracer_advection_std_vadv3.o: mpas_ocn_tracer_advection_helpers.o
+
+mpas_ocn_tracer_advection_std_vadv4.o: mpas_ocn_tracer_advection_helpers.o
+
+mpas_ocn_tracer_advection_mono.o: mpas_ocn_tracer_advection_helpers.o
+
+mpas_ocn_tracer_advection_helpers.o:
+
 mpas_ocn_restoring.o:
 
 mpas_ocn_vmix.o: mpas_ocn_vmix_coefs_const.o mpas_ocn_vmix_coefs_rich.o mpas_ocn_vmix_coefs_tanh.o
@@ -170,6 +197,15 @@ mpas_ocn_mpas_core.o: mpas_ocn_mpas_core.o \
 					  mpas_ocn_vmix_coefs_rich.o \
 					  mpas_ocn_vmix_coefs_tanh.o \
 					  mpas_ocn_restoring.o \
+					  mpas_ocn_tracer_advection.o \
+					  mpas_ocn_tracer_advection_std.o \
+					  mpas_ocn_tracer_advection_std_hadv.o \
+					  mpas_ocn_tracer_advection_std_vadv.o \
+					  mpas_ocn_tracer_advection_std_vadv2.o \
+					  mpas_ocn_tracer_advection_std_vadv3.o \
+					  mpas_ocn_tracer_advection_std_vadv4.o \
+					  mpas_ocn_tracer_advection_mono.o \
+					  mpas_ocn_tracer_advection_helpers.o \
 					  mpas_ocn_tendency.o \
 					  mpas_ocn_time_integration.o \
 					  mpas_ocn_time_integration_rk4.o \

@@ -46,8 +46,8 @@ module ocn_global_diagnostics
 
       real (kind=RKIND) :: volumeCellGlobal, volumeEdgeGlobal, CFLNumberGlobal, localCFL, localSum, areaCellGlobal, areaEdgeGlobal, areaTriangleGlobal
       real (kind=RKIND), dimension(:), pointer ::  areaCell, dcEdge, dvEdge, areaTriangle, areaEdge
-      real (kind=RKIND), dimension(:,:), pointer :: h, u, v, h_edge, circulation, vorticity, ke, pv_edge, pv_vertex, &
-         pv_cell, gradPVn, gradPVt, pressure, MontPot, wTop, rho, tracerTemp
+      real (kind=RKIND), dimension(:,:), pointer :: h, u, v, h_edge, circulation, vorticity, ke, Vor_edge, Vor_vertex, &
+         Vor_cell, gradVor_n, gradVor_t, pressure, MontPot, wTop, rho, tracerTemp
       real (kind=RKIND), dimension(:,:,:), pointer :: tracers
       
       real (kind=RKIND), dimension(kMaxVariables) :: sums, mins, maxes, averages, verticalSumMins, verticalSumMaxes, reductions
@@ -93,11 +93,11 @@ module ocn_global_diagnostics
          circulation => state % circulation % array
          vorticity => state % vorticity % array
          ke => state % ke % array
-         pv_edge => state % pv_edge % array
-         pv_vertex => state % pv_vertex % array
-         pv_cell => state % pv_cell % array
-         gradPVn => state % gradPVn % array
-         gradPVt => state % gradPVt % array
+         Vor_edge => state % Vor_edge % array
+         Vor_vertex => state % Vor_vertex % array
+         Vor_cell => state % Vor_cell % array
+         gradVor_n => state % gradVor_n % array
+         gradVor_t => state % gradVor_t % array
          MontPot => state % MontPot % array
          pressure => state % pressure % array
 
@@ -176,10 +176,10 @@ module ocn_global_diagnostics
          verticalSumMins(variableIndex) = min(verticalSumMins(variableIndex), verticalSumMins_tmp(variableIndex))
          verticalSumMaxes(variableIndex) = max(verticalSumMaxes(variableIndex), verticalSumMaxes_tmp(variableIndex))
 
-         ! pv_edge
+         ! Vor_edge
          variableIndex = variableIndex + 1
          call ocn_compute_field_volume_weighted_local_stats(dminfo, nVertLevels, nEdgesSolve, areaEdge(1:nEdgesSolve), h_edge(:,1:nEdgesSolve), &
-            pv_edge(:,1:nEdgesSolve), sums_tmp(variableIndex), mins_tmp(variableIndex), maxes_tmp(variableIndex), verticalSumMins_tmp(variableIndex), &
+            Vor_edge(:,1:nEdgesSolve), sums_tmp(variableIndex), mins_tmp(variableIndex), maxes_tmp(variableIndex), verticalSumMins_tmp(variableIndex), &
             verticalSumMaxes_tmp(variableIndex))
          sums(variableIndex) = sums(variableIndex) + sums_tmp(variableIndex)
          mins(variableIndex) = min(mins(variableIndex), mins_tmp(variableIndex))
@@ -187,10 +187,10 @@ module ocn_global_diagnostics
          verticalSumMins(variableIndex) = min(verticalSumMins(variableIndex), verticalSumMins_tmp(variableIndex))
          verticalSumMaxes(variableIndex) = max(verticalSumMaxes(variableIndex), verticalSumMaxes_tmp(variableIndex))
 
-         ! pv_vertex
+         ! Vor_vertex
          variableIndex = variableIndex + 1
          call ocn_compute_field_area_weighted_local_stats(dminfo, nVertLevels, nVerticesSolve, areaTriangle(1:nVerticesSolve), &
-            pv_vertex(:,1:nVerticesSolve), sums_tmp(variableIndex), mins_tmp(variableIndex), maxes_tmp(variableIndex), &
+            Vor_vertex(:,1:nVerticesSolve), sums_tmp(variableIndex), mins_tmp(variableIndex), maxes_tmp(variableIndex), &
             verticalSumMins_tmp(variableIndex), verticalSumMaxes_tmp(variableIndex))
          sums(variableIndex) = sums(variableIndex) + sums_tmp(variableIndex)
          mins(variableIndex) = min(mins(variableIndex), mins_tmp(variableIndex))
@@ -198,10 +198,10 @@ module ocn_global_diagnostics
          verticalSumMins(variableIndex) = min(verticalSumMins(variableIndex), verticalSumMins_tmp(variableIndex))
          verticalSumMaxes(variableIndex) = max(verticalSumMaxes(variableIndex), verticalSumMaxes_tmp(variableIndex))
 
-         ! pv_cell
+         ! Vor_cell
          variableIndex = variableIndex + 1
          call ocn_compute_field_volume_weighted_local_stats(dminfo, nVertLevels, nCellsSolve, areaCell(1:nCellsSolve), h(:,1:nCellsSolve), &
-            pv_cell(:,1:nCellsSolve), sums_tmp(variableIndex), mins_tmp(variableIndex), maxes_tmp(variableIndex), verticalSumMins_tmp(variableIndex), &
+            Vor_cell(:,1:nCellsSolve), sums_tmp(variableIndex), mins_tmp(variableIndex), maxes_tmp(variableIndex), verticalSumMins_tmp(variableIndex), &
             verticalSumMaxes_tmp(variableIndex))
          sums(variableIndex) = sums(variableIndex) + sums_tmp(variableIndex)
          mins(variableIndex) = min(mins(variableIndex), mins_tmp(variableIndex))
@@ -209,10 +209,10 @@ module ocn_global_diagnostics
          verticalSumMins(variableIndex) = min(verticalSumMins(variableIndex), verticalSumMins_tmp(variableIndex))
          verticalSumMaxes(variableIndex) = max(verticalSumMaxes(variableIndex), verticalSumMaxes_tmp(variableIndex))
 
-         ! gradPVn
+         ! gradVor_n
          variableIndex = variableIndex + 1
          call ocn_compute_field_volume_weighted_local_stats(dminfo, nVertLevels, nEdgesSolve, areaEdge(1:nEdgesSolve), h_edge(:,1:nEdgesSolve), &
-            gradPVn(:,1:nEdgesSolve), sums_tmp(variableIndex), mins_tmp(variableIndex), maxes_tmp(variableIndex), verticalSumMins_tmp(variableIndex), &
+            gradVor_n(:,1:nEdgesSolve), sums_tmp(variableIndex), mins_tmp(variableIndex), maxes_tmp(variableIndex), verticalSumMins_tmp(variableIndex), &
             verticalSumMaxes_tmp(variableIndex))
          sums(variableIndex) = sums(variableIndex) + sums_tmp(variableIndex)
          mins(variableIndex) = min(mins(variableIndex), mins_tmp(variableIndex))
@@ -220,10 +220,10 @@ module ocn_global_diagnostics
          verticalSumMins(variableIndex) = min(verticalSumMins(variableIndex), verticalSumMins_tmp(variableIndex))
          verticalSumMaxes(variableIndex) = max(verticalSumMaxes(variableIndex), verticalSumMaxes_tmp(variableIndex))
 
-         ! gradPVt
+         ! gradVor_t
          variableIndex = variableIndex + 1
          call ocn_compute_field_volume_weighted_local_stats(dminfo, nVertLevels, nEdgesSolve, areaEdge(1:nEdgesSolve), h_edge(:,1:nEdgesSolve), &
-            gradPVt(:,1:nEdgesSolve), sums_tmp(variableIndex), mins_tmp(variableIndex), maxes_tmp(variableIndex), verticalSumMins_tmp(variableIndex), &
+            gradVor_t(:,1:nEdgesSolve), sums_tmp(variableIndex), mins_tmp(variableIndex), maxes_tmp(variableIndex), verticalSumMins_tmp(variableIndex), &
             verticalSumMaxes_tmp(variableIndex))
          sums(variableIndex) = sums(variableIndex) + sums_tmp(variableIndex)
          mins(variableIndex) = min(mins(variableIndex), mins_tmp(variableIndex))
@@ -374,23 +374,23 @@ module ocn_global_diagnostics
       variableIndex = variableIndex + 1
       averages(variableIndex) = sums(variableIndex)/volumeCellGlobal
 
-      ! pv_edge
+      ! Vor_edge
       variableIndex = variableIndex + 1
       averages(variableIndex) = sums(variableIndex)/volumeEdgeGlobal
 
-      ! pv_vertex
+      ! Vor_vertex
       variableIndex = variableIndex + 1
       averages(variableIndex) = sums(variableIndex)/(areaTriangleGlobal*nVertLevels)
 
-      ! pv_cell
+      ! Vor_cell
       variableIndex = variableIndex + 1
       averages(variableIndex) = sums(variableIndex)/volumeCellGlobal
 
-      ! gradPVn
+      ! gradVor_n
       variableIndex = variableIndex + 1
       averages(variableIndex) = sums(variableIndex)/volumeEdgeGlobal
 
-      ! gradPVt
+      ! gradVor_t
       variableIndex = variableIndex + 1
       averages(variableIndex) = sums(variableIndex)/volumeEdgeGlobal
 

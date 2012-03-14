@@ -9,19 +9,25 @@ module ocn_advection
    contains
 
 
-   subroutine ocn_initialize_advection_rk( grid )!{{{
+   subroutine ocn_initialize_advection_rk( grid, err )!{{{
                                       
 !
 ! compute the cell coefficients for the polynomial fit.
 ! this is performed during setup for model integration.
 ! WCS, 31 August 2009
 !
+! Described in:
+! Skamarock, W. C., & Gassmann, A. (2011). 
+! Conservative Transport Schemes for Spherical Geodesic Grids: High-Order Flux Operators for ODE-Based Time Integration. 
+! Monthly Weather Review, 139(9), 2962-2975. doi:10.1175/MWR-D-10-05056.1
+!
       implicit none
 
       type (mesh_type), intent(in) :: grid
+      integer, intent(out) :: err
 
       real (kind=RKIND), dimension(:,:,:), pointer :: deriv_two
-      integer, dimension(:,:), pointer :: advCells
+      integer, dimension(:), pointer :: advCells
 
 !  local variables
 
@@ -50,9 +56,7 @@ module ocn_advection
 
       integer :: cell1, cell2
       integer, parameter :: polynomial_order = 2
-!      logical, parameter :: debug = .true.
       logical, parameter :: debug = .false.
-!      logical, parameter :: least_squares = .false.
       logical, parameter :: least_squares = .true.
       logical :: add_the_cell, do_the_cell
 
@@ -61,11 +65,19 @@ module ocn_advection
       real (kind=RKIND) :: rcell, cos2t, costsint, sin2t
       real (kind=RKIND), dimension(grid%maxEdges) :: angle_2d
 
-!---
+!---    
+      err = 0
+
+      if(polynomial_order > 2) then
+        write (*,*) 'Polynomial for second derivitave can only be 2'
+        err = 1
+        return
+      end if
 
       pii = 2.*asin(1.0)
 
-      advCells => grid % advCells % array
+!     advCells => grid % advCells % array
+      allocate(advCells(grid % maxEdges2))
       deriv_two => grid % deriv_two % array
       deriv_two(:,:,:) = 0.
 
@@ -93,7 +105,7 @@ module ocn_advection
             end do
          end if
  
-         advCells(1,iCell) = n
+         advCells(1) = n
 
 !  check to see if we are reaching outside the halo
 
@@ -110,10 +122,10 @@ module ocn_advection
          if ( grid % on_a_sphere ) then
 
             do i=1,n
-               advCells(i+1,iCell) = cell_list(i)
-               xc(i) = grid % xCell % array(advCells(i+1,iCell))/a
-               yc(i) = grid % yCell % array(advCells(i+1,iCell))/a
-               zc(i) = grid % zCell % array(advCells(i+1,iCell))/a
+               advCells(i+1) = cell_list(i)
+               xc(i) = grid % xCell % array(advCells(i+1))/a
+               yc(i) = grid % yCell % array(advCells(i+1))/a
+               zc(i) = grid % zCell % array(advCells(i+1))/a
             end do
 
             theta_abs(iCell) =  pii/2. - sphere_angle( xc(1), yc(1), zc(1),  &

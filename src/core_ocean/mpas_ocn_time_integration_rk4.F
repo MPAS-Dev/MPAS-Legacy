@@ -144,7 +144,7 @@ module ocn_time_integration_rk4
         call mpas_timer_start("RK4-diagnostic halo update")
         block => domain % blocklist
         do while (associated(block))
-           call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, provis % pv_edge % array(:,:), &
+           call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, provis % Vor_edge % array(:,:), &
                                             block % mesh % nVertLevels, block % mesh % nEdges, &
                                             block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
 
@@ -173,7 +173,7 @@ module ocn_time_integration_rk4
            if (.not.config_implicit_vertical_mix) then
               call ocn_vmix_coefs(block % mesh, provis, block % diagnostics, err)
            end if
-           call ocn_tend_h(block % tend, provis, block % diagnostics, block % mesh)
+           call ocn_tend_h(block % tend, provis, block % mesh)
            call ocn_tend_u(block % tend, provis, block % diagnostics, block % mesh)
 
            ! mrp 110718 filter btr mode out of u_tend
@@ -182,7 +182,7 @@ module ocn_time_integration_rk4
                call filter_btr_mode_tend_u(block % tend, provis, block % diagnostics, block % mesh)
            endif
 
-           call ocn_tend_scalar(block % tend, provis, block % diagnostics, block % mesh)
+           call ocn_tend_scalar(block % tend, provis, block % diagnostics, block % mesh, dt)
            block => block % next
         end do
         call mpas_timer_stop("RK4-tendency computations")
@@ -229,6 +229,14 @@ module ocn_time_integration_rk4
               end do
               if (config_test_case == 1) then    ! For case 1, wind field should be fixed
                  provis % u % array(:,:) = block % state % time_levs(1) % state % u % array(:,:)
+              end if
+
+              if (config_prescribe_velocity) then
+                 provis % u % array(:,:) = block % state % time_levs(1) % state % u % array(:,:)
+              end if
+
+              if (config_prescribe_thickness) then
+                 provis % h % array(:,:) = block % state % time_levs(1) % state % h % array(:,:)
               end if
 
               call ocn_diagnostic_solve(dt, provis, block % mesh)
@@ -325,6 +333,14 @@ module ocn_time_integration_rk4
             block % state % time_levs(2) % state % u % array(:,:) = block % state % time_levs(1) % state % u % array(:,:)
          end if
 
+         if (config_prescribe_velocity) then
+            block % state % time_levs(2) % state % u % array(:,:) = block % state % time_levs(1) % state % u % array(:,:)
+         end if
+
+         if (config_prescribe_thickness) then
+            block % state % time_levs(2) % state % h % array(:,:) = block % state % time_levs(1) % state % h % array(:,:)
+         end if
+
          call ocn_diagnostic_solve(dt, block % state % time_levs(2) % state, block % mesh)
 
          call mpas_reconstruct(block % mesh, block % state % time_levs(2) % state % u % array,          &
@@ -374,7 +390,7 @@ module ocn_time_integration_rk4
         meshScalingDel2, meshScalingDel4
       real (kind=RKIND), dimension(:,:), pointer :: &
         weightsOnEdge, kiteAreasOnVertex, h_edge, h, u, v, pressure, &
-        tend_u, circulation, vorticity, ke, ke_edge, pv_edge, &
+        tend_u, circulation, vorticity, ke, ke_edge, Vor_edge, &
         MontPot, wTop, divergence, vertViscTopOfEdge
       type (dm_info) :: dminfo
 
@@ -406,7 +422,7 @@ module ocn_time_integration_rk4
       divergence  => s % divergence % array
       ke          => s % ke % array
       ke_edge     => s % ke_edge % array
-      pv_edge     => s % pv_edge % array
+      Vor_edge     => s % Vor_edge % array
       MontPot     => s % MontPot % array
       pressure    => s % pressure % array
       vertViscTopOfEdge => d % vertViscTopOfEdge % array
@@ -489,7 +505,7 @@ module ocn_time_integration_rk4
         meshScalingDel2, meshScalingDel4
       real (kind=RKIND), dimension(:,:), pointer :: &
         weightsOnEdge, kiteAreasOnVertex, h_edge, h, u, v, pressure, &
-        tend_u, circulation, vorticity, ke, ke_edge, pv_edge, &
+        tend_u, circulation, vorticity, ke, ke_edge, Vor_edge, &
         MontPot, wTop, divergence, vertViscTopOfEdge
       type (dm_info) :: dminfo
 
@@ -521,7 +537,7 @@ module ocn_time_integration_rk4
       divergence  => s % divergence % array
       ke          => s % ke % array
       ke_edge     => s % ke_edge % array
-      pv_edge     => s % pv_edge % array
+      Vor_edge     => s % Vor_edge % array
       MontPot     => s % MontPot % array
       pressure    => s % pressure % array
 

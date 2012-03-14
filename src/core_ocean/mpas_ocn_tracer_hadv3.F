@@ -221,11 +221,10 @@ contains
       err = 0
       hadv3On = .false.
 
-      if (config_tracer_adv_order == 3) then
+      if (config_horiz_tracer_adv_order == 3) then
           hadv3On = .true.
 
-          coef_3rd_order = 1.0
-          if (config_monotonic) coef_3rd_order = 0.25
+          coef_3rd_order = config_coef_3rd_order
       end if
 
    !--------------------------------------------------------------------

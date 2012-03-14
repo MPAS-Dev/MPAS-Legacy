@@ -167,7 +167,7 @@ module ocn_time_integration_split
          do while (associated(block))
 
             call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, &
-               block % state % time_levs(2) % state % pv_edge % array(:,:), &
+               block % state % time_levs(2) % state % Vor_edge % array(:,:), &
                block % mesh % nVertLevels, block % mesh % nEdges, &
                block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
 
@@ -200,7 +200,7 @@ module ocn_time_integration_split
             if (.not.config_implicit_vertical_mix) then
                call ocn_vmix_coefs(block % mesh, block % state % time_levs(2) % state, block % diagnostics, err)
             end if
-            call ocn_tend_u(block % tend, block % state % time_levs(2) % state , block % diagnostics, block % mesh)
+            call ocn_tend_u(block % tend, block % state % time_levs(2) % state, block % diagnostics, block % mesh)
             block => block % next
          end do
 
@@ -716,13 +716,12 @@ module ocn_time_integration_split
          !TDR: at this point, I am suggesting just pushing some of this code into subroutines. 
          !TDR: see comments farther down
 
+         ! dwj: 02/22/12 splitting thickness and tracer tendency computations and halo updates to allow monotonic advection.
          block => domain % blocklist
          do while (associated(block))
             call ocn_wtop(block % state % time_levs(1) % state,block % state % time_levs(2) % state, block % mesh)
 
-            call ocn_tend_h     (block % tend, block % state % time_levs(2) % state , block % diagnostics, block % mesh)
-            call ocn_tend_scalar(block % tend, block % state % time_levs(2) % state , block % diagnostics, block % mesh)
-
+            call ocn_tend_h(block % tend, block % state % time_levs(2) % state, block % mesh)
             block => block % next
          end do
 
@@ -733,10 +732,27 @@ module ocn_time_integration_split
             call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % tend % h % array(:,:), &
                block % mesh % nVertLevels, block % mesh % nCells, &
                block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-
             block => block % next
          end do
          call mpas_timer_stop("se halo h", timer_halo_h)
+
+         block => domain % blocklist
+         do while (associated(block))
+            call ocn_tend_scalar(block % tend, block % state % time_levs(2) % state, block % diagnostics, block % mesh, dt)
+
+            block => block % next
+         end do
+
+         ! update halo for thickness and tracer tendencies
+         call mpas_timer_start("se halo tracers", .false., timer_halo_tracers)
+         block => domain % blocklist
+         do while (associated(block))
+            call mpas_dmpar_exch_halo_field3d_real(domain % dminfo, block % tend % tracers % array(:,:,:), &
+               block % tend % num_tracers, block % mesh % nVertLevels, block % mesh % nCells, &
+               block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
+            block => block % next
+         end do
+         call mpas_timer_stop("se halo tracers", timer_halo_tracers)
 
          block => domain % blocklist
          do while (associated(block))
@@ -846,20 +862,6 @@ module ocn_time_integration_split
             block => block % next
          end do
 
-        ! Boundary update on tracers.  This is placed here, rather than 
-        ! on tend % tracers as in RK4, because I needed to update 
-        ! afterwards for the del4 diffusion operator.
-         call mpas_timer_start("se halo tracers", .false., timer_halo_tracers)
-         block => domain % blocklist
-         do while (associated(block))
-
-            call mpas_dmpar_exch_halo_field3d_real(domain % dminfo, block % state % time_levs(2) % state % tracers % array(:,:,:), &
-               block % tend % num_tracers, block % mesh % nVertLevels, block % mesh % nCells, block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-
-            block => block % next
-         end do
-         call mpas_timer_stop("se halo tracers", timer_halo_tracers)
-
 
 
       end do  ! split_explicit_step = 1, config_n_ts_iter
@@ -901,6 +903,15 @@ module ocn_time_integration_split
          if (config_test_case == 1) then    ! For case 1, wind field should be fixed
             block % state % time_levs(2) % state % u % array(:,:) = block % state % time_levs(1) % state % u % array(:,:)
          end if
+
+         if (config_prescribe_velocity) then
+            block % state % time_levs(2) % state % u % array(:,:) = block % state % time_levs(1) % state % u % array(:,:)
+         end if
+
+         if (config_prescribe_thickness) then
+            block % state % time_levs(2) % state % h % array(:,:) = block % state % time_levs(1) % state % h % array(:,:)
+         end if
+
          call ocn_diagnostic_solve(dt, block % state % time_levs(2) % state, block % mesh)
          call mpas_reconstruct(block % mesh, block % state % time_levs(2) % state % u % array,          &
             block % state % time_levs(2) % state % uReconstructX % array,            &

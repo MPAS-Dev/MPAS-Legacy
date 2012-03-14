@@ -21,6 +21,8 @@ module ocn_tendency
    use mpas_constants
    use mpas_timer
 
+   use mpas_ocn_tracer_advection
+
    use ocn_thick_hadv
    use ocn_thick_vadv
 
@@ -97,22 +99,12 @@ contains
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_tend_h(tend, s, d, grid)!{{{
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   ! Compute height and normal wind tendencies, as well as diagnostic variables
-   !
-   ! Input: s - current model state
-   !        grid - grid metadata
-   !
-   ! Output: tend - computed tendencies for prognostic variables
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
+   subroutine ocn_tend_h(tend, s, grid)!{{{
       implicit none
 
-      type (tend_type), intent(inout) :: tend
-      type (state_type), intent(in) :: s
-      type (diagnostics_type), intent(in) :: d
-      type (mesh_type), intent(in) :: grid
+      type (tend_type), intent(inout) :: tend !< Input/Output: Tendency structure
+      type (state_type), intent(in) :: s !< Input: State information
+      type (mesh_type), intent(in) :: grid !< Input: Grid information
 
       real (kind=RKIND), dimension(:,:), pointer :: h_edge, u, wTop, tend_h
 
@@ -166,25 +158,16 @@ contains
 !-----------------------------------------------------------------------
 
    subroutine ocn_tend_u(tend, s, d, grid)!{{{
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   ! Compute height and normal wind tendencies, as well as diagnostic variables
-   !
-   ! Input: s - current model state
-   !        grid - grid metadata
-   !
-   ! Output: tend - computed tendencies for prognostic variables
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
       implicit none
 
-      type (tend_type), intent(inout) :: tend
-      type (state_type), intent(in) :: s
-      type (diagnostics_type), intent(in) :: d
-      type (mesh_type), intent(in) :: grid
+      type (tend_type), intent(inout) :: tend !< Input/Output: Tendency structure
+      type (state_type), intent(in) :: s !< Input: State information
+      type (diagnostics_type), intent(in) :: d !< Input: Diagnostic information
+      type (mesh_type), intent(in) :: grid !< Input: Grid information
 
       real (kind=RKIND), dimension(:,:), pointer :: &
         h_edge, h, u, rho, zMid, pressure, &
-        tend_u, circulation, vorticity, ke, ke_edge, pv_edge, &
+        tend_u, circulation, vorticity, ke, ke_edge, Vor_edge, &
         MontPot, wTop, divergence, vertViscTopOfEdge
 
       real (kind=RKIND), dimension(:,:), pointer :: u_src
@@ -202,7 +185,7 @@ contains
       divergence  => s % divergence % array
       ke          => s % ke % array
       ke_edge     => s % ke_edge % array
-      pv_edge     => s % pv_edge % array
+      Vor_edge     => s % Vor_edge % array
       MontPot     => s % MontPot % array
       pressure    => s % pressure % array
       vertViscTopOfEdge => d % vertViscTopOfEdge % array
@@ -222,7 +205,7 @@ contains
       !
 
       call mpas_timer_start("coriolis", .false., velCorTimer)
-      call ocn_vel_coriolis_tend(grid, pv_edge, h_edge, u, ke, tend_u, err)
+      call ocn_vel_coriolis_tend(grid, Vor_edge, h_edge, u, ke, tend_u, err)
       call mpas_timer_stop("coriolis", velCorTimer)
 
       !
@@ -286,31 +269,21 @@ contains
 !>  This routine computes the scalar (tracer) tendency for the ocean
 !
 !-----------------------------------------------------------------------
-
-   subroutine ocn_tend_scalar(tend, s, d, grid)!{{{
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   !
-   ! Input: s - current model state
-   !        grid - grid metadata
-   !        note: the variable s % tracers really contains the tracers, 
-   !              not tracers*h
-   !
-   ! Output: tend - computed scalar tendencies
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
+   subroutine ocn_tend_scalar(tend, s, d, grid, dt)!{{{
       implicit none
 
-      type (tend_type), intent(inout) :: tend
-      type (state_type), intent(in) :: s
-      type (diagnostics_type), intent(in) :: d
-      type (mesh_type), intent(in) :: grid
+      type (tend_type), intent(inout) :: tend !< Input/Output: Tendency structure
+      type (state_type), intent(in) :: s !< Input: State information
+      type (diagnostics_type), intent(in) :: d !< Input: Diagnostic information
+      type (mesh_type), intent(in) :: grid !< Input: Grid information
+      real (kind=RKIND), intent(in) :: dt !< Input: Time step
 
       real (kind=RKIND), dimension(:,:), pointer :: &
-        u,h,wTop, h_edge, vertDiffTopOfCell
+        u, h,wTop, h_edge, vertDiffTopOfCell, tend_h, uh
       real (kind=RKIND), dimension(:,:,:), pointer :: &
         tracers, tend_tr
 
-      integer :: err
+      integer :: err, iEdge, k
 
       call mpas_timer_start("ocn_tend_scalar")
 
@@ -322,6 +295,15 @@ contains
       vertDiffTopOfCell => d % vertDiffTopOfCell % array
 
       tend_tr     => tend % tracers % array
+      tend_h      => tend % h % array
+
+      allocate(uh(grid % nVertLevels, grid % nEdges+1))
+
+      do iEdge = 1, grid % nEdges
+        do k = 1, grid % nVertLevels
+            uh(k, iEdge) = u(k, iEdge) * h_edge(k, iEdge)
+        end do
+      end do
 
       !
       ! initialize tracer tendency (RHS of tracer equation) to zero.
@@ -336,18 +318,11 @@ contains
       ! and then change maxLevelEdgeTop to maxLevelEdgeBot in the following section.
       ! tracer_edge at the boundary will also need to be defined for flux boundaries.
 
-      call mpas_timer_start("hadv", .false., tracerHadvTimer)
-      call ocn_tracer_hadv_tend(grid, u, h_edge, tracers, tend_tr, err)
-      call mpas_timer_stop("hadv", tracerHadvTimer)
+      ! Monotonoic Advection, or standard advection
+      call mpas_timer_start("adv", .false., tracerHadvTimer)
+      call mpas_ocn_tracer_advection_tend(tracers, uh, wTop, h, h, dt, grid, tend_h, tend_tr)
+      call mpas_timer_stop("adv", tracerHadvTimer)
 
-
-      !
-      ! tracer tendency: vertical advection term -d/dz( h \phi w)
-      !
-
-      call mpas_timer_start("vadv", .false., tracerVadvTimer)
-      call ocn_tracer_vadv_tend(grid, h, wtop, tracers, tend_tr, err)
-      call mpas_timer_stop("vadv", tracerVadvTimer)
 
       !
       ! tracer tendency: del2 horizontal tracer diffusion, div(h \kappa_2 \nabla \phi)
@@ -391,6 +366,8 @@ contains
  10   format(2i8,10e20.10)
       call mpas_timer_stop("ocn_tend_scalar")
 
+      deallocate(uh)
+
    end subroutine ocn_tend_scalar!}}}
 
 !***********************************************************************
@@ -407,19 +384,11 @@ contains
 !-----------------------------------------------------------------------
 
    subroutine ocn_diagnostic_solve(dt, s, grid)!{{{
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   ! Compute diagnostic fields used in the tendency computations
-   !
-   ! Input: grid - grid metadata
-   !
-   ! Output: s - computed diagnostics
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
       implicit none
 
-      real (kind=RKIND), intent(in) :: dt
-      type (state_type), intent(inout) :: s
-      type (mesh_type), intent(in) :: grid
+      real (kind=RKIND), intent(in) :: dt !< Input: Time step
+      type (state_type), intent(inout) :: s !< Input/Output: State information
+      type (mesh_type), intent(in) :: grid !< Input: Grid information
 
 
       integer :: iEdge, iCell, iVertex, k, cell1, cell2, vertex1, vertex2, eoe, i, j
@@ -441,7 +410,7 @@ contains
       real (kind=RKIND), dimension(:,:), pointer :: &
         weightsOnEdge, kiteAreasOnVertex, h_edge, h, u, v, pressure,&
         circulation, vorticity, ke, ke_edge, MontPot, wTop, zMid, &
-        pv_edge, pv_vertex, pv_cell, gradPVn, gradPVt, divergence, &
+        Vor_edge, Vor_vertex, Vor_cell, gradVor_n, gradVor_t, divergence, &
         rho, temperature, salinity, kev, kevc
       real (kind=RKIND), dimension(:,:,:), pointer :: tracers, deriv_two
       real (kind=RKIND), dimension(:,:), allocatable:: div_u
@@ -458,11 +427,11 @@ contains
       kev         => s % kev % array
       kevc        => s % kevc % array
       ke_edge     => s % ke_edge % array
-      pv_edge     => s % pv_edge % array
-      pv_vertex   => s % pv_vertex % array
-      pv_cell     => s % pv_cell % array
-      gradPVn     => s % gradPVn % array
-      gradPVt     => s % gradPVt % array
+      Vor_edge     => s % Vor_edge % array
+      Vor_vertex   => s % Vor_vertex % array
+      Vor_cell     => s % Vor_cell % array
+      gradVor_n     => s % gradVor_n % array
+      gradVor_t     => s % gradVor_t % array
       rho         => s % rho % array
       MontPot     => s % MontPot % array
       pressure    => s % pressure % array
@@ -509,6 +478,7 @@ contains
 
       ! initialize h_edge to avoid divide by zero and NaN problems.
       h_edge = -1.0e34
+      coef_3rd_order = config_coef_3rd_order
 
       do iEdge=1,nEdges*hadv2nd
          cell1 = cellsOnEdge(1,iEdge)
@@ -609,8 +579,9 @@ contains
          invAreaTri1 = 1.0 / areaTriangle(vertex1)
          invAreaTri2 = 1.0 / areaTriangle(vertex2)
 
-         invAreaCell1 = 1.0 / areaCell(cell1)
-         invAreaCell2 = 1.0 / areaCell(cell2)
+         !dwj: 02/23/12 arraCell(nCells+1) is still 0, this is a temporary fix
+         invAreaCell1 = 1.0 / max(areaCell(cell1), 1.0)
+         invAreaCell2 = 1.0 / max(areaCell(cell2), 1.0)
 
          do k=1,maxLevelEdgeBot(iEdge)
             ! Compute circulation and relative vorticity at each vertex
@@ -663,7 +634,8 @@ contains
       do iVertex = 1, nVertices*ke_vertex_flag
        do i=1,grid % vertexDegree
          iCell = cellsOnVertex(i,iVertex)
-         invAreaCell1 = 1.0 / areaCell(iCell)
+         !dwj: 02/23/12 arraCell(nCells+1) is still 0, this is a temporary fix
+         invAreaCell1 = 1.0 / max(areaCell(iCell), 1.0)
          do k=1,nVertLevels
            kevc(k,iCell) = kevc(k,iCell) + kiteAreasOnVertex(i, iVertex) * kev(k, iVertex) * invAreaCell1
          enddo
@@ -694,7 +666,7 @@ contains
 
       !
       ! Compute height at vertices, pv at vertices, and average pv to edge locations
-      !  ( this computes pv_vertex at all vertices bounding real cells and distance-1 ghost cells )
+      !  ( this computes Vor_vertex at all vertices bounding real cells and distance-1 ghost cells )
       !
       do iVertex = 1,nVertices
          invAreaTri1 = 1.0 / areaTriangle(iVertex)
@@ -705,35 +677,36 @@ contains
             end do
             h_vertex = h_vertex * invAreaTri1
 
-            pv_vertex(k,iVertex) = (fCoef*fVertex(iVertex) + vorticity(k,iVertex)) / h_vertex
+            Vor_vertex(k,iVertex) = (fCoef*fVertex(iVertex) + vorticity(k,iVertex)) / h_vertex
          end do
       end do
 
-      pv_cell(:,:) = 0.0
-      pv_edge(:,:) = 0.0
+      Vor_cell(:,:) = 0.0
+      Vor_edge(:,:) = 0.0
       do iVertex = 1,nVertices
          do i=1,vertexDegree
             iCell = cellsOnVertex(i,iVertex)
             iEdge = edgesOnVertex(i,iVertex)
 
-            invAreaCell1 = 1.0 / areaCell(iCell)
+            !dwj: 02/23/12 arraCell(nCells+1) is still 0, this is a temporary fix
+            invAreaCell1 = 1.0 / max(areaCell(iCell), 1.0)
 
             ! Compute pv at cell centers
-            !    ( this computes pv_cell for all real cells and distance-1 ghost cells )
+            !    ( this computes Vor_cell for all real cells and distance-1 ghost cells )
             do k = 1,maxLevelCell(iCell)
-               pv_cell(k,iCell) = pv_cell(k,iCell) + kiteAreasOnVertex(i, iVertex) * pv_vertex(k, iVertex) * invAreaCell1
+               Vor_cell(k,iCell) = Vor_cell(k,iCell) + kiteAreasOnVertex(i, iVertex) * Vor_vertex(k, iVertex) * invAreaCell1
             enddo
 
             ! Compute pv at the edges
-            !   ( this computes pv_edge at all edges bounding real cells )
+            !   ( this computes Vor_edge at all edges bounding real cells )
             do k=1,maxLevelEdgeBot(iEdge)
-               pv_edge(k,iEdge) = pv_edge(k,iEdge) + 0.5 * pv_vertex(k,iVertex)
+               Vor_edge(k,iEdge) = Vor_edge(k,iEdge) + 0.5 * Vor_vertex(k,iVertex)
             enddo
          enddo
       enddo
 
-!     gradPVn(:,:) = 0.0
-!     gradPVt(:,:) = 0.0
+!     gradVor_n(:,:) = 0.0
+!     gradVor_t(:,:) = 0.0
       do iEdge = 1,nEdges
          cell1 = cellsOnEdge(1, iEdge)
          cell2 = cellsOnEdge(2, iEdge)
@@ -742,16 +715,16 @@ contains
 
          invLength = 1.0 / dcEdge(iEdge)
          ! Compute gradient of PV in normal direction
-         !   ( this computes gradPVn for all edges bounding real cells )
+         !   ( this computes gradVor_n for all edges bounding real cells )
          do k=1,maxLevelEdgeTop(iEdge)
-            gradPVn(k,iEdge) = (pv_cell(k,cell2) - pv_cell(k,cell1)) * invLength
+            gradVor_n(k,iEdge) = (Vor_cell(k,cell2) - Vor_cell(k,cell1)) * invLength
          enddo
 
          invLength = 1.0 / dvEdge(iEdge)
          ! Compute gradient of PV in the tangent direction
-         !   ( this computes gradPVt at all edges bounding real cells and distance-1 ghost cells )
+         !   ( this computes gradVor_t at all edges bounding real cells and distance-1 ghost cells )
          do k = 1,maxLevelEdgeBot(iEdge)
-           gradPVt(k,iEdge) = (pv_vertex(k,vertex2) - pv_vertex(k,vertex1)) * invLength
+           gradVor_t(k,iEdge) = (Vor_vertex(k,vertex2) - Vor_vertex(k,vertex1)) * invLength
          enddo
 
       enddo
@@ -761,9 +734,9 @@ contains
       !
       do iEdge = 1,nEdges
          do k = 1,maxLevelEdgeBot(iEdge)
-           pv_edge(k,iEdge) = pv_edge(k,iEdge) &
-             - 0.5 * dt* (  u(k,iEdge) * gradPVn(k,iEdge) &
-                          + v(k,iEdge) * gradPVt(k,iEdge) )
+           Vor_edge(k,iEdge) = Vor_edge(k,iEdge) &
+             - config_apvm_scale_factor * dt* (  u(k,iEdge) * gradVor_n(k,iEdge) &
+                          + v(k,iEdge) * gradVor_t(k,iEdge) )
          enddo
       enddo
 
@@ -872,23 +845,13 @@ contains
 !>  This routine computes the vertical velocity in the top layer for the ocean
 !
 !-----------------------------------------------------------------------
-
    subroutine ocn_wtop(s1,s2, grid)!{{{
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   ! Compute diagnostic fields used in the tendency computations
-   !
-   ! Input: grid - grid metadata
-   !
-   ! Output: s - computed diagnostics
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
       implicit none
 
-      type (state_type), intent(inout) :: s1
-      type (state_type), intent(inout) :: s2
-      type (mesh_type), intent(in) :: grid
+      type (state_type), intent(inout) :: s1 !< Input/Output: State 1 information
+      type (state_type), intent(inout) :: s2 !< Input/Output: State 2 information
+      type (mesh_type), intent(in) :: grid !< Input: Grid information
 
-      ! mrp 110512 could clean this out, remove pointers?
       integer :: iEdge, iCell, iVertex, k, cell1, cell2, vertex1, vertex2, eoe, i, j, cov
       real (kind=RKIND) :: flux, vorticity_abs, h_vertex, workpv, rho0Inv, hSum
 
@@ -1062,19 +1025,10 @@ contains
 !-----------------------------------------------------------------------
 
    subroutine ocn_fuperp(s, grid)!{{{
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   ! Put f*uBcl^{perp} in u as a work variable
-   !
-   ! Input: s - current model state
-   !        grid - grid metadata
-   !
-   ! Output: tend - computed tendencies for prognostic variables
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
       implicit none
 
-      type (state_type), intent(inout) :: s
-      type (mesh_type), intent(in) :: grid
+      type (state_type), intent(inout) :: s !< Input/Output: State information
+      type (mesh_type), intent(in) :: grid !< Input: Grid information
 
 ! mrp 110512 I just split compute_tend into compute_tend_u and compute_tend_h.
 !  Some of these variables can be removed, but at a later time.
@@ -1137,9 +1091,8 @@ contains
 !>  other tendency routines.
 !
 !-----------------------------------------------------------------------
-
     subroutine ocn_tendency_init(err)!{{{
-        integer, intent(out) :: err
+        integer, intent(out) :: err !< Output: Error flag
 
         err = 0
 

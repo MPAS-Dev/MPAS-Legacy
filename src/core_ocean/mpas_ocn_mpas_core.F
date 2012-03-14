@@ -45,6 +45,7 @@ module mpas_core
    subroutine mpas_core_init(domain, startTimeStamp)!{{{
 
       use mpas_grid_types
+      use mpas_ocn_tracer_advection
 
       implicit none
 
@@ -86,6 +87,9 @@ module mpas_core
       err = ior(err, err_tmp)
 
       call ocn_tendency_init(err_tmp)
+      err = ior(err,err_tmp)
+
+      call mpas_ocn_tracer_advection_init(err_tmp)
       err = ior(err,err_tmp)
 
       call mpas_timer_init(domain)
@@ -134,7 +138,10 @@ module mpas_core
 
       block => domain % blocklist
       do while (associated(block))
-         call mpas_init_block(block, block % mesh, dt)
+         call mpas_init_block(block, block % mesh, dt, err)
+         if(err.eq.1) then
+             call mpas_dmpar_abort(dminfo)
+         endif
          block % state % time_levs(1) % state % xtime % scalar = startTimeStamp 
          block => block % next
       end do
@@ -213,19 +220,27 @@ module mpas_core
 
    end subroutine ocn_simulation_clock_init!}}}
 
-   subroutine mpas_init_block(block, mesh, dt)!{{{
+   subroutine mpas_init_block(block, mesh, dt, err)!{{{
    
       use mpas_grid_types
       use mpas_rbf_interpolation
       use mpas_vector_reconstruction
+      use mpas_ocn_tracer_advection
+      use ocn_advection
    
       implicit none
    
       type (block_type), intent(inout) :: block
       type (mesh_type), intent(inout) :: mesh
       real (kind=RKIND), intent(in) :: dt
+      integer, intent(out) :: err
       integer :: i, iEdge, iCell, k
+      integer :: err1
    
+      call ocn_initialize_advection_rk(mesh, err)
+      call mpas_ocn_tracer_advection_coefficients(mesh, err1)
+      err = ior(err, err1)
+
       call ocn_time_average_init(block % state % time_levs(1) % state)
    
       call mpas_timer_start("diagnostic solve", .false., initDiagSolveTimer)
@@ -272,28 +287,12 @@ module mpas_core
               :block % mesh % nVertLevels,iCell) =  0.0
 ! mrp changed to 0
 !              :block % mesh % nVertLevels,iCell) =  -1e34
-
-! mrp 110516, added just to test for conservation of tracers
-         block % state % time_levs(1) % state % tracers % array(block % state % time_levs(1) % state % index_tracer1,:,iCell) = 1.0
-
       end do
 
-      if (.not. config_do_restart) then 
-
-! mrp 110808 add, so that variables are copied to * variables for split explicit
-          do i=2,nTimeLevs
-             call mpas_copy_state(block % state % time_levs(i) % state, &
+      do i=2,nTimeLevs
+        call mpas_copy_state(block % state % time_levs(i) % state, &
                              block % state % time_levs(1) % state)
-          end do
-! mrp 110808 add end
-
-
-      else
-          do i=2,nTimeLevs
-             call mpas_copy_state(block % state % time_levs(i) % state, &
-                             block % state % time_levs(1) % state)
-          end do
-      endif
+      end do
 
    end subroutine mpas_init_block!}}}
    
@@ -508,8 +507,8 @@ module mpas_core
 
       integer :: iTracer, cell, cell1, cell2
       real (kind=RKIND) :: uhSum, hSum, hEdge1
-      real (kind=RKIND), dimension(:), pointer :: &
-         referenceBottomDepth, referenceBottomDepthTopOfCell
+      real (kind=RKIND), dimension(:), pointer :: referenceBottomDepth, referenceBottomDepthTopOfCell
+         
       real (kind=RKIND), dimension(:,:), pointer :: h
       integer :: nVertLevels
 
@@ -732,8 +731,12 @@ subroutine ocn_compute_max_level(domain)!{{{
             if (boundaryEdge(k,iEdge).eq.1) then
                boundaryCell(k,cellsOnEdge(1,iEdge)) = 1
                boundaryCell(k,cellsOnEdge(2,iEdge)) = 1
-               cellMask(k,cellsOnEdge(1,iEdge)) = 0
-               cellMask(k,cellsOnEdge(2,iEdge)) = 0
+               if(maxLevelCell(cellsOnEdge(1,iEdge)) > k) then
+                   cellMask(k, cellsOnEdge(1,iEdge)) = 0
+               end if
+               if(maxLevelCell(cellsOnEdge(2,iEdge)) > k) then
+                   cellMask(k, cellsOnEdge(2,iEdge)) = 0
+               end if
                boundaryVertex(k,verticesOnEdge(1,iEdge)) = 1
                boundaryVertex(k,verticesOnEdge(2,iEdge)) = 1
                vertexMask(k,verticesOnEdge(1,iEdge)) = 0

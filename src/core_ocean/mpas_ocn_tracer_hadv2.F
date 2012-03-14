@@ -182,7 +182,7 @@ contains
       err = 0
       hadv2On = .false.
 
-      if (config_tracer_adv_order == 2) then
+      if (config_horiz_tracer_adv_order == 2) then
           hadv2On = .true.
       end if
 

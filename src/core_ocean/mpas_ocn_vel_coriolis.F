@@ -62,7 +62,7 @@ contains
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_vel_coriolis_tend(grid, pv_edge, h_edge, u, ke, tend, err)!{{{
+   subroutine ocn_vel_coriolis_tend(grid, Vor_edge, h_edge, u, ke, tend, err)!{{{
 
       !-----------------------------------------------------------------
       !
@@ -71,7 +71,7 @@ contains
       !-----------------------------------------------------------------
 
       real (kind=RKIND), dimension(:,:), intent(in) :: &
-         pv_edge  !< Input: Potential vorticity on edge
+         Vor_edge  !< Input: Potential vorticity on edge
       real (kind=RKIND), dimension(:,:), intent(in) :: &
          h_edge  !< Input: Thickness on edge
       real (kind=RKIND), dimension(:,:), intent(in) :: &
@@ -138,7 +138,7 @@ contains
             q = 0.0
             do j = 1,nEdgesOnEdge(iEdge)
                eoe = edgesOnEdge(j,iEdge)
-               workpv = 0.5 * (pv_edge(k,iEdge) + pv_edge(k,eoe))
+               workpv = 0.5 * (Vor_edge(k,iEdge) + Vor_edge(k,eoe))
                q = q + weightsOnEdge(j,iEdge) * u(k,eoe) * workpv * h_edge(k,eoe) 
             end do
 

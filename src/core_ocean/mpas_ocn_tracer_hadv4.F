@@ -213,7 +213,7 @@ contains
       err = 0
       hadv4On = .false.
 
-      if (config_tracer_adv_order == 4) then
+      if (config_horiz_tracer_adv_order == 4) then
           hadv4On = .true.
       end if
 
