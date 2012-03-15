@@ -3,7 +3,7 @@
 all: esmf_time
 
 esmf_time:
-	( cd esmf_time_f90; make FC="$(FC) $(FFLAGS)" CPP="$(CPP)" )
+	( cd esmf_time_f90; $(MAKE) FC="$(FC) $(FFLAGS)" CPP="$(CPP)" )
 
 clean:
-	( cd esmf_time_f90; make clean )
+	( cd esmf_time_f90; $(MAKE) clean )

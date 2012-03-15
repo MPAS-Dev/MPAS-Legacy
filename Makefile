@@ -14,10 +14,10 @@ endif
 
 
 dummy:
-	( make error )
+	( $(MAKE) error )
 
 xlf:
-	( make all \
+	( $(MAKE) all \
 	"FC_PARALLEL = mpxlf90" \
 	"CC_PARALLEL = mpcc" \
 	"FC_SERIAL = xlf90" \
@@ -32,7 +32,7 @@ xlf:
 	"CPPFLAGS = $(MODEL_FORMULATION) $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
  
 ftn:
-	( make all \
+	( $(MAKE) all \
 	"FC_PARALLEL = ftn" \
 	"CC_PARALLEL = cc" \
 	"FC_SERIAL = ftn" \
@@ -47,7 +47,7 @@ ftn:
 	"CPPFLAGS = $(MODEL_FORMULATION) -DUNDERSCORE $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
 
 pgi:
-	( make all \
+	( $(MAKE) all \
 	"FC_PARALLEL = mpif90" \
 	"CC_PARALLEL = mpicc" \
 	"FC_SERIAL = pgf90" \
@@ -65,7 +65,7 @@ pgi:
 	"CPPFLAGS = $(MODEL_FORMULATION) -DUNDERSCORE $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
 
 pgi-nersc:
-	( make all \
+	( $(MAKE) all \
 	"FC_PARALLEL = ftn" \
 	"CC_PARALLEL = cc" \
 	"FC_SERIAL = ftn" \
@@ -80,7 +80,7 @@ pgi-nersc:
 	"CPPFLAGS = $(MODEL_FORMULATION) -DUNDERSCORE $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
 
 pgi-llnl:
-	( make all \
+	( $(MAKE) all \
 	"FC_PARALLEL = mpipgf90" \
 	"CC_PARALLEL = pgcc" \
 	"FC_SERIAL = pgf90" \
@@ -95,7 +95,7 @@ pgi-llnl:
 	"CPPFLAGS = $(MODEL_FORMULATION) -DUNDERSCORE $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
 
 ifort:
-	( make all \
+	( $(MAKE) all \
 	"FC_PARALLEL = mpif90" \
 	"CC_PARALLEL = gcc" \
 	"FC_SERIAL = ifort" \
@@ -113,7 +113,7 @@ ifort:
 	"CPPFLAGS = $(MODEL_FORMULATION) -DUNDERSCORE -m64 $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
 
 gfortran:
-	( make all \
+	( $(MAKE) all \
 	"FC_PARALLEL = mpif90" \
 	"CC_PARALLEL = mpicc" \
 	"FC_SERIAL = gfortran" \
@@ -131,7 +131,7 @@ gfortran:
 	"CPPFLAGS = $(MODEL_FORMULATION) -DUNDERSCORE -m64 $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
 
 g95:
-	( make all \
+	( $(MAKE) all \
 	"FC_PARALLEL = mpif90" \
 	"CC_PARALLEL = mpicc" \
 	"FC_SERIAL = g95" \
@@ -146,7 +146,7 @@ g95:
 	"CPPFLAGS = $(MODEL_FORMULATION) -DUNDERSCORE $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
 
 pathscale-nersc:
-	( make all \
+	( $(MAKE) all \
 	"FC_PARALLEL = ftn" \
 	"CC_PARALLEL = cc" \
 	"FC_SERIAL = ftn" \
@@ -161,7 +161,7 @@ pathscale-nersc:
 	"CPPFLAGS = $(MODEL_FORMULATION) -DUNDERSCORE $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
 
 cray-nersc:
-	( make all \
+	( $(MAKE) all \
 	"FC_PARALLEL = ftn" \
 	"CC_PARALLEL = cc" \
 	"FC_SERIAL = ftn" \
@@ -176,7 +176,7 @@ cray-nersc:
 	"CPPFLAGS = $(MODEL_FORMULATION) -DUNDERSCORE $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
 
 intel-nersc:
-	( make all \
+	( $(MAKE) all \
 	"FC_PARALLEL = ftn" \
 	"CC_PARALLEL = cc" \
 	"FC_SERIAL = ftn" \
@@ -227,9 +227,9 @@ ifndef FFLAGS_DEBUG
 	LDFLAGS=$(LDFLAGS_OPT)
 	DEBUG_MESSAGE="Debug flags are not defined for this compile group. Defaulting to Optimized flags"
 else # FFLAGS_DEBUG IF
-	FFLAGS=$(FFLAGS_DEBUG)
-	CFLAGS=$(CFLAGS_DEBUG)
-	LDFLAGS=$(LDFLAGS_DEBUG)
+	FFLAGS=$(FFLAGS_DEBUG) -DMPAS_DEBUG
+	CFLAGS=$(CFLAGS_DEBUG) -DMPAS_DEBUG
+	LDFLAGS=$(LDFLAGS_DEBUG) -DMPAS_DEBUG
 	DEBUG_MESSAGE="Debugging is on."
 endif # FFLAGS_DEBUG IF
 
@@ -264,10 +264,14 @@ else # USE_PAPI IF
 	PAPI_MESSAGE="Papi libraries are off."
 endif # USE_PAPI IF
 
+ifneq ($(wildcard $(NETCDF)/lib/libnetcdff.*), ) # CHECK FOR NETCDF4
+	LIBS += -lnetcdff
+endif # CHECK FOR NETCDF4
+
 all: mpas_main
 
 mpas_main: 
-	cd src; make FC="$(FC)" \
+	cd src; $(MAKE) -j1 FC="$(FC)" \
                  CC="$(CC)" \
                  SFC="$(SFC)" \
                  SCC="$(SCC)" \
@@ -287,7 +291,7 @@ mpas_main:
 	@echo $(SERIAL_MESSAGE)
 	@echo $(PAPI_MESSAGE)
 clean:
-	cd src; make clean RM="$(RM)" CORE="$(CORE)"
+	cd src; $(MAKE) clean RM="$(RM)" CORE="$(CORE)"
 	$(RM) $(CORE)_model.exe
 error: errmsg
 
@@ -305,7 +309,7 @@ endif # CORE IF
 
 errmsg:
 	@echo ""
-	@echo "Usage: make target CORE=[core] [options]"
+	@echo "Usage: $(MAKE) target CORE=[core] [options]"
 	@echo ""
 	@echo "Example targets:"
 	@echo "    ifort"
