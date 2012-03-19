@@ -128,6 +128,12 @@
  sfc_emibck => diag_physics % sfc_emibck % array
  xicem      => diag_physics % xicem      % array
 
+ write(0,*)
+ write(0,*) 'max sst  =',maxval(sst(1:nCellsSolve))
+ write(0,*) 'min sst  =',minval(sst(1:nCellsSolve))
+ write(0,*) 'max xice =',maxval(xice(1:nCellsSolve))
+ write(0,*) 'min xice =',minval(xice(1:nCellsSolve))
+
  do iCell = 1, nCellsSolve
 
     !update the skin temperature and the temperature in the first soil layer to the updated
@@ -236,8 +242,8 @@
  real(kind=RKIND),dimension(:),pointer:: dtw1,emiss,ust
 
 !---------------------------------------------------------------------------------------------
- write(0,*)
- write(0,*) '--- enter subroutine physics_update_sstskin:'
+!write(0,*)
+!write(0,*) '--- enter subroutine physics_update_sstskin:'
 
  nCellsSolve = mesh % nCellsSolve
 
@@ -349,14 +355,16 @@
 
 !local variables:
  integer:: iCell,iLag,n,nCellsSolve,nLags
- integer,dimension(:),pointer:: nsteps_accum,ndays_accum
 
  real(kind=RKIND),parameter:: tconst = 0.6
  real(kind=RKIND):: deltat,julian,tprior,yrday
+ real(kind=RKIND),dimension(:),pointer:: nsteps_accum,ndays_accum
  real(kind=RKIND),dimension(:),pointer  :: tday_accum,tmn,tsk,tyear_accum,tyear_mean
  real(kind=RKIND),dimension(:,:),pointer:: tlag 
 
 !---------------------------------------------------------------------------------------------
+!write(0,*)
+!write(0,*) '--- enter subroutine physics_update_deepsoiltemp:' 
 
  nCellsSolve = mesh % nCellsSolve
  nLags       = mesh % nLags
@@ -380,26 +388,27 @@
 
 !... accumulate the skin temperature for current day:
  do iCell = 1, nCellsSolve
-    tday_accum(iCell)  = tday_accum(iCell)  + tsk(iCell)
+    tday_accum(iCell)  = tday_accum(iCell)  + tsk(iCell)*dt
+!   tday_accum(iCell)  = tday_accum(iCell)  + tsk(iCell)
     nsteps_accum(iCell) = nsteps_accum(iCell) + dt
+!   nsteps_accum(iCell) = nsteps_accum(iCell) + 1
  enddo
 
 !... update the deep soil temperature at the end of the day:
  deltat = (julian_in-nint(julian_in))*24.*3600.
 
- write(0,*)
- write(0,*) 'yrday          = ',yrday
- write(0,*) 'julian_in      = ',julian_in
- write(0,*) 'nint(julian_in)= ',nint(julian_in)
- write(0,*) 'deltat         = ',deltat
- write(0,*) 'nint(deltat)-dt= ',nint(deltat) .lt. dt
+!write(0,*) '--- yrday          = ',yrday
+!write(0,*) '--- julian_in      = ',julian_in
+!write(0,*) '--- nint(julian_in)= ',nint(julian_in)
+!write(0,*) '--- deltat         = ',deltat
+!write(0,*) '--- nint(deltat)-dt= ',nint(deltat) .lt. dt
 
  if(abs(deltat) .le. dt/2) then
-    write(0,*) '--- end of day: update deep soil temperature'
     julian = julian_in - 1. + dt/(3600.*24.)
 
     do iCell = 1, nCellsSolve
 
+!--- update tmn:
        tprior = 0.
        do iLag = 1, nLags
           tprior = tprior + tlag(iLag,iCell)
@@ -407,21 +416,22 @@
        tprior = tprior / nLags
        tmn(iCell) = tconst*tyear_mean(iCell) + (1-tconst)*tprior 
 
+!--- update tlag:
        do iLag = 1, nLags-1
           tlag(iLag,iCell) = tlag(iLag+1,iCell)
        enddo
        tlag(nLags,iCell)   = tday_accum(iCell) / nsteps_accum(iCell)
        tday_accum(iCell)   = 0.0
-       nsteps_accum(iCell)  = 0.0
+       nsteps_accum(iCell) = 0.0
 
        !... end of year:
        if(yrday-julian .le. 1.) then
           tyear_mean(iCell)  = tyear_accum(iCell) / ndays_accum(iCell)
           tyear_accum(iCell) = 0.
-          ndays_accum(iCell) = 0
+          ndays_accum(iCell) = 0.0
        else
           tyear_accum(iCell) = tyear_accum(iCell) + tlag(nLags,iCell)
-          ndays_accum(iCell) = ndays_accum(iCell) + 1
+          ndays_accum(iCell) = ndays_accum(iCell) + 1.
        endif
        
     enddo

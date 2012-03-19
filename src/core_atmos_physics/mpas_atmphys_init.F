@@ -58,18 +58,71 @@
 !edges:
  call init_dirs_forphys(mesh)
 
-!initialization of temperatures needed for updating the deep soil temperature:
- do iCell = 1, mesh % nCellsSolve
-    diag_physics % nsteps_accum % array(iCell) = 0
-    diag_physics % ndays_accum  % array(iCell) = 1
-
-    diag_physics % tday_accum  % array(iCell) = sfc_input % tmn % array(iCell)
-    diag_physics % tyear_mean  % array(iCell) = sfc_input % tmn % array(iCell)
-    diag_physics % tyear_accum % array(iCell) = sfc_input % tmn % array(iCell)
-    do iLag = 1, mesh % nLags
-       diag_physics % tlag % array(iLag,iCell) = sfc_input % tmn % array(iCell)
+!initialization of counters i_rainc and i_rainnc. i_rainc and i_rainnc track the number of
+!times the accumulated convective (rainc) and grid-scale (rainnc) rain exceed the prescribed
+!threshold value:
+ if(.not. config_do_restart) then
+    do iCell = 1, mesh % nCellsSolve
+       diag_physics % i_rainc  % array(iCell) = 0
+       diag_physics % i_rainnc % array(iCell) = 0
     enddo
- enddo
+ endif
+
+!initialization of counters i_acsw* and i_aclw*. i_acsw* and i_aclw* track the number of times
+!the accumulated long and short-wave radiation fluxes exceed their prescribed theshold values.
+ if(.not. config_do_restart) then
+    do iCell = 1, mesh % nCellsSolve
+       diag_physics % i_acswdnb  % array(iCell) = 0
+       diag_physics % i_acswdnbc % array(iCell) = 0
+       diag_physics % i_acswdnt  % array(iCell) = 0
+       diag_physics % i_acswdntc % array(iCell) = 0
+       diag_physics % i_acswupb  % array(iCell) = 0
+       diag_physics % i_acswupbc % array(iCell) = 0
+       diag_physics % i_acswupt  % array(iCell) = 0
+       diag_physics % i_acswuptc % array(iCell) = 0
+
+       diag_physics % i_aclwdnb  % array(iCell) = 0
+       diag_physics % i_aclwdnbc % array(iCell) = 0
+       diag_physics % i_aclwdnt  % array(iCell) = 0
+       diag_physics % i_aclwdntc % array(iCell) = 0
+       diag_physics % i_aclwupb  % array(iCell) = 0
+       diag_physics % i_aclwupbc % array(iCell) = 0
+       diag_physics % i_aclwupt  % array(iCell) = 0
+       diag_physics % i_aclwuptc % array(iCell) = 0
+
+       diag_physics % acswdnb  % array(iCell) = 0._RKIND
+       diag_physics % acswdnbc % array(iCell) = 0._RKIND
+       diag_physics % acswdnt  % array(iCell) = 0._RKIND
+       diag_physics % acswdntc % array(iCell) = 0._RKIND
+       diag_physics % acswupb  % array(iCell) = 0._RKIND
+       diag_physics % acswupbc % array(iCell) = 0._RKIND
+       diag_physics % acswupt  % array(iCell) = 0._RKIND
+       diag_physics % acswuptc % array(iCell) = 0._RKIND
+
+       diag_physics % aclwdnb  % array(iCell) = 0._RKIND
+       diag_physics % aclwdnbc % array(iCell) = 0._RKIND
+       diag_physics % aclwdnt  % array(iCell) = 0._RKIND
+       diag_physics % aclwdntc % array(iCell) = 0._RKIND
+       diag_physics % aclwupb  % array(iCell) = 0._RKIND
+       diag_physics % aclwupbc % array(iCell) = 0._RKIND
+       diag_physics % aclwupt  % array(iCell) = 0._RKIND
+       diag_physics % aclwuptc % array(iCell) = 0._RKIND
+    enddo
+ endif
+
+!initialization of temperatures needed for updating the deep soil temperature:
+ if(.not. config_do_restart) then
+    do iCell = 1, mesh % nCellsSolve
+       diag_physics % nsteps_accum % array(iCell) = 0._RKIND
+       diag_physics % ndays_accum  % array(iCell) = 0._RKIND
+       diag_physics % tday_accum   % array(iCell) = 0._RKIND
+       diag_physics % tyear_accum  % array(iCell) = 0._RKIND
+       diag_physics % tyear_mean   % array(iCell) = sfc_input % tmn % array(iCell)
+       do iLag = 1, mesh % nLags
+          diag_physics % tlag % array(iLag,iCell) = sfc_input % tmn % array(iCell)
+       enddo
+    enddo
+ endif
 
 !initialization of global surface properties. set here for now, but may be moved when time
 !manager is implemented:

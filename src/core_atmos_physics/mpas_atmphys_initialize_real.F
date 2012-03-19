@@ -60,13 +60,15 @@
 !scan through all the fields in the file:
  call read_next_met_field(field,istatus)
  do while (istatus == 0)
- 
-    write(0,*) field % field
-    if(index(field % field,'SST'   ) /= 0 .or. &
-       index(field % field,'SEAICE') /= 0 .or. &
-       index(field % field,'ALBEDO') /= 0 .or. &
-       index(field % field,'VEGFRA') /= 0 ) then
-       write(0,*) field % field
+
+    !initialization of the sea-surface temperature (SST) and sea-ice fraction (XICE) arrays,
+    !prior to reading the input data:
+    fg % sst  % array (1:mesh%nCells) = 0.0_RKIND
+    fg % xice % array (1:mesh%nCells) = 0.0_RKIND
+
+    if(index(field % field,'SKINTEMP') /= 0 .or. &
+       index(field % field,'SST'     ) /= 0 .or. &
+       index(field % field,'SEAICE'  ) /= 0 ) then
 
        !Interpolation routines use real(kind=RKIND), so copy from default real array
        allocate(slab_r8(field % nx, field % ny))
@@ -106,7 +108,7 @@
                        lat1 = real(field % startlat,RKIND), &
                        lon1 = real(field % startlon,RKIND))
        end if
-   
+ 
        !Interpolate field to each MPAS grid cell:
        do iCell=1,mesh % nCells
           lat = mesh % latCell % array(iCell) * DEG_PER_RAD
@@ -124,7 +126,7 @@
               lon = lon - 360.0
               call latlon_to_ij(proj, lat, lon, x, y)
           end if
-
+ 
           if(index(field % field,'SST') /= 0) then
              fg % sst % array(iCell) = interp_sequence(x,y,1,slab_r8,1,field%nx, &
                                               1,field%ny,1,1,-1.e30_RKIND,interp_list,1)
@@ -139,9 +141,7 @@
 !      exit
     end if
     call read_next_met_field(field,istatus)
-
  enddo
- write(0,*) '--- end subroutine physics_initialize_sst:'
 
  end subroutine physics_initialize_sst
 
@@ -202,16 +202,28 @@
  if(config_input_sst) then
     call physics_initialize_sst(mesh,fg)
 
+    if(maxval(xice(1:nCellsSolve)) == 0._RKIND .and. minval(xice(1:nCellsSolve)) == 0._RKIND) then
+       write(0,*)
+       write(0,*) "The input file does not contain sea-ice data. We freeze the really cold ocean instead"
+       do iCell = 1, nCellsSolve
+          if(landmask(iCell).eq.0 .and. sst(iCell).lt.271._RKIND) xice(iCell) = 1._RKIND
+       enddo
+    endif
+    write(0,*) 'max sst  =',maxval(fg % sst  % array(1:mesh%nCells))
+    write(0,*) 'min sst  =',minval(fg % sst  % array(1:mesh%nCells))
+    write(0,*) 'max xice =',maxval(fg % xice % array(1:mesh%nCells))
+    write(0,*) 'min xice =',minval(fg % xice % array(1:mesh%nCells))
+
     do iCell = 1, nCellsSolve
        !recalculate the sea-ice flag:
-       if(xice(iCell) .gt. 0.) then
-          seaice(iCell) = 1
+       if(xice(iCell) .gt. 0._RKIND) then
+          seaice(iCell) = 1._RKIND
        else
-          seaice(iCell) = 0
+          seaice(iCell) = 0._RKIND
        endif
 
        !set the skin temperature to the sea-surface temperature over the oceans:
-       if(landmask(iCell).eq.0 .and. sst(iCell).gt.170. .and. sst(iCell).lt.400.) &
+       if(landmask(iCell).eq.0 .and. sst(iCell).gt.170._RKIND .and. sst(iCell).lt.400._RKIND) &
           skintemp(iCell) = sst(iCell)
     enddo
  endif
@@ -222,8 +234,8 @@
  call monthly_interp_to_date(nCellsSolve,initial_date,albedo12m,sfc_albbck)
 
  do iCell = 1, nCellsSolve
-    sfc_albbck(iCell) = sfc_albbck(iCell) / 100.
-    if(landmask(iCell) .eq. 0) sfc_albbck(iCell) = 0.08
+    sfc_albbck(iCell) = sfc_albbck(iCell) / 100._RKIND
+    if(landmask(iCell) .eq. 0) sfc_albbck(iCell) = 0.08_RKIND
  enddo
 
 !initialization of the green-ness (vegetation) fraction: interpolation of the monthly values to
@@ -237,10 +249,10 @@
 
 !limit the annual maximum snow albedo to 0.08 over open-ocean and to 0.75 over sea-ice cells::
  do iCell = 1, nCellsSolve
-    if(landmask(iCell) .eq. 0 .and. seaice(iCell) .eq. 0.) then
-       snoalb(iCell) = 0.08
-    elseif(landmask(iCell) .eq. 0 .and. seaice(iCell) .eq. 1.) then
-       snoalb(iCell) = 0.75
+    if(landmask(iCell) .eq. 0 .and. seaice(iCell) .eq. 0._RKIND) then
+       snoalb(iCell) = 0.08_RKIND
+    elseif(landmask(iCell) .eq. 0 .and. seaice(iCell) .eq. 1._RKIND) then
+       snoalb(iCell) = 0.75_RKIND
     endif
  enddo
 
@@ -248,12 +260,12 @@
 !(m) as functions of the input snow water content (kg/m2). we use a 5:1 ratio from liquid
 !water equivalent to snow depth:
  do iCell = 1, nCellsSolve
-    if(snow(iCell) .ge. 10.) then
-       snowc(iCell) = 1.
+    if(snow(iCell) .ge. 10._RKIND) then
+       snowc(iCell) = 1._RKIND
     else
-       snowc(iCell) = 0.
+       snowc(iCell) = 0._RKIND
     endif
-    snowh(iCell) = snow(iCell) * 5.0 / 1000.
+    snowh(iCell) = snow(iCell) * 5.0_RKIND / 1000._RKIND
  enddo
 
 !initialization of soil layers properties:
@@ -264,10 +276,10 @@
 
 !define xland over land and ocean:
  do iCell = 1, nCellsSolve
-    if(landmask(iCell) .eq. 1 .or. (landmask(iCell).eq.0 .and. seaice(iCell).eq.1.)) then
-       xland(iCell) = 1.
+    if(landmask(iCell) .eq. 1 .or. (landmask(iCell).eq.0 .and. seaice(iCell).eq.1._RKIND)) then
+       xland(iCell) = 1._RKIND
     elseif(landmask(iCell) .eq. 0) then
-       xland(iCell) = 2.
+       xland(iCell) = 2._RKIND
     endif
  enddo
 

@@ -27,7 +27,11 @@
 !=============================================================================================
 
  logical:: l_radtlw                   !controls call to longwave radiation parameterization.
- logical:: l_radtsw                   !controls call to shortwave parameterization.
+ logical:: l_radtsw                   !controls call to shortwave radiation parameterization.
+ logical:: l_conv                     !controls call to convective parameterization.
+ logical:: l_camlw                    !controls when to save local CAM LW abs and ems arrays.
+ logical:: l_acrain                   !when .true., limit to accumulated rain is applied.
+ logical:: l_acradt                   !when .true., limit to lw and sw radiation is applied.
 
  integer,public:: ids,ide,jds,jde,kds,kde
  integer,public:: ims,ime,jms,jme,kms,kme

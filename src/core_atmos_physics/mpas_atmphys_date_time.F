@@ -96,9 +96,9 @@
 
 !---------------------------------------------------------------------------------------------
 
- write(0,*)
- write(0,*) '--- enter subroutine monthly_interp_to_date:'
- write(0,*) '--- current_date  = ',date_str
+!write(0,*)
+!write(0,*) '--- enter subroutine monthly_interp_to_date:'
+!write(0,*) '--- current_date  = ',date_str
 
  write(day15,fmt='(I2.2)') 15
  do l = 1 , 12
@@ -116,8 +116,8 @@
 
  call get_julgmt(date_str,target_julyr,target_julday,gmt)
  target_date = target_julyr * 1000 + target_julday
- write(0,*) '--- target_julday =',target_julday
- write(0,*) '--- target_date   =',target_date
+!write(0,*) '--- target_julday =',target_julday
+!write(0,*) '--- target_date   =',target_date
 
  find_month : do l = 0 , 12
     if((middle(l) .lt. target_date) .and. (middle(l+1) .ge. target_date)) then
@@ -131,8 +131,8 @@
              month2 = month1 + 1
           endif
           if(n == 1) then
-             write(0,*) '--- month1 =',month1
-             write(0,*) '--- month2 =',month2
+!            write(0,*) '--- month1 =',month1
+!            write(0,*) '--- month2 =',month2
           endif
           field_out(n) = ( field_in(month2,n) * (target_date - middle(l))    &
                        +   field_in(month1,n) * (middle(l+1) - target_date)) &

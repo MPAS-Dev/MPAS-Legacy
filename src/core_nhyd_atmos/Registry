@@ -348,6 +348,7 @@ namelist character physics  config_conv_interval         none
 namelist character physics  config_pbl_interval          none
 namelist character physics  config_camrad_abs_update     06:00:00
 namelist character physics  config_greeness_update       24:00:00
+namelist character physics  config_bucket_update         none
 
 namelist character physics  config_microp_scheme          off
 namelist character physics  config_conv_shallow_scheme    off
@@ -359,6 +360,10 @@ namelist character physics  config_radt_cld_scheme        off
 namelist character physics  config_radt_lw_scheme         off
 namelist character physics  config_radt_sw_scheme         off
 namelist character physics  config_sfclayer_scheme        off
+
+namelist real      physics  config_bucket_radt            0.0_RKIND
+namelist real      physics  config_bucket_rainc           0.0_RKIND
+namelist real      physics  config_bucket_rainnc          0.0_RKIND
 
 var persistent real    east       ( R3 nCells               ) 0  r   east          mesh         - -
 var persistent real    north      ( R3 nCells               ) 0  r   north         mesh         - -
@@ -374,8 +379,8 @@ var persistent real    north      ( R3 nCells               ) 0  r   north      
 % tyear_mean  : annual mean surface temperature                                                 [K]
 % tyear_accum : accumulated yearly surface temperature for current year                         [K]
 
-var persistent integer nsteps_accum ( nCells Time           ) 1  r  nsteps_accum   diag_physics - -
-var persistent integer ndays_accum  ( nCells Time           ) 1  r  ndays_accum    diag_physics - -
+var persistent real    nsteps_accum ( nCells Time           ) 1  r  nsteps_accum   diag_physics - -
+var persistent real    ndays_accum  ( nCells Time           ) 1  r  ndays_accum    diag_physics - -
 
 var persistent real    tlag         ( nLags nCells Time     ) 1  r  tlag           diag_physics - -
 var persistent real    tday_accum   ( nCells Time           ) 1  r  tday_accum     diag_physics - -           
@@ -385,7 +390,7 @@ var persistent real    tyear_accum  ( nCells Time           ) 1  r  tyear_accum 
 %--------------------------------------------------------------------------------------------------
 %... PARAMETERIZATION OF CLOUD MICROPHYSICS:
 %--------------------------------------------------------------------------------------------------
-
+% i_rainnc  : counter related to how often rainnc is being reset relative to its bucket value   (-)
 % rainnc    : accumulated total time-step grid-scale precipitation                             (mm)
 % rainncv   : time-step total grid-scale precipitation                                         (mm)
 % snownc    : accumulated grid-scale precipitation of snow                                     (mm)
@@ -394,6 +399,7 @@ var persistent real    tyear_accum  ( nCells Time           ) 1  r  tyear_accum 
 % graupelncv: time-step grid-scale precipitation of graupel                                    (mm)
 % sr        : time-step ratio of frozen versus total grid-scale precipitation                   (-)
 
+var persistent integer i_rainnc   ( nCells Time             ) 1  ro i_rainnc       diag_physics - -
 var persistent real    sr         ( nCells Time             ) 1  ro sr             diag_physics - -
 var persistent real    rainncv    ( nCells Time             ) 1  ro rainncv        diag_physics - -
 var persistent real    snowncv    ( nCells Time             ) 1   o snowncv        diag_physics - -
@@ -409,7 +415,7 @@ var persistent real    relhum     ( nVertLevels nCells Time ) 1  o  relhum      
 %--------------------------------------------------------------------------------------------------
 %... PARAMETERIZATION OF CONVECTION:
 %--------------------------------------------------------------------------------------------------
-
+% i_rainc   : counter related to how often rainc is begin reset relative to its bucket value    (-)
 % cuprec    : convective precipitation rate                                                  (mm/s)
 % rainc     : accumulated time-step convective precipitation                                   (mm)
 % raincv    : time-step convective precipitation                                               (mm)
@@ -418,9 +424,10 @@ var persistent real    relhum     ( nVertLevels nCells Time ) 1  o  relhum      
 % rqccuten  : tendency of cloud water mixing ratio due to cumulus convection            (kg/kg s-1)
 % rqicuten  : tendency of cloud ice mixing ratio due to cumulus convection              (kg/kg s-1)
 
-var persistent real   cuprec    ( nCells Time              ) 1  ro cuprec          diag_physics - -
-var persistent real   rainc     ( nCells Time              ) 1  ro rainc           diag_physics - -
-var persistent real   raincv    ( nCells Time              ) 1  ro raincv          diag_physics - -
+var persistent integer i_rainc  ( nCells Time              ) 1  ro i_rainc         diag_physics - -
+var persistent real    cuprec   ( nCells Time              ) 1  ro cuprec          diag_physics - -
+var persistent real    rainc    ( nCells Time              ) 1  ro rainc           diag_physics - -
+var persistent real    raincv   ( nCells Time              ) 1  ro raincv          diag_physics - -
 
 var persistent real   rthcuten  ( nVertLevels nCells Time  ) 1  ro rthcuten        tend_physics - -
 var persistent real   rqvcuten  ( nVertLevels nCells Time  ) 1  ro rqvcuten        tend_physics - -
@@ -555,24 +562,48 @@ var persistent real    th2m     ( nCells Time               ) 1  ro th2m        
 %--------------------------------------------------------------------------------------------------
 %... PARAMETERIZATION OF SHORTWAVE RADIATION:
 %--------------------------------------------------------------------------------------------------
-
 % coszr     :cosine of the solar zenith angle                                                   [-]
-
 % gsw       :net shortwave flux at surface                                                  [W m-2]
 % swcf      :shortwave cloud forcing at top-of-atmosphere                                   [W m-2]
-% swdnb     :all-sky downwelling shortwave flux at bottom-of-atmosphere                     [J m-2]
-% swdnbc    :clear-sky downwelling shortwave flux at bottom-of-atmosphere                   [J m-2]
-% swdnt     :all-sky downwelling shortwave flux at top-of-atmosphere                        [J m-2]
-% swdntc    :clear-sky downwelling shortwave flux at top-of-atmosphere                      [J m-2] 
-% swupb     :all-sky upwelling shortwave flux at bottom-of-atmosphere                       [J m-2]
-% swupbc    :clear-sky upwelling shortwave flux at bottom-of-atmosphere                     [J m-2]
-% swupt     :all-sky upwelling shortwave flux at top-of-atmosphere                          [J m-2]
-% swuptc    :clear-sky upwelling shortwave flux at top-of-atmosphere                        [J m-2]
+% swdnb     :all-sky downwelling shortwave flux at bottom-of-atmosphere                     [W m-2]
+% swdnbc    :clear-sky downwelling shortwave flux at bottom-of-atmosphere                   [W m-2]
+% swdnt     :all-sky downwelling shortwave flux at top-of-atmosphere                        [W m-2]
+% swdntc    :clear-sky downwelling shortwave flux at top-of-atmosphere                      [W m-2] 
+% swupb     :all-sky upwelling shortwave flux at bottom-of-atmosphere                       [W m-2]
+% swupbc    :clear-sky upwelling shortwave flux at bottom-of-atmosphere                     [W m-2]
+% swupt     :all-sky upwelling shortwave flux at top-of-atmosphere                          [W m-2]
+% swuptc    :clear-sky upwelling shortwave flux at top-of-atmosphere                        [W m-2]
+% acswdnb   :accumulated all-sky downwelling shortwave flux at bottom-of-atmosphere         [J m-2]
+% acswdnbc  :accumulated clear-sky downwelling shortwave flux at bottom-of-atmosphere       [J m-2]
+% acswdnt   :accumulated all-sky downwelling shortwave flux at top-of-atmosphere            [J m-2]
+% acswdntc  :accumulated clear-sky downwelling shortwave flux at top-of-atmosphere          [J m-2] 
+% acswupb   :accumulated all-sky upwelling shortwave flux at bottom-of-atmosphere           [J m-2]
+% acswupbc  :accumulated clear-sky upwelling shortwave flux at bottom-of-atmosphere         [J m-2]
+% acswupt   :accumulated all-sky upwelling shortwave flux at top-of-atmosphere              [J m-2]
+% acswuptc  :accumulated clear-sky upwelling shortwave flux at top-of-atmosphere            [J m-2]
 % swdnflx   :
 % swdnflxc  :
 % swupflx   :
 % swupflxc  :
 % rthratensw:uncoupled theta tendency due to shortwave radiation                            [K s-1]
+
+% i_acswdnb : counter related to how often swdnb is begin reset relative to its bucket value    (-)
+% i_acswdnbc: counter related to how often swdnbc is begin reset relative to its bucket value   (-)
+% i_acswdnt : counter related to how often swdnt is begin reset relative to its bucket value    (-)
+% i_acswdntc: counter related to how often swdntc is begin reset relative to its bucket value   (-)
+% i_acswupb : counter related to how often swupb is begin reset relative to its bucket value    (-)
+% i_acswupbc: counter related to how often swupbc is begin reset relative to its bucket value   (-)
+% i_acswupt : counter related to how often swupt is begin reset relative to its bucket value    (-)
+% i_acswuptc: counter related to how often swuptc is begin reset relative to its bucket value   (-)
+
+var persistent integer i_acswdnb  ( nCells Time               ) 1  ro i_acswdnb    diag_physics - -
+var persistent integer i_acswdnbc ( nCells Time               ) 1  ro i_acswdnbc   diag_physics - -
+var persistent integer i_acswdnt  ( nCells Time               ) 1  ro i_acswdnt    diag_physics - -
+var persistent integer i_acswdntc ( nCells Time               ) 1  ro i_acswdntc   diag_physics - -
+var persistent integer i_acswupb  ( nCells Time               ) 1  ro i_acswupb    diag_physics - -
+var persistent integer i_acswupbc ( nCells Time               ) 1  ro i_acswupbc   diag_physics - -
+var persistent integer i_acswupt  ( nCells Time               ) 1  ro i_acswupt    diag_physics - -
+var persistent integer i_acswuptc ( nCells Time               ) 1  ro i_acswuptc   diag_physics - -
 
 var persistent real    coszr      ( nCells Time               ) 1   o coszr        diag_physics - -
 var persistent real    swcf       ( nCells Time               ) 1   o swcf         diag_physics - -
@@ -584,6 +615,14 @@ var persistent real    swupb      ( nCells Time               ) 1   o swupb     
 var persistent real    swupbc     ( nCells Time               ) 1   o swupbc       diag_physics - -
 var persistent real    swupt      ( nCells Time               ) 1   o swupt        diag_physics - -
 var persistent real    swuptc     ( nCells Time               ) 1   o swuptc       diag_physics - -
+var persistent real    acswdnb    ( nCells Time               ) 1  ro acswdnb      diag_physics - -
+var persistent real    acswdnbc   ( nCells Time               ) 1  ro acswdnbc     diag_physics - -
+var persistent real    acswdnt    ( nCells Time               ) 1  ro acswdnt      diag_physics - -
+var persistent real    acswdntc   ( nCells Time               ) 1  ro acswdntc     diag_physics - -
+var persistent real    acswupb    ( nCells Time               ) 1  ro acswupb      diag_physics - -
+var persistent real    acswupbc   ( nCells Time               ) 1  ro acswupbc     diag_physics - -
+var persistent real    acswupt    ( nCells Time               ) 1  ro acswupt      diag_physics - -
+var persistent real    acswuptc   ( nCells Time               ) 1  ro acswuptc     diag_physics - -
 var persistent real    gsw        ( nCells Time               ) 1  ro gsw          diag_physics - -
 
 var persistent real    rthratensw ( nVertLevels nCells Time   ) 1  ro rthratensw   tend_physics - -
@@ -613,12 +652,38 @@ var persistent real    swupflxc   ( nVertLevelsP2 nCells Time ) 1   o swupflxc  
 % lwupbc    :clear-sky upwelling longwave flux at bottom-of-atmosphere                      [W m-2]
 % lwupt     :all-sky upwelling longwave flux at top-of-atmosphere                           [W m-2]
 % lwuptc    :clear-sky upwelling longwave flux at top-of-atmosphere                         [W m-2]
+% aclwdnb   :accumulated all-sky downwelling longwave flux at bottom-of-atmosphere          [J m-2]
+% aclwdnbc  :accumulated clear-sky downwelling longwave flux at bottom-of-atmosphere        [J m-2]
+% aclwdnt   :accumulated all-sky downwelling longwave flux at top-of-atmosphere             [J m-2]
+% aclwdntc  :accumulated clear-sky downwelling longwave flux at top-of-atmosphere           [J m-2]
+% aclwupb   :accumulated all-sky upwelling longwave flux at bottom-of-atmosphere            [J m-2]
+% aclwupbc  :accumulated clear-sky upwelling longwave flux at bottom-of-atmosphere          [J m-2]
+% aclwupt   :accumulated all-sky upwelling longwave flux at top-of-atmosphere               [J m-2]
+% aclwuptc  :accumulated clear-sky upwelling longwave flux at top-of-atmosphere             [J m-2]
 % lwdnflx   :
 % lwdnflxc  :
 % lwupflx   :
 % lwupflxc  :
 % olrtoa    :outgoing longwave radiation at top-of-the-atmosphere                           [W m-2]
 % rthratenlw:uncoupled theta tendency due to longwave radiation                             [K s-1]
+
+% i_aclwdnb : counter related to how often lwdnb is begin reset relative to its bucket value    (-)
+% i_aclwdnbc: counter related to how often lwdnbc is begin reset relative to its bucket value   (-)
+% i_aclwdnt : counter related to how often lwdnt is begin reset relative to its bucket value    (-)
+% i_aclwdntc: counter related to how often lwdntc is begin reset relative to its bucket value   (-)
+% i_aclwupb : counter related to how often lwupb is begin reset relative to its bucket value    (-)
+% i_aclwupbc: counter related to how often lwupbc is begin reset relative to its bucket value   (-)
+% i_aclwupt : counter related to how often lwupt is begin reset relative to its bucket value    (-)
+% i_aclwuptc: counter related to how often lwuptc is begin reset relative to its bucket value   (-)
+
+var persistent integer i_aclwdnb  ( nCells Time               ) 1  ro i_aclwdnb    diag_physics - -
+var persistent integer i_aclwdnbc ( nCells Time               ) 1  ro i_aclwdnbc   diag_physics - -
+var persistent integer i_aclwdnt  ( nCells Time               ) 1  ro i_aclwdnt    diag_physics - -
+var persistent integer i_aclwdntc ( nCells Time               ) 1  ro i_aclwdntc   diag_physics - -
+var persistent integer i_aclwupb  ( nCells Time               ) 1  ro i_aclwupb    diag_physics - -
+var persistent integer i_aclwupbc ( nCells Time               ) 1  ro i_aclwupbc   diag_physics - -
+var persistent integer i_aclwupt  ( nCells Time               ) 1  ro i_aclwupt    diag_physics - -
+var persistent integer i_aclwuptc ( nCells Time               ) 1  ro i_aclwuptc   diag_physics - -
 
 var persistent real    lwcf       ( nCells Time               ) 1   o lwcf         diag_physics - -
 var persistent real    lwdnb      ( nCells Time               ) 1   o lwdnb        diag_physics - -
@@ -629,6 +694,14 @@ var persistent real    lwupb      ( nCells Time               ) 1   o lwupb     
 var persistent real    lwupbc     ( nCells Time               ) 1   o lwupbc       diag_physics - -
 var persistent real    lwupt      ( nCells Time               ) 1   o lwupt        diag_physics - -
 var persistent real    lwuptc     ( nCells Time               ) 1   o lwuptc       diag_physics - -
+var persistent real    aclwdnb    ( nCells Time               ) 1  ro aclwdnb      diag_physics - -
+var persistent real    aclwdnbc   ( nCells Time               ) 1  ro aclwdnbc     diag_physics - -
+var persistent real    aclwdnt    ( nCells Time               ) 1  ro aclwdnt      diag_physics - -
+var persistent real    aclwdntc   ( nCells Time               ) 1  ro aclwdntc     diag_physics - -
+var persistent real    aclwupb    ( nCells Time               ) 1  ro aclwupb      diag_physics - -
+var persistent real    aclwupbc   ( nCells Time               ) 1  ro aclwupbc     diag_physics - -
+var persistent real    aclwupt    ( nCells Time               ) 1  ro aclwupt      diag_physics - -
+var persistent real    aclwuptc   ( nCells Time               ) 1  ro aclwuptc     diag_physics - -
 var persistent real    olrtoa     ( nCells Time               ) 1   o olrtoa       diag_physics - -
 var persistent real    glw        ( nCells Time               ) 1  ro glw          diag_physics - -
 
@@ -645,9 +718,9 @@ var persistent real    rthratenlw ( nVertLevels nCells Time   ) 1  ro rthratenlw
 %--------------------------------------------------------------------------------------------------
 
 %INFRARED ABSORPTION:
-var persistent real absnxt  ( nVertLevels   cam_dim1      nCells Time ) 1 - absnxt diag_physics - -
-var persistent real abstot  ( nVertLevelsP1 nVertLevelsP1 nCells Time ) 1 - abstot diag_physics - -
-var persistent real emstot  ( nVertLevelsP1 nCells Time               ) 1 - emstot diag_physics - -
+var persistent real absnxt  ( nVertLevels   cam_dim1      nCells Time ) 1 r absnxt diag_physics - -
+var persistent real abstot  ( nVertLevelsP1 nVertLevelsP1 nCells Time ) 1 r abstot diag_physics - -
+var persistent real emstot  ( nVertLevelsP1 nCells Time               ) 1 r emstot diag_physics - -
 
 % OZONE:
 var persistent real    pin      ( nOznLevels nCells         ) 0 -  pin       mesh  - -

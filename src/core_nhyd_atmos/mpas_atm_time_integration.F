@@ -395,10 +395,23 @@ module atm_time_integration
            block => block % next
         end do
 
-!... call to parameterizations of cloud microphysics:
+!... call to parameterizations of cloud microphysics. calculation of the tendency of water vapor to horizontal and
+!... vertical advection needed for the Tiedtke parameterization of convection.
 #ifdef DO_PHYSICS
       block => domain % blocklist
       do while(associated(block))
+
+         !NOTE: The calculation of the tendency due to horizontal and vertical advection for the water vapor mixing ratio
+         !requires that the subroutine atm_advance_scalars_mono was called on the third Runge Kutta step, so that a halo
+         !update for the scalars at time_levs(1) is applied. A halo update for the scalars at time_levs(2) is done above. 
+         if(config_monotonic) then
+            block % tend_physics % rqvdynten % array(:,:) = &
+                 ( block % state % time_levs(2) % state % scalars % array(block % state % time_levs(2) % state % index_qv,:,:)   &
+                 - block % state % time_levs(1) % state % scalars % array(block % state % time_levs(1) % state % index_qv,:,:) ) &
+                 / config_dt
+         else
+            block % tend_physics % rqvdynten % array(:,:) = 0._RKIND
+         endif
 
          !simply set to zero negative mixing ratios of different water species (for now):
          where ( block % state % time_levs(2) % state % scalars % array(:,:,:) .lt. 0.) &

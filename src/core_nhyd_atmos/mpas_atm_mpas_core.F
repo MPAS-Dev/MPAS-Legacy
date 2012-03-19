@@ -499,11 +499,6 @@ module mpas_core
 
       call atm_timestep(domain, dt, timeStamp, itimestep)
 
-#ifdef DO_PHYSICS
-      !update physics diagnostics at the end of dynamic time-step:
-      if(moist_physics) call physics_update(domain,dt)
-#endif
-
    end subroutine atm_do_timestep
    
    

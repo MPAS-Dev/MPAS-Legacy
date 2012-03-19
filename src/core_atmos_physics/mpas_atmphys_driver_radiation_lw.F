@@ -20,7 +20,8 @@
  public:: allocate_radiation_lw,   &
           deallocate_radiation_lw, &
           driver_radiation_lw,     &
-          init_radiation_lw
+          init_radiation_lw,       &
+          radiation_camlw_to_MPAS
 
  integer,private:: i,j,k,n
 
@@ -101,17 +102,11 @@
 
        !allocate these arrays on the first time step, only:
        if(xtime_s .lt. 1.e-12) then
-
-          write(0,*) 
-          write(0,*) '--- end subroutine allocate_radiation_lw:'
-          write(0,*) '--- allocate emstot_p,abstot_p,absnxt_p'
-
           if(.not.allocated(emstot_p) ) allocate(emstot_p(ims:ime,kms:kme,jms:jme) )
           if(.not.allocated(abstot_p) ) &
              allocate(abstot_p(ims:ime,kms:kme,cam_abs_dim2,jms:jme) )
           if(.not.allocated(absnxt_p) ) &
              allocate(absnxt_p(ims:ime,kms:kme,cam_abs_dim1,jms:jme) )
-
        endif
 
     case default
@@ -121,13 +116,8 @@
  end subroutine allocate_radiation_lw
 
 !=============================================================================================
- subroutine deallocate_radiation_lw(xtime_s)
+ subroutine deallocate_radiation_lw
 !=============================================================================================
-
-!input arguments:
- real(kind=RKIND),intent(in):: xtime_s
-
-!---------------------------------------------------------------------------------------------
 
  if(allocated(f_ice)        ) deallocate(f_ice        )
  if(allocated(f_rain)       ) deallocate(f_rain       )
@@ -196,7 +186,7 @@
  end subroutine deallocate_radiation_lw
 
 !=============================================================================================
- subroutine radiation_lw_from_MPAS(mesh,state,diag_physics,sfc_input,xtime_s)
+ subroutine radiation_lw_from_MPAS(xtime_s,mesh,state,diag_physics,sfc_input)
 !=============================================================================================
 
 !input arguments:
@@ -301,30 +291,30 @@
        enddo
        enddo
 
+       !On the first time-step of each model run, the local arrays absnxt_p, absnst_p,
+       !and emstot_p are filled with the MPAS arrays abstot, absnxt, and emstot. If it
+       !is a new run, these three arrays will be initialized to zero;If a restart run,
+       !these three arrays will be filled with the restart values.
        call mpas_timer_start("CAM lw: fill arrays for infrared absorption")
        if(xtime_s .lt. 1.e-12) then
-          write(0,*)
-          write(0,*) '--- radiation_lw_from_MPAS:'
-          write(0,*) '--- initialize emstot_p,abstot_p,absnxt_p'
-          !infrared absorption:
           do j = jts,jte
           do n = 1,cam_abs_dim1
           do k = kts,kte
           do i = its,ite
-             absnxt_p(i,k,n,j) = 0.
+             absnxt_p(i,k,n,j) = diag_physics % absnxt % array(k,n,i)
           enddo
           enddo
           enddo
           do n = 1,cam_abs_dim2
           do k = kts,kte+1
           do i = its,ite
-             abstot_p(i,k,n,j) = 0.
+             abstot_p(i,k,n,j) = diag_physics % abstot % array(k,n,i)
           enddo
           enddo
           enddo
           do k = kts,kte+1
           do i = its,ite
-             emstot_p(i,k,j) = 0.
+             emstot_p(i,k,j) = diag_physics % emstot % array(k,i)
           enddo
           enddo
           enddo
@@ -377,40 +367,29 @@
  end subroutine radiation_lw_from_MPAS
 
 !=============================================================================================
- subroutine radiation_lw_to_MPAS(diag_physics,tend_physics,xtime_s)
+ subroutine radiation_lw_to_MPAS(diag_physics,tend_physics)
 !=============================================================================================
 
 !input arguments:
  type(diag_physics_type),intent(inout):: diag_physics
  type(tend_physics_type),intent(inout):: tend_physics
 
- real(kind=RKIND),intent(in):: xtime_s
-
 !---------------------------------------------------------------------------------------------
 
  do j = jts,jte
  do i = its,ite
-    diag_physics % glw      % array(i) = glw_p(i,j)
-    diag_physics % lwcf     % array(i) = lwcf_p(i,j)
-    diag_physics % lwdnb    % array(i) = lwdnb_p(i,j)
-    diag_physics % lwdnbc   % array(i) = lwdnbc_p(i,j)
-    diag_physics % lwdnt    % array(i) = lwdnt_p(i,j)
-    diag_physics % lwdntc   % array(i) = lwdntc_p(i,j)
-    diag_physics % lwupb    % array(i) = lwupb_p(i,j)
-    diag_physics % lwupbc   % array(i) = lwupbc_p(i,j)
-    diag_physics % lwupt    % array(i) = lwupt_p(i,j)
-    diag_physics % lwuptc   % array(i) = lwuptc_p(i,j)
-    diag_physics % olrtoa   % array(i) = olrtoa_p(i,j)
+    diag_physics % glw    % array(i) = glw_p(i,j)
+    diag_physics % lwcf   % array(i) = lwcf_p(i,j)
+    diag_physics % lwdnb  % array(i) = lwdnb_p(i,j)
+    diag_physics % lwdnbc % array(i) = lwdnbc_p(i,j)
+    diag_physics % lwdnt  % array(i) = lwdnt_p(i,j)
+    diag_physics % lwdntc % array(i) = lwdntc_p(i,j)
+    diag_physics % lwupb  % array(i) = lwupb_p(i,j)
+    diag_physics % lwupbc % array(i) = lwupbc_p(i,j)
+    diag_physics % lwupt  % array(i) = lwupt_p(i,j)
+    diag_physics % lwuptc % array(i) = lwuptc_p(i,j)
+    diag_physics % olrtoa % array(i) = olrtoa_p(i,j)
  enddo
-!not needed: 
-!do k = kts,kte+2
-!do i = its,ite
-!   diag_physics % lwdnflx  % array(k,i) = lwdnflx_p(i,k,j)
-!   diag_physics % lwdnflxc % array(k,i) = lwdnflxc_p(i,k,j)
-!   diag_physics % lwupflx  % array(k,i) = lwupflx_p(i,k,j)
-!   diag_physics % lwupflxc % array(k,i) = lwupflxc_p(i,k,j)
-!enddo
-!enddo
 
  do k = kts,kte
  do i = its,ite
@@ -419,11 +398,43 @@
  enddo
  enddo
 
-!format:
- 101 format(i3,2i6,12(1x,e15.8))
- 102 format(i6,12(1x,e15.8))
+!end select radiation_lw_select
 
  end subroutine radiation_lw_to_MPAS
+
+!=============================================================================================
+ subroutine radiation_camlw_to_MPAS(diag_physics)
+!=============================================================================================
+
+!input arguments:
+ type(diag_physics_type),intent(inout):: diag_physics
+
+!---------------------------------------------------------------------------------------------
+
+!write(0,*) '--- writing absnxt,abstot,and emstot to restart =', l_camlw
+ do j = jts,jte
+ do n = 1,cam_abs_dim1
+ do k = kts,kte
+ do i = its,ite
+    diag_physics % absnxt % array(k,n,i) = absnxt_p(i,k,n,j)
+ enddo
+ enddo
+ enddo
+ do n = 1,cam_abs_dim2
+ do k = kts,kte+1
+ do i = its,ite
+    diag_physics % abstot % array(k,n,i) = abstot_p(i,k,n,j)
+ enddo
+ enddo
+ enddo
+ do k = kts,kte+1
+ do i = its,ite
+    diag_physics % emstot % array(k,i) = emstot_p(i,k,j)
+ enddo
+ enddo
+ enddo
+
+ end subroutine radiation_camlw_to_MPAS
 
 !=============================================================================================
  subroutine init_radiation_lw(dminfo,mesh,state_1,state_2)
@@ -460,12 +471,10 @@
  end subroutine init_radiation_lw
 
 !=============================================================================================
- subroutine driver_radiation_lw(itimestep,mesh,state,diag_physics,sfc_input, &
-                                tend_physics,xtime_s)
+ subroutine driver_radiation_lw(xtime_s,mesh,state,diag_physics,sfc_input,tend_physics)
 !=============================================================================================
 
 !input arguments:
- integer,intent(in):: itimestep
  type(mesh_type),intent(in) :: mesh
  real(kind=RKIND),intent(in):: xtime_s
 
@@ -480,14 +489,14 @@
 
 !---------------------------------------------------------------------------------------------
  call mpas_timer_start("radiation_lw")
- write(0,100) itimestep
+ write(0,100)
 
 !formats:
  100 format(/,' --- enter subroutine driver_radiation_lw: ',i6)
  101 format(i8,12(1x,e15.8))
 
 !copy all MPAS arrays to rectangular grid:
- call radiation_lw_from_MPAS(mesh,state,diag_physics,sfc_input,xtime_s)
+ call radiation_lw_from_MPAS(xtime_s,mesh,state,diag_physics,sfc_input)
 
 !call to longwave radiation scheme:
  radiation_lw_select: select case (trim(radt_lw_scheme))
@@ -594,7 +603,7 @@
  end select radiation_lw_select
 
 !copy all arrays back to MPAS geodesic grid:
- call radiation_lw_to_MPAS(diag_physics,tend_physics,xtime_s)
+ call radiation_lw_to_MPAS(diag_physics,tend_physics)
 
  write(0,*) '--- end subroutine driver_radiation_lw'
  call mpas_timer_stop("radiation_lw")

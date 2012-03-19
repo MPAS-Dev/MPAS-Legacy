@@ -296,7 +296,7 @@
 
 !... copy updated precipitation from the wrf-physics grid back to the geodesic-dynamics grid:
 
- call precip_to_MPAS(diag_physics)
+ call precip_to_MPAS(config_bucket_rainnc,diag_physics)
 
 !... copy updated cloud microphysics variables from the wrf-physics grid back to the geodesic-
 !    dynamics grid:
@@ -374,10 +374,11 @@
  end subroutine precip_from_MPAS
 
 !=============================================================================================
- subroutine precip_to_MPAS(diag_physics)
+ subroutine precip_to_MPAS(bucket_rainnc,diag_physics)
 !=============================================================================================
 
 !output variables:
+ real(kind=RKIND),intent(in):: bucket_rainnc
  type(diag_physics_type),intent(inout):: diag_physics
 
 !local variables:
@@ -396,7 +397,13 @@
     !accumulated precipitation:
     diag_physics % rainnc % array(i) = diag_physics % rainnc % array(i) &
                                      + diag_physics % rainncv % array(i)
-    
+
+   if(l_acrain .and. bucket_rainnc.gt.0._RKIND .and. &
+      diag_physics%rainnc%array(i).gt.bucket_rainnc) then
+      diag_physics % i_rainnc % array(i) = diag_physics % i_rainnc % array(i) + 1
+      diag_physics % rainnc % array(i) = diag_physics % rainnc % array(i) - bucket_rainnc
+   endif
+ 
  enddo
  enddo
 

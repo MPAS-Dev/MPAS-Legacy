@@ -11,6 +11,7 @@
  use mpas_atmphys_driver_radiation_lw
  use mpas_atmphys_driver_sfclayer
  use mpas_atmphys_constants
+ use mpas_atmphys_update
  use mpas_atmphys_vars
 #ifdef non_hydrostatic_core
  use mpas_atmphys_interface_nhyd
@@ -80,16 +81,21 @@
     !call to long wave radiation scheme:
     if(l_radtlw) then
        call allocate_radiation_lw(xtime_s)
-       call driver_radiation_lw(itimestep,block%mesh,block%state%time_levs(1)%state,  &
-                               block%diag_physics,block%sfc_input,block%tend_physics, &
-                               xtime_s)
+       call driver_radiation_lw(xtime_s,block%mesh,block%state%time_levs(1)%state, &
+                              block%diag_physics,block%sfc_input,block%tend_physics)
     endif
+    if(l_camlw .and. config_radt_lw_scheme .eq. 'cam_lw') &
+                              call radiation_camlw_to_MPAS(block%diag_physics)
+
+    !call to accumulate long- and short-wave diagnostics if needed:
+     if(config_bucket_update /= 'none' .and. config_bucket_radt .gt. 0._RKIND) &
+        call update_radiation_diagnostics(config_bucket_radt,block%mesh,block%diag_physics)
 
     !deallocate all radiation arrays:
     if(config_radt_sw_scheme.ne.'off' .or. config_radt_lw_scheme.ne.'off') &
        call deallocate_cloudiness
     if(config_radt_sw_scheme.ne.'off') call deallocate_radiation_sw
-    if(config_radt_lw_scheme.ne.'off') call deallocate_radiation_lw(xtime_s)
+    if(config_radt_lw_scheme.ne.'off') call deallocate_radiation_lw
 
     !call to surface-layer scheme:
     if(config_sfclayer_scheme .ne. 'off') then
@@ -118,6 +124,9 @@
        call driver_convection_deep(itimestep,block%mesh,block%sfc_input,block%diag_physics, &
                                   block%tend_physics)
        call deallocate_convection_deep
+
+       !update diagnostics:
+       call update_convection_deep(config_bucket_rainc,block%mesh,block%diag_physics)
     endif
 
     !deallocate arrays shared by all physics parameterizations:

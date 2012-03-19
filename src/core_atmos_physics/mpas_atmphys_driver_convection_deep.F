@@ -413,12 +413,12 @@
  end subroutine convection_to_MPAS
 
 !=============================================================================================
- subroutine update_convection_deep(dt_dyn,mesh,diag_physics)
+ subroutine update_convection_deep(bucket_rainc,mesh,diag_physics)
 !=============================================================================================
 
 !input arguments:
  type(mesh_type),intent(in):: mesh
- real(kind=RKIND),intent(in):: dt_dyn
+ real(kind=RKIND),intent(in):: bucket_rainc
 
 !inout arguments:
  type(diag_physics_type),intent(inout):: diag_physics
@@ -427,11 +427,19 @@
  integer:: iCell
 
 !---------------------------------------------------------------------------------------------
-
-!update the accumuluted precipitation rate at the end of each dynamic time-step:
- do iCell = 1, mesh % nCells
+ 
+!update the accumulated precipitation at the end of each dynamic time-step:
+ do iCell = 1, mesh % nCellsSolve
     diag_physics % rainc % array(iCell) = diag_physics % rainc % array(iCell) &
                                     + diag_physics % cuprec % array(iCell) * dt_dyn
+
+    if(l_acrain .and. bucket_rainc.gt.0._RKIND .and. &
+       diag_physics%rainc%array(iCell).gt.bucket_rainc) then
+       diag_physics % i_rainc % array(iCell) = diag_physics % i_rainc % array(iCell) + 1
+       diag_physics % rainc % array(iCell) = diag_physics % rainc % array(iCell) &
+                                           - bucket_rainc
+    endif
+
  enddo
 
  end subroutine update_convection_deep

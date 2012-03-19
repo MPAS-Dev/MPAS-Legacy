@@ -38,6 +38,22 @@
 !between updates is 6 hours and is set with config_camrad_abs_update (00:30:00).
  integer, parameter:: camAlarmID    = 17
 
+!defines alarm to save the CAM arrays absnst, absnxt, and emstot to restart files. When the
+!alarm rings, the local arrays absnt_p, absnxt_p, and emstot_p are copied to the MPAS arrays
+!for writing to restart files at the bottom of the time-step:
+ integer, parameter:: camlwAlarmID  = 18
+ type(MPAS_TimeInterval_Type):: camlwTimeStep
+
+!defines alarm to check if the accumulated rain due to cloud microphysics and convection is
+!greater than its maximum allowed value:
+ integer, parameter:: acrainAlarmID   = 19
+ type(MPAS_TimeInterval_Type):: acrainTimeStep
+
+!defines alarm to check if the accumulated radiation diagnostics due to long- and short-wave
+!radiation is greater than its maximum allowed value:
+ integer, parameter:: acradtAlarmID   = 20
+ type(MPAS_TimeInterval_Type):: acradtTimeStep
+
  integer :: h, m, s, s_n, s_d, DoY, yr
  real(kind=RKIND) :: utc_h
 
@@ -76,7 +92,8 @@
             '     GMT         =', f16.9,/, &
             '     UTC_H       =', f16.9,/, &
             '     CURR_JULDAY =', f16.9,/, &
-            '     LEAP_YEAR   =', 1x,l1,/)
+            '     LEAP_YEAR   =', 1x,l1,/, &
+            '     TIME STAMP  =', 1x,a32,/)
 
  currTime = mpas_get_clock_time(clock,MPAS_NOW,ierr)
  call mpas_get_time(curr_time=currTime,dateTimeString=timeStamp,YYYY=yr,H=h,M=m, &
@@ -88,7 +105,7 @@
  julday = DoY
  curr_julday = real(julday-1) + utc_h / 24.0
  LeapYear = isLeapYear(year)
- write(0,100) year,julday,gmt,utc_h,curr_julday,LeapYear
+ write(0,100) year,julday,gmt,utc_h,curr_julday,LeapYear,timeStamp
 
  block => domain % blocklist
  do while(associated(block))
@@ -97,7 +114,7 @@
     !monthly values to current day:
     if(mpas_is_alarm_ringing(clock,greenAlarmID,ierr=ierr)) then
        call mpas_reset_clock_alarm(clock,greenAlarmID,ierr=ierr)
-       write(0,*) '--- update background surface albedo, greeness fraction:', timeStamp
+       write(0,*) '--- time to update background surface albedo, greeness fraction.'
        call physics_update_surface(timeStamp,block%mesh,block%sfc_input)
     endif
 
@@ -133,7 +150,6 @@
     elseif(config_radtlw_interval == "none") then
        l_radtlw = .true.
     endif
-    write(0,*)
     write(0,*) '--- time to run the LW radiation scheme L_RADLW =',l_radtlw
  endif
 
@@ -151,6 +167,21 @@
     write(0,*) '--- time to run the SW radiation scheme L_RADSW =',l_radtsw
  endif
 
+!check to see if it is time to run the parameterization of convection:
+ if(trim(config_conv_deep_scheme) /= "off") then
+    l_conv = .false.
+
+    if(config_conv_interval /= "none") then
+       if(mpas_is_alarm_ringing(clock,convAlarmID,ierr=ierr)) then
+          call mpas_reset_clock_alarm(clock,convAlarmID,ierr=ierr)
+          l_conv = .true.
+       endif
+    elseif(config_conv_interval == "none") then
+       l_conv = .true.
+    endif
+    write(0,*) '--- time to run the convection scheme L_CONV    =',l_conv
+ endif
+
 !check to see if it is time to update the ozone trace gas path lengths,the total emissivity,
 !and the total absorptivity in the "CAM" long-wave radiation codes.
  if(trim(config_radt_lw_scheme) .eq. "cam_lw" .or. &
@@ -161,12 +192,41 @@
        call mpas_reset_clock_alarm(clock,camAlarmID,ierr=ierr)
        doabsems = .true.
     endif
-    write(0,*) '--- update CAM absorptivity and emissivity arrays DOABSEMS =',doabsems
-
+    write(0,*) '--- time to update CAM absorptivity and emissivity arrays DOABSEMS =',doabsems
  endif
- 
-!formats:
- 101 format(3x,'l_radtlw = ',l1,3x,'l_radtsw = ',l1)
+
+!check to see if it is time to save the local CAM arrays absnst_p, absnxt_p, and emstot_p to
+!the MPAS arrays:
+ if(trim(config_radt_lw_scheme) .eq. "cam_lw") then
+    l_camlw = .false.
+    if(mpas_is_alarm_ringing(clock,camlwAlarmID,camlwTimeStep,ierr=ierr)) then
+       call mpas_reset_clock_alarm(clock,camlwAlarmID,camlwTimeStep,ierr=ierr)
+       l_camlw = .true.
+    endif
+    write(0,*) '--- time to write local CAM arrays to MPAS arrays L_CAMLW          =',l_camlw
+ endif
+
+!check to see if it is time to apply limit to the accumulated rain due to cloud microphysics
+!and convection:
+ if(trim(config_conv_deep_scheme) /= "off") then
+    l_acrain = .false.
+    if(mpas_is_alarm_ringing(clock,acrainAlarmID,acrainTimeStep,ierr=ierr)) then
+       call mpas_reset_clock_alarm(clock,acrainAlarmID,acrainTimeStep,ierr=ierr)
+       l_acrain = .true.
+    endif
+    write(0,*) '--- time to apply limit to accumulated rainc and rainnc L_ACRAIN   =',l_acrain
+ endif
+
+!check to see if it is time to apply limit to the accumulated radiation diagnostics due to
+!long- and short-wave radiation:
+ if(trim(config_radt_lw_scheme) /= "off" .or. trim(config_radt_sw_scheme) /= "off") then
+    l_acradt = .false.
+    if(mpas_is_alarm_ringing(clock,acradtAlarmID,acradtTimeStep,ierr=ierr)) then
+       call mpas_reset_clock_alarm(clock,acradtAlarmID,acradtTimeStep,ierr=ierr)
+       l_acradt = .true.
+    endif
+    write(0,*) '--- time to apply limit to accumulated radiation diags. L_ACRADT   =',l_acradt
+ endif
 
  end subroutine physics_timetracker
 
@@ -325,6 +385,39 @@
        call physics_error_fatal('subroutine physics_init: error creating alarm CAM')
  endif
 
+!set alarm to write the "CAM" local arrays absnst_p, absnxt_p, and emstot_p to the MPAS arrays
+!for writing to the restart file at the bottom of the time-step:
+ if(trim(config_radt_lw_scheme) .eq. "cam_lw" ) then
+    call mpas_set_timeInterval(camlwTimeStep,dt=config_dt,ierr=ierr)
+    call mpas_set_timeInterval(alarmTimeStep,timeString=config_restart_interval,ierr=ierr)
+    alarmStartTime = startTime + alarmTimeStep
+    call mpas_add_clock_alarm(clock,camlwAlarmID,alarmStartTime,alarmTimeStep,ierr=ierr)
+    if(ierr /= 0) &
+       call physics_error_fatal('subroutine physics_init: error creating alarm CAMLW')
+ endif
+
+!set alarm to check if the accumulated rain due to cloud microphysics and convection is
+!greater than its maximum allowed value:
+ if(config_bucket_update /= "none") then
+    call mpas_set_timeInterval(acrainTimeStep,dt=config_dt,ierr=ierr)
+    call mpas_set_timeInterval(alarmTimeStep,timeString=config_bucket_update,ierr=ierr)
+    alarmStartTime = startTime + alarmTimeStep
+    call mpas_add_clock_alarm(clock,acrainAlarmID,alarmStartTime,alarmTimeStep,ierr=ierr)
+       if(ierr /= 0) &
+          call physics_error_fatal('subroutine physics_init: error creating alarm rain limit')
+ endif
+
+!set alarm to check if the accumulated radiation diagnostics due to long- and short-wave radiation
+!is greater than its maximum allowed value:
+ if(config_bucket_update /= "none") then
+    call mpas_set_timeInterval(acradtTimeStep,dt=config_dt,ierr=ierr)
+    call mpas_set_timeInterval(alarmTimeStep,timeString=config_bucket_update,ierr=ierr)
+    alarmStartTime = startTime + alarmTimeStep
+    call mpas_add_clock_alarm(clock,acradtAlarmID,alarmStartTime,alarmTimeStep,ierr=ierr)
+       if(ierr /= 0) &
+          call physics_error_fatal('subroutine physics_init: error creating alarm radiation limit')
+ endif
+
  write(0,102) dt_radtlw,dt_radtsw,dt_cu,dt_pbl
 
 !initialization of physics dimensions to mimic a rectangular grid:
@@ -344,31 +437,39 @@
               ids,ide,jds,jde,kds,kde, &
               its,ite,jts,jte,kts,kte
 
-!initialization:
+!initialization local physics variables:
  num_months = mesh % nMonths
+ num_soils  = mesh% nSoilLevels
 
-!initialization of physics time-steps:
- dt_dyn     = config_dt
- n_microp   = config_n_microp
- n_cu       = config_n_conv
-
- dt_microp  = dt_dyn/n_microp  !for now.
-
-!write(0,*) 'mod =',mod(dt_dyn,dt_radtsw)
-!write(0,*) 'mod =',mod(dt_dyn,dt_microp)
-!stop
-
-!cloud microphysics scheme:
- microp_scheme       = trim(config_microp_scheme)
  conv_deep_scheme    = trim(config_conv_deep_scheme)
  conv_shallow_scheme = trim(config_conv_shallow_scheme)
- sfclayer_scheme     = trim(config_sfclayer_scheme)
+ lsm_scheme          = trim(config_lsm_scheme)
+ microp_scheme       = trim(config_microp_scheme)
  pbl_scheme          = trim(config_pbl_scheme)
  radt_cld_scheme     = trim(config_radt_cld_scheme)
  radt_lw_scheme      = trim(config_radt_lw_scheme)
  radt_sw_scheme      = trim(config_radt_sw_scheme)
+ sfclayer_scheme     = trim(config_sfclayer_scheme)
 
-!CAM radiation schemes:
+!initialization of local physics time-steps:
+!... dynamics:
+ dt_dyn     = config_dt
+!... cloud microphysics:
+ n_microp   = config_n_microp
+ dt_microp  = dt_dyn/n_microp  !for now.
+!... convection:
+ l_conv = .false.
+ n_cu   = nint(dt_cu/dt_dyn)
+ n_cu   = max(n_cu,1)
+!... radiation:
+ l_radtlw = .false.
+ l_radtsw = .false.
+!... others:
+ l_camlw  = .false.
+ l_acrain = .false.
+ l_acradt = .false.
+
+!initialization for CAM radiation schemes only:
  if(trim(config_radt_lw_scheme) .eq. "cam_lw" .or. &
     trim(config_radt_sw_scheme) .eq. "cam_sw" ) then
 
@@ -387,10 +488,7 @@
 
  endif 
 
-!land-surface scheme:
- lsm_scheme = trim(config_lsm_scheme)
- num_soils  = mesh% nSoilLevels
-
+!initialization of sea-ice threshold:
  if(.not. config_frac_seaice) then
     xice_threshold = 0.5
  elseif(config_frac_seaice) then
