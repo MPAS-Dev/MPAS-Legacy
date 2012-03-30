@@ -241,6 +241,11 @@ module ocn_time_integration_rk4
 
               call ocn_diagnostic_solve(dt, provis, block % mesh)
 
+              ! Compute velocity transport, used in advection terms of h and tracer tendancy
+                 provis % uTransport % array(:,:) &
+               = provis % u          % array(:,:) &
+               + provis % uBolusGM   % array(:,:)
+
               block => block % next
            end do
         end if
@@ -342,6 +347,11 @@ module ocn_time_integration_rk4
          end if
 
          call ocn_diagnostic_solve(dt, block % state % time_levs(2) % state, block % mesh)
+
+         ! Compute velocity transport, used in advection terms of h and tracer tendancy
+            block % state % time_levs(2) % state % uTransport % array(:,:) &
+          = block % state % time_levs(2) % state % u % array(:,:) &
+          + block % state % time_levs(2) % state % uBolusGM % array(:,:)
 
          call mpas_reconstruct(block % mesh, block % state % time_levs(2) % state % u % array,          &
                           block % state % time_levs(2) % state % uReconstructX % array,            &

@@ -312,6 +312,20 @@ module ocn_time_integration_split
 
                block % state % time_levs(2) % state % u % array(:,:)  = block % state % time_levs(2) % state % uBcl % array(:,:) 
 
+               do iEdge=1,block % mesh % nEdges
+                  do k=1,block % mesh % nVertLevels
+
+                     ! uTranport = uBcl + uBolus 
+                     ! This is u used in advective terms for h and tracers 
+                     ! in tendancy calls in stage 3.
+                       block % state % time_levs(2) % state % uTransport % array(k,iEdge) &
+                     = block % mesh % edgeMask % array(k,iEdge) &
+                     *(  block % state % time_levs(2) % state % uBcl       % array(k,iEdge) &
+                       + block % state % time_levs(1) % state % uBolusGM   % array(k,iEdge) )
+
+                  enddo
+               end do  ! iEdge
+   
                block => block % next
             end do  ! block
 
@@ -663,9 +677,11 @@ module ocn_time_integration_split
 
                do iEdge=1,block % mesh % nEdges
 
-                  ! This is u^{avg}
-                  uTemp(:) = block % state % time_levs(2) % state % uBtr % array(iEdge) &
-                     + block % state % time_levs(2) % state % uBcl % array(:,iEdge) 
+                  ! velocity for uCorrection is uBtr + uBcl + uBolus
+                  uTemp(:) &
+                     = block % state % time_levs(2) % state % uBtr     % array(  iEdge) &
+                     + block % state % time_levs(2) % state % uBcl     % array(:,iEdge) &
+                     + block % state % time_levs(1) % state % uBolusGM % array(:,iEdge)
 
                   ! hSum is initialized outside the loop because on land boundaries 
                   ! maxLevelEdgeTop=0, but I want to initialize hSum with a 
@@ -680,18 +696,19 @@ module ocn_time_integration_split
 
                   uCorr =   ucorr_coef*(( block % state % time_levs(1) % state % FBtr % array(iEdge) - uhSum)/hSum)
 
-                  ! put u^{tr}, the velocity for tracer transport, in uNew
-                  ! mrp 060611 not sure if boundary enforcement is needed here.  
-                  if (block % mesh % boundaryEdge % array(1,iEdge).eq.1) then
-                     block % state % time_levs(2) % state % u % array(:,iEdge) = 0.0
-                  else
-                     do k=1,block % mesh % maxLevelEdgeTop % array(iEdge)
-                        block % state % time_levs(2) % state % u % array(k,iEdge) = uTemp(k) + uCorr
-                     enddo
-                     do k=block % mesh % maxLevelEdgeTop % array(iEdge)+1,block % mesh % nVertLevels
-                        block % state % time_levs(2) % state % u % array(k,iEdge) = 0.0
-                     end do
-                  endif
+                  do k=1,block % mesh % nVertLevels
+
+                     ! uTranport = uBtr + uBcl + uBolus + uCorrection
+                     ! This is u used in advective terms for h and tracers 
+                     ! in tendancy calls in stage 3.
+                       block % state % time_levs(2) % state % uTransport % array(k,iEdge) &
+                     = block % mesh % edgeMask % array(k,iEdge) &
+                     *(  block % state % time_levs(2) % state % uBtr       % array(  iEdge) &
+                       + block % state % time_levs(2) % state % uBcl       % array(k,iEdge) &
+                       + block % state % time_levs(1) % state % uBolusGM   % array(k,iEdge) &
+                       + uCorr )
+
+                  enddo
 
                end do ! iEdge
 
@@ -801,9 +818,21 @@ module ocn_time_integration_split
                   end do
                end do ! iCell
 
-               ! uBclNew is u'_{n+1/2}
-               ! uBtrNew is {\bar u}_{avg}
-               ! uNew is u^{tr} 
+               do iEdge=1,block % mesh % nEdges
+
+                  do k=1,block % mesh % nVertLevels
+
+                     ! u = uBtr + uBcl 
+                     ! here uBcl is at time n+1/2
+                     ! This is u used in next iteration or step
+                       block % state % time_levs(2) % state % u    % array(k,iEdge) &
+                     = block % mesh % edgeMask % array(k,iEdge) &
+                     *(  block % state % time_levs(2) % state % uBtr % array(  iEdge) &
+                       + block % state % time_levs(2) % state % uBcl % array(k,iEdge) )
+
+                  enddo
+
+               end do ! iEdge
 
                ! mrp 110512  I really only need this to compute h_edge, density, pressure, and SSH
                ! I can par this down later.

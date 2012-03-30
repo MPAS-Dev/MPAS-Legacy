@@ -46,6 +46,8 @@ namelist real      hmix     config_visc_vorticity_visc4_scale 1.0
 namelist logical   hmix     config_include_KE_vertex false
 namelist real      hmix     config_h_tracer_eddy_diff2  0.0
 namelist real      hmix     config_h_tracer_eddy_diff4  0.0
+namelist real      hmix     config_h_kappa              0.0
+namelist real      hmix     config_h_kappa_q            0.0
 namelist logical   hmix     config_rayleigh_friction    false
 namelist real      hmix     config_rayleigh_damping_coeff 0.0
 namelist real      hmix     config_apvm_scale_factor      0.0
@@ -223,6 +225,16 @@ var persistent real   uBcl ( nVertLevels nEdges Time )  2 - uBcl state - -
 % Diagnostic fields: only written to output
 var persistent real    zMid ( nVertLevels nCells Time ) 2 io zMid state - -
 var persistent real    v ( nVertLevels nEdges Time ) 2 - v state - -
+var persistent real    uTransport ( nVertLevels nEdges Time ) 2 - uTransport state - -
+var persistent real    uBolusGM ( nVertLevels nEdges Time ) 2 - uBolusGM state - -
+var persistent real    uBolusGMX ( nVertLevels nEdges Time ) 2 - uBolusGMX state - -
+var persistent real    uBolusGMY ( nVertLevels nEdges Time ) 2 - uBolusGMY state - -
+var persistent real    uBolusGMZ ( nVertLevels nEdges Time ) 2 - uBolusGMZ state - -
+var persistent real    uBolusGMZonal ( nVertLevels nEdges Time ) 2 o uBolusGMZonal state - -
+var persistent real    uBolusGMMeridional ( nVertLevels nEdges Time ) 2 o uBolusGMMeridional state - -
+var persistent real    hEddyFlux ( nVertLevels nEdges Time ) 2 - hEddyFlux state - -
+var persistent real    h_kappa ( nVertLevels nEdges Time ) 2 - h_kappa state - -
+var persistent real    h_kappa_q ( nVertLevels nEdges Time ) 2 - h_kappa_q state - -
 var persistent real    divergence ( nVertLevels nCells Time ) 2 o divergence state - -
 var persistent real    vorticity ( nVertLevels nVertices Time ) 2 o vorticity state - -
 var persistent real    Vor_edge ( nVertLevels nEdges Time ) 2 - Vor_edge state - -

@@ -25,6 +25,7 @@ module ocn_tendency
 
    use ocn_thick_hadv
    use ocn_thick_vadv
+   use ocn_gm
 
    use ocn_vel_coriolis
    use ocn_vel_pressure_grad
@@ -106,13 +107,13 @@ contains
       type (state_type), intent(in) :: s !< Input: State information
       type (mesh_type), intent(in) :: grid !< Input: Grid information
 
-      real (kind=RKIND), dimension(:,:), pointer :: h_edge, u, wTop, tend_h
+      real (kind=RKIND), dimension(:,:), pointer :: h_edge, wTop, tend_h, uTransport
 
       integer :: err
 
       call mpas_timer_start("ocn_tend_h")
 
-      u           => s % u % array
+      uTransport  => s % uTransport % array
       wTop        => s % wTop % array
       h_edge      => s % h_edge % array
 
@@ -129,8 +130,10 @@ contains
       ! See Ringler et al. (2010) jcp paper, eqn 19, 21, and fig. 3. 
       ! for explanation of divergence operator.
       !
+      ! QC Comment (3/15/12): need to make sure that uTranport is the right
+      ! transport velocity here.
       call mpas_timer_start("hadv", .false., thickHadvTimer)
-      call ocn_thick_hadv_tend(grid, u, h_edge, tend_h, err)
+      call ocn_thick_hadv_tend(grid, uTransport, h_edge, tend_h, err)
       call mpas_timer_stop("hadv", thickHadvTimer)
 
       !
@@ -279,7 +282,7 @@ contains
       real (kind=RKIND), intent(in) :: dt !< Input: Time step
 
       real (kind=RKIND), dimension(:,:), pointer :: &
-        u, h,wTop, h_edge, vertDiffTopOfCell, tend_h, uh
+        uTransport, h,wTop, h_edge, vertDiffTopOfCell, tend_h, uh
       real (kind=RKIND), dimension(:,:,:), pointer :: &
         tracers, tend_tr
 
@@ -287,7 +290,7 @@ contains
 
       call mpas_timer_start("ocn_tend_scalar")
 
-      u           => s % u % array
+      uTransport  => s % uTransport % array
       h           => s % h % array
       wTop        => s % wTop % array
       tracers     => s % tracers % array
@@ -298,11 +301,13 @@ contains
       tend_h      => tend % h % array
 
       allocate(uh(grid % nVertLevels, grid % nEdges+1))
-
+      !
+      ! QC Comment (3/15/12): need to make sure that uTransport is the right
+      ! transport velocity for the tracer.
       do iEdge = 1, grid % nEdges
-        do k = 1, grid % nVertLevels
-            uh(k, iEdge) = u(k, iEdge) * h_edge(k, iEdge)
-        end do
+         do k = 1, grid % nVertLevels
+            uh(k, iEdge) = uTransport(k, iEdge) * h_edge(k, iEdge)
+         end do
       end do
 
       !
@@ -322,7 +327,6 @@ contains
       call mpas_timer_start("adv", .false., tracerHadvTimer)
       call mpas_ocn_tracer_advection_tend(tracers, uh, wTop, h, h, dt, grid, tend_h, tend_tr)
       call mpas_timer_stop("adv", tracerHadvTimer)
-
 
       !
       ! tracer tendency: del2 horizontal tracer diffusion, div(h \kappa_2 \nabla \phi)
@@ -411,13 +415,15 @@ contains
         weightsOnEdge, kiteAreasOnVertex, h_edge, h, u, v, pressure,&
         circulation, vorticity, ke, ke_edge, MontPot, wTop, zMid, &
         Vor_edge, Vor_vertex, Vor_cell, gradVor_n, gradVor_t, divergence, &
-        rho, temperature, salinity, kev, kevc
+        rho, temperature, salinity, kev, kevc, uBolusGM, uTransport
       real (kind=RKIND), dimension(:,:,:), pointer :: tracers, deriv_two
       real (kind=RKIND), dimension(:,:), allocatable:: div_u
       character :: c1*6
 
       h           => s % h % array
       u           => s % u % array
+      uTransport  => s % uTransport % array
+      uBolusGM    => s % uBolusGM % array
       v           => s % v % array
       h_edge      => s % h_edge % array
       circulation => s % circulation % array
@@ -468,6 +474,7 @@ contains
       vertexDegree = grid % vertexDegree
 
       boundaryCell => grid % boundaryCell % array
+
 
       !
       ! Compute height on cell edges at velocity locations
@@ -831,6 +838,16 @@ contains
 
       end do
 
+      !
+      ! Apply the GM closure as a bolus velocity
+      !
+      if (config_h_kappa .GE. epsilon(0D0)) then
+         call ocn_gm_compute_uBolus(s,grid)
+      else
+         ! mrp efficiency note: if uBolusGM is guaranteed to be zero, this can be removed.
+         uBolusGM = 0.0
+      end if
+
    end subroutine ocn_diagnostic_solve!}}}
 
 !***********************************************************************
@@ -860,7 +877,7 @@ contains
 
       real (kind=RKIND), dimension(:), pointer :: &
         h_s, fVertex, fEdge, dvEdge, dcEdge, areaCell, areaTriangle
-      real (kind=RKIND), dimension(:,:), pointer :: u,h,wTop, h_edge
+      real (kind=RKIND), dimension(:,:), pointer :: uTransport,h,wTop, h_edge
       real (kind=RKIND), dimension(:,:), allocatable:: div_hu
       real (kind=RKIND), dimension(:), allocatable:: div_hu_btr, h_tend_col, h_weights
 
@@ -873,7 +890,7 @@ contains
 
       h           => s1 % h % array
       h_edge      => s1 % h_edge % array
-      u           => s2 % u % array
+      uTransport  => s2 % uTransport % array
       wTop        => s2 % wTop % array
 
       areaCell          => grid % areaCell % array
@@ -898,7 +915,7 @@ contains
          cell1 = cellsOnEdge(1,iEdge)
          cell2 = cellsOnEdge(2,iEdge)
          do k=1,maxLevelEdgeBot(iEdge)
-            flux = u(k,iEdge) * dvEdge(iEdge) * h_edge(k,iEdge) 
+            flux = uTransport(k,iEdge) * dvEdge(iEdge) * h_edge(k,iEdge) 
             div_hu(k,cell1) = div_hu(k,cell1) + flux
             div_hu(k,cell2) = div_hu(k,cell2) - flux
          end do 
@@ -1077,6 +1094,7 @@ contains
       call mpas_timer_stop("ocn_fuperp")
 
    end subroutine ocn_fuperp!}}}
+
 
 !***********************************************************************
 !

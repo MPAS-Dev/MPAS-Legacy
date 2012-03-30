@@ -19,6 +19,7 @@ module mpas_core
    use ocn_tracer_hadv
    use ocn_tracer_vadv
    use ocn_tracer_hmix
+   use ocn_gm
    use ocn_restoring
 
    use ocn_equation_of_state
@@ -246,6 +247,11 @@ module mpas_core
       call mpas_timer_start("diagnostic solve", .false., initDiagSolveTimer)
       call ocn_diagnostic_solve(dt, block % state % time_levs(1) % state, mesh)
       call mpas_timer_stop("diagnostic solve", initDiagSolveTimer)
+
+      ! Compute velocity transport, used in advection terms of h and tracer tendancy
+        block % state % time_levs(1) % state % uTransport % array(:,:) &
+      = block % state % time_levs(1) % state % u % array(:,:) &
+      + block % state % time_levs(1) % state % uBolusGM % array(:,:)
 
       call ocn_wtop(block % state % time_levs(1) % state,block % state % time_levs(1) % state, mesh)
 
