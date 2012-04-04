@@ -324,19 +324,17 @@ module mpas_ocn_tracer_advection_mono
 
         if (config_check_monotonicity) then
           !build min and max bounds on old and new tracer for check on monotonicity.
-          cur_min = minval(tracer_cur(:,1:nCellsSolve))
-          cur_max = maxval(tracer_cur(:,1:nCellsSolve))
-          new_min = minval(tracer_new(:,1:nCellsSolve))
-          new_max = maxval(tracer_new(:,1:nCellsSolve))
+          do iCell = 1, nCellsSolve
+            do k = 1, maxLevelCell(iCell)
+              if(tracer_new(k,iCell) < tracer_min(k, iCell)-eps) then
+                write(*,*) 'Minimum out of bounds on tracer ', iTracer, tracer_min(k, iCell), tracer_new(k,iCell)
+              end if
 
-          !check monotonicity
-          if(new_min < cur_min-eps) then
-              write(*,*) 'Minimum out of bounds on tracer ', iTracer, cur_min, new_min
-          end if
-
-          if(new_max > cur_max+eps) then
-              write(*,*) 'Maximum out of bounds on tracer ', iTracer, cur_max, new_max
-          end if
+              if(tracer_new(k,iCell) > tracer_max(k,iCell)+eps) then
+                write(*,*) 'Maximum out of bounds on tracer ', iTracer, tracer_max(k, iCell), tracer_new(k,iCell)
+              end if
+            end do
+          end do
         end if
       end do ! iTracer loop
 
