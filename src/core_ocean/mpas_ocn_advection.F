@@ -123,9 +123,9 @@ module ocn_advection
 
             do i=1,n
                advCells(i+1) = cell_list(i)
-               xc(i) = grid % xCell % array(advCells(i+1))/a
-               yc(i) = grid % yCell % array(advCells(i+1))/a
-               zc(i) = grid % zCell % array(advCells(i+1))/a
+               xc(i) = grid % xCell % array(advCells(i+1))/grid % sphere_radius
+               yc(i) = grid % yCell % array(advCells(i+1))/grid % sphere_radius
+               zc(i) = grid % zCell % array(advCells(i+1))/grid % sphere_radius
             end do
 
             theta_abs(iCell) =  pii/2. - sphere_angle( xc(1), yc(1), zc(1),  &
@@ -143,7 +143,7 @@ module ocn_advection
                                          xc(i+1), yc(i+1), zc(i+1),  &
                                          xc(ip2), yc(ip2), zc(ip2)   )
 
-               dl_sphere(i) = a*arc_length( xc(1),   yc(1),   zc(1),  &
+               dl_sphere(i) = grid % sphere_radius*arc_length( xc(1),   yc(1),   zc(1),  &
                                             xc(i+1), yc(i+1), zc(i+1) )
             end do
 
@@ -172,8 +172,8 @@ module ocn_advection
                if ( iCell .ne. grid % CellsOnEdge % array(1,iEdge)) &
                   angle_2d(i) = angle_2d(i) - pii
 
-!               xp(i) = grid % xCell % array(cell_list(i)) - grid % xCell % array(iCell)
-!               yp(i) = grid % yCell % array(cell_list(i)) - grid % yCell % array(iCell)
+!              xp(i) = grid % xCell % array(cell_list(i)) - grid % xCell % array(iCell)
+!              yp(i) = grid % yCell % array(cell_list(i)) - grid % yCell % array(iCell)
 
                xp(i) = grid % dcEdge % array(grid % EdgesOnCell % array(i,iCell)) * cos(angle_2d(i))
                yp(i) = grid % dcEdge % array(grid % EdgesOnCell % array(i,iCell)) * sin(angle_2d(i))
@@ -274,12 +274,12 @@ module ocn_advection
             if (ip1 > n-1) ip1 = 1
   
             iEdge = grid % EdgesOnCell % array (i,iCell)
-            xv1 = grid % xVertex % array(grid % verticesOnEdge % array (1,iedge))/a
-            yv1 = grid % yVertex % array(grid % verticesOnEdge % array (1,iedge))/a
-            zv1 = grid % zVertex % array(grid % verticesOnEdge % array (1,iedge))/a
-            xv2 = grid % xVertex % array(grid % verticesOnEdge % array (2,iedge))/a
-            yv2 = grid % yVertex % array(grid % verticesOnEdge % array (2,iedge))/a
-            zv2 = grid % zVertex % array(grid % verticesOnEdge % array (2,iedge))/a
+            xv1 = grid % xVertex % array(grid % verticesOnEdge % array (1,iedge))/grid % sphere_radius
+            yv1 = grid % yVertex % array(grid % verticesOnEdge % array (1,iedge))/grid % sphere_radius
+            zv1 = grid % zVertex % array(grid % verticesOnEdge % array (1,iedge))/grid % sphere_radius
+            xv2 = grid % xVertex % array(grid % verticesOnEdge % array (2,iedge))/grid % sphere_radius
+            yv2 = grid % yVertex % array(grid % verticesOnEdge % array (2,iedge))/grid % sphere_radius
+            zv2 = grid % zVertex % array(grid % verticesOnEdge % array (2,iedge))/grid % sphere_radius
   
             if ( grid % on_a_sphere ) then
                call ocn_arc_bisect( xv1, yv1, zv1,  &
