@@ -105,6 +105,12 @@ module mpas_core
 
       call ocn_init_z_level(domain)
 
+      if (config_enforce_zstar_at_restart) then
+         call ocn_init_h_zstar(domain)
+      endif
+
+      call ocn_init_split_timestep(domain)
+
       print *, ' Vertical grid type is: ',config_vert_grid_type
 
       if (config_vert_grid_type.ne.'isopycnal'.and. &
@@ -499,7 +505,7 @@ module mpas_core
    end subroutine mpas_timestep!}}}
 
    subroutine ocn_init_z_level(domain)!{{{
-   ! Initialize maxLevel and bouncary grid variables.
+   ! Initialize zlevel-type variables
 
       use mpas_grid_types
       use mpas_configure
@@ -513,7 +519,8 @@ module mpas_core
 
       integer :: iTracer, cell, cell1, cell2
       real (kind=RKIND) :: uhSum, hSum, hEdge1
-      real (kind=RKIND), dimension(:), pointer :: referenceBottomDepth, referenceBottomDepthTopOfCell
+      real (kind=RKIND), dimension(:), pointer :: referenceBottomDepth, &
+         referenceBottomDepthTopOfCell, zstarWeight, hZLevel
          
       real (kind=RKIND), dimension(:,:), pointer :: h
       integer :: nVertLevels
@@ -525,6 +532,8 @@ module mpas_core
          h          => block % state % time_levs(1) % state % h % array
          referenceBottomDepth => block % mesh % referenceBottomDepth % array
          referenceBottomDepthTopOfCell => block % mesh % referenceBottomDepthTopOfCell % array
+         zstarWeight => block % mesh % zstarWeight % array
+         hZLevel => block % mesh % hZLevel % array
          nVertLevels = block % mesh % nVertLevels
 
          ! mrp 120208 right now hZLevel is in the grid.nc file.
@@ -532,9 +541,9 @@ module mpas_core
          ! as the defining variable instead, and will transition soon.
          ! When the transition is done, hZLevel can be removed from
          ! registry and the following four lines deleted.
-         referenceBottomDepth(1) = block % mesh % hZLevel % array(1)
+         referenceBottomDepth(1) = hZLevel(1)
          do k = 2,nVertLevels
-            referenceBottomDepth(k) = referenceBottomDepth(k-1) + block % mesh % hZLevel % array(k)
+            referenceBottomDepth(k) = referenceBottomDepth(k-1) + hZLevel(k)
          end do
 
          ! TopOfCell needed where zero depth for the very top may be referenced.
@@ -542,6 +551,65 @@ module mpas_core
          do k = 1,nVertLevels
             referenceBottomDepthTopOfCell(k+1) = referenceBottomDepth(k)
          end do
+
+         ! Initialization of zstarWeights.  This determines how SSH perturbations
+         ! are distributed throughout the column.
+         if (config_vert_grid_type.eq.'zlevel') then
+
+           zstarWeight = 0.0
+           zstarWeight(1) = 1.0
+
+         elseif (config_vert_grid_type.eq.'zstar') then
+
+            do k = 1,nVertLevels
+               zstarWeight(k) = hZLevel(k)
+            enddo
+
+         elseif (config_vert_grid_type.eq.'zstarWeights') then
+
+           ! This is a test with other weights, just to make sure zstar functions
+           ! using variable weights.
+   
+           zstarWeight = 0.0
+           zstarWeight(1:5) = 1.0
+           do k=1,10
+              zstarWeight(5+k) = 1.0-k*0.1
+           end do
+
+         endif
+
+      block => block % next
+      end do
+
+   end subroutine ocn_init_z_level!}}}
+
+   subroutine ocn_init_split_timestep(domain)!{{{
+   ! Initialize splitting variables
+
+      use mpas_grid_types
+      use mpas_configure
+
+      implicit none
+
+      type (domain_type), intent(inout) :: domain
+
+      integer :: i, iCell, iEdge, iVertex, k
+      type (block_type), pointer :: block
+
+      integer :: iTracer, cell, cell1, cell2
+      real (kind=RKIND) :: uhSum, hSum, hEdge1
+      real (kind=RKIND), dimension(:), pointer :: referenceBottomDepth
+         
+      real (kind=RKIND), dimension(:,:), pointer :: h
+      integer :: nVertLevels
+
+      ! Initialize z-level grid variables from h, read in from input file.
+      block => domain % blocklist
+      do while (associated(block))
+
+         h          => block % state % time_levs(1) % state % h % array
+         referenceBottomDepth => block % mesh % referenceBottomDepth % array
+         nVertLevels = block % mesh % nVertLevels
 
          ! Compute barotropic velocity at first timestep
          ! This is only done upon start-up.
@@ -618,7 +686,65 @@ module mpas_core
       block => block % next
       end do
 
-   end subroutine ocn_init_z_level!}}}
+   end subroutine ocn_init_split_timestep!}}}
+
+   subroutine ocn_init_h_zstar(domain)!{{{
+   ! If changing from zlevel to zstar, compute h based on zstar weights,
+   ! where SSH is distributed through the layers.  We only change h.
+   ! We do not remap the tracer variables, so this breaks total global 
+   ! conservation.
+
+      use mpas_grid_types
+      use mpas_configure
+
+      implicit none
+
+      type (domain_type), intent(inout) :: domain
+
+      type (block_type), pointer :: block
+
+      integer :: i, iCell, iEdge, iVertex, k, nVertLevels
+      integer, dimension(:), pointer :: maxLevelCell
+
+      real (kind=RKIND) :: hSum, sumZstarWeights
+      real (kind=RKIND), dimension(:), pointer :: hZLevel, zstarWeight, &
+         referenceBottomDepth
+      real (kind=RKIND), dimension(:,:), pointer :: h
+
+      ! Initialize z-level grid variables from h, read in from input file.
+      block => domain % blocklist
+      do while (associated(block))
+
+         h          => block % state % time_levs(1) % state % h % array
+         nVertLevels = block % mesh % nVertLevels
+         hZLevel => block % mesh % hZLevel % array
+         maxLevelCell => block % mesh % maxLevelCell % array
+         zstarWeight => block % mesh % zstarWeight % array
+         referenceBottomDepth => block % mesh % referenceBottomDepth % array
+
+         do iCell=1,block % mesh % nCells
+            ! Compute the total column thickness, hSum, and the sum of zstar weights.
+            hSum = 0.0
+            sumZstarWeights = 0.0
+            do k = 1,maxLevelCell(iCell)
+               hSum = hSum + h(k,iCell) 
+               sumZstarWeights = sumZstarWeights + zstarWeight(k)
+            enddo
+
+            ! h_k = h_k^{zlevel} + zeta * W_k/sum(W_k)
+            ! where zeta is SSH and W_k are weights
+            do k = 1,maxLevelCell(iCell)
+               h(k,iCell) = hZLevel(k) &
+                 + (hSum - referenceBottomDepth(maxLevelCell(iCell))) &
+                  * zstarWeight(k)/sumZstarWeights
+            enddo
+
+         enddo
+
+      block => block % next
+      end do
+
+   end subroutine ocn_init_h_zstar!}}}
 
 subroutine ocn_compute_max_level(domain)!{{{
 ! Initialize maxLevel and bouncary grid variables.

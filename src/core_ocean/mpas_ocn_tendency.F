@@ -876,10 +876,10 @@ contains
 
 
       real (kind=RKIND), dimension(:), pointer :: &
-        h_s, fVertex, fEdge, dvEdge, dcEdge, areaCell, areaTriangle
+        h_s, fVertex, fEdge, dvEdge, dcEdge, areaCell, areaTriangle, zstarWeight
       real (kind=RKIND), dimension(:,:), pointer :: uTransport,h,wTop, h_edge
       real (kind=RKIND), dimension(:,:), allocatable:: div_hu
-      real (kind=RKIND), dimension(:), allocatable:: div_hu_btr, h_tend_col, h_weights
+      real (kind=RKIND), dimension(:), allocatable:: div_hu_btr, h_tend_col
 
       integer, dimension(:,:), pointer :: cellsOnEdge, cellsOnVertex, &
         verticesOnEdge, edgesOnCell, edgesOnEdge, edgesOnVertex, &
@@ -898,13 +898,14 @@ contains
       maxLevelCell      => grid % maxLevelCell % array
       maxLevelEdgeBot   => grid % maxLevelEdgeBot % array
       dvEdge            => grid % dvEdge % array
+      zstarWeight       => grid % zstarWeight % array
 
       nCells      = grid % nCells
       nEdges      = grid % nEdges
       nVertLevels = grid % nVertLevels
 
       allocate(div_hu(nVertLevels,nCells+1), div_hu_btr(nCells+1), &
-          h_tend_col(nVertLevels), h_weights(nVertLevels))
+          h_tend_col(nVertLevels))
 
       !
       ! Compute div(h^{edge} u) for each cell
@@ -937,79 +938,14 @@ contains
         ! set vertical velocity to zero in isopycnal case
         wTop=0.0  
 
-      elseif (config_vert_grid_type.eq.'zlevel') then
-
-        do iCell=1,nCells
-           ! Vertical velocity through layer interface at top and 
-           ! bottom is zero.
-           wTop(1,iCell) = 0.0
-           wTop(maxLevelCell(iCell)+1,iCell) = 0.0
-           do k=maxLevelCell(iCell),2,-1
-              wTop(k,iCell) = wTop(k+1,iCell) - div_hu(k,iCell)
-           end do
-        end do
-
-      elseif (config_vert_grid_type.eq.'zstar1') then
-
-        ! This is a testing setting.  The computation is similar to zstar,
-        ! but the weights are all in the top layer, so is a bit-for-bit 
-        ! match with zlevel.
-
-        do iCell=1,nCells
-
-           h_tend_col = 0.0
-           h_tend_col(1) = - div_hu_btr(iCell)
-
-           ! Vertical velocity through layer interface at top and 
-           ! bottom is zero.
-           wTop(1,iCell) = 0.0
-           wTop(maxLevelCell(iCell)+1,iCell) = 0.0
-
-           do k=maxLevelCell(iCell),2,-1
-              wTop(k,iCell) = wTop(k+1,iCell) - div_hu(k,iCell) - h_tend_col(k)
-           end do
-        end do
-
-      elseif (config_vert_grid_type.eq.'zstar') then
-
-        ! Distribute the change in total column height due to the external
-        ! mode, div_hu_btr, among all the layers.  Distribute in proportion
-        ! to the layer thickness.
+      else  ! zlevel or zstar type vertical grid
 
         do iCell=1,nCells
 
            hSum = 0.0
            do k=1,maxLevelCell(iCell)
-              h_tend_col(k) = - h(k,iCell)*div_hu_btr(iCell)
-              hSum = hSum + h(k,iCell)
-           end do
-           h_tend_col = h_tend_col / hSum
-
-           ! Vertical velocity through layer interface at top and 
-           ! bottom is zero.
-           wTop(1,iCell) = 0.0
-           wTop(maxLevelCell(iCell)+1,iCell) = 0.0
-           do k=maxLevelCell(iCell),2,-1
-              wTop(k,iCell) = wTop(k+1,iCell) - div_hu(k,iCell) - h_tend_col(k)
-           end do
-        end do
-
-      elseif (config_vert_grid_type.eq.'zstarWeights') then
-
-        ! This is a test with other weights, not meant to be permanent.
-
-        h_weights = 0.0
-        h_weights(1:5) = 1.0
-        do k=1,10
-           h_weights(5+k) = 1.0-k*0.1
-        end do
-
-        do iCell=1,nCells
-
-           hSum = 0.0
-           do k=1,maxLevelCell(iCell)
-              h_tend_col(k) = - h_weights(k)*h(k,iCell)*div_hu_btr(iCell)
-              hSum = hSum + h_weights(k)*h(k,iCell)
+              h_tend_col(k) = - zstarWeight(k)*h(k,iCell)*div_hu_btr(iCell)
+              hSum = hSum + zstarWeight(k)*h(k,iCell)
            end do
            h_tend_col = h_tend_col / hSum
 
@@ -1024,7 +960,7 @@ contains
 
       endif
 
-      deallocate(div_hu, div_hu_btr, h_tend_col, h_weights)
+      deallocate(div_hu, div_hu_btr, h_tend_col)
 
    end subroutine ocn_wtop!}}}
 

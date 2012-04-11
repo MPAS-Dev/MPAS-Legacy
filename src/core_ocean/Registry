@@ -24,6 +24,7 @@ namelist character restart  config_restart_interval    none
 namelist character grid     config_vert_grid_type      isopycnal
 namelist character grid     config_pressure_type       pressure
 namelist real      grid     config_rho0                1028
+namelist logical   grid     config_enforce_zstar_at_restart false
 namelist integer   split_explicit_ts config_n_ts_iter     2
 namelist integer   split_explicit_ts config_n_bcl_iter_beg   2
 namelist integer   split_explicit_ts config_n_bcl_iter_mid   2
@@ -185,6 +186,7 @@ var persistent integer maxLevelVertexBot ( nVertices ) 0 - maxLevelVertexBot mes
 var persistent real referenceBottomDepth ( nVertLevels ) 0 iro referenceBottomDepth mesh - -
 var persistent real referenceBottomDepthTopOfCell ( nVertLevelsP1 ) 0 - referenceBottomDepthTopOfCell mesh - -
 var persistent real hZLevel ( nVertLevels ) 0 iro hZLevel mesh - -
+var persistent real zstarWeight ( nVertLevels ) 0 - zstarWeight mesh - -
 
 % Boundary conditions: read from input, saved in restart and written to output
 var persistent integer boundaryEdge ( nVertLevels nEdges ) 0 iro boundaryEdge mesh - -
