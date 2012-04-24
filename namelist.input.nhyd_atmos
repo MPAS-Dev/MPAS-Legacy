@@ -45,9 +45,17 @@
    config_restart_name = 'restart.nc'
    config_output_interval = '1_00:00:00'
    config_frames_per_outfile = 1
-   config_decomp_file_prefix = 'x1.40962.graph.info.part.'
+   config_pio_num_iotasks = 0
+   config_pio_stride      = 1
 /
    config_sfc_update_name = 'sfc_update.nc'
+
+&decomposition
+   config_number_of_blocks = 0
+   config_block_decomp_file_prefix = 'x1.40962.graph.info.part.'
+   config_explicit_proc_decomp = .false.
+   config_proc_decomp_file_prefix = 'graph.info.part.'
+/
 
 &restart
    config_restart_interval = '1_00:00:00'

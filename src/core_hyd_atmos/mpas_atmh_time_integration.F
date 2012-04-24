@@ -114,39 +114,17 @@ module atmh_time_integration
 
         if(debug) write(0,*) ' rk substep ', rk_step
 
-        block => domain % blocklist
-        do while (associated(block))
-           call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % mesh % qtot % array(:,:), &
-                                            block % mesh % nVertLevels, block % mesh % nCells, &
-                                            block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-           call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % mesh % cqu % array(:,:), &
-                                            block % mesh % nVertLevels, block % mesh % nEdges, &
-                                            block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
-           call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % state % time_levs(2) % state % h % array(:,:), &
-                                            block % mesh % nVertLevels, block % mesh % nCells, &
-                                            block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-           call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % state % time_levs(2) % state % pressure % array(:,:), &
-                                            block % mesh % nVertLevels+1, block % mesh % nCells, &
-                                            block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-           call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % state % time_levs(2) % state % geopotential % array(:,:), &
-                                            block % mesh % nVertLevels+1, block % mesh % nCells, &
-                                            block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-           call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % state % time_levs(2) % state % alpha % array(:,:), &
-                                            block % mesh % nVertLevels, block % mesh % nCells, &
-                                            block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-           call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % state % time_levs(2) % state % pv_edge % array(:,:), &
-                                            block % mesh % nVertLevels, block % mesh % nEdges, &
-                                            block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
-           if (config_h_mom_eddy_visc4 > 0.0) then
-              call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % state % time_levs(2) % state % divergence % array(:,:), &
-                                               block % mesh % nVertLevels, block % mesh % nCells, &
-                                               block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-              call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % state % time_levs(2) % state % vorticity % array(:,:), &
-                                               block % mesh % nVertLevels, block % mesh % nVertices, &
-                                               block % parinfo % verticesToSend, block % parinfo % verticesToRecv)
-           end if
-           block => block % next
-        end do
+        call mpas_dmpar_exch_halo_field(domain % blocklist % mesh % qtot)
+        call mpas_dmpar_exch_halo_field(domain % blocklist % mesh % cqu)
+        call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(2) % state % h)
+        call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(2) % state % pressure)
+        call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(2) % state % geopotential)
+        call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(2) % state % alpha)
+        call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(2) % state % pv_edge)
+        if (config_h_mom_eddy_visc4 > 0.0) then
+           call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(2) % state % divergence)
+           call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(2) % state % vorticity)
+        end if
 
         if(debug) write(0,*) ' rk substep ', rk_step
 
@@ -161,16 +139,8 @@ module atmh_time_integration
         !
         ! ---  update halos for tendencies
         !
-        block => domain % blocklist
-        do while (associated(block))
-           call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % tend % u % array(:,:), &
-                                            block % mesh % nVertLevels, block % mesh % nEdges, &
-                                            block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
-           call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % tend % theta % array(:,:), &
-                                            block % mesh % nVertLevels, block % mesh % nCells, &
-                                            block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-           block => block % next
-        end do
+        call mpas_dmpar_exch_halo_field(domain % blocklist % tend % u)
+        call mpas_dmpar_exch_halo_field(domain % blocklist % tend % theta)
 
 
         ! ---  advance over sub_steps
@@ -208,52 +178,20 @@ module atmh_time_integration
            !
            ! ---  update halos for prognostic variables
            !
-           block => domain % blocklist
-           do while (associated(block))
-!!              call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % state % time_levs(2) % state % u % array(:,:), &
-!!                                               block % mesh % nVertLevels, block % mesh % nEdges, &
-!!                                               block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
-              call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % state % time_levs(2) % state % h_edge % array(:,:), &
-                                               block % mesh % nVertLevels, block % mesh % nEdges, &
-                                               block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
-!!              call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % mesh % uhAvg % array(:,:), &
-!!                                               block % mesh % nVertLevels, block % mesh % nEdges, &
-!!                                               block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
-!!              call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % mesh % wwAvg % array(:,:), &
-!!                                               block % mesh % nVertLevels+1, block % mesh % nCells, &
-!!                                               block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-              call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % state % time_levs(2) % state % theta % array(:,:), &
-                                               block % mesh % nVertLevels, block % mesh % nCells, &
-                                               block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-!!              call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % state % time_levs(2) % state % h % array(:,:), &
-!!                                               block % mesh % nVertLevels, block % mesh % nCells, &
-!!                                               block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-!!              call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % tend % h % array(:,:), &
-!!                                               block % mesh % nVertLevels, block % mesh % nCells, &
-!!                                               block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-              call mpas_dmpar_exch_halo_field1d_real(domain % dminfo, block % mesh % dpsdt % array(:), &
-                                               block % mesh % nCells, &
-                                               block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-              call mpas_dmpar_exch_halo_field1d_real(domain % dminfo, block % state % time_levs(2) % state % surface_pressure % array(:), &
-                                               block % mesh % nCells, &
-                                               block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-              call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % state % time_levs(2) % state % alpha % array(:,:), &
-                                               block % mesh % nVertLevels, block % mesh % nCells, &
-                                               block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-              call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % state % time_levs(2) % state % ww % array(:,:), &
-                                               block % mesh % nVertLevels+1, block % mesh % nCells, &
-                                               block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-              call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % state % time_levs(2) % state % pressure % array(:,:), &
-                                               block % mesh % nVertLevels+1, block % mesh % nCells, &
-                                               block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-!!              call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % mesh % pressure_old % array(:,:), &
-!!                                               block % mesh % nVertLevels+1, block % mesh % nCells, &
-!!                                               block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-              call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % state % time_levs(2) % state % geopotential % array(:,:), &
-                                               block % mesh % nVertLevels+1, block % mesh % nCells, &
-                                               block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-              block => block % next
-           end do
+!!              call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(2) % state % u)
+           call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(2) % state % h_edge)
+!!              call mpas_dmpar_exch_halo_field(domain % blocklist % mesh % uhAvg)
+!!              call mpas_dmpar_exch_halo_field(domain % blocklist % mesh % wwAvg)
+           call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(2) % state % theta)
+!!              call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(2) % state % h)
+!!              call mpas_dmpar_exch_halo_field(domain % blocklist % tend % h)
+           call mpas_dmpar_exch_halo_field(domain % blocklist % mesh % dpsdt)
+           call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(2) % state % surface_pressure)
+           call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(2) % state % alpha)
+           call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(2) % state % ww)
+           call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(2) % state % pressure)
+!!              call mpas_dmpar_exch_halo_field(domain % blocklist % mesh % pressure_old)
+           call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(2) % state % geopotential)
 
         end do
 
@@ -274,24 +212,15 @@ module atmh_time_integration
                                     block % state % time_levs(1) % state, block % state % time_levs(2) % state, &
                                     block % mesh, rk_timestep(rk_step) )
            else
-              call atmh_advance_scalars_mono( block % tend,                                                               &
-                                         block % state % time_levs(1) % state, block % state % time_levs(2) % state, &
-                                         block % mesh, rk_timestep(rk_step), rk_step, 3,                             &
-                                         domain % dminfo, block % parinfo % cellsToSend, block % parinfo % cellsToRecv )
+               call atmh_advance_scalars_mono(block % tend, &
+                                              block % state % time_levs(1) % state, block % state % time_levs(2) % state, &
+                                              block % mesh, rk_timestep(rk_step), rk_step, 3)
            end if
            block => block % next
         end do
 
-        block => domain % blocklist
-        do while (associated(block))
-           call mpas_dmpar_exch_halo_field3d_real(domain % dminfo, block % tend % scalars % array(:,:,:), &
-                                            block % tend % num_scalars, block % mesh % nVertLevels, block % mesh % nCells, &
-                                            block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-           call mpas_dmpar_exch_halo_field3d_real(domain % dminfo, block % state % time_levs(2) % state % scalars % array(:,:,:), &
-                                            block % tend % num_scalars, block % mesh % nVertLevels, block % mesh % nCells, &
-                                            block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-           block => block % next
-        end do
+        call mpas_dmpar_exch_halo_field(domain % blocklist % tend % scalars)
+        call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(2) % state % scalars)
 
         
         if(debug) write(0,*) ' advance scalars complete '
@@ -1461,7 +1390,7 @@ module atmh_time_integration
    end subroutine atmh_advance_scalars
 
 
-   subroutine atmh_advance_scalars_mono( tend, s_old, s_new, grid, dt, rk_step, rk_order, dminfo, cellsToSend, cellsToRecv)
+   subroutine atmh_advance_scalars_mono(tend, s_old, s_new, grid, dt, rk_step, rk_order)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
    !
    ! Input: s - current model state
@@ -1476,10 +1405,10 @@ module atmh_time_integration
       type (state_type), intent(in) :: s_old
       type (state_type), intent(inout) :: s_new
       type (mesh_type), intent(in) :: grid
-      integer, intent(in) :: rk_step, rk_order
       real (kind=RKIND), intent(in) :: dt
-      type (dm_info), intent(in) :: dminfo
-      type (exchange_list), pointer :: cellsToSend, cellsToRecv
+      integer, intent(in) :: rk_step, rk_order
+
+      type (block_type), pointer :: block
 
       integer :: i, iCell, iEdge, k, iScalar, cell_upwind, cell1, cell2, num_scalars
       real (kind=RKIND) :: flux, scalar_edge, d2fdx2_cell1, d2fdx2_cell2
@@ -1491,9 +1420,11 @@ module atmh_time_integration
       real (kind=RKIND), dimension(:), pointer :: dvEdge, dcEdge, areaCell
       integer, dimension(:,:), pointer :: cellsOnEdge
 
+      type (field3DReal) :: tempField
+
       real (kind=RKIND), dimension( s_old % num_scalars, grid % nEdges+1) :: h_flux
-      real (kind=RKIND), dimension( s_old % num_scalars, grid % nCells+1, 2 ) :: v_flux, v_flux_upwind, s_update
-      real (kind=RKIND), dimension( s_old % num_scalars, grid % nCells+1, 2 ) :: scale_out, scale_in
+      real (kind=RKIND), dimension(2, s_old % num_scalars, grid % nCells+1) :: v_flux, v_flux_upwind, s_update
+      real (kind=RKIND), dimension(2, s_old % num_scalars, grid % nCells+1), target :: scale_out, scale_in
       real (kind=RKIND), dimension( s_old % num_scalars ) :: s_max, s_min, s_max_update, s_min_update
 
       integer :: nVertLevels, km0, km1, ktmp, kcp1, kcm1
@@ -1501,6 +1432,8 @@ module atmh_time_integration
       real (kind=RKIND), dimension(:), pointer :: fnm, fnp, rdnw
       real (kind=RKIND), parameter :: eps=1.e-20
       real (kind=RKIND) :: coef_3rd_order
+
+      block => grid % block
 
       num_scalars = s_old % num_scalars
 
@@ -1531,8 +1464,8 @@ module atmh_time_integration
 
       km1 = 1
       km0 = 2
-      v_flux(:,:,km1) = 0.
-      v_flux_upwind(:,:,km1) = 0.
+      v_flux(km1,:,:) = 0.
+      v_flux_upwind(km1,:,:) = 0.
       scale_out(:,:,:) = 1.
       scale_in(:,:,:) = 1.
 
@@ -1552,20 +1485,20 @@ module atmh_time_integration
                cell_upwind = k
                if (wwAvg(k+1,iCell) >= 0) cell_upwind = k+1
                do iScalar=1,num_scalars
-                  v_flux(iScalar,iCell,km0) = dt * wwAvg(k+1,iCell) *   &
+                  v_flux(km0,iScalar,iCell) = dt * wwAvg(k+1,iCell) *   &
                        (fnm(k+1) * scalar_new(iScalar,k+1,iCell) + fnp(k+1) * scalar_new(iScalar,k,iCell))
-                  v_flux_upwind(iScalar,iCell,km0) = dt * wwAvg(k+1,iCell) * scalar_old(iScalar,cell_upwind,iCell)
-                  v_flux(iScalar,iCell,km0) = v_flux(iScalar,iCell,km0) - v_flux_upwind(iScalar,iCell,km0)
+                  v_flux_upwind(km0,iScalar,iCell) = dt * wwAvg(k+1,iCell) * scalar_old(iScalar,cell_upwind,iCell)
+                  v_flux(km0,iScalar,iCell) = v_flux(km0, iScalar,iCell) - v_flux_upwind(km0,iScalar,iCell)
 !                  v_flux(iScalar,iCell,km0) = 0.  ! use only upwind - for testing
-                  s_update(iScalar,iCell,km0) = scalar_old(iScalar,k,iCell) * h_old(k,iCell)  &
-                            - rdnw(k) * (v_flux_upwind(iScalar,iCell,km0) - v_flux_upwind(iScalar,iCell,km1))
+                  s_update(km0,iScalar,iCell) = scalar_old(iScalar,k,iCell) * h_old(k,iCell)  &
+                            - rdnw(k) * (v_flux_upwind(km0,iScalar,iCell) - v_flux_upwind(km1,iScalar,iCell))
                end do
             else
                do iScalar=1,num_scalars
-                  v_flux(iScalar,iCell,km0) = 0.
-                  v_flux_upwind(iScalar,iCell,km0) = 0.
-                  s_update(iScalar,iCell,km0) = scalar_old(iScalar,k,iCell) * h_old(k,iCell)  &
-                            - rdnw(k) * (v_flux_upwind(iScalar,iCell,km0) - v_flux_upwind(iScalar,iCell,km1))
+                  v_flux(km0,iScalar,iCell) = 0.
+                  v_flux_upwind(km0,iScalar,iCell) = 0.
+                  s_update(km0,iScalar,iCell) = scalar_old(iScalar,k,iCell) * h_old(k,iCell)  &
+                            - rdnw(k) * (v_flux_upwind(km0,iScalar,iCell) - v_flux_upwind(km1,iScalar,iCell))
                end do
             end if
 
@@ -1586,8 +1519,8 @@ module atmh_time_integration
                   h_flux_upwind = dt * uhAvg(k,iEdge) * dvEdge(iEdge) * scalar_old(iScalar,k,cell_upwind)
                   h_flux(iScalar,iEdge) = h_flux(iScalar,iEdge) - h_flux_upwind
 !                  h_flux(iScalar,iEdge) = 0.  ! use only upwind - for testing
-                  s_update(iScalar,cell1,km0) = s_update(iScalar,cell1,km0) - h_flux_upwind / grid % areaCell % array(cell1)
-                  s_update(iScalar,cell2,km0) = s_update(iScalar,cell2,km0) + h_flux_upwind / grid % areaCell % array(cell2)
+                  s_update(km0,iScalar,cell1) = s_update(km0,iScalar,cell1) - h_flux_upwind / grid % areaCell % array(cell1)
+                  s_update(km0,iScalar,cell2) = s_update(km0,iScalar,cell2) + h_flux_upwind / grid % areaCell % array(cell2)
                end do 
             end do 
 
@@ -1627,8 +1560,8 @@ module atmh_time_integration
                   h_flux_upwind = dt * uhAvg(k,iEdge) * dvEdge(iEdge) * scalar_old(iScalar,k,cell_upwind)
                   h_flux(iScalar,iEdge) = h_flux(iScalar,iEdge) - h_flux_upwind
 !                  h_flux(iScalar,iEdge) = 0.  ! use only upwind - for testing
-                  s_update(iScalar,cell1,km0) = s_update(iScalar,cell1,km0) - h_flux_upwind / grid % areaCell % array(cell1)
-                  s_update(iScalar,cell2,km0) = s_update(iScalar,cell2,km0) + h_flux_upwind / grid % areaCell % array(cell2)
+                  s_update(km0,iScalar,cell1) = s_update(km0,iScalar,cell1) - h_flux_upwind / grid % areaCell % array(cell1)
+                  s_update(km0,iScalar,cell2) = s_update(km0,iScalar,cell2) + h_flux_upwind / grid % areaCell % array(cell2)
                end do 
             end do 
 
@@ -1647,14 +1580,14 @@ module atmh_time_integration
    
                   s_max(iScalar) = max(scalar_old(iScalar,k,iCell), scalar_old(iScalar,kcp1,iCell), scalar_old(iScalar,kcm1,iCell))
                   s_min(iScalar) = min(scalar_old(iScalar,k,iCell), scalar_old(iScalar,kcp1,iCell), scalar_old(iScalar,kcm1,iCell))
-                  s_max_update(iScalar) = s_update(iScalar,iCell,km0)
-                  s_min_update(iScalar) = s_update(iScalar,iCell,km0)
+                  s_max_update(iScalar) = s_update(km0,iScalar,iCell)
+                  s_min_update(iScalar) = s_update(km0,iScalar,iCell)
     
                   ! add in vertical flux to get max and min estimate
                   s_max_update(iScalar) = s_max_update(iScalar)  &
-                     - rdnw(k) * (max(0.0_RKIND,v_flux(iScalar,iCell,km0)) - min(0.0_RKIND,v_flux(iScalar,iCell,km1)))
+                     - rdnw(k) * (max(0.0_RKIND,v_flux(km0,iScalar,iCell)) - min(0.0_RKIND,v_flux(km1,iScalar,iCell)))
                   s_min_update(iScalar) = s_min_update(iScalar)  &
-                     - rdnw(k) * (min(0.0_RKIND,v_flux(iScalar,iCell,km0)) - max(0.0_RKIND,v_flux(iScalar,iCell,km1)))
+                     - rdnw(k) * (min(0.0_RKIND,v_flux(km0,iScalar,iCell)) - max(0.0_RKIND,v_flux(km1,iScalar,iCell)))
     
                end do
    
@@ -1681,33 +1614,33 @@ module atmh_time_integration
                if( config_positive_definite ) s_min(:) = 0.
    
                do iScalar=1,num_scalars
-                  scale_out (iScalar,iCell,km0) = 1.
-                  scale_in (iScalar,iCell,km0) = 1.
+                  scale_out (km0,iScalar,iCell) = 1.
+                  scale_in (km0,iScalar,iCell) = 1.
                   s_max_update (iScalar) =  s_max_update (iScalar) / h_new (k,iCell)
                   s_min_update (iScalar) =  s_min_update (iScalar) / h_new (k,iCell)
-                  s_upwind = s_update(iScalar,iCell,km0) / h_new(k,iCell)
+                  s_upwind = s_update(km0,iScalar,iCell) / h_new(k,iCell)
                   if ( s_max_update(iScalar) > s_max(iScalar) .and. config_monotonic)   &
-                     scale_in (iScalar,iCell,km0) = max(0.0_RKIND,(s_max(iScalar)-s_upwind)/(s_max_update(iScalar)-s_upwind+eps))
+                     scale_in (km0,iScalar,iCell) = max(0.0_RKIND,(s_max(iScalar)-s_upwind)/(s_max_update(iScalar)-s_upwind+eps))
                   if ( s_min_update(iScalar) < s_min(iScalar) )   &
-                     scale_out (iScalar,iCell,km0) = max(0.0_RKIND,(s_upwind-s_min(iScalar))/(s_upwind-s_min_update(iScalar)+eps))
+                     scale_out (km0,iScalar,iCell) = max(0.0_RKIND,(s_upwind-s_min(iScalar))/(s_upwind-s_min_update(iScalar)+eps))
                 end do
   
             end do ! end loop over cells to compute scale factor
 
 
-            call mpas_dmpar_exch_halo_field2d_real(dminfo, scale_out(:,:,1), &
-                                             num_scalars, grid % nCells, &
-                                             cellsToSend, cellsToRecv)
-            call mpas_dmpar_exch_halo_field2d_real(dminfo, scale_out(:,:,2), &
-                                             num_scalars, grid % nCells, &
-                                             cellsToSend, cellsToRecv)
-            call mpas_dmpar_exch_halo_field2d_real(dminfo, scale_in(:,:,1), &
-                                             num_scalars, grid % nCells, &
-                                             cellsToSend, cellsToRecv)
-            call mpas_dmpar_exch_halo_field2d_real(dminfo, scale_in(:,:,2), &
-                                             num_scalars, grid % nCells, &
-                                             cellsToSend, cellsToRecv)
+       tempField % block => block
+       tempField % dimSizes(1) = 2
+       tempField % dimSizes(2) = num_scalars
+       tempField % dimSizes(3) = grid % nCells
+       tempField % sendList => block % parinfo % cellsToSend
+       tempField % recvList => block % parinfo % cellsToRecv
 
+       tempField % array => scale_in
+       call mpas_dmpar_exch_halo_field(tempField)
+
+       tempField % array => scale_out
+       call mpas_dmpar_exch_halo_field(tempField)
+     
        ! rescale the horizontal fluxes
  
             do iEdge = 1, grid % nEdges
@@ -1716,9 +1649,9 @@ module atmh_time_integration
                do iScalar=1,num_scalars
                   flux = h_flux(iScalar,iEdge)
                   if (flux > 0) then
-                     flux = flux * min(scale_out(iScalar,cell1,km0), scale_in(iScalar,cell2,km0))
+                     flux = flux * min(scale_out(km0,iScalar,cell1), scale_in(km0,iScalar,cell2))
                   else
-                     flux = flux * min(scale_in(iScalar,cell1,km0), scale_out(iScalar,cell2,km0))
+                     flux = flux * min(scale_in(km0,iScalar,cell1), scale_out(km0,iScalar,cell2))
                   end if
                   h_flux(iScalar,iEdge) = flux
                end do
@@ -1728,13 +1661,13 @@ module atmh_time_integration
  
             do iCell=1,grid % nCells
                do iScalar=1,num_scalars
-                  flux =  v_flux(iScalar,iCell,km1)
+                  flux =  v_flux(km1,iScalar,iCell)
                   if (flux > 0) then
-                     flux = flux * min(scale_out(iScalar,iCell,km0), scale_in(iScalar,iCell,km1))
+                     flux = flux * min(scale_out(km0,iScalar,iCell), scale_in(km1,iScalar,iCell))
                   else
-                     flux = flux * min(scale_in(iScalar,iCell,km0), scale_out(iScalar,iCell,km1))
+                     flux = flux * min(scale_in(km0,iScalar,iCell), scale_out(km1,iScalar,iCell))
                   end if
-                  v_flux(iScalar,iCell,km1) = flux
+                  v_flux(km1,iScalar,iCell) = flux
                end do
             end do
 
@@ -1748,8 +1681,8 @@ module atmh_time_integration
          do iCell=1,grid % nCells
             !  add in upper vertical flux that was just renormalized
             do iScalar=1,num_scalars
-               s_update(iScalar,iCell,km0) = s_update(iScalar,iCell,km0) + rdnw(k) * v_flux(iScalar,iCell,km1)
-               if (k > 1) s_update(iScalar,iCell,km1) = s_update(iScalar,iCell,km1) - rdnw(k-1)*v_flux(iScalar,iCell,km1)
+               s_update(km0,iScalar,iCell) = s_update(km0,iScalar,iCell) + rdnw(k) * v_flux(km1,iScalar,iCell)
+               if (k > 1) s_update(km1,iScalar,iCell) = s_update(km1,iScalar,iCell) - rdnw(k-1)*v_flux(km1,iScalar,iCell)
             end do
          end do
  
@@ -1757,9 +1690,9 @@ module atmh_time_integration
             cell1 = cellsOnEdge(1,iEdge)
             cell2 = cellsOnEdge(2,iEdge)
             do iScalar=1,num_scalars
-               s_update(iScalar,cell1,km0) = s_update(iScalar,cell1,km0) - &
+               s_update(km0,iScalar,cell1) = s_update(km0,iScalar,cell1) - &
                    h_flux(iScalar,iEdge) / grid % areaCell % array(cell1)
-               s_update(iScalar,cell2,km0) = s_update(iScalar,cell2,km0) + &
+               s_update(km0,iScalar,cell2) = s_update(km0,iScalar,cell2) + &
                    h_flux(iScalar,iEdge) / grid % areaCell % array(cell2)
             end do 
          end do 
@@ -1768,13 +1701,13 @@ module atmh_time_integration
          if (k > 1) then
             do iCell=1,grid % nCells
                do iScalar=1,num_scalars
-                  s_update(iScalar,iCell,km1) = s_update(iScalar,iCell,km1) / h_new(k-1,iCell)
+                  s_update(km1,iScalar,iCell) = s_update(km1,iScalar,iCell) / h_new(k-1,iCell)
                end do
             end do
  
             do iCell=1,grid % nCells
                do iScalar=1,num_scalars
-                  scalar_new(iScalar,k-1,iCell) = s_update(iScalar,iCell,km1) 
+                  scalar_new(iScalar,k-1,iCell) = s_update(km1,iScalar,iCell) 
                end do
             end do
          end if
@@ -1787,7 +1720,7 @@ module atmh_time_integration
 
       do iCell=1,grid % nCells
          do iScalar=1,num_scalars
-            scalar_new(iScalar,grid % nVertLevels,iCell) = s_update(iScalar,iCell,km1) / h_new(grid%nVertLevels,iCell)
+            scalar_new(iScalar,grid % nVertLevels,iCell) = s_update(km1,iScalar,iCell) / h_new(grid%nVertLevels,iCell)
          end do
       end do
 

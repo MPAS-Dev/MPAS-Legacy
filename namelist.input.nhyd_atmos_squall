@@ -38,6 +38,15 @@
    config_restart_name = 'restart.nc'
    config_output_interval = '00:30:00'
    config_frames_per_outfile = 0
+   config_pio_num_iotasks = 0
+   config_pio_stride      = 1
+/
+
+&decomposition
+   config_number_of_blocks = 0
+   config_block_decomp_file_prefix = 'graph.info.part.'
+   config_explicit_proc_decomp = .false.
+   config_proc_decomp_file_prefix = 'graph.info.part.'
 /
 
 &restart

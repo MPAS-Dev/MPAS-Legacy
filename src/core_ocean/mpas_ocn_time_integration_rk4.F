@@ -78,7 +78,8 @@ module ocn_time_integration_rk4
 
       integer :: iCell, k, i, err
       type (block_type), pointer :: block
-      type (state_type) :: provis
+      type (state_type), target :: provis
+      type (state_type), pointer :: provis_ptr
 
       integer :: rk_step, iEdge, cell1, cell2
 
@@ -96,9 +97,12 @@ module ocn_time_integration_rk4
 
 
       block => domain % blocklist
-      call mpas_allocate_state(provis, &
+      call mpas_allocate_state(block, provis, &
                           block % mesh % nCells, block % mesh % nEdges, block % mesh % maxEdges, block % mesh % maxEdges2, &
                           block % mesh % nVertices, block % mesh % vertexDegree, block % mesh % nVertLevels )
+
+      provis_ptr => provis
+      call mpas_create_state_links(provis_ptr)
 
       !
       ! Initialize time_levs(2) with state at current time
@@ -142,23 +146,11 @@ module ocn_time_integration_rk4
 ! ---  update halos for diagnostic variables
 
         call mpas_timer_start("RK4-diagnostic halo update")
-        block => domain % blocklist
-        do while (associated(block))
-           call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, provis % Vor_edge % array(:,:), &
-                                            block % mesh % nVertLevels, block % mesh % nEdges, &
-                                            block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
-
-           if (config_h_mom_eddy_visc4 > 0.0) then
-              call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, provis % divergence % array(:,:), &
-                                               block % mesh % nVertLevels, block % mesh % nCells, &
-                                               block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-              call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, provis % vorticity % array(:,:), &
-                                               block % mesh % nVertLevels, block % mesh % nVertices, &
-                                               block % parinfo % verticesToSend, block % parinfo % verticesToRecv)
-           end if
-
-           block => block % next
-        end do
+        call mpas_dmpar_exch_halo_field(provis % Vor_edge)
+        if (config_h_mom_eddy_visc4 > 0.0) then
+           call mpas_dmpar_exch_halo_field(provis % divergence)
+           call mpas_dmpar_exch_halo_field(provis % vorticity)
+        end if
         call mpas_timer_stop("RK4-diagnostic halo update")
 
 ! ---  compute tendencies
@@ -190,19 +182,9 @@ module ocn_time_integration_rk4
 ! ---  update halos for prognostic variables
 
         call mpas_timer_start("RK4-pronostic halo update")
-        block => domain % blocklist
-        do while (associated(block))
-           call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % tend % u % array(:,:), &
-                                            block % mesh % nVertLevels, block % mesh % nEdges, &
-                                            block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
-           call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % tend % h % array(:,:), &
-                                            block % mesh % nVertLevels, block % mesh % nCells, &
-                                            block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-           call mpas_dmpar_exch_halo_field3d_real(domain % dminfo, block % tend % tracers % array(:,:,:), &
-                                            block % tend % num_tracers, block % mesh % nVertLevels, block % mesh % nCells, &
-                                            block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-           block => block % next
-        end do
+        call mpas_dmpar_exch_halo_field(domain % blocklist % tend % u)
+        call mpas_dmpar_exch_halo_field(domain % blocklist % tend % h)
+        call mpas_dmpar_exch_halo_field(domain % blocklist % tend % tracers)
         call mpas_timer_stop("RK4-pronostic halo update")
 
 ! ---  compute next substep state

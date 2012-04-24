@@ -2,8 +2,8 @@ module mpas_core
 
    use mpas_framework
 
-   type (io_output_object) :: restart_obj
-   type (io_input_object) :: sfc_update_obj
+   type (io_output_object), save :: restart_obj
+   type (io_input_object), save :: sfc_update_obj
    integer :: current_outfile_frames
    
    type (MPAS_Clock_type) :: clock
@@ -34,6 +34,7 @@ module mpas_core
       type (MPAS_TimeInterval_type) :: timeDiff, minTimeDiff
       character(len=32) :: timeStamp
       integer :: i
+      integer :: ierr
 
       if (.not. config_do_restart) call atm_setup_test_case(domain)
 
@@ -58,47 +59,16 @@ module mpas_core
          sfc_update_obj % filename = trim(config_sfc_update_name)
          sfc_update_obj % stream = STREAM_SFC
 
-         call mpas_io_input_init(sfc_update_obj, domain % dminfo)
+         call mpas_io_input_init(sfc_update_obj, domain % blocklist, domain % dminfo)
 
          !     
          ! We need to decide which time slice to read from the surface file - read the most recent time slice that falls before or on the start time
          !
-         sfc_update_obj % time = 1
-
-         if (sfc_update_obj % rdLocalTime <= 0) then
-            write(0,*) 'Error: Couldn''t find any times in surface update file.'
+         sfc_update_obj % time = MPAS_seekStream(sfc_update_obj % io_stream, trim(config_start_time), MPAS_STREAM_LATEST_BEFORE, timeStamp, ierr)
+         if (ierr == MPAS_IO_ERR) then
+            write(0,*) 'Error: surface update file '//trim(sfc_update_obj % filename)//' did not contain any times at or before '//trim(config_start_time)
             call mpas_dmpar_abort(domain % dminfo)
          end if
-      
-         if (domain % dminfo % my_proc_id == IO_NODE) then
-            allocate(xtime % ioinfo)
-            xtime % ioinfo % start(1) = 1
-            xtime % ioinfo % count(1) = sfc_update_obj % rdLocalTime
-            allocate(xtime % array(sfc_update_obj % rdLocalTime))
-
-            xtime % ioinfo % fieldName = 'xtime'
-            call mpas_io_input_field(sfc_update_obj, xtime)
-
-            call mpas_set_timeInterval(interval=minTimeDiff, DD=10000)
-            call mpas_set_time(curr_time=startTime, dateTimeString=config_start_time)
-
-            do i=1,sfc_update_obj % rdLocalTime
-               call mpas_set_time(curr_time=sliceTime, dateTimeString=xtime % array(i))
-               timeDiff = abs(sliceTime - startTime)
-               if (sliceTime <= startTime .and. timeDiff < minTimeDiff) then
-                  minTimeDiff = timeDiff
-                  sfc_update_obj % time = i
-               end if
-            end do
-
-            timeStamp = xtime % array(sfc_update_obj % time)
-
-            deallocate(xtime % ioinfo)
-            deallocate(xtime % array)
-         end if
-
-         call mpas_dmpar_bcast_int(domain % dminfo, sfc_update_obj % time)
-         call mpas_dmpar_bcast_char(domain % dminfo, timeStamp)
 
          write(0,*) 'Starting model with surface time ', timeStamp
 
@@ -190,24 +160,18 @@ module mpas_core
       type (mesh_type), intent(inout) :: mesh
       real (kind=RKIND), intent(in) :: dt
 
-      call mpas_dmpar_exch_halo_field2d_real(dminfo, block % state % time_levs(1) % state % u % array(:,:), &
-                                       block % mesh % nVertLevels, block % mesh % nEdges, &
-                                       block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
+      call mpas_dmpar_exch_halo_field(block % state % time_levs(1) % state % u)
    
       if (.not. config_do_restart .or. (config_do_restart .and. config_do_DAcycling)) then
          call atm_init_coupled_diagnostics( block % state % time_levs(1) % state, block % diag, mesh)
       end if
       call atm_compute_solve_diagnostics(dt, block % state % time_levs(1) % state, block % diag, mesh)
 
-      call mpas_dmpar_exch_halo_field2d_real(dminfo, block % diag % pv_edge % array(:,:), &
-                                       block % mesh % nVertLevels, block % mesh % nEdges, &
-                                       block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
-      call mpas_dmpar_exch_halo_field2d_real(dminfo, block % diag % ru % array(:,:), &
-                                       block % mesh % nVertLevels, block % mesh % nEdges, &
-                                       block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
-      call mpas_dmpar_exch_halo_field2d_real(dminfo, block % diag % rw % array, &
-                                       block % mesh % nVertLevels+1, block % mesh % nCells,  &
-                                       block % parinfo % CellsToSend, block % parinfo % CellsToRecv)
+      call mpas_dmpar_exch_halo_field(block % diag % pv_edge)
+
+      call mpas_dmpar_exch_halo_field(block % diag % ru)
+
+      call mpas_dmpar_exch_halo_field(block % diag % rw)
 
       call mpas_rbf_interp_initialize(mesh)
       call mpas_init_reconstruct(mesh)
@@ -298,11 +262,7 @@ module mpas_core
          if (mpas_is_alarm_ringing(clock, sfcAlarmID, ierr=ierr)) then
             call mpas_reset_clock_alarm(clock, sfcAlarmID, ierr=ierr)
 
-            call mpas_read_and_distribute_fields(domain % dminfo, sfc_update_obj, domain % blocklist, &
-                                         readCellStart, nReadCells, readEdgeStart, nReadEdges, readVertexStart, nReadVertices, &
-                                         readVertLevelStart, nReadVertLevels, &
-                                         sendCellList, recvCellList, sendEdgeList, recvEdgeList, sendVertexList, recvVertexList, &
-                                         sendVertLevelList, recvVertLevelList)
+            call mpas_read_and_distribute_fields(sfc_update_obj)
             sfc_update_obj % time = sfc_update_obj % time + 1
          end if
 

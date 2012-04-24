@@ -26,7 +26,12 @@ namelist character   io        config_output_name           output.nc
 namelist character   io        config_restart_name          restart.nc
 namelist character   io        config_output_interval       06:00:00
 namelist integer     io        config_frames_per_outfile    0
-namelist character   io        config_decomp_file_prefix    graph.info.part.
+namelist integer     io        config_pio_num_iotasks       0 
+namelist integer     io        config_pio_stride            1
+namelist character   decomposition config_block_decomp_file_prefix  graph.info.part.
+namelist integer     decomposition config_number_of_blocks          0
+namelist logical     decomposition config_explicit_proc_decomp      .false.
+namelist character   decomposition config_proc_decomp_file_prefix   graph.info.part.
 namelist logical     restart   config_do_restart            false
 namelist character   restart   config_restart_interval      none
 

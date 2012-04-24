@@ -28,8 +28,13 @@ namelist character io         config_input_name           grid.nc
 namelist character io         config_sfc_update_name      sfc_update.nc
 namelist character io         config_output_name          init.nc
 namelist character io         config_restart_name         restart.nc
-namelist character io         config_decomp_file_prefix   graph.info.part.
 namelist integer   io         config_frames_per_outfile   0
+namelist integer   io         config_pio_num_iotasks      0 
+namelist integer   io         config_pio_stride           1
+namelist character decomposition config_block_decomp_file_prefix  graph.info.part.
+namelist integer   decomposition config_number_of_blocks          0
+namelist logical   decomposition config_explicit_proc_decomp      .false.
+namelist character decomposition config_proc_decomp_file_prefix   graph.info.part.
 namelist integer   restart    config_restart_interval     0
 namelist logical   restart    config_do_restart           false
 namelist real      restart    config_restart_time         172800.0

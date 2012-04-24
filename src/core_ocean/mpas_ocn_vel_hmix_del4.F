@@ -175,7 +175,7 @@ contains
          do k=1,maxLevelEdgeTop(iEdge)
             ! Compute \nabla^2 u = \nabla divergence + k \times \nabla vorticity
             delsq_u =          ( divergence(k,cell2)  - divergence(k,cell1) ) * invDcEdge  &
-                -viscVortCoef *( vorticity(k,vertex2) - vorticity(k,vertex1)) * invDvEdge 
+                -viscVortCoef *( vorticity(k,vertex2) - vorticity(k,vertex1)) * invDcEdge * sqrt(3.0)   ! TDR
 
             ! vorticity using \nabla^2 u
             r_tmp = dcEdge(iEdge) * delsq_u
@@ -203,7 +203,7 @@ contains
 
          do k=1,maxLevelEdgeTop(iEdge)
             u_diffusion = (delsq_divergence(k,cell2) - delsq_divergence(k,cell1)) * invDcEdge  &
-                -viscVortCoef * (delsq_vorticity(k,vertex2) - delsq_vorticity(k,vertex1) ) * invDvEdge
+                -viscVortCoef * (delsq_vorticity(k,vertex2) - delsq_vorticity(k,vertex1) ) * invDcEdge * sqrt(3.0) ! TDR
 
             tend(k,iEdge) = tend(k,iEdge) - edgeMask(k, iEdge) * u_diffusion * r_tmp
          end do

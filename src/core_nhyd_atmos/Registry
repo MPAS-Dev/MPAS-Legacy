@@ -44,7 +44,12 @@ namelist character io         config_output_name          output.nc
 namelist character io         config_restart_name         restart.nc
 namelist character io         config_output_interval      06:00:00
 namelist integer   io         config_frames_per_outfile   0
-namelist character io         config_decomp_file_prefix   graph.info.part.
+namelist integer   io         config_pio_num_iotasks      0 
+namelist integer   io         config_pio_stride           1
+namelist character decomposition config_block_decomp_file_prefix  graph.info.part.
+namelist integer   decomposition config_number_of_blocks          0
+namelist logical   decomposition config_explicit_proc_decomp      .false.
+namelist character decomposition config_proc_decomp_file_prefix   graph.info.part.
 namelist logical   restart    config_do_restart           false
 namelist logical   restart    config_do_DAcycling         false
 namelist character restart    config_restart_interval     none
@@ -316,10 +321,10 @@ dim nLags namelist:input_soil_temperature_lag
 
 namelist integer   physics  noznlev                       59
 namelist integer   physics  naerlev                       29
-namelist integer   physics  cam_dim1                       4
+namelist integer   physics  camdim1                       4
 dim nOznLevels     namelist:noznlev
 dim nAerLevels     namelist:naerlev
-dim cam_dim1       namelist:cam_dim1
+dim cam_dim1       namelist:camdim1
 
 %... DIMENSION NEEDED FOR LONGWAVE AND SHORTWAVE RADIATION FLUXES TO INCLUDE AN ADDITIONAL LAYER
 %... BETWEEN THE TOP OF THE MODEL AND THE TOP OF THE ATMOSPHERE

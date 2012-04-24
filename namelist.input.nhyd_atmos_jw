@@ -42,6 +42,15 @@
    config_input_name = 'grid.nc'
    config_output_name = 'output.nc'
    config_restart_name = 'restart.nc'
+   config_pio_num_iotasks = 0
+   config_pio_stride      = 1
+/
+
+&decomposition
+   config_number_of_blocks = 0
+   config_block_decomp_file_prefix = 'graph.info.part.'
+   config_explicit_proc_decomp = .false.
+   config_proc_decomp_file_prefix = 'graph.info.part.'
 /
 
 &restart

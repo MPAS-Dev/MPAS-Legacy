@@ -25,6 +25,9 @@ xlf:
 	"FFLAGS_OPT = -O3 -qrealsize=8" \
 	"CFLAGS_OPT = -O3" \
 	"LDFLAGS_OPT = -O3" \
+	"FFLAGS_DEBUG = -O0 -g -C -qrealsize=8" \
+	"CFLAGS_DEBUG = -O0 -g" \
+	"LDFLAGS_DEBUG = -O0 -g" \
 	"CORE = $(CORE)" \
 	"DEBUG = $(DEBUG)" \
 	"SERIAL = $(SERIAL)" \
@@ -190,9 +193,9 @@ intel-nersc:
 	"USE_PAPI = $(USE_PAPI)" \
 	"CPPFLAGS = $(MODEL_FORMULATION) -DUNDERSCORE $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
 
-CPPINCLUDES = -I../inc -I$(NETCDF)/include
-FCINCLUDES = -I../inc -I$(NETCDF)/include
-LIBS = -L$(NETCDF)/lib -lnetcdf
+CPPINCLUDES = -I../inc -I$(NETCDF)/include -I$(PIO) -I$(PNETCDF)/include
+FCINCLUDES = -I../inc -I$(NETCDF)/include -I$(PIO) -I$(PNETCDF)/include
+LIBS = -L$(PIO) -L$(PNETCDF)/lib -L$(NETCDF)/lib -lpio -lpnetcdf -lnetcdf
 
 RM = rm -f
 CPP = cpp -C -P -traditional
@@ -227,9 +230,9 @@ ifndef FFLAGS_DEBUG
 	LDFLAGS=$(LDFLAGS_OPT)
 	DEBUG_MESSAGE="Debug flags are not defined for this compile group. Defaulting to Optimized flags"
 else # FFLAGS_DEBUG IF
-	FFLAGS=$(FFLAGS_DEBUG) -DMPAS_DEBUG
+	FFLAGS=$(FFLAGS_DEBUG)
 	CFLAGS=$(CFLAGS_DEBUG) -DMPAS_DEBUG
-	LDFLAGS=$(LDFLAGS_DEBUG) -DMPAS_DEBUG
+	LDFLAGS=$(LDFLAGS_DEBUG)
 	DEBUG_MESSAGE="Debugging is on."
 endif # FFLAGS_DEBUG IF
 

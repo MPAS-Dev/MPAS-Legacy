@@ -8,6 +8,7 @@ module init_atm_test_cases
    use mpas_atmphys_initialize_real
    use mpas_RBF_interpolation
    use mpas_vector_reconstruction
+   use mpas_timer
 
    ! Added only clause to keep xlf90 from getting confused from the overloaded abs intrinsic in mpas_timekeeping
    use mpas_timekeeping !, only: MPAS_Time_type, MPAS_TimeInterval_type, MPAS_Clock_type, &
@@ -33,7 +34,6 @@ module init_atm_test_cases
 
       integer :: i
       type (block_type), pointer :: block_ptr
-
 
 
       !
@@ -103,8 +103,9 @@ module init_atm_test_cases
          write(0,*) ' real-data GFS test case '
          block_ptr => domain % blocklist
          do while (associated(block_ptr))
-            call init_atm_test_case_gfs(domain % dminfo, block_ptr % mesh, block_ptr % fg, block_ptr % state % time_levs(1) % state, &
-                                    block_ptr % diag, config_test_case, block_ptr % parinfo)
+            call init_atm_test_case_gfs(block_ptr % mesh, block_ptr % fg, & 
+                                        block_ptr % state % time_levs(1) % state, block_ptr % diag, &
+                                        config_test_case)
             if (config_met_interp) call physics_initialize_real(block_ptr % mesh, block_ptr % fg)
             block_ptr => block_ptr % next
          end do
@@ -126,6 +127,7 @@ module init_atm_test_cases
 
       end if
 
+
       block_ptr => domain % blocklist
       do while (associated(block_ptr))
          do i=2,nTimeLevs
@@ -143,7 +145,6 @@ module init_atm_test_cases
             block_ptr => block_ptr % next
          end do
       endif
-
 
    end subroutine init_atm_setup_test_case
 
@@ -2153,7 +2154,7 @@ module init_atm_test_cases
    end subroutine init_atm_test_case_mtn_wave
 
 
-   subroutine init_atm_test_case_gfs(dminfo, grid, fg, state, diag, test_case, parinfo)
+   subroutine init_atm_test_case_gfs(grid, fg, state, diag, test_case)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! Real-data test case using GFS data
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -2165,13 +2166,15 @@ module init_atm_test_cases
 
       implicit none
 
-      type (dm_info), intent(in) :: dminfo
       type (mesh_type), intent(inout) :: grid
       type (fg_type), intent(inout) :: fg
       type (state_type), intent(inout) :: state
       type (diag_type), intent(inout) :: diag
       integer, intent(in) :: test_case
+
+      type (block_type), pointer :: block
       type (parallel_info), pointer :: parinfo
+      type (dm_info), pointer :: dminfo
 
       real (kind=RKIND), parameter :: u0 = 35.0
       real (kind=RKIND), parameter :: alpha_grid = 0.  ! no grid rotation
@@ -2214,6 +2217,8 @@ module init_atm_test_cases
       real (kind=RKIND), dimension(:,:), pointer :: weightsOnEdge
       real (kind=RKIND), dimension(:,:), pointer :: v
       real (kind=RKIND), dimension(:,:), pointer :: sorted_arr
+
+      type (field1DReal):: tempField
 
       real(kind=RKIND), dimension(:), pointer :: hs, hs1
       real(kind=RKIND) :: hm, zh, dzmin, dzmina, dzmina_global, dzminf, sm
@@ -2272,6 +2277,11 @@ module init_atm_test_cases
       real (kind=RKIND), dimension(nlat) :: lat_2d
       real (kind=RKIND) :: dlat
       real (kind=RKIND) :: z_edge, z_edge3, d2fdx2_cell1, d2fdx2_cell2
+
+
+      block => grid % block
+      parinfo => block % parinfo
+      dminfo => block % domain % dminfo
 
       weightsOnEdge     => grid % weightsOnEdge % array
       nEdgesOnEdge      => grid % nEdgesOnEdge % array
@@ -2376,7 +2386,7 @@ module init_atm_test_cases
       allocate(rarray(nx,ny,nzz))
       allocate(nhs(grid % nCells))
       nhs(:) = 0
-      grid % ter % array(:) = 0.0
+      ter(:) = 0.0
 
       do jTileStart=1,20401,ny-6
 !     do jTileStart=1,961,ny-6
@@ -2409,7 +2419,7 @@ write(0,*) trim(fname)
                                      grid % nCells, grid % maxEdges, grid % nEdgesOnCell % array, grid % cellsOnCell % array, &
                                      grid % latCell % array, grid % lonCell % array)
 
-               grid % ter % array(iPoint) = grid % ter % array(iPoint) + rarray(i,j,1)
+               ter(iPoint) = ter(iPoint) + rarray(i,j,1)
                nhs(iPoint) = nhs(iPoint) + 1
 
             end do
@@ -2419,7 +2429,7 @@ write(0,*) trim(fname)
        end do
 
       do iCell=1, grid % nCells
-         grid % ter % array(iCell) = grid % ter % array(iCell) / real(nhs(iCell))
+         ter(iCell) = ter(iCell) / real(nhs(iCell))
       end do
 
       deallocate(rarray)
@@ -2980,7 +2990,7 @@ if (y > 1249.0) y = 1249.0
                nInterpPoints = grid % nCells
                latPoints => grid % latCell % array
                lonPoints => grid % lonCell % array
-               destField1d => grid % ter % array
+               destField1d => ter
                ndims = 1
             end if
 
@@ -3046,10 +3056,8 @@ if (y > 1249.0) y = 1249.0
             ter(iCell) = hs(iCell) - 0.25*ter(iCell)
          end do
 
-         call mpas_dmpar_exch_halo_field1d_real(dminfo, ter(:), &
-                                          grid % nCells, &
-                                          parinfo % cellsToSend, parinfo % cellsToRecv)
-
+         ! note that ther variable ter used throughout this section is a pointer to grid % ter % array, here we are passing ter's parent field
+         call mpas_dmpar_exch_halo_field(grid % ter)
 
       end do
 
@@ -3164,7 +3172,7 @@ if (y > 1249.0) y = 1249.0
             sm = .05*min(0.5_RKIND*zw(k)/hm,1.0_RKIND)
           
             do i=1,50
-               do iCell=1,grid %nCells
+               do iCell=1,grid % nCells
                   hs1(iCell) = 0.
                   do j = 1,nEdgesOnCell(iCell)
 
@@ -3184,9 +3192,15 @@ if (y > 1249.0) y = 1249.0
 
                end do
 
-               call mpas_dmpar_exch_halo_field1d_real(dminfo, hs(:), &
-                                                grid % nCells, &
-                                                parinfo % cellsToSend, parinfo % cellsToRecv)
+               tempField % block => block
+               tempField % dimSizes(1) = grid % nCells
+               tempField % sendList => parinfo % cellsToSend
+               tempField % recvList => parinfo % cellsToRecv
+               tempField % array => hs
+
+ call mpas_timer_start("EXCHANGE_1D_REAL")
+               call mpas_dmpar_exch_halo_field(tempField)
+ call mpas_timer_stop("EXCHANGE_1D_REAL")
 
              !  dzmina = minval(hs(:)-hx(k-1,:))
                dzmina = minval(zw(k)+ah(k)*hs(1:grid%nCellsSolve)-zw(k-1)-ah(k-1)*hx(k-1,1:grid%nCellsSolve))

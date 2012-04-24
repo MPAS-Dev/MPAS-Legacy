@@ -1,6 +1,7 @@
 module mpas_dmpar
 
-   use mpas_kind_types
+   use mpas_dmpar_types
+   use mpas_grid_types
    use mpas_sort
 
 #ifdef _MPI
@@ -18,23 +19,6 @@ include 'mpif.h'
    integer, parameter :: BUFSIZE = 6000
 
 
-   type dm_info
-      integer :: nprocs, my_proc_id, comm, info
-      logical :: using_external_comm
-   end type dm_info
-
-
-   type exchange_list
-      integer :: procID
-      integer :: nlist
-      integer, dimension(:), pointer :: list
-      type (exchange_list), pointer :: next
-      real (kind=RKIND), dimension(:), pointer :: rbuffer
-      integer, dimension(:), pointer           :: ibuffer
-      integer :: reqID
-   end type exchange_list
-
-
    interface mpas_dmpar_alltoall_field
       module procedure mpas_dmpar_alltoall_field1d_integer
       module procedure mpas_dmpar_alltoall_field2d_integer
@@ -42,6 +26,29 @@ include 'mpif.h'
       module procedure mpas_dmpar_alltoall_field2d_real
       module procedure mpas_dmpar_alltoall_field3d_real
    end interface
+
+   private :: mpas_dmpar_alltoall_field1d_integer
+   private :: mpas_dmpar_alltoall_field2d_integer
+   private :: mpas_dmpar_alltoall_field1d_real
+   private :: mpas_dmpar_alltoall_field2d_real
+   private :: mpas_dmpar_alltoall_field3d_real
+
+
+   interface mpas_dmpar_exch_halo_field
+      module procedure mpas_dmpar_exch_halo_field1d_integer
+      module procedure mpas_dmpar_exch_halo_field2d_integer
+      module procedure mpas_dmpar_exch_halo_field3d_integer
+      module procedure mpas_dmpar_exch_halo_field1d_real
+      module procedure mpas_dmpar_exch_halo_field2d_real
+      module procedure mpas_dmpar_exch_halo_field3d_real
+   end interface
+
+   private :: mpas_dmpar_exch_halo_field1d_integer
+   private :: mpas_dmpar_exch_halo_field2d_integer
+   private :: mpas_dmpar_exch_halo_field3d_integer
+   private :: mpas_dmpar_exch_halo_field1d_real
+   private :: mpas_dmpar_exch_halo_field2d_real
+   private :: mpas_dmpar_exch_halo_field3d_real
 
 
    contains
@@ -565,7 +572,7 @@ include 'mpif.h'
    subroutine mpas_dmpar_get_owner_list(dminfo, &
                                    nOwnedList, nNeededList, &
                                    ownedList, neededList, &
-                                   sendList, recvList)
+                                   sendList, recvList, inOffset)
 
       implicit none
 
@@ -575,15 +582,17 @@ include 'mpif.h'
       integer, dimension(nNeededList), intent(in) :: neededList
       type (exchange_list), pointer :: sendList
       type (exchange_list), pointer :: recvList
+      integer, optional :: inOffset
 
       integer :: i, j, k, kk
-      integer :: totalSize, nMesgRecv, nMesgSend, recvNeighbor, sendNeighbor, currentProc
+      integer :: totalSize, nMesgRecv, nMesgSend, recvNeighbor, sendNeighbor, currentProc, offset
       integer :: numToSend, numToRecv
       integer, dimension(nOwnedList) :: recipientList
       integer, dimension(2,nOwnedList) :: ownedListSorted
       integer, allocatable, dimension(:) :: ownerListIn, ownerListOut
       type (exchange_list), pointer :: sendListPtr, recvListPtr
       integer :: mpi_ierr, mpi_rreq, mpi_sreq
+
 
 #ifdef _MPI
       allocate(sendList)
@@ -593,6 +602,11 @@ include 'mpif.h'
       sendListPtr => sendList
       recvListPtr => recvList
 
+      offset = 0
+      if(present(inOffset)) then
+         offset = inOffset
+      end if
+      
       do i=1,nOwnedList
          ownedListSorted(1,i) = ownedList(i)
          ownedListSorted(2,i) = i
@@ -635,6 +649,7 @@ include 'mpif.h'
             allocate(sendListPtr % next)
             sendListPtr => sendListPtr % next
             sendListPtr % procID = currentProc
+            sendListPtr % blockID = currentProc     ! Currently, we have just one block per task, so blockID = procID
             sendListPtr % nlist = numToSend
             allocate(sendListPtr % list(numToSend))
             nullify(sendListPtr % next)
@@ -668,13 +683,14 @@ include 'mpif.h'
             allocate(recvListPtr % next)
             recvListPtr => recvListPtr % next
             recvListPtr % procID = i
+            recvListPtr % blockID = i     ! Currently, we have just one block per task, so blockID = procID
             recvListPtr % nlist = numToRecv
             allocate(recvListPtr % list(numToRecv))
             nullify(recvListPtr % next)
             kk = 1
             do j=1,nNeededList
                if (ownerListIn(j) == -i) then
-                  recvListPtr % list(kk) = j
+                  recvListPtr % list(kk) = j + offset
                   kk = kk + 1
                end if
             end do
@@ -696,6 +712,7 @@ include 'mpif.h'
 #else
       allocate(recvList)
       recvList % procID = dminfo % my_proc_id
+      recvList % blockID = dminfo % my_proc_id     ! Currently, we have just one block per task, so blockID = procID
       recvList % nlist = nNeededList
       allocate(recvList % list(nNeededList))
       nullify(recvList % next)
@@ -705,6 +722,7 @@ include 'mpif.h'
 
       allocate(sendList)
       sendList % procID = dminfo % my_proc_id
+      sendList % blockID = dminfo % my_proc_id     ! Currently, we have just one block per task, so blockID = procID
       sendList % nlist = nOwnedList
       allocate(sendList % list(nOwnedList))
       nullify(sendList % next)
@@ -1467,20 +1485,26 @@ include 'mpif.h'
    end subroutine mpas_unpack_recv_buf3d_integer
 
 
-   subroutine mpas_dmpar_exch_halo_field1d_integer(dminfo, array, dim1, sendList, recvList)
+   subroutine mpas_dmpar_exch_halo_field1d_integer(field, haloLayers)
 
       implicit none
 
-      type (dm_info), intent(in) :: dminfo
-      integer, intent(in) :: dim1
-      integer, dimension(*), intent(inout) :: array
-      type (exchange_list), pointer :: sendList, recvList
+      type (field1DInteger), intent(inout) :: field
+      integer, dimension(:), intent(in), optional :: haloLayers
 
+      type (dm_info) :: dminfo
+      type (exchange_list), pointer :: sendList, recvList
       type (exchange_list), pointer :: sendListPtr, recvListPtr
       integer :: lastPackedIdx, lastUnpackedIdx, nPacked, nUnpacked
       integer :: mpi_ierr
+      integer, dimension(size(field % dimSizes)) :: dims
 
 #ifdef _MPI
+
+      dminfo   = field % block % domain % dminfo
+      dims = field % dimSizes
+
+      call mpas_aggregate_exchange_lists(dminfo % my_proc_id, haloLayers, field % sendList, field % recvList, sendList, recvList)
 
       recvListPtr => recvList
       do while (associated(recvListPtr))
@@ -1496,7 +1520,7 @@ include 'mpif.h'
       do while (associated(sendListPtr))
          if (sendListPtr % procID /= dminfo % my_proc_id) then
             allocate(sendListPtr % ibuffer(sendListPtr % nlist))
-            call mpas_pack_send_buf1d_integer(dim1, array, sendListPtr, 1, sendListPtr % nlist, sendListPtr % ibuffer, nPacked, lastPackedIdx)
+            call mpas_pack_send_buf1d_integer(dims(1), field % array, sendListPtr, 1, sendListPtr % nlist, sendListPtr % ibuffer, nPacked, lastPackedIdx)
             call MPI_Isend(sendListPtr % ibuffer, sendListPtr % nlist, MPI_INTEGERKIND, &
                            sendListPtr % procID, dminfo % my_proc_id, dminfo % comm, sendListPtr % reqID, mpi_ierr)
          end if
@@ -1507,7 +1531,7 @@ include 'mpif.h'
       do while (associated(recvListPtr))
          if (recvListPtr % procID /= dminfo % my_proc_id) then
             call MPI_Wait(recvListPtr % reqID, MPI_STATUS_IGNORE, mpi_ierr)
-            call mpas_unpack_recv_buf1d_integer(dim1, array, recvListPtr, 1, recvListPtr % nlist, recvListPtr % ibuffer, nUnpacked, lastUnpackedIdx)
+            call mpas_unpack_recv_buf1d_integer(dims(1), field % array, recvListPtr, 1, recvListPtr % nlist, recvListPtr % ibuffer, nUnpacked, lastUnpackedIdx)
             deallocate(recvListPtr % ibuffer)
          end if
          recvListPtr => recvListPtr % next
@@ -1522,31 +1546,40 @@ include 'mpif.h'
          sendListPtr => sendListPtr % next
       end do
 
+      call mpas_destroy_exchange_list(sendList)
+      call mpas_destroy_exchange_list(recvList)
+
 #endif
 
    end subroutine mpas_dmpar_exch_halo_field1d_integer
 
 
-   subroutine mpas_dmpar_exch_halo_field2d_integer(dminfo, array, dim1, dim2, sendList, recvList)
+   subroutine mpas_dmpar_exch_halo_field2d_integer(field, haloLayers)
 
       implicit none
 
-      type (dm_info), intent(in) :: dminfo
-      integer, intent(in) :: dim1, dim2
-      integer, dimension(dim1,*), intent(inout) :: array
-      type (exchange_list), pointer :: sendList, recvList
+      type (field2DInteger), intent(inout) :: field
+      integer, dimension(:), intent(in), optional :: haloLayers
 
+      type (dm_info) :: dminfo
+      type (exchange_list), pointer :: sendList, recvList
       type (exchange_list), pointer :: sendListPtr, recvListPtr
       integer :: lastPackedIdx, lastUnpackedIdx, nPacked, nUnpacked
       integer :: mpi_ierr
       integer :: d2
+      integer, dimension(size(field % dimSizes)) :: dims
 
 #ifdef _MPI
+
+      dminfo   = field % block % domain % dminfo
+      dims = field % dimSizes
+
+      call mpas_aggregate_exchange_lists(dminfo % my_proc_id, haloLayers, field % sendList, field % recvList, sendList, recvList)
 
       recvListPtr => recvList
       do while (associated(recvListPtr))
          if (recvListPtr % procID /= dminfo % my_proc_id) then
-            d2 = dim1 * recvListPtr % nlist
+            d2 = dims(1) * recvListPtr % nlist
             allocate(recvListPtr % ibuffer(d2))
             call MPI_Irecv(recvListPtr % ibuffer, d2, MPI_INTEGERKIND, &
                            recvListPtr % procID, recvListPtr % procID, dminfo % comm, recvListPtr % reqID, mpi_ierr)
@@ -1557,9 +1590,9 @@ include 'mpif.h'
       sendListPtr => sendList
       do while (associated(sendListPtr))
          if (sendListPtr % procID /= dminfo % my_proc_id) then
-            d2 = dim1 * sendListPtr % nlist
+            d2 = dims(1) * sendListPtr % nlist
             allocate(sendListPtr % ibuffer(d2))
-            call mpas_pack_send_buf2d_integer(1, dim1, dim2, array, sendListPtr, 1, d2, sendListPtr % ibuffer, nPacked, lastPackedIdx)
+            call mpas_pack_send_buf2d_integer(1, dims(1), dims(2), field % array, sendListPtr, 1, d2, sendListPtr % ibuffer, nPacked, lastPackedIdx)
             call MPI_Isend(sendListPtr % ibuffer, d2, MPI_INTEGERKIND, &
                            sendListPtr % procID, dminfo % my_proc_id, dminfo % comm, sendListPtr % reqID, mpi_ierr)
          end if
@@ -1570,8 +1603,8 @@ include 'mpif.h'
       do while (associated(recvListPtr))
          if (recvListPtr % procID /= dminfo % my_proc_id) then
             call MPI_Wait(recvListPtr % reqID, MPI_STATUS_IGNORE, mpi_ierr)
-            d2 = dim1 * recvListPtr % nlist
-            call mpas_unpack_recv_buf2d_integer(1, dim1, dim2, array, recvListPtr, 1, d2, recvListPtr % ibuffer, nUnpacked, lastUnpackedIdx)
+            d2 = dims(1) * recvListPtr % nlist
+            call mpas_unpack_recv_buf2d_integer(1, dims(1), dims(2), field % array, recvListPtr, 1, d2, recvListPtr % ibuffer, nUnpacked, lastUnpackedIdx)
             deallocate(recvListPtr % ibuffer)
          end if
          recvListPtr => recvListPtr % next
@@ -1586,31 +1619,40 @@ include 'mpif.h'
          sendListPtr => sendListPtr % next
       end do
 
+      call mpas_destroy_exchange_list(sendList)
+      call mpas_destroy_exchange_list(recvList)
+
 #endif
 
    end subroutine mpas_dmpar_exch_halo_field2d_integer
 
 
-   subroutine mpas_dmpar_exch_halo_field3d_integer(dminfo, array, dim1, dim2, dim3, sendList, recvList)
+   subroutine mpas_dmpar_exch_halo_field3d_integer(field, haloLayers)
 
       implicit none
 
-      type (dm_info), intent(in) :: dminfo
-      integer, intent(in) :: dim1, dim2, dim3
-      integer, dimension(dim1,dim2,*), intent(inout) :: array
-      type (exchange_list), pointer :: sendList, recvList
+      type (field3DInteger), intent(inout) :: field
+      integer, dimension(:), intent(in), optional :: haloLayers
 
+      type (dm_info) :: dminfo
+      type (exchange_list), pointer :: sendList, recvList
       type (exchange_list), pointer :: sendListPtr, recvListPtr
       integer :: lastPackedIdx, lastUnpackedIdx, nPacked, nUnpacked
       integer :: mpi_ierr
       integer :: d3
+      integer, dimension(size(field % dimSizes)) :: dims
 
 #ifdef _MPI
+
+      dminfo   = field % block % domain % dminfo
+      dims = field % dimSizes
+
+      call mpas_aggregate_exchange_lists(dminfo % my_proc_id, haloLayers, field % sendList, field % recvList, sendList, recvList)
 
       recvListPtr => recvList
       do while (associated(recvListPtr))
          if (recvListPtr % procID /= dminfo % my_proc_id) then
-            d3 = dim1 * dim2 * recvListPtr % nlist
+            d3 = dims(1) * dims(2) * recvListPtr % nlist
             allocate(recvListPtr % ibuffer(d3))
             call MPI_Irecv(recvListPtr % ibuffer, d3, MPI_INTEGERKIND, &
                            recvListPtr % procID, recvListPtr % procID, dminfo % comm, recvListPtr % reqID, mpi_ierr)
@@ -1621,9 +1663,9 @@ include 'mpif.h'
       sendListPtr => sendList
       do while (associated(sendListPtr))
          if (sendListPtr % procID /= dminfo % my_proc_id) then
-            d3 = dim1 * dim2 * sendListPtr % nlist
+            d3 = dims(1) * dims(2) * sendListPtr % nlist
             allocate(sendListPtr % ibuffer(d3))
-            call mpas_pack_send_buf3d_integer(1, dim1, 1, dim2, dim3, array, sendListPtr, 1, d3, &
+            call mpas_pack_send_buf3d_integer(1, dims(1), 1, dims(2), dims(3), field % array, sendListPtr, 1, d3, &
                                    sendListPtr % ibuffer, nPacked, lastPackedIdx)
             call MPI_Isend(sendListPtr % ibuffer, d3, MPI_INTEGERKIND, &
                            sendListPtr % procID, dminfo % my_proc_id, dminfo % comm, sendListPtr % reqID, mpi_ierr)
@@ -1635,8 +1677,8 @@ include 'mpif.h'
       do while (associated(recvListPtr))
          if (recvListPtr % procID /= dminfo % my_proc_id) then
             call MPI_Wait(recvListPtr % reqID, MPI_STATUS_IGNORE, mpi_ierr)
-            d3 = dim1 * dim2 * recvListPtr % nlist
-            call mpas_unpack_recv_buf3d_integer(1, dim1, 1, dim2, dim3, array, recvListPtr, 1, d3, &
+            d3 = dims(1) * dims(2) * recvListPtr % nlist
+            call mpas_unpack_recv_buf3d_integer(1, dims(1), 1, dims(2), dims(3), field % array, recvListPtr, 1, d3, &
                                      recvListPtr % ibuffer, nUnpacked, lastUnpackedIdx)
             deallocate(recvListPtr % ibuffer)
          end if
@@ -1651,6 +1693,9 @@ include 'mpif.h'
          end if
          sendListPtr => sendListPtr % next
       end do
+
+      call mpas_destroy_exchange_list(sendList)
+      call mpas_destroy_exchange_list(recvList)
 
 #endif
 
@@ -1747,20 +1792,26 @@ include 'mpif.h'
    end subroutine mpas_unpack_recv_buf3d_real
 
 
-   subroutine mpas_dmpar_exch_halo_field1d_real(dminfo, array, dim1, sendList, recvList)
+   subroutine mpas_dmpar_exch_halo_field1d_real(field, haloLayers)
 
       implicit none
 
-      type (dm_info), intent(in) :: dminfo
-      integer, intent(in) :: dim1
-      real (kind=RKIND), dimension(*), intent(inout) :: array
-      type (exchange_list), pointer :: sendList, recvList
+      type (field1DReal), intent(inout) :: field
+      integer, dimension(:), intent(in), optional :: haloLayers
 
+      type (dm_info) :: dminfo
+      type (exchange_list), pointer :: sendList, recvList
       type (exchange_list), pointer :: sendListPtr, recvListPtr
       integer :: lastPackedIdx, lastUnpackedIdx, nPacked, nUnpacked
       integer :: mpi_ierr
+      integer, dimension(size(field % dimSizes)) :: dims
 
 #ifdef _MPI
+
+      dminfo   = field % block % domain % dminfo
+      dims = field % dimSizes
+
+      call mpas_aggregate_exchange_lists(dminfo % my_proc_id, haloLayers, field % sendList, field % recvList, sendList, recvList)
 
       recvListPtr => recvList
       do while (associated(recvListPtr))
@@ -1771,12 +1822,12 @@ include 'mpif.h'
          end if
          recvListPtr => recvListPtr % next
       end do
-      
+
       sendListPtr => sendList
       do while (associated(sendListPtr))
          if (sendListPtr % procID /= dminfo % my_proc_id) then
             allocate(sendListPtr % rbuffer(sendListPtr % nlist))
-            call mpas_pack_send_buf1d_real(dim1, array, sendListPtr, 1, sendListPtr % nlist, sendListPtr % rbuffer, nPacked, lastPackedIdx)
+            call mpas_pack_send_buf1d_real(dims(1), field % array, sendListPtr, 1, sendListPtr % nlist, sendListPtr % rbuffer, nPacked, lastPackedIdx)
             call MPI_Isend(sendListPtr % rbuffer, sendListPtr % nlist, MPI_REALKIND, &
                            sendListPtr % procID, dminfo % my_proc_id, dminfo % comm, sendListPtr % reqID, mpi_ierr)
          end if
@@ -1787,7 +1838,7 @@ include 'mpif.h'
       do while (associated(recvListPtr))
          if (recvListPtr % procID /= dminfo % my_proc_id) then
             call MPI_Wait(recvListPtr % reqID, MPI_STATUS_IGNORE, mpi_ierr)
-            call mpas_unpack_recv_buf1d_real(dim1, array, recvListPtr, 1, recvListPtr % nlist, recvListPtr % rbuffer, nUnpacked, lastUnpackedIdx)
+            call mpas_unpack_recv_buf1d_real(dims(1), field % array, recvListPtr, 1, recvListPtr % nlist, recvListPtr % rbuffer, nUnpacked, lastUnpackedIdx)
             deallocate(recvListPtr % rbuffer)
          end if
          recvListPtr => recvListPtr % next
@@ -1802,44 +1853,54 @@ include 'mpif.h'
          sendListPtr => sendListPtr % next
       end do
 
+      call mpas_destroy_exchange_list(sendList)
+      call mpas_destroy_exchange_list(recvList)
+
 #endif
 
    end subroutine mpas_dmpar_exch_halo_field1d_real
 
 
-   subroutine mpas_dmpar_exch_halo_field2d_real(dminfo, array, dim1, dim2, sendList, recvList)
+   subroutine mpas_dmpar_exch_halo_field2d_real(field, haloLayers)
 
       implicit none
 
-      type (dm_info), intent(in) :: dminfo
-      integer, intent(in) :: dim1, dim2
-      real (kind=RKIND), dimension(dim1,*), intent(inout) :: array
-      type (exchange_list), pointer :: sendList, recvList
+      type (field2DReal), intent(inout) :: field
+      integer, dimension(:), intent(in), optional :: haloLayers
 
+      type (dm_info) :: dminfo
+      type (exchange_list), pointer :: sendList, recvList
       type (exchange_list), pointer :: sendListPtr, recvListPtr
       integer :: lastPackedIdx, lastUnpackedIdx, nPacked, nUnpacked
       integer :: mpi_ierr
       integer :: d2
+      integer, dimension(size(field % dimSizes)) :: dims
+
 
 #ifdef _MPI
+
+      dminfo   = field % block % domain % dminfo
+      dims = field % dimSizes
+
+      call mpas_aggregate_exchange_lists(dminfo % my_proc_id, haloLayers, field % sendList, field % recvList, sendList, recvList)
 
       recvListPtr => recvList
       do while (associated(recvListPtr))
          if (recvListPtr % procID /= dminfo % my_proc_id) then
-            d2 = dim1 * recvListPtr % nlist
+            d2 = dims(1) * recvListPtr % nlist
             allocate(recvListPtr % rbuffer(d2))
             call MPI_Irecv(recvListPtr % rbuffer, d2, MPI_REALKIND, &
                            recvListPtr % procID, recvListPtr % procID, dminfo % comm, recvListPtr % reqID, mpi_ierr)
          end if
          recvListPtr => recvListPtr % next
       end do
-      
+
       sendListPtr => sendList
       do while (associated(sendListPtr))
          if (sendListPtr % procID /= dminfo % my_proc_id) then
-            d2 = dim1 * sendListPtr % nlist
+            d2 = dims(1) * sendListPtr % nlist
             allocate(sendListPtr % rbuffer(d2))
-            call mpas_pack_send_buf2d_real(1, dim1, dim2, array, sendListPtr, 1, d2, sendListPtr % rbuffer, nPacked, lastPackedIdx)
+            call mpas_pack_send_buf2d_real(1, dims(1), dims(2), field % array, sendListPtr, 1, d2, sendListPtr % rbuffer, nPacked, lastPackedIdx)
             call MPI_Isend(sendListPtr % rbuffer, d2, MPI_REALKIND, &
                            sendListPtr % procID, dminfo % my_proc_id, dminfo % comm, sendListPtr % reqID, mpi_ierr)
          end if
@@ -1850,13 +1911,13 @@ include 'mpif.h'
       do while (associated(recvListPtr))
          if (recvListPtr % procID /= dminfo % my_proc_id) then
             call MPI_Wait(recvListPtr % reqID, MPI_STATUS_IGNORE, mpi_ierr)
-            d2 = dim1 * recvListPtr % nlist
-            call mpas_unpack_recv_buf2d_real(1, dim1, dim2, array, recvListPtr, 1, d2, recvListPtr % rbuffer, nUnpacked, lastUnpackedIdx)
+            d2 = dims(1) * recvListPtr % nlist
+            call mpas_unpack_recv_buf2d_real(1, dims(1), dims(2), field % array, recvListPtr, 1, d2, recvListPtr % rbuffer, nUnpacked, lastUnpackedIdx)
             deallocate(recvListPtr % rbuffer)
          end if
          recvListPtr => recvListPtr % next
       end do
-      
+
       sendListPtr => sendList
       do while (associated(sendListPtr))
          if (sendListPtr % procID /= dminfo % my_proc_id) then
@@ -1866,31 +1927,40 @@ include 'mpif.h'
          sendListPtr => sendListPtr % next
       end do
 
+      call mpas_destroy_exchange_list(sendList)
+      call mpas_destroy_exchange_list(recvList)
+
 #endif
 
    end subroutine mpas_dmpar_exch_halo_field2d_real
 
 
-   subroutine mpas_dmpar_exch_halo_field3d_real(dminfo, array, dim1, dim2, dim3, sendList, recvList)
+   subroutine mpas_dmpar_exch_halo_field3d_real(field, haloLayers)
 
       implicit none
 
-      type (dm_info), intent(in) :: dminfo
-      integer, intent(in) :: dim1, dim2, dim3
-      real (kind=RKIND), dimension(dim1,dim2,*), intent(inout) :: array
-      type (exchange_list), pointer :: sendList, recvList
+      type (field3DReal), intent(inout) :: field
+      integer, dimension(:), intent(in), optional :: haloLayers
 
+      type (dm_info) :: dminfo
+      type (exchange_list), pointer :: sendList, recvList
       type (exchange_list), pointer :: sendListPtr, recvListPtr
       integer :: lastPackedIdx, lastUnpackedIdx, nPacked, nUnpacked
       integer :: mpi_ierr
       integer :: d3
+      integer, dimension(size(field % dimSizes)) :: dims
 
 #ifdef _MPI
+
+      dminfo   = field % block % domain % dminfo
+      dims = field % dimSizes
+
+      call mpas_aggregate_exchange_lists(dminfo % my_proc_id, haloLayers, field % sendList, field % recvList, sendList, recvList)
 
       recvListPtr => recvList
       do while (associated(recvListPtr))
          if (recvListPtr % procID /= dminfo % my_proc_id) then
-            d3 = dim1 * dim2 * recvListPtr % nlist
+            d3 = dims(1) * dims(2) * recvListPtr % nlist
             allocate(recvListPtr % rbuffer(d3))
             call MPI_Irecv(recvListPtr % rbuffer, d3, MPI_REALKIND, &
                            recvListPtr % procID, recvListPtr % procID, dminfo % comm, recvListPtr % reqID, mpi_ierr)
@@ -1901,9 +1971,9 @@ include 'mpif.h'
       sendListPtr => sendList
       do while (associated(sendListPtr))
          if (sendListPtr % procID /= dminfo % my_proc_id) then
-            d3 = dim1 * dim2 * sendListPtr % nlist
+            d3 = dims(1) * dims(2) * sendListPtr % nlist
             allocate(sendListPtr % rbuffer(d3))
-            call mpas_pack_send_buf3d_real(1, dim1, 1, dim2, dim3, array, sendListPtr, 1, d3, &
+            call mpas_pack_send_buf3d_real(1, dims(1), 1, dims(2), dims(3), field % array, sendListPtr, 1, d3, &
                                    sendListPtr % rbuffer, nPacked, lastPackedIdx)
             call MPI_Isend(sendListPtr % rbuffer, d3, MPI_REALKIND, &
                            sendListPtr % procID, dminfo % my_proc_id, dminfo % comm, sendListPtr % reqID, mpi_ierr)
@@ -1915,8 +1985,8 @@ include 'mpif.h'
       do while (associated(recvListPtr))
          if (recvListPtr % procID /= dminfo % my_proc_id) then
             call MPI_Wait(recvListPtr % reqID, MPI_STATUS_IGNORE, mpi_ierr)
-            d3 = dim1 * dim2 * recvListPtr % nlist
-            call mpas_unpack_recv_buf3d_real(1, dim1, 1, dim2, dim3, array, recvListPtr, 1, d3, &
+            d3 = dims(1) * dims(2) * recvListPtr % nlist
+            call mpas_unpack_recv_buf3d_real(1, dims(1), 1, dims(2), dims(3), field % array, recvListPtr, 1, d3, &
                                      recvListPtr % rbuffer, nUnpacked, lastUnpackedIdx)
             deallocate(recvListPtr % rbuffer)
          end if
@@ -1932,9 +2002,194 @@ include 'mpif.h'
          sendListPtr => sendListPtr % next
       end do
 
+      call mpas_destroy_exchange_list(sendList)
+      call mpas_destroy_exchange_list(recvList)
+
 #endif
 
    end subroutine mpas_dmpar_exch_halo_field3d_real
+
+
+   subroutine mpas_aggregate_exchange_lists(myProcID, haloLayersIn, sendListArray, recvListArray, aggregateSendList, aggregateRecvList)
+
+      implicit none
+
+      !--- in variables ---!
+      integer, intent(in) :: myProcID
+      integer, dimension(:), intent(in), target, optional :: haloLayersIn
+      type (exchange_list), dimension(:), pointer :: sendListArray, recvListArray
+      
+      !--- out variabls ---!
+      type (exchange_list), pointer :: aggregateSendList, aggregateRecvList
+
+      !--- local variables ---!
+      integer :: i, j
+      integer, dimension(:), pointer :: haloLayers
+      type (exchange_list), pointer :: inListPtr, aggListPtr
+      logical :: blockAdded
+      logical :: listInitilized
+
+      if (present(haloLayersIn)) then
+         haloLayers => haloLayersIn
+      else
+         allocate(haloLayers(size(sendListArray)))
+         do i=1, size(haloLayers)
+            haloLayers(i) = i
+         end do
+      end if
+
+      nullify(aggregateSendList)
+      nullify(aggregateRecvList)
+
+      do i=1, size(haloLayers)
+
+         inListPtr => sendListArray(haloLayers(i)) % next
+         do while(associated(inListPtr))
+
+            blockAdded = .false.
+            aggListPtr => aggregateSendList
+            
+            do while(associated(aggListPtr))
+               if(inListPtr % blockID == aggListPtr % blockID) then
+                  if(inListPtr % procID .ne. myProcID) then
+                     call mpas_merge_integer_arrays(aggListPtr % list, aggListPtr % nlist, inListPtr % list)
+                  end if
+                  blockAdded = .true.
+                  exit
+               end if
+               aggListPtr => aggListPtr % next
+            end do
+
+            if(.not. blockAdded) then
+               
+               if (.not. associated(aggregateSendList)) then
+                  allocate(aggregateSendList)
+                  nullify(aggregateSendList % next)
+                  aggListPtr => aggregateSendList
+               else
+                  aggListPtr => aggregateSendList
+                  do while(associated(aggListPtr % next))
+                     aggListPtr => aggListPtr % next
+                  end do
+                  allocate(aggListPtr % next)
+                  aggListPtr => aggListPtr % next
+               end if
+
+               nullify(aggListPtr % next)
+               aggListPtr % procID  = inListPtr % procID
+               aggListPtr % blockID = inListPtr % blockID
+               aggListPtr % nlist   = inListPtr % nlist
+               allocate(aggListPtr % list(inListPtr % nlist)) 
+               aggListPtr % list    = inListPtr % list
+               aggListPtr % reqID   = inListPtr % reqID
+
+            end if
+
+            inListPtr => inListPtr % next
+         end do
+
+
+         inListPtr => recvListArray(haloLayers(i)) % next
+         do while(associated(inListPtr))
+
+            blockAdded = .false.
+            aggListPtr => aggregateRecvList
+            do while(associated(aggListPtr))
+               if(inListPtr % blockID == aggListPtr % blockID) then
+                  if(inListPtr % procID .ne. myProcID) then
+                     call mpas_merge_integer_arrays(aggListPtr % list, aggListPtr % nlist, inListPtr % list)
+                  end if
+                  blockAdded = .true.
+                  exit
+               end if
+               aggListPtr => aggListPtr % next
+            end do
+
+            if(.not. blockAdded) then
+
+               if (.not. associated(aggregateRecvList)) then
+                  allocate(aggregateRecvList)
+                  nullify(aggregateRecvList % next)
+                  aggListPtr => aggregateRecvList
+               else
+                  aggListPtr => aggregateRecvList
+                  do while(associated(aggListPtr % next))
+                     aggListPtr => aggListPtr % next
+                  end do
+
+                  allocate(aggListPtr % next)
+                  aggListPtr => aggListPtr % next
+                  nullify(aggListPtr % next)
+               end if
+             
+               aggListPtr % procID  = inListPtr % procID
+               aggListPtr % blockID = inListPtr % blockID
+               aggListPtr % nlist   = inListPtr % nlist
+               allocate(aggListPtr % list(inListPtr % nlist)) 
+               aggListPtr % list    = inListPtr % list
+               aggListPtr % reqID   = inListPtr % reqID
+
+            end if
+
+            inListPtr => inListPtr % next            
+         end do
+
+      end do
+
+      if (.not. present(haloLayersIn)) then
+         deallocate(haloLayers)
+      end if
+
+   end subroutine mpas_aggregate_exchange_lists
+
+
+   subroutine mpas_destroy_exchange_list(exchangeList)
+
+      implicit none
+
+      !--- in variables ---!
+      type (exchange_list), pointer :: exchangeList
+
+      !--- local variables ---!
+      type (exchange_list), pointer :: exchangeListPtr
+
+      do while (associated(exchangeList))
+         exchangeListPtr => exchangeList % next
+
+         deallocate(exchangeList % list)
+         deallocate(exchangeList)
+         exchangeList => exchangeListPtr
+      end do
+
+   end subroutine mpas_destroy_exchange_list
+
+
+   subroutine mpas_merge_integer_arrays(mergeArray, nMergeArray, dataToAppend)
+
+      implicit none
+
+      !--- inout variables ---!
+      integer, dimension(:), pointer  :: mergeArray
+      integer, intent(inout)          :: nMergeArray
+
+      !--- in variables ---!
+      integer, dimension(:), pointer :: dataToAppend
+
+      !--- local variables ---!
+      integer :: nDataToAppend, newSize
+      integer, dimension(nMergeArray) :: mergeArrayCopy
+     
+    
+      nDataToAppend = size(dataToAppend)
+      newSize = nMergeArray + nDataToAppend
+      mergeArrayCopy = mergeArray
+      deallocate(mergeArray)
+      allocate(mergeArray(newSize))
+      mergeArray(1:nMergeArray) = mergeArrayCopy 
+      mergeArray(nMergeArray+1:newSize) = dataToAppend 
+      nMergeArray = newSize
+
+   end subroutine mpas_merge_integer_arrays
 
 
 end module mpas_dmpar

@@ -5,7 +5,7 @@ module mpas_subdriver
 
    type (dm_info), pointer :: dminfo
    type (domain_type), pointer :: domain
-   type (io_output_object) :: output_obj
+   type (io_output_object), save :: output_obj
    integer :: output_frame
 
 

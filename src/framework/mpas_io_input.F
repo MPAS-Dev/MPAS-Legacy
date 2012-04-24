@@ -6,6 +6,7 @@ module mpas_io_input
    use mpas_sort
    use mpas_configure
    use mpas_timekeeping
+   use mpas_io_streams
 
 
 #ifdef HAVE_ZOLTAN
@@ -21,30 +22,10 @@ module mpas_io_input
 
       integer :: time
 
-#include "io_input_obj_decls.inc"
+      type (MPAS_Stream_type) :: io_stream
+
    end type io_input_object
 
-
-   interface mpas_io_input_field
-      module procedure mpas_io_input_field0d_real
-      module procedure mpas_io_input_field1d_real
-      module procedure mpas_io_input_field2d_real
-      module procedure mpas_io_input_field3d_real
-      module procedure mpas_io_input_field1d_integer
-      module procedure mpas_io_input_field2d_integer
-      module procedure mpas_io_input_field0d_char
-      module procedure mpas_io_input_field1d_char
-   end interface mpas_io_input_field
-
-   interface mpas_io_input_field_time
-      module procedure mpas_io_input_field0d_real_time
-      module procedure mpas_io_input_field1d_real_time
-      module procedure mpas_io_input_field2d_real_time
-      module procedure mpas_io_input_field3d_real_time
-      module procedure mpas_io_input_field1d_integer_time
-      module procedure mpas_io_input_field0d_char_time
-      module procedure mpas_io_input_field1d_char_time
-   end interface mpas_io_input_field_time
 
    type (exchange_list), pointer :: sendCellList, recvCellList
    type (exchange_list), pointer :: sendEdgeList, recvEdgeList
@@ -72,6 +53,10 @@ module mpas_io_input
 
       character (len=16) :: c_on_a_sphere
       real (kind=RKIND) :: r_sphere_radius
+
+      integer :: ierr
+      integer, dimension(:), pointer :: readIndices
+      type (MPAS_IO_Handle_type) :: inputHandle
    
       type (field1dInteger) :: indexToCellIDField
       type (field1dInteger) :: indexToEdgeIDField
@@ -93,12 +78,15 @@ module mpas_io_input
 
       type (field1DChar) :: xtime
    
-      integer, dimension(:), pointer :: indexToCellID_0Halo
-      integer, dimension(:), pointer :: nEdgesOnCell_0Halo
+      integer, dimension(:),   pointer :: indexToCellID_0Halo
+      integer, dimension(:),   pointer :: nEdgesOnCell_0Halo
       integer, dimension(:,:), pointer :: cellsOnCell_0Halo
-   
+
+      integer, dimension(:),   pointer :: nEdgesOnCell_2Halo
+
       integer, dimension(:,:), pointer :: edgesOnCell_2Halo
       integer, dimension(:,:), pointer :: verticesOnCell_2Halo
+
       integer, dimension(:,:), pointer :: cellsOnEdge_2Halo
       integer, dimension(:,:), pointer :: cellsOnVertex_2Halo
 
@@ -115,6 +103,7 @@ module mpas_io_input
 #endif
    
       integer, dimension(:), pointer :: local_cell_list, local_edge_list, local_vertex_list
+      integer, dimension(:), pointer :: block_id, block_start, block_count
       integer, dimension(:), pointer :: local_vertlevel_list, needed_vertlevel_list
       integer :: nlocal_edges, nlocal_vertices
       type (exchange_list), pointer :: send1Halo, recv1Halo
@@ -130,6 +119,22 @@ module mpas_io_input
       character(len=32) :: timeStamp
       character(len=1024) :: filename
 
+      integer, parameter :: nHalos = 2
+      integer, dimension(nHalos+1) :: nCellsCumulative    ! own cells, halo 1 cells, halo 2 cells
+      integer, dimension(nHalos+2) :: nEdgesCumulative    ! own edges, own cell's edges, halo 1 edges, halo 2 edges
+      integer, dimension(nHalos+2) :: nVerticesCumulative ! own vertices, own cell's vertices, halo 1 vertices, halo 2 vertices
+
+      integer, dimension(nHalos)   :: nCellsHalo          ! halo 1 cells, halo 2 cells
+      integer, dimension(nHalos+1) :: nEdgesHalo          ! own cell's edges, halo 1 edges, halo 2 edges
+      integer, dimension(nHalos+1) :: nVerticesHalo       ! own cell's vertices, halo 1 vertices, halo 2 vertices
+
+      integer, dimension(:), pointer :: tempIDs
+      integer :: ntempIDs, offset
+
+      integer :: nHalo, nOwnCells, nOwnEdges, nOwnVertices, cellCount, edgeCount, vertexCount, iEdge, iVertex
+      type (hashtable) :: edgeHash, vertexHash
+
+
       if (config_do_restart) then
 
          ! this get followed by set is to ensure that the time is in standard format
@@ -144,7 +149,19 @@ module mpas_io_input
          input_obj % filename = trim(config_input_name)
          input_obj % stream = STREAM_INPUT
       end if
-      call mpas_io_input_init(input_obj, domain % dminfo)
+      inputHandle = MPAS_io_open(trim(input_obj % filename), MPAS_IO_READ, MPAS_IO_PNETCDF, ierr)
+      if (ierr /= MPAS_IO_NOERR) then
+         write(0,*) ' '
+         if (input_obj % stream == STREAM_RESTART) then
+            write(0,*) 'Error opening restart file ''', trim(input_obj % filename), ''''
+         else if (input_obj % stream == STREAM_INPUT) then
+            write(0,*) 'Error opening input file ''', trim(input_obj % filename), ''''
+         else if (input_obj % stream == STREAM_SFC) then
+            write(0,*) 'Error opening sfc file ''', trim(input_obj % filename), ''''
+         end if
+         write(0,*) ' '
+         call mpas_dmpar_abort(domain % dminfo)
+      end if
    
 
       !
@@ -157,10 +174,10 @@ module mpas_io_input
       !   from the input file
       !
       call mpas_dmpar_get_index_range(domain % dminfo, 1, nCells, readCellStart, readCellEnd)   
-      nReadCells    = readCellEnd - readCellStart + 1
+      nReadCells = readCellEnd - readCellStart + 1
    
       call mpas_dmpar_get_index_range(domain % dminfo, 1, nEdges, readEdgeStart, readEdgeEnd)   
-      nReadEdges    = readEdgeEnd - readEdgeStart + 1
+      nReadEdges = readEdgeEnd - readEdgeStart + 1
    
       call mpas_dmpar_get_index_range(domain % dminfo, 1, nVertices, readVertexStart, readVertexEnd)   
       nReadVertices = readVertexEnd - readVertexStart + 1
@@ -181,7 +198,13 @@ module mpas_io_input
       indexToCellIDField % ioinfo % start(1) = readCellStart
       indexToCellIDField % ioinfo % count(1) = nReadCells
       allocate(indexToCellIDField % array(nReadCells))
-      call mpas_io_input_field(input_obj, indexToCellIDField)
+      allocate(readIndices(nReadCells))
+      do i=1,nReadCells
+         readIndices(i) = i + readCellStart - 1
+      end do
+      call MPAS_io_inq_var(inputHandle, 'indexToCellID', ierr=ierr)
+      call MPAS_io_set_var_indices(inputHandle, 'indexToCellID', readIndices, ierr=ierr)
+      call mpas_io_get_var(inputHandle, 'indexToCellID', indexToCellIDField % array, ierr)
    
 #ifdef HAVE_ZOLTAN
 #ifdef _MPI 
@@ -191,7 +214,9 @@ module mpas_io_input
       xCellField % ioinfo % start(1) = readCellStart
       xCellField % ioinfo % count(1) = nReadCells
       allocate(xCellField % array(nReadCells))
-      call mpas_io_input_field(input_obj, xCellField)
+      call MPAS_io_inq_var(inputHandle, 'xCell', ierr=ierr)
+      call MPAS_io_set_var_indices(inputHandle, 'xCell', readIndices, ierr=ierr)
+      call mpas_io_get_var(inputHandle, 'xCell', xCellField % array, ierr)
 
       ! Cell y-coordinates (in 3d Cartesian space)
       allocate(yCellField % ioinfo)
@@ -199,7 +224,9 @@ module mpas_io_input
       yCellField % ioinfo % start(1) = readCellStart
       yCellField % ioinfo % count(1) = nReadCells
       allocate(yCellField % array(nReadCells))
-      call mpas_io_input_field(input_obj, yCellField)
+      call MPAS_io_inq_var(inputHandle, 'yCell', ierr=ierr)
+      call MPAS_io_set_var_indices(inputHandle, 'yCell', readIndices, ierr=ierr)
+      call mpas_io_get_var(inputHandle, 'yCell', yCellField % array, ierr)
 
       ! Cell z-coordinates (in 3d Cartesian space)
       allocate(zCellField % ioinfo)
@@ -207,9 +234,12 @@ module mpas_io_input
       zCellField % ioinfo % start(1) = readCellStart
       zCellField % ioinfo % count(1) = nReadCells
       allocate(zCellField % array(nReadCells))
-      call mpas_io_input_field(input_obj, zCellField)
+      call MPAS_io_inq_var(inputHandle, 'zCell', ierr=ierr)
+      call MPAS_io_set_var_indices(inputHandle, 'zCell', readIndices, ierr=ierr)
+      call mpas_io_get_var(inputHandle, 'zCell', zCellField % array, ierr)
 #endif
 #endif
+      deallocate(readIndices)
 
 
       ! Global edge indices
@@ -218,7 +248,14 @@ module mpas_io_input
       indexToEdgeIDField % ioinfo % start(1) = readEdgeStart
       indexToEdgeIDField % ioinfo % count(1) = nReadEdges
       allocate(indexToEdgeIDField % array(nReadEdges))
-      call mpas_io_input_field(input_obj, indexToEdgeIDField)
+      allocate(indexToEdgeIDField % array(nReadEdges))
+      allocate(readIndices(nReadEdges))
+      do i=1,nReadEdges
+         readIndices(i) = i + readEdgeStart - 1
+      end do
+      call MPAS_io_inq_var(inputHandle, 'indexToEdgeID', ierr=ierr)
+      call MPAS_io_set_var_indices(inputHandle, 'indexToEdgeID', readIndices, ierr=ierr)
+      call mpas_io_get_var(inputHandle, 'indexToEdgeID', indexToEdgeIDField % array, ierr)
    
 #ifdef HAVE_ZOLTAN
 #ifdef _MPI 
@@ -228,7 +265,9 @@ module mpas_io_input
       xEdgeField % ioinfo % start(1) = readEdgeStart
       xEdgeField % ioinfo % count(1) = nReadEdges
       allocate(xEdgeField % array(nReadEdges))
-      call mpas_io_input_field(input_obj, xEdgeField)
+      call MPAS_io_inq_var(inputHandle, 'xEdge', ierr=ierr)
+      call MPAS_io_set_var_indices(inputHandle, 'xEdge', readIndices, ierr=ierr)
+      call mpas_io_get_var(inputHandle, 'xEdge', xEdgeField % array, ierr)
 
       ! Edge y-coordinates (in 3d Cartesian space)
       allocate(yEdgeField % ioinfo)
@@ -236,7 +275,9 @@ module mpas_io_input
       yEdgeField % ioinfo % start(1) = readEdgeStart
       yEdgeField % ioinfo % count(1) = nReadEdges
       allocate(yEdgeField % array(nReadEdges))
-      call mpas_io_input_field(input_obj, yEdgeField)
+      call MPAS_io_inq_var(inputHandle, 'yEdge', ierr=ierr)
+      call MPAS_io_set_var_indices(inputHandle, 'yEdge', readIndices, ierr=ierr)
+      call mpas_io_get_var(inputHandle, 'yEdge', yEdgeField % array, ierr)
 
       ! Edge z-coordinates (in 3d Cartesian space)
       allocate(zEdgeField % ioinfo)
@@ -244,9 +285,13 @@ module mpas_io_input
       zEdgeField % ioinfo % start(1) = readEdgeStart
       zEdgeField % ioinfo % count(1) = nReadEdges
       allocate(zEdgeField % array(nReadEdges))
-      call mpas_io_input_field(input_obj, zEdgeField)
+      call MPAS_io_inq_var(inputHandle, 'zEdge', ierr=ierr)
+      call MPAS_io_set_var_indices(inputHandle, 'zEdge', readIndices, ierr=ierr)
+      call mpas_io_get_var(inputHandle, 'zEdge', zEdgeField % array, ierr)
 #endif
 #endif
+      deallocate(readIndices)
+
 
       ! Global vertex indices
       allocate(indexToVertexIDField % ioinfo)
@@ -254,7 +299,13 @@ module mpas_io_input
       indexToVertexIDField % ioinfo % start(1) = readVertexStart
       indexToVertexIDField % ioinfo % count(1) = nReadVertices
       allocate(indexToVertexIDField % array(nReadVertices))
-      call mpas_io_input_field(input_obj, indexToVertexIDField)
+      allocate(readIndices(nReadVertices))
+      do i=1,nReadVertices
+         readIndices(i) = i + readVertexStart - 1
+      end do
+      call MPAS_io_inq_var(inputHandle, 'indexToVertexID', ierr=ierr)
+      call MPAS_io_set_var_indices(inputHandle, 'indexToVertexID', readIndices, ierr=ierr)
+      call mpas_io_get_var(inputHandle, 'indexToVertexID', indexToVertexIDField % array, ierr)
    
 #ifdef HAVE_ZOLTAN
 #ifdef _MPI
@@ -264,7 +315,9 @@ module mpas_io_input
       xVertexField % ioinfo % start(1) = readVertexStart
       xVertexField % ioinfo % count(1) = nReadVertices
       allocate(xVertexField % array(nReadVertices))
-      call mpas_io_input_field(input_obj, xVertexField)
+      call MPAS_io_inq_var(inputHandle, 'xVertex', ierr=ierr)
+      call MPAS_io_set_var_indices(inputHandle, 'xVertex', readIndices, ierr=ierr)
+      call mpas_io_get_var(inputHandle, 'xVertex', xVertexField % array, ierr)
 
       ! Vertex y-coordinates (in 3d Cartesian space)
       allocate(yVertexField % ioinfo)
@@ -272,7 +325,9 @@ module mpas_io_input
       yVertexField % ioinfo % start(1) = readVertexStart
       yVertexField % ioinfo % count(1) = nReadVertices
       allocate(yVertexField % array(nReadVertices))
-      call mpas_io_input_field(input_obj, yVertexField)
+      call MPAS_io_inq_var(inputHandle, 'yVertex', ierr=ierr)
+      call MPAS_io_set_var_indices(inputHandle, 'yVertex', readIndices, ierr=ierr)
+      call mpas_io_get_var(inputHandle, 'yVertex', yVertexField % array, ierr)
 
       ! Vertex z-coordinates (in 3d Cartesian space)
       allocate(zVertexField % ioinfo)
@@ -280,9 +335,12 @@ module mpas_io_input
       zVertexField % ioinfo % start(1) = readVertexStart
       zVertexField % ioinfo % count(1) = nReadVertices
       allocate(zVertexField % array(nReadVertices))
-      call mpas_io_input_field(input_obj, zVertexField)
+      call MPAS_io_inq_var(inputHandle, 'zVertex', ierr=ierr)
+      call MPAS_io_set_var_indices(inputHandle, 'zVertex', readIndices, ierr=ierr)
+      call mpas_io_get_var(inputHandle, 'zVertex', zVertexField % array, ierr)
 #endif
 #endif
+      deallocate(readIndices)
 
       ! Number of cell/edges/vertices adjacent to each cell
       allocate(nEdgesOnCellField % ioinfo)
@@ -290,7 +348,13 @@ module mpas_io_input
       nEdgesOnCellField % ioinfo % start(1) = readCellStart
       nEdgesOnCellField % ioinfo % count(1) = nReadCells
       allocate(nEdgesOnCellField % array(nReadCells))
-      call mpas_io_input_field(input_obj, nEdgesOnCellField)
+      allocate(readIndices(nReadCells))
+      do i=1,nReadCells
+         readIndices(i) = i + readCellStart - 1
+      end do
+      call MPAS_io_inq_var(inputHandle, 'nEdgesOnCell', ierr=ierr)
+      call MPAS_io_set_var_indices(inputHandle, 'nEdgesOnCell', readIndices, ierr=ierr)
+      call mpas_io_get_var(inputHandle, 'nEdgesOnCell', nEdgesOnCellField % array, ierr)
    
       ! Global indices of cells adjacent to each cell
       allocate(cellsOnCellField % ioinfo)
@@ -300,7 +364,9 @@ module mpas_io_input
       cellsOnCellField % ioinfo % count(1) = maxEdges
       cellsOnCellField % ioinfo % count(2) = nReadCells
       allocate(cellsOnCellField % array(maxEdges,nReadCells))
-      call mpas_io_input_field(input_obj, cellsOnCellField)
+      call MPAS_io_inq_var(inputHandle, 'cellsOnCell', ierr=ierr)
+      call MPAS_io_set_var_indices(inputHandle, 'cellsOnCell', readIndices, ierr=ierr)
+      call mpas_io_get_var(inputHandle, 'cellsOnCell', cellsOnCellField % array, ierr)
    
       ! Global indices of edges adjacent to each cell
       allocate(edgesOnCellField % ioinfo)
@@ -310,7 +376,9 @@ module mpas_io_input
       edgesOnCellField % ioinfo % count(1) = maxEdges
       edgesOnCellField % ioinfo % count(2) = nReadCells
       allocate(edgesOnCellField % array(maxEdges,nReadCells))
-      call mpas_io_input_field(input_obj, edgesOnCellField)
+      call MPAS_io_inq_var(inputHandle, 'edgesOnCell', ierr=ierr)
+      call MPAS_io_set_var_indices(inputHandle, 'edgesOnCell', readIndices, ierr=ierr)
+      call mpas_io_get_var(inputHandle, 'edgesOnCell', edgesOnCellField % array, ierr)
    
       ! Global indices of vertices adjacent to each cell
       allocate(verticesOnCellField % ioinfo)
@@ -320,7 +388,10 @@ module mpas_io_input
       verticesOnCellField % ioinfo % count(1) = maxEdges
       verticesOnCellField % ioinfo % count(2) = nReadCells
       allocate(verticesOnCellField % array(maxEdges,nReadCells))
-      call mpas_io_input_field(input_obj, verticesOnCellField)
+      call MPAS_io_inq_var(inputHandle, 'verticesOnCell', ierr=ierr)
+      call MPAS_io_set_var_indices(inputHandle, 'verticesOnCell', readIndices, ierr=ierr)
+      call mpas_io_get_var(inputHandle, 'verticesOnCell', verticesOnCellField % array, ierr)
+      deallocate(readIndices)
    
       ! Global indices of cells adjacent to each edge
       !    used for determining which edges are owned by a block, where 
@@ -332,7 +403,14 @@ module mpas_io_input
       cellsOnEdgeField % ioinfo % count(1) = 2
       cellsOnEdgeField % ioinfo % count(2) = nReadEdges
       allocate(cellsOnEdgeField % array(2,nReadEdges))
-      call mpas_io_input_field(input_obj, cellsOnEdgeField)
+      allocate(readIndices(nReadEdges))
+      do i=1,nReadEdges
+         readIndices(i) = i + readEdgeStart - 1
+      end do
+      call MPAS_io_inq_var(inputHandle, 'cellsOnEdge', ierr=ierr)
+      call MPAS_io_set_var_indices(inputHandle, 'cellsOnEdge', readIndices, ierr=ierr)
+      call mpas_io_get_var(inputHandle, 'cellsOnEdge', cellsOnEdgeField % array, ierr)
+      deallocate(readIndices)
    
       ! Global indices of cells adjacent to each vertex
       !    used for determining which vertices are owned by a block, where 
@@ -344,7 +422,14 @@ module mpas_io_input
       cellsOnVertexField % ioinfo % count(1) = vertexDegree
       cellsOnVertexField % ioinfo % count(2) = nReadVertices
       allocate(cellsOnVertexField % array(vertexDegree,nReadVertices))
-      call mpas_io_input_field(input_obj, cellsOnVertexField)
+      allocate(readIndices(nReadVertices))
+      do i=1,nReadVertices
+         readIndices(i) = i + readVertexStart - 1
+      end do
+      call MPAS_io_inq_var(inputHandle, 'cellsOnVertex', ierr=ierr)
+      call MPAS_io_set_var_indices(inputHandle, 'cellsOnVertex', readIndices, ierr=ierr)
+      call mpas_io_get_var(inputHandle, 'cellsOnVertex', cellsOnVertexField % array, ierr)
+      deallocate(readIndices)
    
    
       !
@@ -373,7 +458,7 @@ module mpas_io_input
    
 
       ! Determine which cells are owned by this process
-      call mpas_block_decomp_cells_for_proc(domain % dminfo, partial_global_graph_info, local_cell_list)
+      call mpas_block_decomp_cells_for_proc(domain % dminfo, partial_global_graph_info, local_cell_list, block_id, block_start, block_count)
 
       deallocate(partial_global_graph_info % vertexID)
       deallocate(partial_global_graph_info % nAdjacent)
@@ -489,6 +574,8 @@ module mpas_io_input
       block_graph_2Halo % nVertices = block_graph_0Halo % nVertices
       block_graph_2Halo % ghostStart = block_graph_2Halo % nVertices + 1
 
+      nOwnCells = block_graph_2Halo % nVertices
+
 #ifdef HAVE_ZOLTAN
 #ifdef _MPI 
       !! For now, only use Zoltan with MPI
@@ -524,6 +611,7 @@ module mpas_io_input
       !   on each cell and which vertices are on each cell from the processes that read these
       !   fields for each cell to the processes that own the cells
       !
+      allocate(nEdgesOnCell_2Halo(block_graph_2Halo % nVerticesTotal))
       allocate(edgesOnCell_2Halo(maxEdges, block_graph_2Halo % nVerticesTotal))
       allocate(verticesOnCell_2Halo(maxEdges, block_graph_2Halo % nVerticesTotal))
    
@@ -532,6 +620,10 @@ module mpas_io_input
                                 indexToCellIDField % array, block_graph_2Halo % vertexID, &
                                 sendCellList, recvCellList)
    
+      call mpas_dmpar_alltoall_field(domain % dminfo, nEdgesOnCellField % array, nEdgesOnCell_2Halo, &
+                                size(indexToCellIDField % array), size(local_cell_list), &
+                                sendCellList, recvCellList)
+
       call mpas_dmpar_alltoall_field(domain % dminfo, edgesOnCellField % array, edgesOnCell_2Halo, &
                                 maxEdges, nReadCells, block_graph_2Halo % nVerticesTotal, &
                                 sendCellList, recvCellList)
@@ -576,15 +668,90 @@ module mpas_io_input
                                 sendVertexList, recvVertexList)
    
    
-      call mpas_block_decomp_partitioned_edge_list(block_graph_2Halo % nVertices, &
-                                              block_graph_2Halo % vertexID(1:block_graph_2Halo % nVertices), &
+      call mpas_block_decomp_partitioned_edge_list(nOwnCells, &
+                                              block_graph_2Halo % vertexID(1:nOwnCells), &
                                               2, nlocal_edges, cellsOnEdge_2Halo, local_edge_list, ghostEdgeStart)
-      call mpas_block_decomp_partitioned_edge_list(block_graph_2Halo % nVertices, &
-                                              block_graph_2Halo % vertexID(1:block_graph_2Halo % nVertices), &
+
+      call mpas_block_decomp_partitioned_edge_list(nOwnCells, &
+                                              block_graph_2Halo % vertexID(1:nOwnCells), &
                                               vertexDegree, nlocal_vertices, cellsOnVertex_2Halo, local_vertex_list, ghostVertexStart)
 
+      !------- set owned and halo cell indices -------!  
+      
+      nCellsCumulative(1) = nOwnCells
+      nCellsCumulative(2) = block_graph_1Halo % nVerticesTotal
+      nCellsCumulative(3) = block_graph_2Halo % nVerticesTotal
 
-      ! At this point, local_edge_list(1;ghostEdgeStart-1) contains all of the owned edges for this block
+      !------- determin the perimeter and owned edges of own cells and halos -------!  
+
+      nOwnEdges = ghostEdgeStart-1
+      nOwnVertices = ghostVertexStart-1
+
+      ! skip the own edges found at the beginning of local_edge_list
+      call mpas_hash_init(edgeHash)
+      do i=1,nOwnEdges
+         call mpas_hash_insert(edgeHash, local_edge_list(i))
+      end do
+
+      ! skip the own vertices found at the beginning of local_vertex_list
+      call mpas_hash_init(vertexHash)
+      do i=1,nOwnVertices
+         call mpas_hash_insert(vertexHash, local_vertex_list(i))
+      end do
+
+      cellCount = 1              !tracks the index of the local cell array
+      edgeCount = nOwnEdges      !tracks where to insert the next local edge
+      vertexCount = nOwnVertices !tracks where to insert the next local vertex
+
+      nEdgesCumulative(1) = nOwnEdges
+      nVerticesCumulative(1) = nOwnVertices
+
+      !Order the local_edge_list and local_vertex_list accordingly and set the bounds of each perimeter ---- 
+      do i = 1, nHalos + 1 ! for the own cells and each halo...
+         do j = cellCount, nCellsCumulative(i)
+
+            ! the number of edges on a cell is same to the number of vertices, and therefore
+            ! nEdgesOnCell_2Halo(j) will be the correct upper bound for both both edges and vertices on cell
+            do k = 1, nEdgesOnCell_2Halo(j)
+               iEdge = edgesOnCell_2Halo(k,j)
+               if (.not. mpas_hash_search(edgeHash, iEdge)) then
+                  edgeCount = edgeCount + 1
+                  local_edge_list(edgeCount) = iEdge
+                  call mpas_hash_insert(edgeHash, iEdge)
+               end if
+
+               iVertex = verticesOnCell_2Halo(k,j)
+               if (.not. mpas_hash_search(vertexHash, iVertex)) then
+                  vertexCount = vertexCount + 1
+                  local_vertex_list(vertexCount) = iVertex
+                  call mpas_hash_insert(vertexHash, iVertex)
+               end if
+            end do
+
+         end do
+
+         cellCount = nCellsCumulative(i) + 1
+         nEdgesCumulative(i+1) = edgeCount
+         nVerticesCumulative(i+1) = vertexCount
+      end do
+
+      do i = 1, nHalos
+         nCellsHalo(i) = nCellsCumulative(i+1) - nCellsCumulative(i)
+      end do
+
+      do i = 1, nHalos + 1
+         nEdgesHalo(i) = nEdgesCumulative(i+1) - nEdgesCumulative(i)
+      end do
+
+      do i = 1, nHalos + 1
+         nVerticesHalo(i) = nVerticesCumulative(i+1) - nVerticesCumulative(i)
+      end do
+
+      call mpas_hash_destroy(edgeHash)
+      call mpas_hash_destroy(vertexHash)
+
+
+      ! At this point, local_edge_list(1:nOwnEdges) contains all of the owned edges for this block
       !   and local_edge_list(ghostEdgeStart:nlocal_edges) contains all of the ghost edges
 
       ! At this point, local_vertex_list(1;ghostVertexStart-1) contains all of the owned vertices for this block
@@ -656,13 +823,13 @@ module mpas_io_input
       !!!!!!!!!!!!!!!!!!
       !! Reorder edges
       !!!!!!!!!!!!!!!!!!
-      call mpas_zoltan_order_loc_hsfc_edges(ghostEdgeStart-1,local_edge_list,3,xEdge,yEdge,zEdge)
+      call mpas_zoltan_order_loc_hsfc_edges(nOwnEdges,local_edge_list,3,xEdge,yEdge,zEdge)
       !!!!!!!!!!!!!!!!!!
 
       !!!!!!!!!!!!!!!!!!
       !! Reorder vertices
       !!!!!!!!!!!!!!!!!!
-      call mpas_zoltan_order_loc_hsfc_verts(ghostVertexStart-1,local_vertex_list,3,xVertex,yVertex,zVertex)
+      call mpas_zoltan_order_loc_hsfc_verts(nOwnVertices,local_vertex_list,3,xVertex,yVertex,zVertex)
       !!!!!!!!!!!!!!!!!!
 
       deallocate(sendEdgeList % list)
@@ -730,71 +897,69 @@ module mpas_io_input
       nEdges = nlocal_edges
       nVertices = nlocal_vertices
 
-      call mpas_allocate_block(domain % blocklist, domain, &
+      call mpas_allocate_block(domain % blocklist, domain, domain%dminfo%my_proc_id, &
 #include "dim_dummy_args.inc"
                          )
+
+!!!!!!!!!!MGD HERE WE NEED TO READ IN indexTo*ID fields !!!!!!!!!!!!!!!!!
+      call MPAS_io_inq_var(inputHandle, 'indexToCellID', ierr=ierr)
+      call MPAS_io_set_var_indices(inputHandle, 'indexToCellID', local_cell_list(1:nOwnCells), ierr=ierr)
+      call mpas_io_get_var(inputHandle, 'indexToCellID', domain % blocklist % mesh % indexToCellID % array, ierr)
+
+      call MPAS_io_inq_var(inputHandle, 'indexToEdgeID', ierr=ierr)
+      call MPAS_io_set_var_indices(inputHandle, 'indexToEdgeID', local_edge_list(1:nOwnEdges), ierr=ierr)
+      call mpas_io_get_var(inputHandle, 'indexToEdgeID', domain % blocklist % mesh % indexToEdgeID % array, ierr)
+
+      call MPAS_io_inq_var(inputHandle, 'indexToVertexID', ierr=ierr)
+      call MPAS_io_set_var_indices(inputHandle, 'indexToVertexID', local_vertex_list(1:nOwnVertices), ierr=ierr)
+      call mpas_io_get_var(inputHandle, 'indexToVertexID', domain % blocklist % mesh % indexToVertexID % array, ierr)
+
+      domain % blocklist % mesh % nCellsSolve = nOwnCells
+      domain % blocklist % mesh % nEdgesSolve = nOwnEdges
+      domain % blocklist % mesh % nVerticesSolve = nOwnVertices
+      domain % blocklist % mesh % nVertLevelsSolve = domain % blocklist % mesh % nVertLevels   ! No vertical decomp yet...
+
+      call mpas_io_input_init(input_obj, domain % blocklist, domain % dminfo)
+
 
       !
       ! Read attributes
       !
-      call mpas_io_input_get_att_text(input_obj, 'on_a_sphere', c_on_a_sphere)
-      call mpas_io_input_get_att_real(input_obj, 'sphere_radius', r_sphere_radius)
-      if (index(c_on_a_sphere, 'YES') /= 0) then
+      call MPAS_readStreamAtt(input_obj % io_stream, 'sphere_radius', r_sphere_radius, ierr)
+      if (ierr /= MPAS_STREAM_NOERR) then
+         write(0,*) 'Warning: Attribute sphere_radius not found in '//trim(input_obj % filename)
+         write(0,*) '   Setting sphere_radius to 1.0'
+         domain % blocklist % mesh % sphere_radius = 1.0
+      else
+         domain % blocklist % mesh % sphere_radius = r_sphere_radius
+      end if
+
+      call MPAS_readStreamAtt(input_obj % io_stream, 'on_a_sphere', c_on_a_sphere, ierr)
+      if (ierr /= MPAS_STREAM_NOERR) then
+         write(0,*) 'Warning: Attribute on_a_sphere not found in '//trim(input_obj % filename)
+         write(0,*) '   Setting on_a_sphere to ''YES'''
          domain % blocklist % mesh % on_a_sphere = .true.
       else
-         domain % blocklist % mesh % on_a_sphere = .false.
+         if (index(c_on_a_sphere, 'YES') /= 0) then
+            domain % blocklist % mesh % on_a_sphere = .true.
+         else
+            domain % blocklist % mesh % on_a_sphere = .false.
+         end if
       end if
-      domain % blocklist % mesh % sphere_radius = r_sphere_radius
 
       if (.not. config_do_restart) then
          input_obj % time = 1
       else
-         input_obj % time = 1
-
          !
          ! If doing a restart, we need to decide which time slice to read from the 
          !   restart file
          !
-         if (input_obj % rdLocalTime <= 0) then
-            write(0,*) 'Error: Couldn''t find any times in restart file.'
+         input_obj % time = MPAS_seekStream(input_obj % io_stream, config_start_time, MPAS_STREAM_EXACT_TIME, timeStamp, ierr)
+         if (ierr == MPAS_IO_ERR) then
+            write(0,*) 'Error: restart file '//trim(filename)//' did not contain time '//trim(config_start_time)
             call mpas_dmpar_abort(domain % dminfo)
          end if
-         if (domain % dminfo % my_proc_id == IO_NODE) then
-            allocate(xtime % ioinfo)
-            xtime % ioinfo % start(1) = 1
-            xtime % ioinfo % count(1) = input_obj % rdLocalTime
-            allocate(xtime % array(input_obj % rdLocalTime))
-
-            xtime % ioinfo % fieldName = 'xtime'
-            call mpas_io_input_field(input_obj, xtime)
-
-            call mpas_set_timeInterval(interval=minTimeDiff, DD=10000)
-            call mpas_set_time(curr_time=startTime, dateTimeString=config_start_time)
-
-            do i=1,input_obj % rdLocalTime
-               call mpas_set_time(curr_time=sliceTime, dateTimeString=xtime % array(i))
-               timeDiff = abs(sliceTime - startTime)
-               if (timeDiff < minTimeDiff) then
-                  minTimeDiff = timeDiff
-                  input_obj % time = i
-               end if
-            end do
-
-            ! require restart time to exactly match start time (this error should never be reached as we have by this point opened the restart file with a name containing the startTime)
-            if(sliceTime /= startTime) then
-               write(0,*) "Error: restart file ", filename, " did not contain time ", config_start_time
-               call mpas_dmpar_abort(domain % dminfo)
-            end if
-
-            timeStamp = xtime % array(input_obj % time)
-
-            deallocate(xtime % ioinfo)
-            deallocate(xtime % array)
-         end if
-
-         call mpas_dmpar_bcast_int(domain % dminfo, input_obj % time)
-         call mpas_dmpar_bcast_char(domain % dminfo, timeStamp)
-
+write(0,*) 'MGD DEBUGGING time = ', input_obj % time
          write(0,*) 'Restarting model from time ', timeStamp
 
       end if
@@ -810,14 +975,127 @@ module mpas_io_input
       !      processes that own those indices based on 
       !      {send,recv}{Cell,Edge,Vertex,VertLevel}List
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-      call mpas_read_and_distribute_fields(domain % dminfo, input_obj, domain % blocklist, &
-                                      readCellStart, nReadCells, readEdgeStart, nReadEdges, readVertexStart, nReadVertices, &
-                                      readVertLevelStart, nReadVertLevels, &
-                                      sendCellList, recvCellList, sendEdgeList, recvEdgeList, sendVertexList, recvVertexList, &
-                                      sendVertLevelList, recvVertLevelList) 
-
+      call mpas_read_and_distribute_fields(input_obj)
 
       call mpas_io_input_finalize(input_obj, domain % dminfo)
+
+      call MPAS_io_close(inputHandle, ierr)
+
+   
+      !
+      ! Work out halo exchange lists for cells, edges, and vertices
+      ! NB: The next pointer in each element of, e.g., cellsToSend, acts as the head pointer of
+      !     the list, since Fortran does not allow arrays of pointers
+      !
+
+      !--------- Create Cell Exchange Lists ---------!
+
+      ! pass in neededList of ownedCells and halo layer 1 cells
+      call mpas_dmpar_get_owner_list(domain % dminfo, &
+                                nOwnCells, nCellsCumulative(2), &
+                                block_graph_2Halo % vertexID(1:nOwnCells), block_graph_2Halo % vertexID(1 : nCellsCumulative(2)), &
+                                domain % blocklist % parinfo % cellsToSend(1) % next, domain % blocklist % parinfo % cellsToRecv(1) % next)
+
+      ! pass in neededList of ownedCells and halo layer 2 cells; offset of number of halo 1 cells is required
+      offset = nCellsHalo(1)
+      nTempIDs = nOwnCells + nCellsHalo(2)
+      allocate(tempIDs(nTempIDs))
+      tempIDs(1:nOwnCells) = block_graph_2Halo % vertexID(1:nOwnCells)
+      tempIDs(nOwnCells+1:nTempIDs) = block_graph_2Halo % vertexID(nCellsCumulative(2)+1 : nCellsCumulative(3))
+      call mpas_dmpar_get_owner_list(domain % dminfo, &
+                                nOwnCells, nTempIDs, &
+                                block_graph_2Halo % vertexID(1:nOwnCells), tempIDs, &
+                                domain % blocklist % parinfo % cellsToSend(2) % next, domain % blocklist % parinfo % cellsToRecv(2) % next, &
+                                offset)
+      deallocate(tempIDs)
+
+
+      !--------- Create Edge Exchange Lists ---------!
+
+      ! pass in neededList of ownedEdges and ownedCell perimeter edges
+      call mpas_dmpar_get_owner_list(domain % dminfo, &
+                                nOwnEdges, nEdgesCumulative(2), &
+                                local_edge_list(1:nOwnEdges), local_edge_list(1 : nEdgesCumulative(2)), &
+                                domain % blocklist % parinfo % edgesToSend(1) % next, domain % blocklist % parinfo % edgesToRecv(1) % next)
+
+      ! pass in neededList of owned edges and yet-to-be-included edges from halo 1 cells; offset of number of ownedCell perimeter edges is required
+      offset = nEdgesHalo(1)
+      nTempIDs = nOwnEdges + nEdgesHalo(2)
+      allocate(tempIDs(nTempIDs))
+      tempIDs(1:nOwnEdges) = local_edge_list(1:nOwnEdges)
+      tempIDs(nOwnEdges+1:nTempIDs) = local_edge_list(nEdgesCumulative(2)+1 : nEdgesCumulative(3))
+      call mpas_dmpar_get_owner_list(domain % dminfo, &
+                                nOwnEdges, nTempIDs, &
+                                local_edge_list(1:nOwnEdges), tempIDs, &  
+                                domain % blocklist % parinfo % edgesToSend(2) % next, domain % blocklist % parinfo % edgesToRecv(2) % next, &
+                                offset)
+      deallocate(tempIDs)
+
+      ! pass in neededList of owned edges and yet-to-be-included edges from halo 2 cells; offset of number of ownedCell perimeter edges and halo 1 edges is required
+      offset = nEdgesHalo(1) + nEdgesHalo(2)
+      nTempIDs = nOwnEdges + nEdgesHalo(3)
+      allocate(tempIDs(nTempIDs))
+      tempIDs(1:nOwnEdges) = local_edge_list(1:nOwnEdges)
+      tempIDs(nOwnEdges+1:nTempIDs) = local_edge_list(nEdgesCumulative(3)+1 : nEdgesCumulative(4))
+      call mpas_dmpar_get_owner_list(domain % dminfo, &
+                                nOwnEdges, nTempIDs, &
+                                local_edge_list(1:nOwnEdges), tempIDs, &  
+                                domain % blocklist % parinfo % edgesToSend(3) % next, domain % blocklist % parinfo % edgesToRecv(3) % next, &
+                                offset)
+      deallocate(tempIDs)
+
+
+      !--------- Create Vertex Exchange Lists ---------!
+
+
+      ! pass in neededList of ownedVertices and ownedCell perimeter vertices
+      call mpas_dmpar_get_owner_list(domain % dminfo, &
+                                nOwnVertices, nVerticesCumulative(2), &
+                                local_vertex_list(1:nOwnVertices), local_vertex_list(1 : nVerticesCumulative(2)), &
+                                domain % blocklist % parinfo % verticesToSend(1) % next, domain % blocklist % parinfo % verticesToRecv(1) % next)
+
+      ! pass in neededList of owned vertices and yet-to-be-included vertices from halo 1 cells; offset of number of ownedCell perimeter vertices is required
+      offset = nVerticesHalo(1)
+      nTempIDs = nOwnVertices + nVerticesHalo(2)
+      allocate(tempIDs(nTempIDs))
+      tempIDs(1:nOwnVertices) = local_vertex_list(1:nOwnVertices)
+      tempIDs(nOwnVertices+1:nTempIDs) = local_vertex_list(nVerticesCumulative(2)+1 : nVerticesCumulative(3))
+      call mpas_dmpar_get_owner_list(domain % dminfo, &
+                                nOwnVertices, nTempIDs, &
+                                local_vertex_list(1:nOwnVertices), tempIDs, &  
+                                domain % blocklist % parinfo % verticesToSend(2) % next, domain % blocklist % parinfo % verticesToRecv(2) % next, &
+                                offset)
+      deallocate(tempIDs)
+
+      ! pass in neededList of owned vertices and yet-to-be-included vertices from halo 2 cells; offset of number of ownedCell perimeter vertices and halo 1 vertices is required
+      offset = nVerticesHalo(1) + nVerticesHalo(2)
+      nTempIDs = nOwnVertices + nVerticesHalo(3)
+      allocate(tempIDs(nTempIDs))
+      tempIDs(1:nOwnVertices) = local_vertex_list(1:nOwnVertices)
+      tempIDs(nOwnVertices+1:nTempIDs) = local_vertex_list(nVerticesCumulative(3)+1 : nVerticesCumulative(4))
+      call mpas_dmpar_get_owner_list(domain % dminfo, &
+                                nOwnVertices, nTempIDs, &
+                                local_vertex_list(1:nOwnVertices), tempIDs, &  
+                                domain % blocklist % parinfo % verticesToSend(3) % next, domain % blocklist % parinfo % verticesToRecv(3) % next, &
+                                offset)
+      deallocate(tempIDs)
+
+
+      domain % blocklist % mesh % nCellsSolve = nOwnCells
+      domain % blocklist % mesh % nEdgesSolve = nOwnEdges
+      domain % blocklist % mesh % nVerticesSolve = ghostVertexStart-1
+      domain % blocklist % mesh % nVertLevelsSolve = domain % blocklist % mesh % nVertLevels   ! No vertical decomp yet...
+
+      ! Link the sendList and recvList pointers in each field type to the appropriate lists 
+      !   in parinfo, e.g., cellsToSend and cellsToRecv; in future, it can also be extended to 
+      !   link blocks of fields to eachother
+      call mpas_create_field_links(domain % blocklist)
+
+
+      !
+      ! Exchange halos for all of the fields that were read from the input file
+      !
+      call mpas_exch_input_field_halos(domain, input_obj)
 
    
       !
@@ -855,7 +1133,6 @@ module mpas_io_input
                domain % blocklist % mesh % cellsOnCell % array(j,i) = cellIDSorted(2,k)
             else
                domain % blocklist % mesh % cellsOnCell % array(j,i) = domain % blocklist % mesh % nCells + 1
-!               domain % blocklist % mesh % cellsOnCell % array(j,i) = 0
             end if
 
             k = mpas_binary_search(edgeIDSorted, 2, 1, domain % blocklist % mesh % nEdges, &
@@ -864,7 +1141,6 @@ module mpas_io_input
                domain % blocklist % mesh % edgesOnCell % array(j,i) = edgeIDSorted(2,k)
             else
                domain % blocklist % mesh % edgesOnCell % array(j,i) = domain % blocklist % mesh % nEdges + 1
-!               domain % blocklist % mesh % edgesOnCell % array(j,i) = 0
             end if
 
             k = mpas_binary_search(vertexIDSorted, 2, 1, domain % blocklist % mesh % nVertices, &
@@ -873,7 +1149,6 @@ module mpas_io_input
                domain % blocklist % mesh % verticesOnCell % array(j,i) = vertexIDSorted(2,k)
             else
                domain % blocklist % mesh % verticesOnCell % array(j,i) = domain % blocklist % mesh % nVertices + 1
-!               domain % blocklist % mesh % verticesOnCell % array(j,i) = 0
             end if
 
          end do
@@ -888,7 +1163,6 @@ module mpas_io_input
                domain % blocklist % mesh % cellsOnEdge % array(j,i) = cellIDSorted(2,k)
             else
                domain % blocklist % mesh % cellsOnEdge % array(j,i) = domain % blocklist % mesh % nCells + 1
-!               domain % blocklist % mesh % cellsOnEdge % array(j,i) = 0
             end if
 
             k = mpas_binary_search(vertexIDSorted, 2, 1, domain % blocklist % mesh % nVertices, &
@@ -897,7 +1171,6 @@ module mpas_io_input
                domain % blocklist % mesh % verticesOnEdge % array(j,i) = vertexIDSorted(2,k)
             else
                domain % blocklist % mesh % verticesOnEdge % array(j,i) = domain % blocklist % mesh % nVertices + 1
-!               domain % blocklist % mesh % verticesOnEdge % array(j,i) = 0
             end if
 
          end do
@@ -910,7 +1183,6 @@ module mpas_io_input
                domain % blocklist % mesh % edgesOnEdge % array(j,i) = edgeIDSorted(2,k)
             else
                domain % blocklist % mesh % edgesOnEdge % array(j,i) = domain % blocklist % mesh % nEdges + 1
-!               domain % blocklist % mesh % edgesOnEdge % array(j,i) = 0
             end if
 
          end do
@@ -925,7 +1197,6 @@ module mpas_io_input
                domain % blocklist % mesh % cellsOnVertex % array(j,i) = cellIDSorted(2,k)
             else
                domain % blocklist % mesh % cellsOnVertex % array(j,i) = domain % blocklist % mesh % nCells + 1
-!               domain % blocklist % mesh % cellsOnVertex % array(j,i) = 0
             end if
 
             k = mpas_binary_search(edgeIDSorted, 2, 1, domain % blocklist % mesh % nEdges, &
@@ -934,7 +1205,6 @@ module mpas_io_input
                domain % blocklist % mesh % edgesOnVertex % array(j,i) = edgeIDSorted(2,k)
             else
                domain % blocklist % mesh % edgesOnVertex % array(j,i) = domain % blocklist % mesh % nEdges + 1
-!               domain % blocklist % mesh % edgesOnVertex % array(j,i) = 0
             end if
 
          end do
@@ -943,30 +1213,6 @@ module mpas_io_input
       deallocate(cellIDSorted)
       deallocate(edgeIDSorted)
       deallocate(vertexIDSorted)
-
-
-      !
-      ! Work out halo exchange lists for cells, edges, and vertices
-      !
-      call mpas_dmpar_get_owner_list(domain % dminfo, &
-                                block_graph_2Halo % nVertices, block_graph_2Halo % nVerticesTotal, &
-                                block_graph_2Halo % vertexID(1:block_graph_2Halo % nVertices), block_graph_2Halo % vertexID, &
-                                domain % blocklist % parinfo % cellsToSend, domain % blocklist % parinfo % cellsToRecv)
-
-      call mpas_dmpar_get_owner_list(domain % dminfo, &
-                                ghostEdgeStart-1, nlocal_edges, &
-                                local_edge_list(1:ghostEdgeStart-1), local_edge_list, &
-                                domain % blocklist % parinfo % edgesToSend, domain % blocklist % parinfo % edgesToRecv)
-
-      call mpas_dmpar_get_owner_list(domain % dminfo, &
-                                ghostVertexStart-1, nlocal_vertices, &
-                                local_vertex_list(1:ghostVertexStart-1), local_vertex_list, &
-                                domain % blocklist % parinfo % verticesToSend, domain % blocklist % parinfo % verticesToRecv)
-
-      domain % blocklist % mesh % nCellsSolve = block_graph_2Halo % nVertices
-      domain % blocklist % mesh % nEdgesSolve = ghostEdgeStart-1
-      domain % blocklist % mesh % nVerticesSolve = ghostVertexStart-1
-      domain % blocklist % mesh % nVertLevelsSolve = domain % blocklist % mesh % nVertLevels   ! No vertical decomp yet...
 
    
       !
@@ -1003,6 +1249,7 @@ module mpas_io_input
       deallocate(indexToCellID_0Halo)
       deallocate(cellsOnEdge_2Halo)
       deallocate(cellsOnVertex_2Halo)
+      deallocate(nEdgesOnCell_2Halo)
       deallocate(edgesOnCell_2Halo)
       deallocate(verticesOnCell_2Halo)
       deallocate(block_graph_0Halo % vertexID)
@@ -1038,92 +1285,41 @@ module mpas_io_input
          end if
       end do
 
+      do i=1,len_trim(filename)
+         if (filename(i:i) == ':') filename(i:i) = '.'
+      end do
+
    end subroutine mpas_insert_string_suffix
 
 
-   subroutine mpas_read_and_distribute_fields(dminfo, input_obj, block, &
-                                     readCellsStart, readCellsCount, &
-                                     readEdgesStart, readEdgesCount, &
-                                     readVerticesStart, readVerticesCount, &
-                                     readVertLevelsStart, readVertLevelsCount, &
-                                     sendCellsList, recvCellsList, &
-                                     sendEdgesList, recvEdgesList, &
-                                     sendVerticesList, recvVerticesList, &
-                                     sendVertLevelsList, recvVertLevelsList)
+   subroutine mpas_read_and_distribute_fields(input_obj)
       
       implicit none
 
-      type (dm_info), intent(in) :: dminfo
-      type (io_input_object), intent(in) :: input_obj
-      type (block_type), intent(inout) :: block
-      integer, intent(in) :: readCellsStart, readCellsCount, readEdgesStart, readEdgesCount, readVerticesStart, readVerticesCount
-      integer, intent(in) :: readVertLevelsStart, readVertLevelsCount
-      type (exchange_list), pointer :: sendCellsList, recvCellsList
-      type (exchange_list), pointer :: sendEdgesList, recvEdgesList
-      type (exchange_list), pointer :: sendVerticesList, recvVerticesList
-      type (exchange_list), pointer :: sendVertLevelsList, recvVertLevelsList
+      type (io_input_object), intent(inout) :: input_obj
 
-      type (field1dInteger) :: int1d
-      type (field2dInteger) :: int2d
-      type (field0dReal) :: real0d
-      type (field1dReal) :: real1d
-      type (field2dReal) :: real2d
-      type (field3dReal) :: real3d
-      type (field0dChar) :: char0d
-      type (field1dChar) :: char1d
-
-      integer :: i1, i2, i3, i4
-
-      integer, dimension(:), pointer :: super_int1d
-      integer, dimension(:,:), pointer :: super_int2d
-      real (kind=RKIND) :: super_real0d
-      real (kind=RKIND), dimension(:), pointer :: super_real1d
-      real (kind=RKIND), dimension(:,:), pointer :: super_real2d
-      real (kind=RKIND), dimension(:,:,:), pointer :: super_real3d
-      character (len=64) :: super_char0d
-      character (len=64), dimension(:), pointer :: super_char1d
-
-      integer :: i, k
-
-#include "nondecomp_dims.inc"
-
-      allocate(int1d % ioinfo)
-      allocate(int2d % ioinfo)
-      allocate(real0d % ioinfo)
-      allocate(real1d % ioinfo)
-      allocate(real2d % ioinfo)
-      allocate(real3d % ioinfo)
-      allocate(char0d % ioinfo)
-      allocate(char1d % ioinfo)
+      integer :: ierr
 
 
-#include "io_input_fields.inc"
+      call MPAS_readStream(input_obj % io_stream, 1, ierr)
 
-#include "nondecomp_dims_dealloc.inc"
 
    end subroutine mpas_read_and_distribute_fields
 
 
 
-   subroutine mpas_io_input_init(input_obj, dminfo)
+   subroutine mpas_io_input_init(input_obj, blocklist, dminfo)
  
       implicit none
 
       type (io_input_object), intent(inout) :: input_obj
+      type (block_type), intent(in) :: blocklist
       type (dm_info), intent(in) :: dminfo
- 
-      include 'netcdf.inc'
  
       integer :: nferr
  
- 
-#ifdef OFFSET64BIT
-      nferr = nf_open(trim(input_obj % filename), ior(NF_SHARE,NF_64BIT_OFFSET), input_obj % rd_ncid)
-#else
-      nferr = nf_open(trim(input_obj % filename), NF_SHARE, input_obj % rd_ncid)
-#endif
-
-      if (nferr /= NF_NOERR) then
+      call MPAS_createStream(input_obj % io_stream, trim(input_obj % filename), MPAS_IO_PNETCDF, MPAS_IO_READ, 1, nferr)
+      if (nferr /= MPAS_STREAM_NOERR) then
          write(0,*) ' '
          if (input_obj % stream == STREAM_RESTART) then
             write(0,*) 'Error opening restart file ''', trim(input_obj % filename), ''''
@@ -1135,8 +1331,8 @@ module mpas_io_input
          write(0,*) ' '
          call mpas_dmpar_abort(dminfo)
       end if
- 
-#include "netcdf_read_ids.inc"
+
+#include "add_input_fields.inc"
 
    end subroutine mpas_io_input_init
 
@@ -1149,7 +1345,7 @@ module mpas_io_input
       character (len=*), intent(in) :: dimname
       integer, intent(out) :: dimsize
 
-#include "get_dimension_by_name.inc"
+!include "get_dimension_by_name.inc"
 
    end subroutine mpas_io_input_get_dimension
 
@@ -1162,23 +1358,7 @@ module mpas_io_input
       character (len=*), intent(in) :: attname
       real (kind=RKIND), intent(out) :: attvalue
 
-      include 'netcdf.inc'
-
       integer :: nferr
-
-      if (RKIND == 8) then
-         nferr = nf_get_att_double(input_obj % rd_ncid, NF_GLOBAL, attname, attvalue)
-      else
-         nferr = nf_get_att_real(input_obj % rd_ncid, NF_GLOBAL, attname, attvalue)
-      end if
-      if (nferr /= NF_NOERR) then
-         write(0,*) 'Warning: Attribute '//trim(attname)//&
-           ' not found in '//trim(input_obj % filename)
-         if (index(attname, 'sphere_radius') /= 0) then
-            write(0,*) '   Setting '//trim(attname)//' to 1.0'
-            attvalue = 1.0
-         end if
-      end if
 
    end subroutine mpas_io_input_get_att_real
 
@@ -1191,446 +1371,21 @@ module mpas_io_input
       character (len=*), intent(in) :: attname
       character (len=*), intent(out) :: attvalue
 
-      include 'netcdf.inc'
-
       integer :: nferr
-
-      nferr = nf_get_att_text(input_obj % rd_ncid, NF_GLOBAL, attname, attvalue)
-      if (nferr /= NF_NOERR) then
-         write(0,*) 'Warning: Attribute '//trim(attname)//&
-            ' not found in '//trim(input_obj % filename)
-         if (index(attname, 'on_a_sphere') /= 0) then
-            write(0,*) '   Setting '//trim(attname)//' to ''YES'''
-            attvalue = 'YES'
-         end if
-      end if
 
    end subroutine mpas_io_input_get_att_text
 
 
-   subroutine mpas_io_input_field0d_real(input_obj, field)
- 
+   subroutine mpas_exch_input_field_halos(domain, input_obj)
+
       implicit none
 
-      type (io_input_object), intent(in) :: input_obj      
-      type (field0dReal), intent(inout) :: field
- 
-      include 'netcdf.inc'
- 
-      integer :: nferr
-      integer :: varID
-      integer, dimension(1) :: start1, count1
- 
-      start1(1) = 1
-      count1(1) = 1
+      type (domain_type), intent(inout) :: domain
+      type (io_input_object), intent(inout) :: input_obj
 
-#include "input_field0dreal.inc"
+#include "exchange_input_field_halos.inc"
 
-#if SINGLE_PRECISION
-      nferr = nf_get_vara_real(input_obj % rd_ncid, varID, start1, count1, field % scalar)
-#else
-      nferr = nf_get_vara_double(input_obj % rd_ncid, varID, start1, count1, field % scalar)
-#endif
- 
-   end subroutine mpas_io_input_field0d_real
-
-
-   subroutine mpas_io_input_field1d_real(input_obj, field)
- 
-      implicit none
-
-      type (io_input_object), intent(in) :: input_obj      
-      type (field1dReal), intent(inout) :: field
- 
-      include 'netcdf.inc'
- 
-      integer :: nferr
-      integer :: varID
-      integer, dimension(1) :: start1, count1
- 
-      start1(1) = field % ioinfo % start(1)
-      count1(1) = field % ioinfo % count(1)
-
-      !
-      ! Special case: we may want to read the xtime variable across the
-      !   time dimension as a 1d array.
-      !
-      if (trim(field % ioinfo % fieldName) == 'xtime') then
-         varID = input_obj % rdVarIDxtime
-      end if
- 
-#include "input_field1dreal.inc"
-
-#if SINGLE_PRECISION
-      nferr = nf_get_vara_real(input_obj % rd_ncid, varID, start1, count1, field % array)
-#else
-      nferr = nf_get_vara_double(input_obj % rd_ncid, varID, start1, count1, field % array)
-#endif
- 
-   end subroutine mpas_io_input_field1d_real
-
-
-   subroutine mpas_io_input_field2d_real(input_obj, field)
- 
-      implicit none
-
-      type (io_input_object), intent(in) :: input_obj      
-      type (field2dReal), intent(inout) :: field
- 
-      include 'netcdf.inc'
- 
-      integer :: nferr
-      integer :: varID
-      integer, dimension(2) :: start2, count2
- 
-      start2(1) = field % ioinfo % start(1)
-      start2(2) = field % ioinfo % start(2)
-      count2(1) = field % ioinfo % count(1)
-      count2(2) = field % ioinfo % count(2)
- 
-#include "input_field2dreal.inc"
-
-#if SINGLE_PRECISION
-      nferr = nf_get_vara_real(input_obj % rd_ncid, varID, start2, count2, field % array)
-#else
-      nferr = nf_get_vara_double(input_obj % rd_ncid, varID, start2, count2, field % array)
-#endif
-
-   end subroutine mpas_io_input_field2d_real
-
-
-   subroutine mpas_io_input_field3d_real(input_obj, field)
- 
-      implicit none
-
-      type (io_input_object), intent(in) :: input_obj      
-      type (field3dReal), intent(inout) :: field
- 
-      include 'netcdf.inc'
- 
-      integer :: nferr
-      integer :: varID
-      integer, dimension(3) :: start3, count3
- 
-      start3(1) = field % ioinfo % start(1)
-      start3(2) = field % ioinfo % start(2)
-      start3(3) = field % ioinfo % start(3)
-      count3(1) = field % ioinfo % count(1)
-      count3(2) = field % ioinfo % count(2)
-      count3(3) = field % ioinfo % count(3)
- 
-#include "input_field3dreal.inc"
-
-#if SINGLE_PRECISION
-      nferr = nf_get_vara_real(input_obj % rd_ncid, varID, start3, count3, field % array)
-#else
-      nferr = nf_get_vara_double(input_obj % rd_ncid, varID, start3, count3, field % array)
-#endif
-
-   end subroutine mpas_io_input_field3d_real
-
-
-   subroutine mpas_io_input_field0d_real_time(input_obj, field)
- 
-      implicit none
-
-      type (io_input_object), intent(in) :: input_obj      
-      type (field0dReal), intent(inout) :: field
- 
-      include 'netcdf.inc'
- 
-      integer :: nferr
-      integer :: varID
-      integer, dimension(1) :: start1, count1
- 
-      start1(1) = input_obj % time
-      count1(1) = 1
- 
-#include "input_field0dreal_time.inc"
-
-#if SINGLE_PRECISION
-      nferr = nf_get_vara_real(input_obj % rd_ncid, varID, start1, count1, field % scalar)
-#else
-      nferr = nf_get_vara_double(input_obj % rd_ncid, varID, start1, count1, field % scalar)
-#endif
-
-   end subroutine mpas_io_input_field0d_real_time
-
-
-   subroutine mpas_io_input_field1d_real_time(input_obj, field)
- 
-      implicit none
-
-      type (io_input_object), intent(in) :: input_obj      
-      type (field1dReal), intent(inout) :: field
- 
-      include 'netcdf.inc'
- 
-      integer :: nferr
-      integer :: varID
-      integer, dimension(2) :: start2, count2
- 
-      start2(1) = field % ioinfo % start(1)
-      start2(2) = input_obj % time
-      count2(1) = field % ioinfo % count(1)
-      count2(2) = 1
- 
-#include "input_field1dreal_time.inc"
-
-#if SINGLE_PRECISION
-      nferr = nf_get_vara_real(input_obj % rd_ncid, varID, start2, count2, field % array)
-#else
-      nferr = nf_get_vara_double(input_obj % rd_ncid, varID, start2, count2, field % array)
-#endif
-
-   end subroutine mpas_io_input_field1d_real_time
-
-
-   subroutine mpas_io_input_field2d_real_time(input_obj, field)
- 
-      implicit none
-
-      type (io_input_object), intent(in) :: input_obj      
-      type (field2dReal), intent(inout) :: field
- 
-      include 'netcdf.inc'
- 
-      integer :: nferr
-      integer :: varID
-      integer, dimension(3) :: start3, count3
- 
-      start3(1) = field % ioinfo % start(1)
-      start3(2) = field % ioinfo % start(2)
-      start3(3) = input_obj % time
-      count3(1) = field % ioinfo % count(1)
-      count3(2) = field % ioinfo % count(2)
-      count3(3) = 1
- 
-#include "input_field2dreal_time.inc"
-
-#if SINGLE_PRECISION
-      nferr = nf_get_vara_real(input_obj % rd_ncid, varID, start3, count3, field % array)
-#else
-      nferr = nf_get_vara_double(input_obj % rd_ncid, varID, start3, count3, field % array)
-#endif
-
-   end subroutine mpas_io_input_field2d_real_time
-
-
-   subroutine mpas_io_input_field3d_real_time(input_obj, field)
- 
-      implicit none
-
-      type (io_input_object), intent(in) :: input_obj      
-      type (field3dReal), intent(inout) :: field
- 
-      include 'netcdf.inc'
- 
-      integer :: nferr
-      integer :: varID
-      integer, dimension(4) :: start4, count4
- 
-      start4(1) = field % ioinfo % start(1)
-      start4(2) = field % ioinfo % start(2)
-      start4(3) = field % ioinfo % start(3)
-      start4(4) = input_obj % time
-      count4(1) = field % ioinfo % count(1)
-      count4(2) = field % ioinfo % count(2)
-      count4(3) = field % ioinfo % count(3)
-      count4(4) = 1
- 
-#include "input_field3dreal_time.inc"
-
-#if SINGLE_PRECISION
-      nferr = nf_get_vara_real(input_obj % rd_ncid, varID, start4, count4, field % array)
-#else
-      nferr = nf_get_vara_double(input_obj % rd_ncid, varID, start4, count4, field % array)
-#endif
-
-   end subroutine mpas_io_input_field3d_real_time
-
-
-   subroutine mpas_io_input_field1d_integer(input_obj, field)
- 
-      implicit none
-
-      type (io_input_object), intent(in) :: input_obj      
-      type (field1dInteger), intent(inout) :: field
- 
-      include 'netcdf.inc'
- 
-      integer :: nferr
-      integer :: varID
-      integer, dimension(1) :: start1, count1
- 
-      start1(1) = field % ioinfo % start(1)
-      count1(1) = field % ioinfo % count(1)
-      
-#include "input_field1dinteger.inc"
-
-      nferr = nf_get_vara_int(input_obj % rd_ncid, varID, start1, count1, field % array)
- 
-   end subroutine mpas_io_input_field1d_integer
-
-
-   subroutine mpas_io_input_field2d_integer(input_obj, field)
- 
-      implicit none
-
-      type (io_input_object), intent(in) :: input_obj      
-      type (field2dInteger), intent(inout) :: field
- 
-      include 'netcdf.inc'
- 
-      integer :: nferr
-      integer :: varID
-      integer, dimension(2) :: start2, count2
- 
-      start2(1) = field % ioinfo % start(1)
-      start2(2) = field % ioinfo % start(2)
-      count2(1) = field % ioinfo % count(1)
-      count2(2) = field % ioinfo % count(2)
-
-#include "input_field2dinteger.inc"
-
-      nferr = nf_get_vara_int(input_obj % rd_ncid, varID, start2, count2, field % array)
-
-   end subroutine mpas_io_input_field2d_integer
-
-
-   subroutine mpas_io_input_field1d_integer_time(input_obj, field)
- 
-      implicit none
-
-      type (io_input_object), intent(in) :: input_obj      
-      type (field1dInteger), intent(inout) :: field
- 
-      include 'netcdf.inc'
- 
-      integer :: nferr
-      integer :: varID
-      integer, dimension(2) :: start2, count2
- 
-      start2(1) = field % ioinfo % start(1)
-      start2(2) = input_obj % time
-      count2(1) = field % ioinfo % count(1)
-      count2(2) = 1
- 
-#include "input_field1dinteger_time.inc"
-
-      nferr = nf_get_vara_int(input_obj % rd_ncid, varID, start2, count2, field % array)
-
-   end subroutine mpas_io_input_field1d_integer_time
-
-
-   subroutine mpas_io_input_field0d_char_time(input_obj, field)
- 
-      implicit none
-
-      type (io_input_object), intent(in) :: input_obj      
-      type (field0dChar), intent(inout) :: field
- 
-      include 'netcdf.inc'
- 
-      integer :: nferr
-      integer :: varID
-      integer, dimension(2) :: start1, count1
- 
-      start1(1) = 1
-      count1(1) = 64
-      start1(2) = input_obj % time
-      count1(2) = 1
- 
-#include "input_field0dchar_time.inc"
-
-      nferr = nf_get_vara_text(input_obj % rd_ncid, varID, start1, count1, field % scalar)
-
-   end subroutine mpas_io_input_field0d_char_time
-
-
-   subroutine mpas_io_input_field1d_char_time(input_obj, field)
- 
-      implicit none
-
-      type (io_input_object), intent(in) :: input_obj      
-      type (field1dChar), intent(inout) :: field
- 
-      include 'netcdf.inc'
- 
-      integer :: nferr
-      integer :: varID
-      integer, dimension(3) :: start2, count2
- 
-      start2(1) = 1
-      start2(2) = field % ioinfo % start(1)
-      start2(3) = input_obj % time
-      count2(1) = 64
-      count2(2) = field % ioinfo % count(1)
-      count2(3) = 1
- 
-#include "input_field1dchar_time.inc"
-
-      nferr = nf_get_vara_text(input_obj % rd_ncid, varID, start2, count2, field % array)
-
-   end subroutine mpas_io_input_field1d_char_time
-
-
-   subroutine mpas_io_input_field0d_char(input_obj, field)
- 
-      implicit none
-
-      type (io_input_object), intent(in) :: input_obj      
-      type (field0dChar), intent(inout) :: field
- 
-      include 'netcdf.inc'
- 
-      integer :: nferr
-      integer :: varID
-      integer, dimension(2) :: start1, count1
- 
-      start1(1) = 1
-      count1(1) = 64
-      start1(2) = 1
-      count1(2) = 1
-
-#include "input_field0dchar.inc"
-
-      nferr = nf_get_vara_text(input_obj % rd_ncid, varID, start1, count1, field % scalar)
- 
-   end subroutine mpas_io_input_field0d_char
-
-
-   subroutine mpas_io_input_field1d_char(input_obj, field)
- 
-      implicit none
-
-      type (io_input_object), intent(in) :: input_obj      
-      type (field1dChar), intent(inout) :: field
- 
-      include 'netcdf.inc'
- 
-      integer :: nferr
-      integer :: varID
-      integer, dimension(2) :: start1, count1
- 
-      start1(1) = 1
-      count1(1) = 64
-      start1(2) = field % ioinfo % start(1)
-      count1(2) = field % ioinfo % count(1)
-
-      !
-      ! Special case: we may want to read the xtime variable across the
-      !   time dimension as a 1d array.
-      !
-      if (trim(field % ioinfo % fieldName) == 'xtime') then
-         varID = input_obj % rdVarIDxtime
-      end if
- 
-#include "input_field1dchar.inc"
-
-      nferr = nf_get_vara_text(input_obj % rd_ncid, varID, start1, count1, field % array)
- 
-   end subroutine mpas_io_input_field1d_char
+   end subroutine mpas_exch_input_field_halos
 
 
    subroutine mpas_io_input_finalize(input_obj, dminfo)
@@ -1640,11 +1395,9 @@ module mpas_io_input
       type (io_input_object), intent(inout) :: input_obj
       type (dm_info), intent(in) :: dminfo
 
-      include 'netcdf.inc'
- 
       integer :: nferr
  
-      nferr = nf_close(input_obj % rd_ncid)
+      call MPAS_closeStream(input_obj % io_stream, nferr)
  
    end subroutine mpas_io_input_finalize
  

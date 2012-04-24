@@ -163,27 +163,11 @@ module ocn_time_integration_split
          ! ---  update halos for diagnostic variables
 
          call mpas_timer_start("se halo diag", .false., timer_halo_diagnostic)
-         block => domain % blocklist
-         do while (associated(block))
-
-            call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, &
-               block % state % time_levs(2) % state % Vor_edge % array(:,:), &
-               block % mesh % nVertLevels, block % mesh % nEdges, &
-               block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
-
-            if (config_h_mom_eddy_visc4 > 0.0) then
-               call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, &
-                  block % state % time_levs(2) % state % divergence % array(:,:), &
-                  block % mesh % nVertLevels, block % mesh % nCells, &
-                  block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-               call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, &
-                  block % state % time_levs(2) % state % vorticity % array(:,:), &
-                  block % mesh % nVertLevels, block % mesh % nVertices, &
-                  block % parinfo % verticesToSend, block % parinfo % verticesToRecv)
-            end if
-
-            block => block % next
-         end do
+         call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(2) % state % Vor_edge)
+         if (config_h_mom_eddy_visc4 > 0.0) then
+           call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(2) % state % divergence)
+           call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(2) % state % vorticity)
+         end if
          call mpas_timer_stop("se halo diag", timer_halo_diagnostic)
 
          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -272,15 +256,7 @@ module ocn_time_integration_split
             end do
 
             call mpas_timer_start("se halo ubcl", .false., timer_halo_ubcl)
-            block => domain % blocklist
-            do while (associated(block))
-               call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, &
-                  block % state % time_levs(2) % state % uBcl % array(:,:), &
-                  block % mesh % nVertLevels, block % mesh % nEdges, &
-                  block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
- 
-               block => block % next
-            end do
+            call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(2) % state % uBcl)
             call mpas_timer_stop("se halo ubcl", timer_halo_ubcl)
 
          end do  ! do j=1,config_n_bcl_iter
@@ -406,15 +382,7 @@ module ocn_time_integration_split
 
                 !   boundary update on uBtrNew
                 call mpas_timer_start("se halo ubtr", .false., timer_halo_ubtr)
-                block => domain % blocklist
-                do while (associated(block))
-
-                   call mpas_dmpar_exch_halo_field1d_real(domain % dminfo, &
-                       block % state % time_levs(newBtrSubcycleTime) % state % uBtrSubcycle % array(:), &
-                       block % mesh % nEdges, block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
-
-                   block => block % next
-                end do  ! block
+                call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(newBtrSubcycleTime) % state % uBtrSubcycle)
                 call mpas_timer_stop("se halo ubtr", timer_halo_ubtr)
               endif ! config_btr_gam1_uWt1>1.0e-12
 
@@ -473,15 +441,7 @@ module ocn_time_integration_split
       
               !   boundary update on SSHnew
               call mpas_timer_start("se halo ssh", .false., timer_halo_ssh)
-              block => domain % blocklist
-              do while (associated(block))
-      
-                call mpas_dmpar_exch_halo_field1d_real(domain % dminfo, &
-                     block % state % time_levs(newBtrSubcycleTime) % state % sshSubcycle % array(:), &
-                     block % mesh % nCells, block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-      
-                block => block % next
-              end do  ! block
+              call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(newBtrSubcycleTime) % state % sshSubcycle)
               call mpas_timer_stop("se halo ssh", timer_halo_ssh)
       
               !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -524,14 +484,7 @@ module ocn_time_integration_split
       
                 !   boundary update on uBtrNew
                 call mpas_timer_start("se halo ubtr", .false., timer_halo_ubtr)
-                block => domain % blocklist
-                do while (associated(block))
-                   call mpas_dmpar_exch_halo_field1d_real(domain % dminfo, &
-                       block % state % time_levs(newBtrSubcycleTime) % state % uBtrSubcycle % array(:), &
-                       block % mesh % nEdges, block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
-      
-                   block => block % next
-                end do  ! block
+                call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(newBtrSubcycleTime) % state % uBtrSubcycle)
                 call mpas_timer_stop("se halo ubtr", timer_halo_ubtr)
               end do !do BtrCorIter=1,config_n_btr_cor_iter
       
@@ -584,15 +537,8 @@ module ocn_time_integration_split
       
                 !   boundary update on SSHnew
                 call mpas_timer_start("se halo ssh", .false., timer_halo_ssh)
-                block => domain % blocklist
-                do while (associated(block))
-                  call mpas_dmpar_exch_halo_field1d_real(domain % dminfo, &
-                        block % state % time_levs(newBtrSubcycleTime) % state % sshSubcycle % array(:), &
-                        block % mesh % nCells, block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-      
-                     block => block % next
-                  end do  ! block
-                  call mpas_timer_stop("se halo ssh", timer_halo_ssh)
+                call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(newBtrSubcycleTime) % state % sshSubcycle)
+                call mpas_timer_stop("se halo ssh", timer_halo_ssh)
                endif ! config_btr_solve_SSH2
       
                !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -643,14 +589,7 @@ module ocn_time_integration_split
       
             ! boundary update on F
             call mpas_timer_start("se halo F", .false., timer_halo_f)
-            block => domain % blocklist
-            do while (associated(block))
-              call mpas_dmpar_exch_halo_field1d_real(domain % dminfo, &
-                  block % state % time_levs(1) % state % FBtr % array(:), &
-                  block % mesh % nEdges, block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
-      
-              block => block % next
-            end do  ! block
+            call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(1) % state % FBtr)
             call mpas_timer_stop("se halo F", timer_halo_f)
 
 
@@ -744,13 +683,7 @@ module ocn_time_integration_split
 
          ! update halo for thickness and tracer tendencies
          call mpas_timer_start("se halo h", .false., timer_halo_h)
-         block => domain % blocklist
-         do while (associated(block))
-            call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % tend % h % array(:,:), &
-               block % mesh % nVertLevels, block % mesh % nCells, &
-               block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-            block => block % next
-         end do
+         call mpas_dmpar_exch_halo_field(domain % blocklist % tend % h)
          call mpas_timer_stop("se halo h", timer_halo_h)
 
          block => domain % blocklist
@@ -762,13 +695,7 @@ module ocn_time_integration_split
 
          ! update halo for thickness and tracer tendencies
          call mpas_timer_start("se halo tracers", .false., timer_halo_tracers)
-         block => domain % blocklist
-         do while (associated(block))
-            call mpas_dmpar_exch_halo_field3d_real(domain % dminfo, block % tend % tracers % array(:,:,:), &
-               block % tend % num_tracers, block % mesh % nVertLevels, block % mesh % nCells, &
-               block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-            block => block % next
-         end do
+         call mpas_dmpar_exch_halo_field(domain % blocklist % tend % tracers)
          call mpas_timer_stop("se halo tracers", timer_halo_tracers)
 
          block => domain % blocklist

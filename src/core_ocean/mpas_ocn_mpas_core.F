@@ -28,7 +28,7 @@ module mpas_core
 
    use ocn_time_average
 
-   type (io_output_object) :: restart_obj
+   type (io_output_object), save :: restart_obj
 
    integer :: current_outfile_frames
 

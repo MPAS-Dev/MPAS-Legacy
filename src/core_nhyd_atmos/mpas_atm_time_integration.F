@@ -98,6 +98,7 @@ module atm_time_integration
       real (kind=RKIND) :: domain_mass, scalar_mass, scalar_min, scalar_max
       real (kind=RKIND) :: global_domain_mass, global_scalar_mass, global_scalar_min, global_scalar_max
 
+
       !
       ! Initialize RK weights
       !
@@ -122,29 +123,21 @@ module atm_time_integration
 ! the so-called owned edges?
 
 
-      block => domain % blocklist
-      do while (associated(block))
 
 ! WCS-parallel: first three and rtheta_p arise from scalar transport and microphysics update (OK).  Others come from where?
 
 ! theta_m
-         call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % state % time_levs(1) % state % theta_m % array(:,:), &
-                                          block % mesh % nVertLevels, block % mesh % nCells, &
-                                          block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
+      call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(1) % state % theta_m)
+ 
 ! scalars
-         call mpas_dmpar_exch_halo_field3d_real(domain % dminfo, block % state % time_levs(1) % state % scalars % array(:,:,:), &
-                                          block % state % time_levs(1) % state % num_scalars, block % mesh % nVertLevels, block % mesh % nCells, &
-                                          block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
+      call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(1) % state % scalars)
+
 ! pressure_p
-         call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % diag % pressure_p % array(:,:), &
-                                          block % mesh % nVertLevels, block % mesh % nCells, &
-                                          block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
+      call mpas_dmpar_exch_halo_field(domain % blocklist % diag % pressure_p)
+
 ! rtheta_p
-         call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % diag % rtheta_p % array(:,:), &
-                                          block % mesh % nVertLevels, block % mesh % nCells, &
-                                          block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-         block => block % next
-      end do
+      call mpas_dmpar_exch_halo_field(domain % blocklist % diag % rtheta_p)
+
 
       block => domain % blocklist
       do while (associated(block))
@@ -185,9 +178,12 @@ module atm_time_integration
         if (debug) write(0,*) ' add physics tendencies '
         block => domain % blocklist
         do while (associated(block))
-           call physics_addtend( domain % dminfo , block % parinfo % cellsToSend, block % parinfo % cellsToRecv, &
-                        block % mesh , block % state % time_levs(1) % state, block % diag, block % tend, &
-                        block % tend_physics , block % state % time_levs(2) % state % rho_zz % array(:,:), &
+           call physics_addtend( block % mesh, &
+                        block % state % time_levs(1) % state, &
+                        block % diag, &
+                        block % tend, &
+                        block % tend_physics, &
+                        block % state % time_levs(2) % state % rho_zz % array(:,:), &
                         block % diag % rho_edge % array(:,:) )
            block => block % next
         end do
@@ -199,19 +195,13 @@ module atm_time_integration
 !  because we are solving for all edges of owned cells
 !***********************************
 
-         block => domain % blocklist
-         do while (associated(block))
 ! tend_u
-            call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % tend % u % array(:,:), &
-                                             block % mesh % nVertLevels, block % mesh % nEdges, &
-                                             block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
-            block => block % next
-         end do
+         call mpas_dmpar_exch_halo_field(domain % blocklist % tend % u, (/ 1 /))
 
          block => domain % blocklist
             do while (associated(block))
                call atm_set_smlstep_pert_variables( block % state % time_levs(1) % state, block % state % time_levs(2) % state,  &
-                                                block % tend, block % diag, block % mesh                                     )
+                                                block % tend, block % diag, block % mesh )
                call atm_compute_vert_imp_coefs( block % state % time_levs(2) % state, block % mesh, block % diag, rk_sub_timestep(rk_step) )
             block => block % next
          end do
@@ -223,7 +213,7 @@ module atm_time_integration
             block => domain % blocklist
             do while (associated(block))
                call atm_advance_acoustic_step( block % state % time_levs(2) % state, block % diag, block % tend, &
-                                           block % mesh, rk_sub_timestep(rk_step)                            )
+                                           block % mesh, rk_sub_timestep(rk_step) )
                block => block % next
             end do
 
@@ -233,20 +223,12 @@ module atm_time_integration
 
 !  WCS-parallel: is this a candidate for a smaller stencil?  we need only communicate cells that share edges with owned cells.
 
-            block => domain % blocklist
-            do while (associated(block))
 ! rtheta_pp
-               call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % diag % rtheta_pp % array(:,:), &
-                                                block % mesh % nVertLevels, block % mesh % nCells, &
-                                                block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-               block => block % next
-            end do
+            call mpas_dmpar_exch_halo_field(domain % blocklist % diag % rtheta_pp, (/ 1 /))
  
          end do  ! end of small stimestep loop
 
          !  will need communications here for rho_pp
-         block => domain % blocklist
-         do while (associated(block))
 
 ! WCS-parallel: is communication of rw_p and rho_pp because of limiter (pd or mono scheme?),
 !  or is it needed for the large-step variable recovery (to get decoupled variables)?
@@ -258,41 +240,34 @@ module atm_time_integration
 
 ! MGD seems necessary
 ! rw_p
-            call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % diag % rw_p % array(:,:), &
-                                             block % mesh % nVertLevels+1, block % mesh % nCells, &
-                                             block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
+         !CR: SMALLER STENCIL?: call mpas_dmpar_exch_halo_field(block % diag % rw_p, (/ 1 /))
+         call mpas_dmpar_exch_halo_field(domain % blocklist % diag % rw_p)
+
 ! MGD seems necessary
 ! ru_p
-            call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % diag % ru_p % array(:,:), &
-                                             block % mesh % nVertLevels, block % mesh % nEdges, &
-                                             block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
+         !CR: SMALLER STENCIL?: call mpas_dmpar_exch_halo_field(block % diag % ru_p, (/ 2 /))
+         call mpas_dmpar_exch_halo_field(domain % blocklist % diag % ru_p)
+
 ! rho_pp
-            call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % diag % rho_pp % array(:,:), &
-                                             block % mesh % nVertLevels, block % mesh % nCells, &
-                                             block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-            block => block % next
-         end do
+         call mpas_dmpar_exch_halo_field(domain % blocklist % diag % rho_pp)
+
+         ! the second layer of halo cells must be exchanged before calling atm_recover_large_step_variables
+         call mpas_dmpar_exch_halo_field(domain % blocklist % diag % rtheta_pp, (/ 2 /))
+
 
          block => domain % blocklist
          do while (associated(block))
-            call atm_recover_large_step_variables( block % state % time_levs(2) % state,                     &
+            call atm_recover_large_step_variables( block % state % time_levs(2) % state,                 &
                                                block % diag, block % tend, block % mesh,                 &
                                                rk_timestep(rk_step), number_sub_steps(rk_step), rk_step  )
-          
             block => block % next
          end do
 
 !  ************  advection of moist variables here...
 
-         block => domain % blocklist
-         do while (associated(block))
 ! u
-            call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % state % time_levs(2) % state % u % array(:,:), &
-                                             block % mesh % nVertLevels, block % mesh % nEdges, &
-                                             block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
-            block => block % next
-         end do
-
+         !CR: SMALLER STENCIL?: call mpas_dmpar_exch_halo_field(block % state % time_levs(2) % state % u, (/ 3 /))
+         call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(2) % state % u)
 
 
          if (config_scalar_advection) then
@@ -305,16 +280,16 @@ module atm_time_integration
             !       so we keep the advance_scalars routine as well
             !
             if (rk_step < 3 .or. (.not. config_monotonic .and. .not. config_positive_definite)) then
-               call atm_advance_scalars( block % tend,                            &
+               call atm_advance_scalars( block % tend, &
                                      block % state % time_levs(1) % state, block % state % time_levs(2) % state, &
                                      block % diag, &
                                      block % mesh, rk_timestep(rk_step) )
             else
-               call atm_advance_scalars_mono( block % tend,                            &
-                                          block % state % time_levs(1) % state, block % state % time_levs(2) % state, &
-                                          block % diag, &
-                                          block % mesh, rk_timestep(rk_step), rk_step, 3,             &
-                                          domain % dminfo, block % parinfo % cellsToSend, block % parinfo % cellsToRecv )
+               block % domain = domain 
+               call atm_advance_scalars_mono( block % tend, &
+                                              block % state % time_levs(1) % state, block % state % time_levs(2) % state, &
+                                              block % diag, block % mesh, &
+                                              rk_timestep(rk_step), rk_step, 3 )
             end if
             block => block % next
          end do
@@ -354,33 +329,25 @@ module atm_time_integration
 
       ! need communications here to fill out u, w, theta_m, p, and pp, scalars, etc  
       ! so that they are available for next RK step or the first rk substep of the next timestep
-         block => domain % blocklist
-         do while (associated(block))
 
 !MGD seems necessary
 ! w
-            call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % state % time_levs(2) % state % w % array(:,:), &
-                                             block % mesh % nVertLevels+1, block % mesh % nCells, &
-                                             block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
+         call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(2) % state % w)
+
 ! pv_edge
-            call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % diag % pv_edge % array(:,:), &
-                                             block % mesh % nVertLevels, block % mesh % nEdges, &
-                                             block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
+         call mpas_dmpar_exch_halo_field(domain % blocklist % diag % pv_edge)
+
 ! rho_edge
-            call mpas_dmpar_exch_halo_field2d_real(domain % dminfo, block % diag % rho_edge % array(:,:), &
-                                             block % mesh % nVertLevels, block % mesh % nEdges, &
-                                             block % parinfo % edgesToSend, block % parinfo % edgesToRecv)
+         call mpas_dmpar_exch_halo_field(domain % blocklist % diag % rho_edge)
 
 !  ****  this will always be needed - perhaps we can cover this with compute_solve_diagnostics
 
 ! scalars
-            call mpas_dmpar_exch_halo_field3d_real(domain % dminfo, block % state % time_levs(2) % state % scalars % array(:,:,:), &
-                                             block % state % time_levs(2) % state % num_scalars, block % mesh % nVertLevels, block % mesh % nCells, &
-                                             block % parinfo % cellsToSend, block % parinfo % cellsToRecv)
-            block => block % next
-         end do
+         if(rk_step < 3) then
+            call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(2) % state % scalars)
+         end if
 
-      end do ! rk_step loop
+       end do ! rk_step loop
 
 !...  compute full velocity vectors at cell centers:
       block => domain % blocklist
@@ -1434,7 +1401,7 @@ module atm_time_integration
 
 !---------------------------
 
-   subroutine atm_advance_scalars_mono( tend, s_old, s_new, diag, grid, dt, rk_step, rk_order, dminfo, cellsToSend, cellsToRecv)
+   subroutine atm_advance_scalars_mono(tend, s_old, s_new, diag, grid, dt, rk_step, rk_order)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
    !
    ! Input: s - current model state
@@ -1442,23 +1409,20 @@ module atm_time_integration
    !
       implicit none
 
-      type (tend_type), intent(in) :: tend
-      type (state_type), intent(in) :: s_old
-      type (state_type), intent(inout) :: s_new
-      type (diag_type), intent(in) :: diag
-      type (mesh_type), intent(in) :: grid
-      real (kind=RKIND) :: dt
+      type (tend_type),intent(in)     :: tend
+      type (state_type),intent(inout) :: s_old
+      type (state_type),intent(inout) :: s_new
+      type (diag_type),intent(in)     :: diag
+      type (mesh_type),intent(in)     :: grid
+      real (kind=RKIND),intent(in)    :: dt
+      integer, intent(in)             :: rk_step, rk_order
 
-      integer, intent(in) :: rk_step, rk_order
-      type (dm_info), intent(in) :: dminfo
-      type (exchange_list), pointer :: cellsToSend, cellsToRecv
-
-
+      type (block_type), pointer :: block
       integer :: i, iCell, iEdge, k, iScalar, cell1, cell2
       real (kind=RKIND) :: flux, scalar_edge, d2fdx2_cell1, d2fdx2_cell2, scalar_weight
       real (kind=RKIND) :: scalar_weight_cell1, scalar_weight_cell2
 
-      real (kind=RKIND), dimension(:,:,:), pointer :: scalar_old_in, scalar_new_in, scalar_tend
+      real (kind=RKIND), dimension(:,:,:), pointer :: scalar_tend
       real (kind=RKIND), dimension(:,:,:), pointer :: deriv_two
       real (kind=RKIND), dimension(:,:), pointer :: uhAvg, h_old, h_new, wwAvg, rho_edge, rho_zz, zgrid, kdiff
       real (kind=RKIND), dimension(:), pointer :: dvEdge, dcEdge, areaCell, qv_init
@@ -1468,9 +1432,11 @@ module atm_time_integration
       integer, dimension(:), pointer :: nAdvCellsForEdge
       real (kind=RKIND), dimension(:,:), pointer :: adv_coefs, adv_coefs_3rd
 
+      type (field2DReal) :: tempField
+
       real (kind=RKIND), dimension( grid % nVertLevels, grid % nCells ) :: scalar_old, scalar_new
       real (kind=RKIND), dimension( grid % nVertLevels, grid % nCells ) :: s_max, s_min, s_update
-      real (kind=RKIND), dimension( grid % nVertLevels, grid % nCells ) :: scale_in, scale_out
+      real (kind=RKIND), dimension( grid % nVertLevels, grid % nCells ), target :: scale_in, scale_out
 
       real (kind=RKIND), dimension( grid % nVertLevels, grid % nEdges ) :: flux_arr
       real (kind=RKIND), dimension( grid % nVertLevels + 1, grid % nCells ) :: wdtn
@@ -1497,10 +1463,10 @@ module atm_time_integration
                 flux4(q_im2, q_im1, q_i, q_ip1, ua) +           &
                 coef3*abs(ua)*((q_ip1 - q_im2)-3.*(q_i-q_im1))/12.0
 
+      block => grid % block
+
       coef_3rd_order = config_coef_3rd_order
 
-      scalar_old_in  => s_old % scalars % array
-      scalar_new_in  => s_new % scalars % array
       kdiff       => diag % kdiff % array
       deriv_two   => grid % deriv_two % array
       uhAvg       => diag % ruAvg % array
@@ -1545,7 +1511,7 @@ module atm_time_integration
       do iCell = 1,grid%nCellsSolve
       do k = 1, grid%nVertLevels
       do iScalar = 1,s_old%num_scalars
-         scalar_old_in(iScalar,k,iCell) = scalar_old_in(iScalar,k,iCell)+dt*scalar_tend(iScalar,k,iCell) / h_old(k,iCell)
+         s_old % scalars % array(iScalar,k,iCell) = s_old % scalars % array(iScalar,k,iCell)+dt*scalar_tend(iScalar,k,iCell) / h_old(k,iCell)
          scalar_tend(iScalar,k,iCell) = 0.
       end do
       end do
@@ -1553,12 +1519,7 @@ module atm_time_integration
 
       !  halo exchange
 
-      call mpas_dmpar_exch_halo_field3d_real( dminfo,               &
-                                        scalar_old_in(:,:,:), &
-                                        s_old % num_scalars,  &
-                                        grid % nVertLevels,   &
-                                        grid % nCells,        &
-                                        cellsToSend, cellsToRecv )
+      call mpas_dmpar_exch_halo_field(s_old % scalars)
 
       !
       ! Runge Kutta integration, so we compute fluxes from scalar_new values, update starts from scalar_old
@@ -1573,8 +1534,8 @@ module atm_time_integration
 
         do iCell = 1, grid%nCells
         do k=1, grid%nVertLevels
-          scalar_old(k,iCell) = scalar_old_in(iScalar,k,iCell)
-          scalar_new(k,iCell) = scalar_new_in(iScalar,k,iCell)
+          scalar_old(k,iCell) = s_old % scalars % array(iScalar,k,iCell)
+          scalar_new(k,iCell) = s_new % scalars % array(iScalar,k,iCell)
         end do
         end do
 
@@ -1734,16 +1695,22 @@ module atm_time_integration
 !
 !  communicate scale factors here
 !
-      call mpas_dmpar_exch_halo_field2d_real( dminfo,               &
-                                        scale_in(:,:),        &
-                                        grid % nVertLevels,   &
-                                        grid % nCells,        &
-                                        cellsToSend, cellsToRecv )
-      call mpas_dmpar_exch_halo_field2d_real( dminfo,               &
-                                        scale_out(:,:),       &
-                                        grid % nVertLevels,   &
-                                        grid % nCells,        &
-                                        cellsToSend, cellsToRecv )
+!
+!  WCS_halo_opt_2 - communicate only first halo row in these next two exchanges
+!
+
+      tempField % block => block
+      tempField % dimSizes(1) = grid % nVertLevels
+      tempField % dimSizes(2) = grid % nCells
+      tempField % sendList => block % parinfo % cellsToSend
+      tempField % recvList => block % parinfo % cellsToRecv
+
+      tempField % array => scale_in
+      call mpas_dmpar_exch_halo_field(tempField, (/ 1 /))
+
+      tempField % array => scale_out
+      call mpas_dmpar_exch_halo_field(tempField, (/ 1 /))
+
 !
 !  rescale the fluxes
 !
@@ -1814,7 +1781,7 @@ module atm_time_integration
 
           do iCell = 1, grid%nCells
           do k=1, grid%nVertLevels
-            scalar_new_in(iScalar,k,iCell) = max(0.0_RKIND,scalar_new(k,iCell))
+             s_new % scalars % array(iScalar,k,iCell) = max(0.0_RKIND,scalar_new(k,iCell))
           end do
           end do
 

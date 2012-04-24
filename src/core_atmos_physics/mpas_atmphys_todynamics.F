@@ -12,21 +12,17 @@
  contains
  
 !=============================================================================================
- subroutine physics_addtend(dminfo,cellsToSend,cellsToRecv,mesh,state,diag,tend, &
-                            tend_physics,mass,mass_edge)
+subroutine physics_addtend(mesh, state, diag, tend, tend_physics, mass, mass_edge)
 !=============================================================================================
 
 !input variables:
 !----------------
- type(dm_info), intent(in):: dminfo
- type(mesh_type),intent(in):: mesh
- type(exchange_list),pointer:: cellsToSend,cellsToRecv
-
+type(mesh_type),intent(in):: mesh
  type(state_type),intent(in):: state
  type(diag_type),intent(in):: diag
- type(tend_physics_type),intent(in):: tend_physics 
- real(kind=RKIND),dimension(:,:):: mass
- real(kind=RKIND),dimension(:,:):: mass_edge
+ type(tend_physics_type),intent(inout):: tend_physics
+ real(kind=RKIND),dimension(:,:),intent(in):: mass
+ real(kind=RKIND),dimension(:,:),intent(in):: mass_edge
 
 !inout variables:
 !----------------
@@ -34,6 +30,9 @@
 
 !local variables:
 !----------------
+
+ type(block_type),pointer :: block
+
  integer:: i,iCell,k,n,nCells,nCellsSolve,nEdges,nEdgesSolve,nVertLevels
 
  real(kind=RKIND),dimension(:,:),pointer:: theta_m,qv
@@ -56,6 +55,8 @@
 !=============================================================================================
 !write(0,*)
 !write(0,*) '--- enter subroutine physics_add_tend:'
+
+ block => mesh % block
  
  nCells      = mesh % nCells
  nEdges      = mesh % nEdges
@@ -99,7 +100,7 @@
  if(config_pbl_scheme .ne. 'off') then
     allocate(rublten_Edge(nVertLevels,nEdges))
     rublten_Edge(:,:) = 0.
-    call tend_toEdges(dminfo,CellsToSend,CellsToRecv,mesh,rublten,rvblten,rublten_Edge)
+    call tend_toEdges(mesh,rublten,rvblten,rublten_Edge)
     do i = 1, nEdgesSolve
     do k  = 1, nVertLevels
        tend_u(k,i)=tend_u(k,i)+rublten_Edge(k,i)*mass_edge(k,i)
@@ -185,15 +186,12 @@
  end subroutine  physics_addtend
 
 !=============================================================================================
- subroutine tend_toEdges(dminfo,cellsToSend,cellsToRecv,mesh,Ux_tend,Uy_tend,U_tend)
+ subroutine tend_toEdges(mesh,Ux_tend,Uy_tend,U_tend)
 !=============================================================================================
 
 !input arguments:
 !----------------
- type(dm_info),intent(in):: dminfo
  type(mesh_type),intent(in):: mesh
- type(exchange_list),intent(in),pointer:: cellsToSend,cellsToRecv
-
  real(kind=RKIND),intent(in),dimension(:,:):: Ux_tend,Uy_tend 
 
 !output arguments:
@@ -201,16 +199,21 @@
  real(kind=RKIND),intent(out),dimension(:,:):: U_tend
 
 !local variables:
+!-----------------
+ type(block_type),pointer :: block
+ type (field2DReal):: tempField
  integer:: iCell,iEdge,k,j,nCells,nCellsSolve,nVertLevels
  integer,dimension(:),pointer  :: nEdgesOnCell
  integer,dimension(:,:),pointer:: edgesOnCell
 
  real(kind=RKIND),dimension(:,:),pointer:: east,north,edge_normal
- real(kind=RKIND),dimension(:,:),allocatable:: Ux_tend_halo,Uy_tend_halo
+ real(kind=RKIND),dimension(:,:),allocatable,target:: Ux_tend_halo,Uy_tend_halo
  
 !---------------------------------------------------------------------------------------------
 
- nCells = mesh % nCells
+ block => mesh % block
+ 
+ nCells       = mesh % nCells
  nCellsSolve  = mesh % nCellsSolve
  nVertLevels  = mesh % nVertLevels
 
@@ -232,10 +235,17 @@
     enddo
  enddo
 
- call mpas_dmpar_exch_halo_field2d_real( &
-            dminfo,Ux_tend_halo,nVertLevels,nCells,cellsToSend,cellsToRecv)
- call mpas_dmpar_exch_halo_field2d_real( &
-            dminfo,Uy_tend_halo,nVertLevels,nCells,cellsToSend,cellsToRecv)
+ tempField % block => block
+ tempField % dimSizes(1) = nVertLevels
+ tempField % dimSizes(2) = nCellsSolve
+ tempField % sendList => block % parinfo % cellsToSend
+ tempField % recvList => block % parinfo % cellsToRecv
+
+ tempField % array => Ux_tend_halo
+ call mpas_dmpar_exch_halo_field(tempField)
+ 
+ tempField % array => Uy_tend_halo
+ call mpas_dmpar_exch_halo_field(tempField)
 
  U_tend(:,:) = 0.0
  do iCell = 1, nCells
