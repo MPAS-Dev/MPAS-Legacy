@@ -923,8 +923,8 @@ end subroutine ocn_compute_max_level!}}}
          do iEdge=1,mesh%nEdges
             cell1 = mesh % cellsOnEdge % array(1,iEdge)
             cell2 = mesh % cellsOnEdge % array(2,iEdge)
-            meshScalingDel2(iEdge) = 1.0 / ( (meshDensity(cell1) + meshDensity(cell2) )/2.0)**(5.0/12.0)
-            meshScalingDel4(iEdge) = 1.0 / ( (meshDensity(cell1) + meshDensity(cell2) )/2.0)**(5.0/6.0)
+            meshScalingDel2(iEdge) = 1.0 / ( (meshDensity(cell1) + meshDensity(cell2) )/2.0)**(3.0/4.0)  ! goes as dc**3
+            meshScalingDel4(iEdge) = 1.0 / ( (meshDensity(cell1) + meshDensity(cell2) )/2.0)**(3.0/4.0)  ! goes as dc**3
          end do
       end if
 
