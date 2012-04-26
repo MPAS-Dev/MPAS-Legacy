@@ -59,8 +59,8 @@
  integer,intent(in):: julday
 
 !local variables:
- character(len=35) :: lutype
- character(len=128):: mess
+ character(len=StrKIND) :: lutype
+ character(len=StrKIND):: mess
 
  integer,parameter:: land_unit = 15
  integer,parameter:: open_ok   = 0

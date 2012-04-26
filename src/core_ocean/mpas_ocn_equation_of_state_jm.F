@@ -14,6 +14,7 @@
 
 module ocn_equation_of_state_jm
 
+   use mpas_kind_types
    use mpas_grid_types
    use mpas_configure
 
@@ -85,7 +86,7 @@ contains
 
       type (mesh_type), intent(in) :: grid
       integer :: k_displaced, indexT, indexS
-      character(len=8), intent(in) :: displacement_type
+      character(len=StrKIND), intent(in) :: displacement_type
       integer, intent(out) :: err
 
       type (dm_info) :: dminfo

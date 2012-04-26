@@ -135,8 +135,8 @@ contains
       integer :: io_err
       integer :: i
       integer :: timeDim
-      character (len=64), dimension(:), pointer :: xtimes
-      character (len=32) :: strTemp
+      character (len=StrKIND), dimension(:), pointer :: xtimes
+      character (len=StrKIND) :: strTemp
       type (MPAS_Time_type) :: sliceTime, startTime
       type (MPAS_TimeInterval_type) :: timeDiff, minTimeDiff
 
@@ -256,7 +256,7 @@ contains
       logical :: isDecomposed
       integer :: ndims
       type (field0dInteger), pointer :: field_ptr
-      character (len=64), dimension(:), pointer :: dimNames
+      character (len=StrKIND), dimension(:), pointer :: dimNames
       integer, dimension(:), pointer :: indices
       integer, dimension(:), pointer :: dimSizes
       type (field_list_type), pointer :: field_list_cursor
@@ -334,9 +334,9 @@ contains
       logical :: isDecomposed
       integer :: ndims
       type (field1dInteger), pointer :: field_ptr
-      character (len=64), dimension(5) :: dimNames
-      character (len=64), dimension(:), pointer :: dimNamesInq
-      character (len=64), dimension(0) :: dimNames0
+      character (len=StrKIND), dimension(5) :: dimNames
+      character (len=StrKIND), dimension(:), pointer :: dimNamesInq
+      character (len=StrKIND), dimension(0) :: dimNames0
       integer, dimension(0) :: dimSizes0
       integer, dimension(:), pointer :: indices
       type (field_list_type), pointer :: field_list_cursor
@@ -435,8 +435,8 @@ contains
       logical :: isDecomposed
       integer :: ndims
       type (field2dInteger), pointer :: field_ptr
-      character (len=64), dimension(5) :: dimNames
-      character (len=64), dimension(:), pointer :: dimNamesInq
+      character (len=StrKIND), dimension(5) :: dimNames
+      character (len=StrKIND), dimension(:), pointer :: dimNamesInq
       integer, dimension(:), pointer :: indices
       type (field_list_type), pointer :: field_list_cursor
       type (field_list_type), pointer :: new_field_list_node
@@ -534,8 +534,8 @@ contains
       logical :: isDecomposed
       integer :: ndims
       type (field3dInteger), pointer :: field_ptr
-      character (len=64), dimension(5) :: dimNames
-      character (len=64), dimension(:), pointer :: dimNamesInq
+      character (len=StrKIND), dimension(5) :: dimNames
+      character (len=StrKIND), dimension(:), pointer :: dimNamesInq
       integer, dimension(:), pointer :: indices
       type (field_list_type), pointer :: field_list_cursor
       type (field_list_type), pointer :: new_field_list_node
@@ -632,7 +632,7 @@ contains
       logical :: isDecomposed
       integer :: ndims
       type (field0dReal), pointer :: field_ptr
-      character (len=64), dimension(:), pointer :: dimNames
+      character (len=StrKIND), dimension(:), pointer :: dimNames
       integer, dimension(:), pointer :: indices
       integer, dimension(:), pointer :: dimSizes
       type (field_list_type), pointer :: field_list_cursor
@@ -710,9 +710,9 @@ contains
       logical :: isDecomposed
       integer :: ndims
       type (field1dReal), pointer :: field_ptr
-      character (len=64), dimension(5) :: dimNames
-      character (len=64), dimension(:), pointer :: dimNamesInq
-      character (len=64), dimension(0) :: dimNames0
+      character (len=StrKIND), dimension(5) :: dimNames
+      character (len=StrKIND), dimension(:), pointer :: dimNamesInq
+      character (len=StrKIND), dimension(0) :: dimNames0
       integer, dimension(0) :: dimSizes0
       integer, dimension(:), pointer :: indices
       type (field_list_type), pointer :: field_list_cursor
@@ -811,8 +811,8 @@ contains
       logical :: isDecomposed
       integer :: ndims
       type (field2dReal), pointer :: field_ptr
-      character (len=64), dimension(5) :: dimNames
-      character (len=64), dimension(:), pointer :: dimNamesInq
+      character (len=StrKIND), dimension(5) :: dimNames
+      character (len=StrKIND), dimension(:), pointer :: dimNamesInq
       integer, dimension(:), pointer :: indices
       type (field_list_type), pointer :: field_list_cursor
       type (field_list_type), pointer :: new_field_list_node
@@ -910,8 +910,8 @@ contains
       logical :: isDecomposed
       integer :: ndims
       type (field3dReal), pointer :: field_ptr
-      character (len=64), dimension(5) :: dimNames
-      character (len=64), dimension(:), pointer :: dimNamesInq
+      character (len=StrKIND), dimension(5) :: dimNames
+      character (len=StrKIND), dimension(:), pointer :: dimNamesInq
       integer, dimension(:), pointer :: indices
       type (field_list_type), pointer :: field_list_cursor
       type (field_list_type), pointer :: new_field_list_node
@@ -1011,8 +1011,8 @@ contains
       logical :: isDecomposed
       integer :: ndims
       type (field0dChar), pointer :: field_ptr
-      character (len=64), dimension(5) :: dimNames
-      character (len=64), dimension(:), pointer :: dimNamesInq
+      character (len=StrKIND), dimension(5) :: dimNames
+      character (len=StrKIND), dimension(:), pointer :: dimNamesInq
       integer, dimension(:), pointer :: dimSizes
       integer, dimension(:), pointer :: indices
       type (field_list_type), pointer :: field_list_cursor
@@ -1098,7 +1098,7 @@ contains
       type (MPAS_Stream_type), intent(inout) :: stream
       character (len=*), intent(in) :: fieldName
       integer, intent(in) :: fieldType
-      character (len=64), dimension(:), intent(in) :: dimNames
+      character (len=StrKIND), dimension(:), intent(in) :: dimNames
       integer, dimension(:), intent(in) :: dimSizes
       logical, intent(in) :: hasTimeDimension
       logical, intent(in) :: isDecomposed
@@ -1112,8 +1112,8 @@ contains
       integer :: idim
       integer :: ndims
       integer :: dimTemp
-      character (len=64), dimension(5) :: dimNamesLocal
-      character (len=64), dimension(:), pointer :: dimNamesInq
+      character (len=StrKIND), dimension(5) :: dimNamesLocal
+      character (len=StrKIND), dimension(:), pointer :: dimNamesInq
       integer, dimension(:), pointer :: dimSizesInq
       type (field_list_type), pointer :: field_list_cursor
       type (field_list_type), pointer :: new_field_list_node

@@ -3,6 +3,7 @@
 !=============================================================================================
  module mpas_atmphys_camrad_init
  use mpas_dmpar
+ use mpas_kind_types
  use mpas_grid_types
  
  use mpas_atmphys_constants,only: cp,degrad,ep_2,g,R_d,R_v,stbolt
@@ -236,7 +237,7 @@
  integer:: ln_eh2owid            ! var. id for line trans. for wndw ems.
    
 !character*(NF_MAX_NAME) tmpname! dummy variable for var/dim names
- character(len=256):: locfn      ! local filename
+ character(len=StrKIND):: locfn      ! local filename
  integer:: tmptype                 ! dummy variable for variable type
  integer:: ndims                   ! number of dimensions
 !integer dims(NF_MAX_VAR_DIMS)   ! vector of dimension ids
@@ -251,7 +252,7 @@
 
  integer:: i,istat,cam_abs_unit
  logical:: opened
- character(len=80):: errmess
+ character(len=StrKIND):: errmess
 
  integer:: i_te,i_rh
 
@@ -503,7 +504,7 @@
 
  integer:: i,istat,cam_aer_unit
  logical:: opened
- character(len=80):: errmess
+ character(len=StrKIND):: errmess
  
 !---------------------------------------------------------------------------------------------
 

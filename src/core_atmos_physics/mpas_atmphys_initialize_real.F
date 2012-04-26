@@ -32,7 +32,7 @@
  type(fg_type),intent(inout):: fg 
 
 !local variables:
- character(len=32):: timeString
+ character(len=StrKIND):: timeString
  integer:: i,j,iCell,istatus
  integer,dimension(5) :: interp_list
 
@@ -155,7 +155,7 @@
  type(fg_type),intent(inout):: fg 
 
 !local variables:
- character(len=24):: initial_date
+ character(len=StrKIND):: initial_date
 
  integer:: iCell,nCellsSolve
  integer,dimension(:),pointer:: landmask
@@ -585,7 +585,7 @@
  type(fg_type),intent(inout):: fg 
 
 !local variables:
- character(len=128):: mess
+ character(len=StrKIND):: mess
  integer:: iCell,iSoil,nCellsSolve,nSoilLevels
  integer:: num_seaice_changes
  integer,dimension(:),pointer:: landmask,isltyp,ivgtyp

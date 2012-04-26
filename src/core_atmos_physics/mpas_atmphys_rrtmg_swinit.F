@@ -5,6 +5,7 @@
 !=============================================================================================
  module mpas_atmphys_rrtmg_swinit
  use mpas_dmpar
+ use mpas_kind_types
  use mpas_grid_types
  use mpas_atmphys_constants
  use mpas_atmphys_utilities
@@ -45,7 +46,7 @@
 !local variables:
  integer:: i,istat,rrtmg_unit
  logical:: opened
- character(len=80):: errmess
+ character(len=StrKIND):: errmess
 !---------------------------------------------------------------------------------------------
 
 !get a unit to open init file:
@@ -129,7 +130,7 @@
       integer,intent(in):: rrtmg_unit
 
 !local variables:                                    
-      character(len=80):: errmess
+      character(len=StrKIND):: errmess
       integer:: istat
 
 !     Array sfluxrefo contains the Kurucz solar source function for this band. 
@@ -211,7 +212,7 @@
       integer,intent(in):: rrtmg_unit
 
 !local variables:                                    
-      character(len=80):: errmess
+      character(len=StrKIND):: errmess
       integer:: istat
 
 !     Array sfluxrefo contains the Kurucz solar source function for this band. 
@@ -294,7 +295,7 @@
       integer,intent(in):: rrtmg_unit
 
 !local variables:                                    
-      character(len=80):: errmess
+      character(len=StrKIND):: errmess
       integer:: istat
 
 !     Array sfluxrefo contains the Kurucz solar source function for this band. 
@@ -376,7 +377,7 @@
       integer,intent(in):: rrtmg_unit
 
 !local variables:                                    
-      character(len=80):: errmess
+      character(len=StrKIND):: errmess
       integer:: istat
 
 !     Array sfluxrefo contains the Kurucz solar source function for this band. 
@@ -458,7 +459,7 @@
       integer,intent(in):: rrtmg_unit
 
 !local variables:                                    
-      character(len=80):: errmess
+      character(len=StrKIND):: errmess
       integer:: istat
 
 !     Array sfluxrefo contains the Kurucz solar source function for this band. 
@@ -542,7 +543,7 @@
       integer,intent(in):: rrtmg_unit
 
 !local variables:                                    
-      character(len=80):: errmess
+      character(len=StrKIND):: errmess
       integer:: istat
 
 !     Array sfluxrefo contains the Kurucz solar source function for this band. 
@@ -624,7 +625,7 @@
       integer,intent(in):: rrtmg_unit
 
 !local variables:                                    
-      character(len=80):: errmess
+      character(len=StrKIND):: errmess
       integer:: istat
 
 !     Array sfluxrefo contains the Kurucz solar source function for this band. 
@@ -706,7 +707,7 @@
       integer,intent(in):: rrtmg_unit
 
 !local variables:                                    
-      character(len=80):: errmess
+      character(len=StrKIND):: errmess
       integer:: istat
 
 !     Array sfluxrefo contains the Kurucz solar source function for this band. 
@@ -777,7 +778,7 @@
       integer,intent(in):: rrtmg_unit
 
 !local variables:                                    
-      character(len=80):: errmess
+      character(len=StrKIND):: errmess
       integer:: istat
 
 !     Array sfluxrefo contains the Kurucz solar source function for this band. 
@@ -867,7 +868,7 @@
       integer,intent(in):: rrtmg_unit
 
 !local variables:                                    
-      character(len=80):: errmess
+      character(len=StrKIND):: errmess
       integer:: istat
 
 !     Array sfluxrefo contains the Kurucz solar source function for this band. 
@@ -925,7 +926,7 @@
       integer,intent(in):: rrtmg_unit
 
 !local variables:                                    
-      character(len=80):: errmess
+      character(len=StrKIND):: errmess
       integer:: istat
 
 !     Array sfluxrefo contains the Kurucz solar source function for this band. 
@@ -961,7 +962,7 @@
       integer,intent(in):: rrtmg_unit
 
 !local variables:                                    
-      character(len=80):: errmess
+      character(len=StrKIND):: errmess
       integer:: istat
 
 !     Array sfluxrefo contains the Kurucz solar source function for this band. 
@@ -1034,7 +1035,7 @@
       integer,intent(in):: rrtmg_unit
 
 !local variables:                                    
-      character(len=80):: errmess
+      character(len=StrKIND):: errmess
       integer:: istat
 
 !     Array sfluxrefo contains the Kurucz solar source function for this band. 
@@ -1102,7 +1103,7 @@
       integer,intent(in):: rrtmg_unit
 
 !local variables:                                    
-      character(len=80):: errmess
+      character(len=StrKIND):: errmess
       integer:: istat
 
 !     Array sfluxrefo contains the Kurucz solar source function for this band. 

@@ -52,7 +52,7 @@ module mpas_io
       logical :: initialized = .false.
       logical :: data_mode = .false.
       type (file_desc_t) :: pio_file
-      character (len=1024) :: filename
+      character (len=StrKIND) :: filename
       integer :: iomode
       integer :: ioformat
       integer :: pio_unlimited_dimid
@@ -127,24 +127,24 @@ module mpas_io
    end type decomphandle_type
 
    type atthandle_type
-      character (len=1024) :: attName
+      character (len=StrKIND) :: attName
       integer :: attType
       integer :: attValueInt
       integer, dimension(:), pointer :: attValueIntA => null()
       real (kind=RKIND) :: attValueReal
       real (kind=RKIND), dimension(:), pointer :: attValueRealA => null()
-      character (len=1024) :: attValueText
+      character (len=StrKIND) :: attValueText
    end type atthandle_type
 
    type dimhandle_type
-      character (len=1024) :: dimname
+      character (len=StrKIND) :: dimname
       logical :: is_unlimited_dim = .false.
       integer :: dimsize
       integer :: dimid
    end type dimhandle_type
 
    type fieldhandle_type
-      character (len=1024) :: fieldname
+      character (len=StrKIND) :: fieldname
       integer :: fieldid
       type (Var_desc_t) :: field_desc
       integer :: field_type
@@ -496,7 +496,7 @@ module mpas_io
       character (len=*), intent(in) :: fieldname
       integer, intent(out), optional :: fieldtype
       integer, intent(out), optional :: ndims
-      character (len=64), dimension(:), pointer, optional :: dimnames
+      character (len=StrKIND), dimension(:), pointer, optional :: dimnames
       integer, dimension(:), pointer, optional :: dimsizes
       integer, intent(out), optional :: ierr
 
@@ -714,7 +714,7 @@ module mpas_io
       type (MPAS_IO_Handle_type), intent(inout) :: handle
       character (len=*), intent(in) :: fieldname
       integer, intent(in) :: fieldtype
-      character (len=64), dimension(:), intent(in) :: dimnames
+      character (len=StrKIND), dimension(:), intent(in) :: dimnames
       integer, intent(out), optional :: ierr
 
       integer :: i
@@ -1163,7 +1163,7 @@ module mpas_io
       integer, dimension(1) :: count1
       integer, dimension(2) :: start2
       integer, dimension(2) :: count2
-      character (len=1024), dimension(1) :: tempchar
+      character (len=StrKIND), dimension(1) :: tempchar
       type (fieldlist_type), pointer :: field_cursor
 
       ! Sanity checks

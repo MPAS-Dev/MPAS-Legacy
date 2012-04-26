@@ -2,6 +2,7 @@ module mpas_subdriver
 
    use mpas_framework
    use mpas_core
+   use mpas_kind_types
 
    type (dm_info), pointer :: dminfo
    type (domain_type), pointer :: domain
@@ -17,7 +18,7 @@ module mpas_subdriver
       implicit none
 
       real (kind=RKIND) :: dt
-      character(len=32) :: timeStamp
+      character(len=StrKIND) :: timeStamp
 
       !
       ! Initialize infrastructure

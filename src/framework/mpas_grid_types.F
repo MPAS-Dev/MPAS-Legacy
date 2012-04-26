@@ -9,9 +9,9 @@ module mpas_grid_types
 
    ! Derived type describing info for doing I/O specific to a field
    type io_info
-      character (len=1024) :: fieldName
-      character (len=1024) :: units
-      character (len=1024) :: description
+      character (len=StrKIND) :: fieldName
+      character (len=StrKIND) :: units
+      character (len=StrKIND) :: description
       integer, dimension(4) :: start
       integer, dimension(4) :: count
       logical :: input
@@ -32,9 +32,9 @@ module mpas_grid_types
 
       ! Information used by the I/O layer
       type (io_info), pointer :: ioinfo       ! to be removed later
-      character (len=64) :: fieldName
-      character (len=64), dimension(:), pointer :: constituentNames => null()
-      character (len=64), dimension(3) :: dimNames
+      character (len=StrKIND) :: fieldName
+      character (len=StrKIND), dimension(:), pointer :: constituentNames => null()
+      character (len=StrKIND), dimension(3) :: dimNames
       integer, dimension(3) :: dimSizes
       logical :: hasTimeDimension
       logical :: isSuperArray
@@ -61,9 +61,9 @@ module mpas_grid_types
 
       ! Information used by the I/O layer
       type (io_info), pointer :: ioinfo       ! to be removed later
-      character (len=64) :: fieldName
-      character (len=64), dimension(:), pointer :: constituentNames => null()
-      character (len=64), dimension(2) :: dimNames
+      character (len=StrKIND) :: fieldName
+      character (len=StrKIND), dimension(:), pointer :: constituentNames => null()
+      character (len=StrKIND), dimension(2) :: dimNames
       integer, dimension(2) :: dimSizes
       logical :: hasTimeDimension
       logical :: isSuperArray
@@ -90,9 +90,9 @@ module mpas_grid_types
 
       ! Information used by the I/O layer
       type (io_info), pointer :: ioinfo       ! to be removed later
-      character (len=64) :: fieldName
-      character (len=64), dimension(:), pointer :: constituentNames => null()
-      character (len=64), dimension(1) :: dimNames
+      character (len=StrKIND) :: fieldName
+      character (len=StrKIND), dimension(:), pointer :: constituentNames => null()
+      character (len=StrKIND), dimension(1) :: dimNames
       integer, dimension(1) :: dimSizes
       logical :: hasTimeDimension
       logical :: isSuperArray
@@ -119,8 +119,8 @@ module mpas_grid_types
 
       ! Information used by the I/O layer
       type (io_info), pointer :: ioinfo       ! to be removed later
-      character (len=64) :: fieldName
-      character (len=64), dimension(:), pointer :: constituentNames => null()
+      character (len=StrKIND) :: fieldName
+      character (len=StrKIND), dimension(:), pointer :: constituentNames => null()
       logical :: hasTimeDimension
       logical :: isSuperArray
       type (att_list_type), pointer :: attList => null()     
@@ -146,9 +146,9 @@ module mpas_grid_types
 
       ! Information used by the I/O layer
       type (io_info), pointer :: ioinfo       ! to be removed later
-      character (len=64) :: fieldName
-      character (len=64), dimension(:), pointer :: constituentNames => null()
-      character (len=64), dimension(3) :: dimNames
+      character (len=StrKIND) :: fieldName
+      character (len=StrKIND), dimension(:), pointer :: constituentNames => null()
+      character (len=StrKIND), dimension(3) :: dimNames
       integer, dimension(3) :: dimSizes
       logical :: hasTimeDimension
       logical :: isSuperArray
@@ -175,9 +175,9 @@ module mpas_grid_types
 
       ! Information used by the I/O layer
       type (io_info), pointer :: ioinfo       ! to be removed later
-      character (len=64) :: fieldName
-      character (len=64), dimension(:), pointer :: constituentNames => null()
-      character (len=64), dimension(2) :: dimNames
+      character (len=StrKIND) :: fieldName
+      character (len=StrKIND), dimension(:), pointer :: constituentNames => null()
+      character (len=StrKIND), dimension(2) :: dimNames
       integer, dimension(2) :: dimSizes
       logical :: hasTimeDimension
       logical :: isSuperArray
@@ -204,9 +204,9 @@ module mpas_grid_types
 
       ! Information used by the I/O layer
       type (io_info), pointer :: ioinfo       ! to be removed later
-      character (len=64) :: fieldName
-      character (len=64), dimension(:), pointer :: constituentNames => null()
-      character (len=64), dimension(1) :: dimNames
+      character (len=StrKIND) :: fieldName
+      character (len=StrKIND), dimension(:), pointer :: constituentNames => null()
+      character (len=StrKIND), dimension(1) :: dimNames
       integer, dimension(1) :: dimSizes
       logical :: hasTimeDimension
       logical :: isSuperArray
@@ -233,8 +233,8 @@ module mpas_grid_types
 
       ! Information used by the I/O layer
       type (io_info), pointer :: ioinfo       ! to be removed later
-      character (len=64) :: fieldName
-      character (len=64), dimension(:), pointer :: constituentNames => null()
+      character (len=StrKIND) :: fieldName
+      character (len=StrKIND), dimension(:), pointer :: constituentNames => null()
       logical :: hasTimeDimension
       logical :: isSuperArray
       type (att_list_type), pointer :: attList => null()     
@@ -256,13 +256,13 @@ module mpas_grid_types
       type (block_type), pointer :: block
 
       ! Raw array holding field data on this block
-      character (len=64), dimension(:), pointer :: array
+      character (len=StrKIND), dimension(:), pointer :: array
 
       ! Information used by the I/O layer
       type (io_info), pointer :: ioinfo       ! to be removed later
-      character (len=64) :: fieldName
-      character (len=64), dimension(:), pointer :: constituentNames => null()
-      character (len=64), dimension(1) :: dimNames
+      character (len=StrKIND) :: fieldName
+      character (len=StrKIND), dimension(:), pointer :: constituentNames => null()
+      character (len=StrKIND), dimension(1) :: dimNames
       integer, dimension(1) :: dimSizes
       logical :: hasTimeDimension
       logical :: isSuperArray
@@ -285,12 +285,12 @@ module mpas_grid_types
       type (block_type), pointer :: block
 
       ! Raw array holding field data on this block
-      character (len=64) :: scalar
+      character (len=StrKIND) :: scalar
 
       ! Information used by the I/O layer
       type (io_info), pointer :: ioinfo       ! to be removed later
-      character (len=64) :: fieldName
-      character (len=64), dimension(:), pointer :: constituentNames => null()
+      character (len=StrKIND) :: fieldName
+      character (len=StrKIND), dimension(:), pointer :: constituentNames => null()
       logical :: hasTimeDimension
       logical :: isSuperArray
       type (att_list_type), pointer :: attList => null()     

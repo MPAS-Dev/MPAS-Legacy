@@ -16,7 +16,7 @@
 !#endif
 
         type timer_node
-          character (len=72) :: timer_name
+          character (len=StrKIND) :: timer_name
           logical :: running, printable
           integer :: levels, calls
           real (kind=RKIND) :: start_time, end_time, total_time
@@ -230,7 +230,7 @@
         recursive subroutine mpas_timer_write(timer_ptr, total_ptr)!{{{
           type (timer_node), pointer, optional :: timer_ptr
           type (timer_node), pointer, optional :: total_ptr
-          character (len=10) :: tname
+          character (len=StrKIND) :: tname
 
           logical :: total_found, string_equals
           type (timer_node), pointer :: current, total

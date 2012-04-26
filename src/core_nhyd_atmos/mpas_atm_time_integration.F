@@ -1,6 +1,7 @@
 module atm_time_integration
 
    use mpas_grid_types
+   use mpas_kind_types
    use mpas_configure
    use mpas_constants
    use mpas_dmpar
@@ -38,7 +39,7 @@ module atm_time_integration
       type (block_type), pointer :: block
       type (MPAS_Time_type) :: currTime
       type (MPAS_TimeInterval_type) :: dtInterval
-      character (len=32) :: xtime
+      character (len=StrKIND) :: xtime
 
       if (trim(config_time_integration) == 'SRK3') then
          call atm_srk3(domain, dt, itimestep)

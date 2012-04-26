@@ -68,7 +68,7 @@ void gen_namelists(struct namelist * nls)
       if (nls_ptr->vtype == INTEGER)   fortprintf(fd, "   integer :: %s\n",nls_ptr->name);
       if (nls_ptr->vtype == REAL)      fortprintf(fd, "   real (KIND=RKIND) :: %s\n",nls_ptr->name);
       if (nls_ptr->vtype == LOGICAL)   fortprintf(fd, "   logical :: %s\n",nls_ptr->name);
-      if (nls_ptr->vtype == CHARACTER) fortprintf(fd, "   character (len=32) :: %s\n",nls_ptr->name);
+      if (nls_ptr->vtype == CHARACTER) fortprintf(fd, "   character (len=StrKIND) :: %s\n",nls_ptr->name);
 
       nls_ptr = nls_ptr->next;
    }

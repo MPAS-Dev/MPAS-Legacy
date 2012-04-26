@@ -1,5 +1,6 @@
 module init_atm_test_cases
 
+   use mpas_kind_types
    use mpas_grid_types
    use mpas_configure
    use mpas_constants
@@ -2244,7 +2245,7 @@ module init_atm_test_cases
       real (kind=RKIND), allocatable, dimension(:,:,:) :: vegfra
       integer, dimension(:), pointer :: mask_array
       integer, dimension(grid % nEdges), target :: edge_mask
-      character (len=1024) :: fname
+      character (len=StrKIND) :: fname
 
       real (kind=RKIND) :: u, flux, fluxk, lat1, lat2, eta_v, r_pert, u_pert, lat_pert, lon_pert, r
       real (kind=RKIND) :: lat, lon, x, y
@@ -4335,7 +4336,7 @@ write(0,*) 'PROCESSING SEAICE'
       type (MPAS_Clock_type) :: fg_clock
       type (MPAS_Time_type) :: start_time, stop_time, curr_time
       type (MPAS_TimeInterval_type) :: fg_interval
-      character (len=32) :: timeString
+      character (len=StrKIND) :: timeString
 
 
       ! Set interpolation sequence to be used for SST/SKINTEMP field

@@ -6,6 +6,8 @@ module mpas_kind_types
    integer, parameter :: RKIND  = selected_real_kind(12)
 #endif
 
+   integer, parameter :: StrKIND = 512
+
    contains
 
    subroutine dummy_kinds()

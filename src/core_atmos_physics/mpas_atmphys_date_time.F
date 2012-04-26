@@ -9,7 +9,7 @@
           monthly_interp_to_date, &
           monthly_min_max
 
- character(len=24),public:: current_date
+ character(len=StrKIND),public:: current_date
 
  contains
 
@@ -18,7 +18,7 @@
 !=============================================================================================
 
 !input arguments:
- character(len=24),intent(in):: date_str
+ character(len=StrKIND),intent(in):: date_str
 
 !output arguments:
  integer,intent(out):: julyr
@@ -54,7 +54,7 @@
 !=============================================================================================
    
 !input arguments:
- character(len=24),intent(in):: date
+ character(len=StrKIND),intent(in):: date
 
 !output arguments:
  integer,intent(out):: century_year,month,day,hour,minute,second,ten_thousandth
@@ -76,7 +76,7 @@
 !=============================================================================================
 
 !input arguments:
- character(len=24),intent(in):: date_str
+ character(len=StrKIND),intent(in):: date_str
  integer,intent(in):: npoints
  real(kind=RKIND),intent(in) ,dimension(12,npoints):: field_in
 
@@ -84,8 +84,8 @@
  real(kind=RKIND),intent(out),dimension(npoints):: field_out
 
 !local variables:
- character(len=2):: day15,mon
- character(len=4):: yr
+ character(len=StrKIND):: day15,mon
+ character(len=StrKIND):: yr
 
  integer:: l,n
  integer:: julyr,julday,int_month,month1,month2

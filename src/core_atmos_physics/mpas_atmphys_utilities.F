@@ -1,12 +1,13 @@
 !=============================================================================================
  module mpas_atmphys_utilities
 
+ use mpas_kind_types
  implicit none
  private
  public:: physics_error_fatal, &
           physics_message
 
- character(len=256),public:: mpas_err_message
+ character(len=StrKIND),public:: mpas_err_message
 
  contains
 

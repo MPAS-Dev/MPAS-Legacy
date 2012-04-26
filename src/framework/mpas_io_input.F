@@ -16,7 +16,7 @@ module mpas_io_input
    integer, parameter :: STREAM_INPUT=1, STREAM_SFC=2, STREAM_RESTART=3
 
    type io_input_object
-      character (len=1024) :: filename
+      character (len=StrKIND) :: filename
       integer :: rd_ncid
       integer :: stream
 
@@ -51,7 +51,7 @@ module mpas_io_input
       type (io_input_object) :: input_obj
 #include "dim_decls.inc"
 
-      character (len=16) :: c_on_a_sphere
+      character (len=StrKIND) :: c_on_a_sphere
       real (kind=RKIND) :: r_sphere_radius
 
       integer :: ierr
@@ -116,8 +116,8 @@ module mpas_io_input
       type (MPAS_Time_type) :: sliceTime
       type (MPAS_TimeInterval_type) :: timeDiff
       type (MPAS_TimeInterval_type) :: minTimeDiff
-      character(len=32) :: timeStamp
-      character(len=1024) :: filename
+      character(len=StrKIND) :: timeStamp
+      character(len=StrKIND) :: filename
 
       integer, parameter :: nHalos = 2
       integer, dimension(nHalos+1) :: nCellsCumulative    ! own cells, halo 1 cells, halo 2 cells
@@ -960,7 +960,7 @@ module mpas_io_input
             call mpas_dmpar_abort(domain % dminfo)
          end if
 write(0,*) 'MGD DEBUGGING time = ', input_obj % time
-         write(0,*) 'Restarting model from time ', timeStamp
+         write(0,*) 'Restarting model from time ', trim(timeStamp)
 
       end if
 

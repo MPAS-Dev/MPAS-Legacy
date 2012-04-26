@@ -519,7 +519,7 @@ module mpas_timekeeping
 
       type (MPAS_TimeInterval_type) :: alarmTimeInterval
       type (MPAS_Time_type) :: alarmTime
-      character (len=32) :: printString
+      character (len=StrKIND) :: printString
 
       ierr = 0
 
@@ -809,11 +809,11 @@ module mpas_timekeeping
       integer :: year, month, day, hour, min, sec
       integer :: numerator, denominator, denominatorPower
 
-      character (len=50) :: dateTimeString_
-      character (len=50) :: dateSubString
-      character (len=50) :: timeSubString
-      character (len=50) :: secDecSubString
-      character(len=50), pointer, dimension(:) :: subStrings
+      character (len=StrKIND) :: dateTimeString_
+      character (len=StrKIND) :: dateSubString
+      character (len=StrKIND) :: timeSubString
+      character (len=StrKIND) :: secDecSubString
+      character(len=StrKIND), pointer, dimension(:) :: subStrings
 
       if (present(dateTimeString)) then
 
@@ -958,7 +958,7 @@ module mpas_timekeeping
       integer, intent(out), optional :: S
       integer, intent(out), optional :: S_n
       integer, intent(out), optional :: S_d
-      character (len=32), intent(out), optional :: dateTimeString
+      character (len=StrKIND), intent(out), optional :: dateTimeString
       integer, intent(out), optional :: ierr
 
       call ESMF_TimeGet(curr_time % t, YY=YYYY, MM=MM, DD=DD, H=H, M=M, S=S, Sn=S_n, Sd=S_d, rc=ierr)
@@ -992,11 +992,11 @@ module mpas_timekeeping
       type (MPAS_TimeInterval_type) :: zeroInterval
 
       integer :: day, hour, min, sec
-      character (len=50) :: timeString_
-      character (len=50) :: daySubString
-      character (len=50) :: timeSubString
-      character (len=50) :: secDecSubString
-      character(len=50), pointer, dimension(:) :: subStrings
+      character (len=StrKIND) :: timeString_
+      character (len=StrKIND) :: daySubString
+      character (len=StrKIND) :: timeSubString
+      character (len=StrKIND) :: secDecSubString
+      character(len=StrKIND), pointer, dimension(:) :: subStrings
 
 !      if (present(DD)) then
 !         days = DD
@@ -1165,7 +1165,7 @@ module mpas_timekeeping
       integer, intent(out), optional :: S
       integer, intent(out), optional :: S_n
       integer, intent(out), optional :: S_d
-      character (len=32), intent(out), optional :: timeString
+      character (len=StrKIND), intent(out), optional :: timeString
       real (kind=RKIND), intent(out), optional :: dt
       integer, intent(out), optional :: ierr
 

@@ -11,7 +11,7 @@ module mpas_io_output
    integer, parameter :: SFC = 3
  
    type io_output_object
-      character (len=1024) :: filename
+      character (len=StrKIND) :: filename
       integer :: stream
 
       integer :: time
@@ -32,7 +32,7 @@ module mpas_io_output
       character (len=*) :: stream
       character (len=*), optional :: outputSuffix
 
-      character (len=128) :: tempfilename
+      character (len=StrKIND) :: tempfilename
 
       type (block_type), pointer :: block_ptr
 

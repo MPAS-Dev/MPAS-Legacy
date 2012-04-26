@@ -2,6 +2,8 @@
 
 module init_atm_read_met
 
+   use mpas_kind_types
+
    integer, parameter :: MAX_FILENAME_LEN = 1024
 
    real (kind=4), parameter :: EARTH_RADIUS_M = 6370000.   ! same as MM5 system
@@ -22,11 +24,11 @@ module init_atm_read_met
                                        truelat1, truelat2, earth_radius
       real (kind=4), pointer, dimension(:,:) :: slab
       logical                       :: is_wind_grid_rel
-      character (len=9)             :: field
-      character (len=24)            :: hdate
-      character (len=25)            :: units
-      character (len=32)            :: map_source
-      character (len=46)            :: desc
+      character (len=StrKIND)             :: field
+      character (len=StrKIND)            :: hdate
+      character (len=StrKIND)            :: units
+      character (len=StrKIND)            :: map_source
+      character (len=StrKIND)            :: desc
    end type met_data
 
 
@@ -93,7 +95,7 @@ module init_atm_read_met
       integer, intent(out) :: istatus
   
       ! Local variables
-      character (len=8) :: startloc
+      character (len=StrKIND) :: startloc
   
       istatus = 1
   

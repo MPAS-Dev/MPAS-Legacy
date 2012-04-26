@@ -14,6 +14,7 @@
 
 module ocn_equation_of_state
 
+   use mpas_kind_types
    use mpas_grid_types
    use mpas_configure
    use ocn_equation_of_state_linear
@@ -86,7 +87,7 @@ contains
       type (mesh_type), intent(in) :: grid
       integer, intent(out) :: err
       integer :: k_displaced
-      character(len=8), intent(in) :: displacement_type
+      character(len=StrKIND), intent(in) :: displacement_type
 
       integer, dimension(:), pointer :: maxLevelCell
       real (kind=RKIND), dimension(:,:), pointer :: rho

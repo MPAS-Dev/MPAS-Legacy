@@ -18,6 +18,7 @@ module mpas_core
    subroutine mpas_core_init(domain, startTimeStamp)
 
       use mpas_configure
+      use mpas_kind_types
       use mpas_grid_types
       use atm_test_cases
 
@@ -32,7 +33,7 @@ module mpas_core
       type (field1DChar) :: xtime
       type (MPAS_Time_type) :: startTime, sliceTime
       type (MPAS_TimeInterval_type) :: timeDiff, minTimeDiff
-      character(len=32) :: timeStamp
+      character(len=StrKIND) :: timeStamp
       integer :: i
       integer :: ierr
 
@@ -70,7 +71,7 @@ module mpas_core
             call mpas_dmpar_abort(domain % dminfo)
          end if
 
-         write(0,*) 'Starting model with surface time ', timeStamp
+         write(0,*) 'Starting model with surface time ', trim(timeStamp)
 
       end if
 
@@ -227,6 +228,7 @@ module mpas_core
    subroutine mpas_core_run(domain, output_obj, output_frame)
    
       use mpas_grid_types
+      use mpas_kind_types
       use mpas_io_output
       use mpas_timer
    
@@ -240,7 +242,7 @@ module mpas_core
       type (block_type), pointer :: block_ptr
 
       type (MPAS_Time_Type) :: currTime
-      character(len=32) :: timeStamp
+      character(len=StrKIND) :: timeStamp
       integer :: itimestep
       integer :: ierr
 
@@ -256,7 +258,7 @@ module mpas_core
 
          currTime = mpas_get_clock_time(clock, MPAS_NOW, ierr)
          call mpas_get_time(curr_time=currTime, dateTimeString=timeStamp, ierr=ierr)         
-         write(0,*) 'Begin timestep ', timeStamp
+         write(0,*) 'Begin timestep ', trim(timeStamp)
 
          ! Input external updates (i.e. surface)
          if (mpas_is_alarm_ringing(clock, sfcAlarmID, ierr=ierr)) then
@@ -418,6 +420,7 @@ module mpas_core
    subroutine atm_do_timestep(domain, dt, itimestep)
    
       use mpas_grid_types
+      use mpas_kind_types
       use atm_time_integration
 #ifdef DO_PHYSICS
       use mpas_atmphys_control
@@ -434,7 +437,7 @@ module mpas_core
       
       type (MPAS_Time_Type) :: startTime, currTime
       type (MPAS_TimeInterval_Type) :: xtimeTime
-      character(len=32) :: timeStamp
+      character(len=StrKIND) :: timeStamp
       integer :: s, s_n, s_d
       real (kind=RKIND) :: xtime_s
       integer :: ierr

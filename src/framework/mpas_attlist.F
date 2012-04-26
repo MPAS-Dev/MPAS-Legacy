@@ -4,13 +4,13 @@ module mpas_attlist
 
    ! Derived type for holding field attributes
    type att_list_type
-      character (len=64) :: attName
+      character (len=StrKIND) :: attName
       integer :: attType
       integer :: attValueInt
       integer, dimension(:), pointer :: attValueIntA => null()
       real (kind=RKIND) :: attValueReal
       real (kind=RKIND), dimension(:), pointer :: attValueRealA => null()
-      character (len=1024) :: attValueText
+      character (len=StrKIND) :: attValueText
       type (att_list_type), pointer :: next => null()
    end type att_list_type
 

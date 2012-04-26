@@ -1,6 +1,7 @@
 !=============================================================================================
  module mpas_atmphys_manager
  use mpas_configure
+ use mpas_kind_types
  use mpas_grid_types
  use mpas_timekeeping
 
@@ -77,7 +78,7 @@
  type(MPAS_Time_Type):: currTime
 
  logical:: LeapYear
- character(len=32)   :: timeStamp
+ character(len=StrKIND)   :: timeStamp
  integer:: ierr
  real(kind=RKIND):: utc_s
  real(kind=RKIND):: xtime_m

@@ -54,6 +54,7 @@ module mpas_core
    
    subroutine mpas_core_run(domain, output_obj, output_frame)
    
+      use mpas_kind_types
       use mpas_grid_types
       use mpas_io_output
       use mpas_timer
@@ -69,7 +70,7 @@ module mpas_core
       type (block_type), pointer :: block_ptr
 
       type (MPAS_Time_Type) :: currTime
-      character(len=32) :: timeStamp
+      character(len=StrKIND) :: timeStamp
       integer :: ierr
    
       ! Eventually, dt should be domain specific
@@ -77,7 +78,7 @@ module mpas_core
 
       currTime = mpas_get_clock_time(clock, MPAS_NOW, ierr)
       call mpas_get_time(curr_time=currTime, dateTimeString=timeStamp, ierr=ierr)
-      write(0,*) 'Initial time ', timeStamp
+      write(0,*) 'Initial time ', trim(timeStamp)
 
       call atmh_write_output_frame(output_obj, output_frame, domain)
    
@@ -89,7 +90,7 @@ module mpas_core
 
          currTime = mpas_get_clock_time(clock, MPAS_NOW, ierr)
          call mpas_get_time(curr_time=currTime, dateTimeString=timeStamp, ierr=ierr)
-         write(0,*) 'Doing timestep ', timeStamp
+         write(0,*) 'Doing timestep ', trim(timeStamp)
 
          call mpas_timer_start("time integration")
          call atmh_do_timestep(domain, dt, timeStamp)

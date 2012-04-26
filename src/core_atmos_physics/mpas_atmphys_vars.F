@@ -11,15 +11,15 @@
 !list of physics parameterizations:
 !=============================================================================================
 
- character(len=32),public:: microp_scheme
- character(len=32),public:: conv_deep_scheme
- character(len=32),public:: conv_shallow_scheme
- character(len=32),public:: lsm_scheme
- character(len=32),public:: pbl_scheme
- character(len=32),public:: radt_cld_scheme
- character(len=32),public:: radt_lw_scheme
- character(len=32),public:: radt_sw_scheme
- character(len=32),public:: sfclayer_scheme
+ character(len=StrKIND),public:: microp_scheme
+ character(len=StrKIND),public:: conv_deep_scheme
+ character(len=StrKIND),public:: conv_shallow_scheme
+ character(len=StrKIND),public:: lsm_scheme
+ character(len=StrKIND),public:: pbl_scheme
+ character(len=StrKIND),public:: radt_cld_scheme
+ character(len=StrKIND),public:: radt_lw_scheme
+ character(len=StrKIND),public:: radt_sw_scheme
+ character(len=StrKIND),public:: sfclayer_scheme
 
 !=============================================================================================
 !wrf-variables:these variables are needed to keep calls to different physics parameterizations

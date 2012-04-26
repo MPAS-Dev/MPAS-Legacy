@@ -43,7 +43,7 @@ module mpas_block_decomp
       integer :: i, j, global_block_id, local_block_id, owning_proc, iunit, istatus
       integer :: blocks_per_proc
       integer, dimension(:), pointer :: local_nvertices
-      character (len=256) :: filename
+      character (len=StrKIND) :: filename
 
       if(config_number_of_blocks == 0) then
         total_blocks = dminfo % nProcs
@@ -461,7 +461,7 @@ module mpas_block_decomp
      type(dm_info), intent(in) :: dminfo
 
      integer :: iounit, istatus, i, owning_proc
-     character (len=256) :: filename
+     character (len=StrKIND) :: filename
 
      integer, dimension(:), allocatable :: block_counter
 
