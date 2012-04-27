@@ -419,6 +419,7 @@ contains
       real (kind=RKIND), dimension(:,:,:), pointer :: tracers, deriv_two
       real (kind=RKIND), dimension(:,:), allocatable:: div_u
       character :: c1*6
+      character(len=StrKIND) :: displacement_type
 
       h           => s % h % array
       u           => s % u % array
@@ -753,10 +754,11 @@ contains
       ! For an isopycnal model, density should remain constant.
       ! For zlevel, calculate in-situ density
       if (config_vert_grid_type.ne.'isopycnal') then
+         displacement_type = 'relative'
          call mpas_timer_start("equation of state", .false., diagEOSTimer)
-         call ocn_equation_of_state_rho(s, grid, 0, 'relative', err)
+         call ocn_equation_of_state_rho(s, grid, 0, displacement_type, err)
       ! mrp 110324 In order to visualize rhoDisplaced, include the following
-         call ocn_equation_of_state_rho(s, grid, 1, 'relative', err)
+         call ocn_equation_of_state_rho(s, grid, 1, displacement_type, err)
          call mpas_timer_stop("equation of state", diagEOSTimer)
       endif
 

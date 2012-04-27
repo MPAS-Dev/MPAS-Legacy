@@ -114,6 +114,7 @@ contains
       real (kind=RKIND), dimension(:,:), pointer :: RiTopOfEdge, RiTopOfCell
 
       real (kind=RKIND), dimension(:,:,:), pointer :: tracers
+      character(len=StrKIND) :: displacement_type
 
       !-----------------------------------------------------------------
       !
@@ -142,8 +143,9 @@ contains
       tracers => s % tracers % array
 
       call mpas_timer_start("eos rich", .false., richEOSTimer)
-      call ocn_equation_of_state_rho(s, grid, 0, 'relative', err)
-      call ocn_equation_of_state_rho(s, grid, 1, 'relative', err)
+      displacement_type = 'relative'
+      call ocn_equation_of_state_rho(s, grid, 0, displacement_type, err)
+      call ocn_equation_of_state_rho(s, grid, 1, displacement_type, err)
       call mpas_timer_stop("eos rich", richEOSTimer)
 
       call ocn_vmix_get_rich_numbers(grid, indexT, indexS, u, h, h_edge, & 
