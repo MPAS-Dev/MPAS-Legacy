@@ -187,6 +187,7 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
    int i;
    int class_start, class_end;
    int vtype;
+   char type_str[7];
 
 
    /*
@@ -888,13 +889,70 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
          fortprintf(fd, "      type (%s_multilevel_type), intent(inout) :: %s\n", group_ptr->name, group_ptr->name);
          fortprintf(fd, "\n");
          fortprintf(fd, "      integer :: i\n");
-         fortprintf(fd, "      type (%s_type), pointer :: sptr\n", group_ptr->name);
+         fortprintf(fd, "      real (kind=RKIND) :: real0d\n");
+         fortprintf(fd, "      real (kind=RKIND), dimension(:), pointer :: real1d\n");
+         fortprintf(fd, "      real (kind=RKIND), dimension(:,:), pointer :: real2d\n");
+         fortprintf(fd, "      real (kind=RKIND), dimension(:,:,:), pointer :: real3d\n");
+         fortprintf(fd, "      integer :: int0d\n");
+         fortprintf(fd, "      integer, dimension(:), pointer :: int1d\n");
+         fortprintf(fd, "      integer, dimension(:,:), pointer :: int2d\n");
+         fortprintf(fd, "      integer, dimension(:,:,:), pointer :: int3d\n");
+         fortprintf(fd, "      character (len=64) :: char0d\n");
+         fortprintf(fd, "      character (len=64), dimension(:), pointer :: char1d\n");
          fortprintf(fd, "\n");
-         fortprintf(fd, "      sptr => %s %% time_levs(1) %% %s\n", group_ptr->name, group_ptr->name);
-         fortprintf(fd, "      do i=1,%s %% nTimeLevels-1\n", group_ptr->name);
-         fortprintf(fd, "         %s %% time_levs(i) %% %s => %s %% time_levs(i+1) %% %s\n", group_ptr->name, group_ptr->name, group_ptr->name, group_ptr->name);
-         fortprintf(fd, "      end do\n");
-         fortprintf(fd, "      %s %% time_levs(%s %% nTimeLevels) %% %s => sptr\n", group_ptr->name, group_ptr->name, group_ptr->name);
+         var_list_ptr = group_ptr->vlist;
+         while (var_list_ptr) {
+            var_ptr = var_list_ptr->var;
+
+            if (strncmp(var_ptr->super_array, "-", 1024) != 0) 
+            {
+               if (var_ptr->vtype == INTEGER) sprintf(type_str, "int%id", var_ptr->ndims+1); 
+               else if (var_ptr->vtype == REAL) sprintf(type_str, "real%id", var_ptr->ndims+1); 
+               else if (var_ptr->vtype == CHARACTER) sprintf(type_str, "char%id", var_ptr->ndims+1); 
+
+               memcpy(super_array, var_ptr->super_array, 1024);
+
+               while (var_list_ptr && strncmp(super_array, var_list_ptr->var->super_array, 1024) == 0)
+               {
+                  var_list_ptr2 = var_list_ptr;
+                  var_list_ptr = var_list_ptr->next;
+               }
+               var_ptr2 = var_list_ptr2->var;
+
+               fortprintf(fd, "      %s => %s %% time_levs(1) %% %s %% %s %% array\n", type_str, group_ptr->name, group_ptr->name, var_ptr2->super_array);
+
+               fortprintf(fd, "      do i=1,%s %% nTimeLevels-1\n", group_ptr->name);
+               fortprintf(fd, "         %s %% time_levs(i) %% %s %% %s %% array => %s %% time_levs(i+1) %% %s %% %s %% array\n", group_ptr->name, group_ptr->name, var_ptr2->super_array, group_ptr->name, group_ptr->name, var_ptr2->super_array);
+               fortprintf(fd, "      end do\n");
+
+               fortprintf(fd, "      %s %% time_levs(%s %% nTimeLevels) %% %s %% %s %% array=> %s\n\n", group_ptr->name, group_ptr->name, group_ptr->name, var_ptr2->super_array, type_str);
+            }
+            else {
+
+               if (var_ptr->vtype == INTEGER) sprintf(type_str, "int%id", var_ptr->ndims); 
+               else if (var_ptr->vtype == REAL) sprintf(type_str, "real%id", var_ptr->ndims); 
+               else if (var_ptr->vtype == CHARACTER) sprintf(type_str, "char%id", var_ptr->ndims); 
+
+               if (var_ptr->ndims > 0) 
+                  fortprintf(fd, "      %s => %s %% time_levs(1) %% %s %% %s %% array\n", type_str, group_ptr->name, group_ptr->name, var_ptr->name_in_code);
+               else
+                  fortprintf(fd, "      %s = %s %% time_levs(1) %% %s %% %s %% scalar\n", type_str, group_ptr->name, group_ptr->name, var_ptr->name_in_code);
+
+               fortprintf(fd, "      do i=1,%s %% nTimeLevels-1\n", group_ptr->name);
+               if (var_ptr->ndims > 0) 
+                  fortprintf(fd, "         %s %% time_levs(i) %% %s %% %s %% array => %s %% time_levs(i+1) %% %s %% %s %% array\n", group_ptr->name, group_ptr->name, var_ptr->name_in_code, group_ptr->name, group_ptr->name, var_ptr->name_in_code);
+               else
+                  fortprintf(fd, "         %s %% time_levs(i) %% %s %% %s %% scalar = %s %% time_levs(i+1) %% %s %% %s %% scalar\n", group_ptr->name, group_ptr->name, var_ptr->name_in_code, group_ptr->name, group_ptr->name, var_ptr->name_in_code);
+               fortprintf(fd, "      end do\n");
+
+               if (var_ptr->ndims > 0) 
+                  fortprintf(fd, "      %s %% time_levs(%s %% nTimeLevels) %% %s %% %s %% array=> %s\n\n", group_ptr->name, group_ptr->name, group_ptr->name, var_ptr->name_in_code, type_str);
+               else
+                  fortprintf(fd, "      %s %% time_levs(%s %% nTimeLevels) %% %s %% %s %% scalar = %s\n\n", group_ptr->name, group_ptr->name, group_ptr->name, var_ptr->name_in_code, type_str);
+
+               var_list_ptr = var_list_ptr->next;
+            }
+         }
          fortprintf(fd, "\n");
          fortprintf(fd, "   end subroutine mpas_shift_time_levels_%s\n\n\n", group_ptr->name);
       }
