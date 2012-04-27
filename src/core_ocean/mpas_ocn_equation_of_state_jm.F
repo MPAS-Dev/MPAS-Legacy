@@ -86,7 +86,7 @@ contains
 
       type (mesh_type), intent(in) :: grid
       integer :: k_displaced, indexT, indexS
-      character(len=StrKIND), intent(in) :: displacement_type
+      character(len=*), intent(in) :: displacement_type
       integer, intent(out) :: err
 
       type (dm_info) :: dminfo

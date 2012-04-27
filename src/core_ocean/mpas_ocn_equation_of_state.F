@@ -87,7 +87,7 @@ contains
       type (mesh_type), intent(in) :: grid
       integer, intent(out) :: err
       integer :: k_displaced
-      character(len=StrKIND), intent(in) :: displacement_type
+      character(len=*), intent(in) :: displacement_type
 
       integer, dimension(:), pointer :: maxLevelCell
       real (kind=RKIND), dimension(:,:), pointer :: rho
