@@ -132,6 +132,7 @@ var persistent integer indexToVertexID ( nVertices ) 0 iro indexToVertexID mesh 
 var persistent real    meshDensity ( nCells ) 0 iro meshDensity mesh - -
 var persistent real    meshScalingDel2 ( nEdges ) 0 ro meshScalingDel2 mesh - -
 var persistent real    meshScalingDel4 ( nEdges ) 0 ro meshScalingDel4 mesh - -
+var persistent real    meshScaling ( nEdges ) 0 ro meshScaling mesh - -
 
 var persistent integer cellsOnEdge ( TWO nEdges ) 0 iro cellsOnEdge mesh - -
 var persistent integer nEdgesOnCell ( nCells ) 0 iro nEdgesOnCell mesh - -
