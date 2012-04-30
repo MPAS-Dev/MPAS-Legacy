@@ -39,14 +39,15 @@ type(mesh_type),intent(in):: mesh
  real(kind=RKIND),dimension(:,:),pointer:: rthblten,rqvblten,rqcblten, &
                                            rqiblten,rublten,rvblten
  real(kind=RKIND),dimension(:,:),pointer:: rthcuten,rqvcuten,rqccuten, &
-                                           rqrcuten,rqicuten,rqscuten
+                                           rqrcuten,rqicuten,rqscuten, &
+                                           rucuten,rvcuten
  real(kind=RKIND),dimension(:,:),pointer:: rthratenlw,rthratensw                                    
  
  real(kind=RKIND),dimension(:,:),pointer  :: tend_theta,tend_u
  real(kind=RKIND),dimension(:,:,:),pointer:: tend_scalars
 
  real(kind=RKIND):: tem
- real(kind=RKIND),dimension(:,:),allocatable:: rublten_Edge
+ real(kind=RKIND),dimension(:,:),allocatable:: rublten_Edge,rucuten_Edge
 
 !ldf (2011-12-16):
  real(kind=RKIND),dimension(:,:),allocatable:: theta,tend_th
@@ -75,6 +76,8 @@ type(mesh_type),intent(in):: mesh
  rqcblten   => tend_physics % rqcblten   % array
  rqiblten   => tend_physics % rqiblten   % array
 
+ rucuten    => tend_physics % rucuten    % array
+ rvcuten    => tend_physics % rvcuten    % array
  rthcuten   => tend_physics % rthcuten   % array
  rqvcuten   => tend_physics % rqvcuten   % array
  rqccuten   => tend_physics % rqccuten   % array
@@ -117,11 +120,29 @@ type(mesh_type),intent(in):: mesh
     enddo
     enddo
  endif
- write(0,*) 'max rthblten = ',maxval(rthblten(:,1:nCellsSolve))
- write(0,*) 'min rthblten = ',minval(rthblten(:,1:nCellsSolve))
+write(0,*) 'max rthblten = ',maxval(rthblten(:,1:nCellsSolve))
+write(0,*) 'min rthblten = ',minval(rthblten(:,1:nCellsSolve))
+!write(0,*) 'max rqvblten = ',maxval(rqvblten(:,1:nCellsSolve))
+!write(0,*) 'min rqvblten = ',minval(rqvblten(:,1:nCellsSolve))
+!write(0,*) 'max tend     = ',maxval(tend_scalars(tend%index_qv,:,1:nCellsSolve))
+!write(0,*) 'min tend     = ',minval(tend_scalars(tend%index_qv,:,1:nCellsSolve))
+!write(0,*)
 
 !add coupled tendencies due to convection:
  if(config_conv_deep_scheme .ne. 'off') then
+
+    if(config_conv_deep_scheme .eq. 'tiedtke') then
+       allocate(rucuten_Edge(nVertLevels,nEdges))
+       rucuten_Edge(:,:) = 0.
+       call tend_toEdges(dminfo,CellsToSend,CellsToRecv,mesh,rucuten,rvcuten,rucuten_Edge)
+       do i = 1, nEdgesSolve
+       do k  = 1, nVertLevels
+          tend_u(k,i)=tend_u(k,i)+rucuten_Edge(k,i)*mass_edge(k,i)
+       enddo
+       enddo
+       deallocate(rucuten_Edge)
+    endif
+
     do i = 1, nCellsSolve
     do k = 1, nVertLevels
        tend_th(k,i)=tend_th(k,i)+rthcuten(k,i)*mass(k,i)
@@ -133,8 +154,13 @@ type(mesh_type),intent(in):: mesh
     enddo
     enddo
  endif
- write(0,*) 'max rthcuten = ',maxval(rthcuten(:,1:nCellsSolve))
- write(0,*) 'min rthcuten = ',minval(rthcuten(:,1:nCellsSolve))
+write(0,*) 'max rthcuten = ',maxval(rthcuten(:,1:nCellsSolve))
+write(0,*) 'min rthcuten = ',minval(rthcuten(:,1:nCellsSolve))
+!write(0,*) 'max rqvcuten = ',maxval(rqvcuten(:,1:nCellsSolve))
+!write(0,*) 'min rqvcuten = ',minval(rqvcuten(:,1:nCellsSolve))
+!write(0,*) 'max tend     = ',maxval(tend_scalars(tend%index_qv,:,1:nCellsSolve))
+!write(0,*) 'min tend     = ',minval(tend_scalars(tend%index_qv,:,1:nCellsSolve))
+!write(0,*)
 
 !add coupled tendencies due to longwave radiation:
  if(config_radt_lw_scheme .ne. 'off') then
@@ -144,8 +170,8 @@ type(mesh_type),intent(in):: mesh
     enddo
     enddo
  endif
- write(0,*) 'max rthratenlw = ',maxval(rthratenlw(:,1:nCellsSolve))
- write(0,*) 'min rthratenlw = ',minval(rthratenlw(:,1:nCellsSolve))
+write(0,*) 'max rthratenlw = ',maxval(rthratenlw(:,1:nCellsSolve))
+write(0,*) 'min rthratenlw = ',minval(rthratenlw(:,1:nCellsSolve))
     
 !add coupled tendencies due to shortwave radiation:
  if(config_radt_sw_scheme .ne. 'off') then
@@ -155,8 +181,8 @@ type(mesh_type),intent(in):: mesh
     enddo
     enddo
  endif
- write(0,*) 'max rthratensw = ',maxval(rthratensw(:,1:nCellsSolve))
- write(0,*) 'min rthratensw = ',minval(rthratensw(:,1:nCellsSolve))
+write(0,*) 'max rthratensw = ',maxval(rthratensw(:,1:nCellsSolve))
+write(0,*) 'min rthratensw = ',minval(rthratensw(:,1:nCellsSolve))
 
 !if non-hydrostatic core, convert the tendency for the potential temperature to a
 !tendency for the modified potential temperature:

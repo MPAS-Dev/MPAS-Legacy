@@ -6,25 +6,26 @@ dummy:
 	echo "****** compile physics_wrf ******"
 
 OBJS = \
-	libmassv.o                \
-	module_bl_ysu.o           \
-	module_cam_shr_kind_mod.o \
-	module_cam_support.o      \
-	module_cu_kfeta.o         \
-	module_cu_tiedtke.o       \
-	module_mp_kessler.o       \
-	module_mp_thompson.o      \
-	module_mp_wsm6.o          \
-	module_ra_cam.o           \
-	module_ra_cam_support.o   \
-	module_ra_rrtmg_lw.o      \
-	module_ra_rrtmg_sw.o      \
-	module_sf_bem.o           \
-	module_sf_bep.o           \
-	module_sf_bep_bem.o       \
-	module_sf_noahdrv.o       \
-	module_sf_noahlsm.o       \
-	module_sf_sfclay.o        \
+	libmassv.o                 \
+	module_bl_ysu.o            \
+	module_cam_shr_kind_mod.o  \
+	module_cam_support.o       \
+	module_cu_kfeta.o          \
+	module_cu_kfeta_wrf3.3.1.o \
+	module_cu_tiedtke.o        \
+	module_mp_kessler.o        \
+	module_mp_thompson.o       \
+	module_mp_wsm6.o           \
+	module_ra_cam.o            \
+	module_ra_cam_support.o    \
+	module_ra_rrtmg_lw.o       \
+	module_ra_rrtmg_sw.o       \
+	module_sf_bem.o            \
+	module_sf_bep.o            \
+	module_sf_bep_bem.o        \
+	module_sf_noahdrv.o        \
+	module_sf_noahlsm.o        \
+	module_sf_sfclay.o         \
 	module_sf_urban.o
 
 physics_wrf: $(OBJS)
@@ -42,7 +43,7 @@ module_mp_wsm6.o: \
 	libmassv.o
 
 module_ra_cam.o: \
-	module_cam_support.o    \
+	module_cam_support.o \
 	module_ra_cam_support.o \
 	../mpas_atmphys_utilities.o
 
@@ -56,12 +57,12 @@ module_sf_bep.o: \
 	module_sf_urban.o
 
 module_sf_bep_bem.o: \
-	module_sf_bem.o   \
+	module_sf_bem.o \
 	module_sf_urban.o
 
 module_sf_noahdrv.o: \
- 	module_sf_bem.o     \
-	module_sf_bep.o     \
+ 	module_sf_bem.o \
+	module_sf_bep.o \
 	module_sf_bep_bem.o \
 	module_sf_noahlsm.o \
 	module_sf_urban.o

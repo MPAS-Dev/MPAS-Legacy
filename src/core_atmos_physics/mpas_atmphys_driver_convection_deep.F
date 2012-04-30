@@ -8,15 +8,17 @@
 
 !wrf physics:
  use module_cu_kfeta
+ use module_cu_kfeta_trigger
  use module_cu_tiedtke
 
  implicit none
  private
- public:: allocate_convection_deep,       &
-          deallocate_convection_deep,     &
-          init_convection_deep,           &
-          driver_convection_deep,         &
-          update_convection_deep
+ public:: allocate_convection_deep,   &
+          deallocate_convection_deep, &
+          init_convection_deep,       &
+          driver_convection_deep,     &
+          update_convection_step1,        &
+          update_convection_step2
 
  integer, private:: i,k,j
 
@@ -34,26 +36,103 @@
  if(.not.allocated(pratec_p)   ) allocate(pratec_p(ims:ime,jms:jme)          )
  if(.not.allocated(raincv_p)   ) allocate(raincv_p(ims:ime,jms:jme)          )
 
+ do i = its,ite
+ do j = jts,jte
+    pratec_p(i,j) = 0._RKIND
+    raincv_p(i,j) = 0._RKIND
+ enddo
+ enddo
+
+ do i = its,ite
+ do k = kts,kte
+ do j = jts,jte
+    rthcuten_p(i,k,j) = 0._RKIND
+    rqvcuten_p(i,k,j) = 0._RKIND
+    rqccuten_p(i,k,j) = 0._RKIND
+    rqicuten_p(i,k,j) = 0._RKIND
+ enddo
+ enddo
+ enddo
+
  convection_select: select case(conv_deep_scheme)
 
     case ("kain_fritsch")
-       if(.not.allocated(area_p)       ) allocate(area_p(ims:ime,jms:jme)               )
-       if(.not.allocated(nca_p)        ) allocate(nca_p(ims:ime,jms:jme)                )
-       if(.not.allocated(w0avg_p)      ) allocate(w0avg_p(ims:ime,kms:kme,jms:jme)      )
+       if(.not.allocated(area_p)     ) allocate(area_p(ims:ime,jms:jme)            )
+       if(.not.allocated(nca_p)      ) allocate(nca_p(ims:ime,jms:jme)             )
+       if(.not.allocated(cubot_p)    ) allocate(cubot_p(ims:ime,jms:jme)           )
+       if(.not.allocated(cutop_p)    ) allocate(cutop_p(ims:ime,jms:jme)           ) 
+       if(.not.allocated(w0avg_p)    ) allocate(w0avg_p(ims:ime,kms:kme,jms:jme)   )
+       if(.not.allocated(rqrcuten_p) ) allocate(rqrcuten_p(ims:ime,kms:kme,jms:jme))
+       if(.not.allocated(rqscuten_p) ) allocate(rqscuten_p(ims:ime,kms:kme,jms:jme))
 
-       if(.not.allocated(cubot_p)      ) allocate(cubot_p(ims:ime,jms:jme)              )
-       if(.not.allocated(cutop_p)      ) allocate(cutop_p(ims:ime,jms:jme)              )
-       if(.not.allocated(rqrcuten_p)   ) allocate(rqrcuten_p(ims:ime,kms:kme,jms:jme)   )
-       if(.not.allocated(rqscuten_p)   ) allocate(rqscuten_p(ims:ime,kms:kme,jms:jme)   )
+       do i = its,ite
+       do j = jts,jte
+          cubot_p(i,j) = DBLE(kte+1)
+          cutop_p(i,j) = DBLE(kts)
+       enddo
+       enddo
+
+       do i = its,ite
+       do k = kts,kte
+       do j = jts,jte
+          rqrcuten_p(i,k,j) = 0._RKIND
+          rqscuten_p(i,k,j) = 0._RKIND
+       enddo
+       enddo
+       enddo
+
+    case ("kain_fritsch_trigger")
+       if(.not.allocated(area_p)     ) allocate(area_p(ims:ime,jms:jme)             )
+       if(.not.allocated(nca_p)      ) allocate(nca_p(ims:ime,jms:jme)              )
+       if(.not.allocated(cubot_p)    ) allocate(cubot_p(ims:ime,jms:jme)            )
+       if(.not.allocated(cutop_p)    ) allocate(cutop_p(ims:ime,jms:jme)            ) 
+       if(.not.allocated(w0avg_p)    ) allocate(w0avg_p(ims:ime,kms:kme,jms:jme)    )
+       if(.not.allocated(rqvdynten_p)) allocate(rqvdynten_p(ims:ime,kms:kme,jms:jme))
+       if(.not.allocated(rqrcuten_p) ) allocate(rqrcuten_p(ims:ime,kms:kme,jms:jme) )
+       if(.not.allocated(rqscuten_p) ) allocate(rqscuten_p(ims:ime,kms:kme,jms:jme) )
+
+       do i = its,ite
+       do j = jts,jte
+          cubot_p(i,j) = DBLE(kte+1)
+          cutop_p(i,j) = DBLE(kts)
+       enddo
+       enddo
+
+       do i = its,ite
+       do k = kts,kte
+       do j = jts,jte
+          rqrcuten_p(i,k,j)  = 0._RKIND
+          rqscuten_p(i,k,j)  = 0._RKIND
+          rqvdynten_p(i,k,j) = 0._RKIND
+       enddo
+       enddo
+       enddo
 
     case ("tiedtke")
-       if(.not.allocated(znu_p)        ) allocate(znu_p(kms:kme)                        )
        if(.not.allocated(qfx_p)        ) allocate(qfx_p(ims:ime,jms:jme)                )
        if(.not.allocated(xland_p)      ) allocate(xland_p(ims:ime,jms:jme)              )
        if(.not.allocated(rqvdynten_p)  ) allocate(rqvdynten_p(ims:ime,kms:kme,jms:jme)  )
        if(.not.allocated(rqvdynblten_p)) allocate(rqvdynblten_p(ims:ime,kms:kme,jms:jme))
        if(.not.allocated(rucuten_p)    ) allocate(rucuten_p(ims:ime,kms:kme,jms:jme)    )
        if(.not.allocated(rvcuten_p)    ) allocate(rvcuten_p(ims:ime,kms:kme,jms:jme)    )
+
+       do i = its,ite
+       do j = jts,jte
+          qfx_p(i,j)   = 0._RKIND
+          xland_p(i,j) = 0._RKIND
+       enddo
+       enddo
+
+       do i = its,ite
+       do k = kts,kte
+       do j = jts,jte
+          rqvdynten_p(i,k,j)   = 0._RKIND
+          rqvdynblten_p(i,k,j) = 0._RKIND
+          rucuten_p(i,k,j)     = 0._RKIND
+          rvcuten_p(i,k,j)     = 0._RKIND
+       enddo
+       enddo
+       enddo
 
     case default
 
@@ -78,15 +157,23 @@
     case ("kain_fritsch")
        if(allocated(area_p)       ) deallocate(area_p       )
        if(allocated(nca_p)        ) deallocate(nca_p        )
+       if(allocated(cubot_p)      ) deallocate(cubot_p      )
+       if(allocated(cutop_p)      ) deallocate(cutop_p      ) 
        if(allocated(w0avg_p)      ) deallocate(w0avg_p      )
+       if(allocated(rqrcuten_p)   ) deallocate(rqrcuten_p   )
+       if(allocated(rqscuten_p)   ) deallocate(rqscuten_p   )
 
+    case ("kain_fritsch_trigger")
+       if(allocated(area_p)       ) deallocate(area_p       )
+       if(allocated(nca_p)        ) deallocate(nca_p        )
+       if(allocated(w0avg_p)      ) deallocate(w0avg_p      )
        if(allocated(cubot_p)      ) deallocate(cubot_p      )
        if(allocated(cutop_p)      ) deallocate(cutop_p      )
+       if(allocated(rqvdynten_p)  ) deallocate(rqvdynten_p  )
        if(allocated(rqrcuten_p)   ) deallocate(rqrcuten_p   )
        if(allocated(rqscuten_p)   ) deallocate(rqscuten_p   )
 
     case ("tiedtke")
-       if(allocated(znu_p)        ) deallocate(znu_p        )
        if(allocated(qfx_p)        ) deallocate(qfx_p        )
        if(allocated(xland_p)      ) deallocate(xland_p      )
        if(allocated(rqvdynten_p)  ) deallocate(rqvdynten_p  )
@@ -132,9 +219,9 @@
 
     case ("tiedtke")
        write(0,*) '    enter tiedtke initialization:'
-       write(mpas_err_message,'(A,A10)') &
-         'Tiedtke is being tested. Do not use right now. Thanks '
-       call physics_error_fatal(mpas_err_message)
+!      write(mpas_err_message,'(A,A10)') &
+!        'Tiedtke is being tested. Do not use right now. Thanks '
+!      call physics_error_fatal(mpas_err_message)
 
     case default
 
@@ -164,9 +251,14 @@
 
 !variables specific to Kain_Fritsch parameterization:
  logical:: warm_rain,adapt_step_flag
+ integer:: ktau
  real(kind=RKIND):: curr_secs
  real(kind=RKIND):: cudt
  real(kind=RKIND):: cudtacttime
+
+!temp:
+ real(kind=RKIND):: max_rthcuten
+ real(kind=RKIND):: min_rthcuten
 
 !=============================================================================================
  write(0,*)
@@ -193,9 +285,14 @@
  convection_select: select case(conv_deep_scheme)
 
     case ("kain_fritsch")
-       write(0,*) '--- enter subroutine kf_eta_cps:'
+       if(itimestep == 1) then
+          ktau = itimestep
+       else
+          ktau = itimestep + 1
+       endif
        call  kf_eta_cps ( &
-             dt        = dt_dyn     , ktau            = itimestep       ,            &
+!            dt        = dt_dyn     , ktau            = itimestep       ,            &
+             dt        = dt_dyn     , ktau            = ktau            ,            &
              areaCell  = area_p     , cudt            = cudt            ,            &
              curr_secs = curr_secs  , adapt_step_flag = adapt_step_flag ,            &
              rho       = rho_p      , raincv          = raincv_p        ,            &
@@ -224,13 +321,34 @@
              ims = ims , ime = ime , jms = jms , jme = jme , kms = kds , kme = kme , &
              its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte   &
                     )
-       write(0,*) '--- end subroutine kf_eta_cps'
 
     case("tiedtke")
        write(0,*) '--- enter subroutine cu_tiedtke:'
-       write(mpas_err_message,'(A,A10)') &
-         'Tiedtke is being tested. Do not use right now. Thanks '
-       call physics_error_fatal(mpas_err_message)
+       call cu_tiedtke ( &
+             dt          = dt_dyn      , itimestep       = itimestep       ,         &
+             stepcu      = n_cu        , raincv          = raincv_p        ,         &
+             pratec      = pratec_p    , qfx             = qfx_p           ,         &
+             znu         = znu_p       , u3d             = u_p             ,         &
+             v3d         = v_p         , w               = w_p             ,         &
+             t3d         = t_p         , qv3d            = qv_p            ,         &
+             qc3d        = qc_p        , qi3d            = qi_p            ,         &
+             pi3d        = pi_p        , rho3d           = rho_p           ,         &
+             qvften      = rqvdynten_p , qvpblten        = rqvdynblten_p   ,         &
+             dz8w        = dz_p        , pcps            = pres_p          ,         &
+             p8w         = pres2_p     , xland           = xland_p         ,         &
+             cu_act_flag = cu_act_flag , cudt            = dt_cu           ,         &
+!            curr_secs   = curr_secs   , adapt_step_flag = adapt_step_flag ,         &
+!            cudtacttime = cudtacttime , f_qv            = f_qv            ,         &
+             f_qv        = f_qv        ,                                             &
+             f_qc        = f_qc        , f_qr            = f_qr            ,         &
+             f_qi        = f_qi        , f_qs            = f_qs            ,         &        
+             rthcuten    = rthcuten_p  , rqvcuten        = rqvcuten_p      ,         &
+             rqccuten    = rqccuten_p  , rqicuten        = rqicuten_p      ,         &
+             rucuten     = rucuten_p   , rvcuten         = rvcuten_p       ,         &
+             ids = ids , ide = ide , jds = jds , jde = jde , kds = kds , kde = kde , &
+             ims = ims , ime = ime , jms = jms , jme = jme , kms = kds , kme = kme , &
+             its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte   &
+                    )
 
     case default
 
@@ -255,10 +373,6 @@
  type(tend_physics_type),intent(in):: tend_physics
  real(kind=RKIND),intent(in):: dt_dyn
 
-!local variables:
- real(kind=RKIND):: tem
- real(kind=RKIND),dimension(:),allocatable:: zw
-
 !---------------------------------------------------------------------------------------------
  write(0,*)
  write(0,*) '--- enter subroutine convection_from_MPAS:'
@@ -279,6 +393,50 @@
  convection_select: select case(conv_deep_scheme)
 
     case ("kain_fritsch")
+
+       do j = jts,jte
+       do i = its,ite
+          !area of grid-cell:       
+          area_p(i,j)  = mesh % areaCell % array(i)
+          cubot_p(i,j) = diag_physics % cubot % array(i)
+          cutop_p(i,j) = diag_physics % cutop % array(i)
+
+          do k = kts,kte
+             rqrcuten_p(i,k,j) = tend_physics % rqrcuten % array(k,i)
+             rqscuten_p(i,k,j) = tend_physics % rqscuten % array(k,i)
+          enddo
+
+          !decreases the characteristic time period that convection remains active. When nca_p
+          !becomes less than the convective timestep, convective tendencies and precipitation
+          !are reset to zero (note that this is also done in subroutine kf_eta_cps).
+          nca_p(i,j) = diag_physics % nca % array(i)
+
+!         if(nca_p(i,j) .gt. 0.) then
+!            nca_p(i,j) = nca_p(i,j) - dt_dyn
+             
+!            if(nca_p(i,j) .lt. 0.5*dt_dyn) then
+!               do k = kts,kte
+!                  rthcuten_p(i,k,j) = 0.
+!                  rqvcuten_p(i,k,j) = 0.
+!                  rqccuten_p(i,k,j) = 0.
+!                  rqrcuten_p(i,k,j) = 0.
+!                  rqicuten_p(i,k,j) = 0.
+!                  rqscuten_p(i,k,j) = 0.
+!               enddo
+!               raincv_p(i,j) = 0.
+!               pratec_p(i,j) = 0.
+!               cubot_p(i,j)  = kte+1
+!               cutop_p(i,j)  = kts
+!            endif
+!         endif
+
+          do k = kts,kte
+             w0avg_p(i,k,j) = diag_physics % w0avg % array(k,i)
+          enddo
+       enddo
+       enddo
+
+    case ("kain_fritsch_trigger")
 
        do j = jts,jte
        do i = its,ite
@@ -321,17 +479,15 @@
        enddo
        enddo
 
-    case ("tiedtke")
-       if(.not.allocated(zw)) allocate(zw(kms:kme))
-       zw(kts) = 0.
+       do j = jts,jte
        do k = kts,kte
-          tem = 1./mesh % rdzw % array(k)
-          zw(k+1)  = zw(k) + tem
-          znu_p(k) = 0.5*(zw(k+1)+zw(k))
-          write(0,*) k,zw(k+1),znu_p(k)
+       do i = its,ite
+          rqvdynten_p(i,k,j) = tend_physics % rqvdynten % array(k,i)
        enddo
-       if(allocated(zw)) deallocate(zw)
+       enddo
+       enddo
 
+    case ("tiedtke")
        do j = jts,jte
        do i = its,ite
           xland_p(i,j) = sfc_input % xland % array(i)
@@ -347,10 +503,10 @@
        enddo
        enddo
        enddo
-       write(0,*) '--- max rqvdynblten = ',maxval(rqvdynblten_p(:,:,:))
-       write(0,*) '--- min rqvdynblten = ',minval(rqvdynblten_p(:,:,:))
-       write(0,*) '--- max rqvdynten   = ',maxval(rqvdynten_p(:,:,:))
-       write(0,*) '--- min rqvdynten   = ',minval(rqvdynten_p(:,:,:))
+!      write(0,*) '--- max rqvdynblten = ',maxval(rqvdynblten_p(its:ite,kts:kte,jts:jte))
+!      write(0,*) '--- min rqvdynblten = ',minval(rqvdynblten_p(its:ite,kts:kte,jts:jte))
+!      write(0,*) '--- max rqvdynten   = ',maxval(rqvdynten_p(its:ite,kts:kte,jts:jte))
+!      write(0,*) '--- min rqvdynten   = ',minval(rqvdynten_p(its:ite,kts:kte,jts:jte))
        
     case default
 
@@ -382,7 +538,7 @@
 
  convection_select: select case(conv_deep_scheme)
 
-    case ("kain_fritsch")
+    case ("kain_fritsch","kain_fritsch_trigger")
        do j = jts,jte
        do i = its,ite
           diag_physics % cubot % array(i) = cubot_p(i,j)
@@ -413,7 +569,56 @@
  end subroutine convection_to_MPAS
 
 !=============================================================================================
- subroutine update_convection_deep(bucket_rainc,mesh,diag_physics)
+ subroutine update_convection_step1(mesh,diag_physics,tend_physics)
+!=============================================================================================
+!input arguments:
+ type(mesh_type),intent(in):: mesh
+
+!inout arguments:
+ type(diag_physics_type),intent(inout):: diag_physics
+ type(tend_physics_type),intent(inout):: tend_physics
+
+!local variables:
+ integer:: iCell,k
+
+!---------------------------------------------------------------------------------------------
+ 
+ convection_select: select case(conv_deep_scheme)
+
+    case ("kain_fritsch")
+
+       do iCell = 1, mesh%nCellsSolve
+          !decreases the characteristic time period that convection remains active. When nca_p
+          !becomes less than the convective timestep, convective tendencies and precipitation
+          !are reset to zero (note that this is also done in subroutine kf_eta_cps).
+          if(diag_physics % nca % array(iCell) .gt. 0.) then
+             diag_physics % nca % array(iCell) = diag_physics % nca % array(iCell) - dt_dyn
+             
+             if(diag_physics % nca % array(iCell) .lt. 0.5*dt_dyn) then
+                do k = 1, mesh%nVertLevels
+                   tend_physics % rthcuten % array(k,iCell) = 0._RKIND
+                   tend_physics % rqvcuten % array(k,iCell) = 0._RKIND
+                   tend_physics % rqccuten % array(k,iCell) = 0._RKIND
+                   tend_physics % rqrcuten % array(k,iCell) = 0._RKIND
+                   tend_physics % rqicuten % array(k,iCell) = 0._RKIND
+                   tend_physics % rqscuten % array(k,iCell) = 0._RKIND
+                enddo
+                diag_physics % raincv % array(iCell) = 0._RKIND
+                diag_physics % cuprec % array(iCell) = 0._RKIND
+                diag_physics % cubot  % array(iCell) = kte+1
+                diag_physics  % cutop  % array(iCell) = kts
+             endif
+          endif
+       enddo
+
+    case default
+
+ end select convection_select
+
+ end subroutine update_convection_step1
+
+!=============================================================================================
+ subroutine update_convection_step2(bucket_rainc,mesh,diag_physics)
 !=============================================================================================
 
 !input arguments:
@@ -442,7 +647,7 @@
 
  enddo
 
- end subroutine update_convection_deep
+ end subroutine update_convection_step2
 
 !=============================================================================================
  end module mpas_atmphys_driver_convection_deep

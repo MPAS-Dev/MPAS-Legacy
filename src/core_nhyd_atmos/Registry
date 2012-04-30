@@ -723,9 +723,12 @@ var persistent real    rthratenlw ( nVertLevels nCells Time   ) 1  ro rthratenlw
 %--------------------------------------------------------------------------------------------------
 
 %INFRARED ABSORPTION:
-var persistent real absnxt  ( nVertLevels   cam_dim1      nCells Time ) 1 r absnxt diag_physics - -
-var persistent real abstot  ( nVertLevelsP1 nVertLevelsP1 nCells Time ) 1 r abstot diag_physics - -
-var persistent real emstot  ( nVertLevelsP1 nCells Time               ) 1 r emstot diag_physics - -
+var persistent real absnxt  ( nVertLevels   cam_dim1      nCells Time ) 1 - absnxt diag_physics - -
+var persistent real abstot  ( nVertLevelsP1 nVertLevelsP1 nCells Time ) 1 - abstot diag_physics - -
+var persistent real emstot  ( nVertLevelsP1 nCells Time               ) 1 - emstot diag_physics - -
+%var persistent real absnxt ( nVertLevels   cam_dim1      nCells Time ) 1 r absnxt diag_physics - -
+%var persistent real abstot ( nVertLevelsP1 nVertLevelsP1 nCells Time ) 1 r abstot diag_physics - -
+%var persistent real emstot ( nVertLevelsP1 nCells Time               ) 1 r emstot diag_physics - -
 
 % OZONE:
 var persistent real    pin      ( nOznLevels nCells         ) 0 -  pin       mesh  - -

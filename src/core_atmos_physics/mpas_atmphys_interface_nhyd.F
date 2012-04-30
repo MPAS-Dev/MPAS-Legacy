@@ -23,35 +23,36 @@
  subroutine allocate_forall_physics
 !=============================================================================================
 
- if(.not.allocated(psfc_p) )   allocate(psfc_p(ims:ime,jms:jme)         )
- if(.not.allocated(ptop_p) )   allocate(ptop_p(ims:ime,jms:jme)         )
+ if(.not.allocated(psfc_p) ) allocate(psfc_p(ims:ime,jms:jme)         )
+ if(.not.allocated(ptop_p) ) allocate(ptop_p(ims:ime,jms:jme)         )
 
- if(.not.allocated(u_p)    )  allocate(u_p(ims:ime,kms:kme,jms:jme)     )
- if(.not.allocated(v_p)    )  allocate(v_p(ims:ime,kms:kme,jms:jme)     )
- if(.not.allocated(fzm_p)  )   allocate(fzm_p(ims:ime,kms:kme,jms:jme)  )
- if(.not.allocated(fzp_p)  )   allocate(fzp_p(ims:ime,kms:kme,jms:jme)  )
- if(.not.allocated(zz_p)   )  allocate(zz_p(ims:ime,kms:kme,jms:jme)    )
- if(.not.allocated(pres_p) )  allocate(pres_p(ims:ime,kms:kme,jms:jme)  )
- if(.not.allocated(pi_p)   )  allocate(pi_p(ims:ime,kms:kme,jms:jme)    )
- if(.not.allocated(z_p)    )  allocate(z_p(ims:ime,kms:kme,jms:jme)     )
- if(.not.allocated(zmid_p) )  allocate(zmid_p(ims:ime,kms:kme,jms:jme)  )
- if(.not.allocated(dz_p)   )  allocate(dz_p(ims:ime,kms:kme,jms:jme)    )
- if(.not.allocated(t_p)    )  allocate(t_p(ims:ime,kms:kme,jms:jme)     )
- if(.not.allocated(th_p)   )  allocate(th_p(ims:ime,kms:kme,jms:jme)    )
- if(.not.allocated(al_p)   )  allocate(al_p(ims:ime,kms:kme,jms:jme)    )
- if(.not.allocated(rho_p)  )  allocate(rho_p(ims:ime,kms:kme,jms:jme)   )
- if(.not.allocated(rh_p)   )  allocate(rh_p(ims:ime,kms:kme,jms:jme)    )
+ if(.not.allocated(u_p)    ) allocate(u_p(ims:ime,kms:kme,jms:jme)    )
+ if(.not.allocated(v_p)    ) allocate(v_p(ims:ime,kms:kme,jms:jme)    )
+ if(.not.allocated(fzm_p)  ) allocate(fzm_p(ims:ime,kms:kme,jms:jme)  )
+ if(.not.allocated(fzp_p)  ) allocate(fzp_p(ims:ime,kms:kme,jms:jme)  )
+ if(.not.allocated(zz_p)   ) allocate(zz_p(ims:ime,kms:kme,jms:jme)   )
+ if(.not.allocated(pres_p) ) allocate(pres_p(ims:ime,kms:kme,jms:jme) )
+ if(.not.allocated(pi_p)   ) allocate(pi_p(ims:ime,kms:kme,jms:jme)   )
+ if(.not.allocated(z_p)    ) allocate(z_p(ims:ime,kms:kme,jms:jme)    )
+ if(.not.allocated(zmid_p) ) allocate(zmid_p(ims:ime,kms:kme,jms:jme) )
+ if(.not.allocated(dz_p)   ) allocate(dz_p(ims:ime,kms:kme,jms:jme)   )
+ if(.not.allocated(t_p)    ) allocate(t_p(ims:ime,kms:kme,jms:jme)    )
+ if(.not.allocated(th_p)   ) allocate(th_p(ims:ime,kms:kme,jms:jme)   )
+ if(.not.allocated(al_p)   ) allocate(al_p(ims:ime,kms:kme,jms:jme)   )
+ if(.not.allocated(rho_p)  ) allocate(rho_p(ims:ime,kms:kme,jms:jme)  )
+ if(.not.allocated(rh_p)   ) allocate(rh_p(ims:ime,kms:kme,jms:jme)   )
+ if(.not.allocated(znu_p)  ) allocate(znu_p(ims:ime,kms:kme,jms:jme)  )
 
- if(.not.allocated(w_p)    )  allocate(w_p(ims:ime,kms:kme,jms:jme)     )
- if(.not.allocated(pres2_p))  allocate(pres2_p(ims:ime,kms:kme,jms:jme) )
- if(.not.allocated(t2_p)   )  allocate(t2_p(ims:ime,kms:kme,jms:jme)    )
+ if(.not.allocated(w_p)    ) allocate(w_p(ims:ime,kms:kme,jms:jme)    )
+ if(.not.allocated(pres2_p)) allocate(pres2_p(ims:ime,kms:kme,jms:jme))
+ if(.not.allocated(t2_p)   ) allocate(t2_p(ims:ime,kms:kme,jms:jme)   )
  
- if(.not.allocated(qv_p)   ) allocate(qv_p(ims:ime,kms:kme,jms:jme)     )
- if(.not.allocated(qc_p)   ) allocate(qc_p(ims:ime,kms:kme,jms:jme)     )
- if(.not.allocated(qr_p)   ) allocate(qr_p(ims:ime,kms:kme,jms:jme)     )
- if(.not.allocated(qi_p)   ) allocate(qi_p(ims:ime,kms:kme,jms:jme)     )
- if(.not.allocated(qs_p)   ) allocate(qs_p(ims:ime,kms:kme,jms:jme)     )
- if(.not.allocated(qg_p)   ) allocate(qg_p(ims:ime,kms:kme,jms:jme)     )
+ if(.not.allocated(qv_p)   ) allocate(qv_p(ims:ime,kms:kme,jms:jme)   )
+ if(.not.allocated(qc_p)   ) allocate(qc_p(ims:ime,kms:kme,jms:jme)   )
+ if(.not.allocated(qr_p)   ) allocate(qr_p(ims:ime,kms:kme,jms:jme)   )
+ if(.not.allocated(qi_p)   ) allocate(qi_p(ims:ime,kms:kme,jms:jme)   )
+ if(.not.allocated(qs_p)   ) allocate(qs_p(ims:ime,kms:kme,jms:jme)   )
+ if(.not.allocated(qg_p)   ) allocate(qg_p(ims:ime,kms:kme,jms:jme)   )
 
  end subroutine allocate_forall_physics
 
@@ -77,6 +78,7 @@
  if(allocated(al_p)    ) deallocate(al_p    )
  if(allocated(rho_p)   ) deallocate(rho_p   ) 
  if(allocated(rh_p)    ) deallocate(rh_p    ) 
+ if(allocated(znu_p)   ) deallocate(znu_p   )
 
  if(allocated(w_p)     ) deallocate(w_p     )
  if(allocated(pres2_p) ) deallocate(pres2_p )
@@ -161,7 +163,7 @@
 !enddo
 !ldf end.
 !ldf (2012-01-09): updates the surface pressure using zgrid.
- do j = jts,jte
+!do j = jts,jte
  do i = its,ite
     tem1 = zgrid(2,i)-zgrid(1,i)
     tem2 = zgrid(3,i)-zgrid(2,i)
@@ -171,7 +173,7 @@
                     * (rho1 + 0.5*(rho2-rho1)*tem1/(tem1+tem2))
     sfc_pressure(i) = sfc_pressure(i) + pressure_p(1,i) + pressure_b(1,i)
  enddo
- enddo
+!enddo
 !ldf end.
 
 !copy sounding variables from the geodesic grid to the rectangular grid:
@@ -205,6 +207,7 @@
 
     pi_p(i,k,j)   = exner(k,i)
     pres_p(i,k,j) = pressure_p(k,i) + pressure_b(k,i)
+    znu_p(i,k,j)  = pres_p(i,k,j) / sfc_pressure(i)
 
     zmid_p(i,k,j) = 0.5*(zgrid(k+1,i)+zgrid(k,i))
     dz_p(i,k,j)   = zgrid(k+1,i)-zgrid(k,i)

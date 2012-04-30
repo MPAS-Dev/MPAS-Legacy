@@ -47,9 +47,6 @@
  
  real(kind=RKIND),public:: xice_threshold
 
- real(kind=RKIND),dimension(:),allocatable:: &
-    znu_p
-
  real(kind=RKIND),dimension(:,:),allocatable:: &
     area_p             !grid cell area                                                    [m2]
 
@@ -169,6 +166,7 @@
 
 !... tiedtke specific arrays:
  real(kind=RKIND),dimension(:,:,:),allocatable:: &
+    znu_p,            &!
     rqvdynten_p,      &!
     rqvdynblten_p      !
 

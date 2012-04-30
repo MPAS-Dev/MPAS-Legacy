@@ -227,30 +227,30 @@
  do j = jts,jte
  do k = kts,kte
  do i = its,ite
-    f_ice(i,k,j)  = 0.
-    f_rain(i,k,j) = 0.
+    f_ice(i,k,j)  = 0.0_RKIND
+    f_rain(i,k,j) = 0.0_RKIND
  enddo
  enddo
  enddo
 
  do j = jts,jte
  do i = its,ite
-    coszr_p(i,j)    = 0.
-    gsw_p(i,j)      = 0.
-    swcf_p(i,j)     = 0.
-    swdnb_p(i,j)    = 0.
-    swdnbc_p(i,j)   = 0.
-    swdnt_p(i,j)    = 0.
-    swdntc_p(i,j)   = 0.
-    swupb_p(i,j)    = 0.
-    swupbc_p(i,j)   = 0.
-    swupt_p(i,j)    = 0.
-    swuptc_p(i,j)   = 0.
+    coszr_p(i,j)    = 0.0_RKIND
+    gsw_p(i,j)      = 0.0_RKIND
+    swcf_p(i,j)     = 0.0_RKIND
+    swdnb_p(i,j)    = 0.0_RKIND
+    swdnbc_p(i,j)   = 0.0_RKIND
+    swdnt_p(i,j)    = 0.0_RKIND
+    swdntc_p(i,j)   = 0.0_RKIND
+    swupb_p(i,j)    = 0.0_RKIND
+    swupbc_p(i,j)   = 0.0_RKIND
+    swupt_p(i,j)    = 0.0_RKIND
+    swuptc_p(i,j)   = 0.0_RKIND
  enddo
 
  do k = kts,kte
  do i = its,ite
-    rthratensw_p(i,k,j) = 0.
+    rthratensw_p(i,k,j) = 0.0_RKIND
  enddo
  enddo
  enddo
@@ -261,10 +261,10 @@
        do j = jts,jte
        do k = kts,kte+2
        do i = its,ite
-          swdnflx_p(i,k,j)  = 0.
-          swdnflxc_p(i,k,j) = 0.
-          swupflx_p(i,k,j)  = 0.
-          swupflxc_p(i,k,j) = 0.
+          swdnflx_p(i,k,j)  = 0.0_RKIND
+          swdnflxc_p(i,k,j) = 0.0_RKIND
+          swupflx_p(i,k,j)  = 0.0_RKIND
+          swupflxc_p(i,k,j) = 0.0_RKIND
        enddo
        enddo
        enddo
@@ -274,24 +274,24 @@
        do i = its,ite
           sfc_emiss_p(i,j) = diag_physics % sfc_emiss % array(i)
 
-          olrtoa_p(i,j)     = 0.
-          glw_p(i,j)        = 0.
-          lwcf_p(i,j)       = 0.
-          lwdnb_p(i,j)      = 0.
-          lwdnbc_p(i,j)     = 0.
-          lwdnt_p(i,j)      = 0.
-          lwdntc_p(i,j)     = 0.
-          lwupb_p(i,j)      = 0.
-          lwupbc_p(i,j)     = 0.
-          lwupt_p(i,j)      = 0.
-          lwuptc_p(i,j)     = 0.
+          olrtoa_p(i,j)     = 0.0_RKIND
+          glw_p(i,j)        = 0.0_RKIND
+          lwcf_p(i,j)       = 0.0_RKIND
+          lwdnb_p(i,j)      = 0.0_RKIND
+          lwdnbc_p(i,j)     = 0.0_RKIND
+          lwdnt_p(i,j)      = 0.0_RKIND
+          lwdntc_p(i,j)     = 0.0_RKIND
+          lwupb_p(i,j)      = 0.0_RKIND
+          lwupbc_p(i,j)     = 0.0_RKIND
+          lwupt_p(i,j)      = 0.0_RKIND
+          lwuptc_p(i,j)     = 0.0_RKIND
        enddo
        do k = kts,kte
        do i = its,ite
-          rthratenlw_p(i,k,j) = 0.
-          cemiss_p(i,k,j)     = 0.
-          taucldc_p(i,k,j)    = 0.
-          taucldi_p(i,k,j)    = 0.
+          rthratenlw_p(i,k,j) = 0.0_RKIND
+          cemiss_p(i,k,j)     = 0.0_RKIND
+          taucldc_p(i,k,j)    = 0.0_RKIND
+          taucldi_p(i,k,j)    = 0.0_RKIND
        enddo
        enddo
        enddo
@@ -301,20 +301,20 @@
           do n = 1,cam_abs_dim1
           do k = kts,kte
           do i = its,ite
-             absnxt_p(i,k,n,j) = 0.
+             absnxt_p(i,k,n,j) = 0.0_RKIND
           enddo
           enddo
           enddo
           do n = 1,cam_abs_dim2
           do k = kts,kte+1
           do i = its,ite
-             abstot_p(i,k,n,j) = 0.
+             abstot_p(i,k,n,j) = 0.0_RKIND
           enddo
           enddo
           enddo
           do k = kts,kte+1
           do i = its,ite
-             emstot_p(i,k,j) = 0.
+             emstot_p(i,k,j) = 0.0_RKIND
           enddo
           enddo
           enddo
@@ -578,14 +578,14 @@
                 ims = ims , ime = ime , jms = jms , jme = jme , kms = kms , kme = kme ,      &
                 its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte        &
                   )
-       write(0,*) 'doabsems =',doabsems
-       write(0,*) 'max swupb      =',maxval(swupb_p(its:ite,jms:jme))
-       write(0,*) 'max swupbc     =',maxval(swupbc_p(its:ite,jms:jme))
-       write(0,*) 'max swupt      =',maxval(swupt_p(its:ite,jms:jme))
-       write(0,*) 'max swuptc     =',maxval(swuptc_p(its:ite,jms:jme))
-       write(0,*) 'max rthratensw =',maxval(rthratensw_p(its:ite,kts:kte,jms:jme))
-       write(0,*) 'min rthratensw =',minval(rthratensw_p(its:ite,kts:kte,jms:jme))
-       write(0,*) '--- end subroutine camrad sw'
+!      write(0,*) 'doabsems =',doabsems
+!      write(0,*) 'max swupb      =',maxval(swupb_p(its:ite,jms:jme))
+!      write(0,*) 'max swupbc     =',maxval(swupbc_p(its:ite,jms:jme))
+!      write(0,*) 'max swupt      =',maxval(swupt_p(its:ite,jms:jme))
+!      write(0,*) 'max swuptc     =',maxval(swuptc_p(its:ite,jms:jme))
+!      write(0,*) 'max rthratensw =',maxval(rthratensw_p(its:ite,kts:kte,jms:jme))
+!      write(0,*) 'min rthratensw =',minval(rthratensw_p(its:ite,kts:kte,jms:jme))
+!      write(0,*) '--- end subroutine camrad sw'
 
     case default
 

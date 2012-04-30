@@ -267,11 +267,18 @@ CONTAINS
                                                   ,F_QI      &
                                                   ,F_QS
  
+#if defined(non_hydrostatic_core) || defined(hydrostatic_core)
+      REAL,  INTENT(IN    ):: CUDT
+      REAL,  INTENT(IN    ), OPTIONAL:: CURR_SECS
+      LOGICAL,INTENT(IN   ), OPTIONAL:: ADAPT_STEP_FLAG
+      REAL,  INTENT (INOUT), OPTIONAL:: CUDTACTTIME       
+#else
 ! Adaptive time-step variables
       REAL,  INTENT(IN   ) :: CUDT
       REAL,  INTENT(IN   ) :: CURR_SECS
       LOGICAL,INTENT(IN   ) , OPTIONAL :: ADAPT_STEP_FLAG
       REAL,  INTENT (INOUT) :: CUDTACTTIME       
+#endif
 
 !--------------------------- LOCAL VARS ------------------------------
 
@@ -329,10 +336,18 @@ CONTAINS
       LOGICAL :: run_param , doing_adapt_dt , decided
 
 !-------other local variables----
+#if defined(non_hydrostatic_core) || defined(hydrostatic_core)
+!MPAS specific (Laura D. Fowler):
+      INTEGER,DIMENSION(its:ite):: KTYPE
+      REAL,DIMENSION(its:ite,kts:kte):: SIG1
+      REAL,DIMENSION(ims:ime,kms:kme,jms:jme):: ZNU
+      INTEGER:: zz 
+#else
       INTEGER,DIMENSION( its:ite ) :: KTYPE
       REAL, DIMENSION( kts:kte )   :: sig1      ! half sigma levels
       REAL, DIMENSION( kms:kme )   :: ZNU
       INTEGER                      :: zz 
+#endif
 !-----------------------------------------------------------------------
 !
 !***  CHECK TO SEE IF THIS IS A CONVECTION TIMESTEP
@@ -450,6 +465,25 @@ CONTAINS
         ENDDO
       ENDDO
 
+#if defined(non_hydrostatic_core) || defined(hydrostatic_core)
+!MPAS specific
+      DO k=kts,kte
+        zz = kte+1-k        
+        DO i=its,ite
+          U1(i,zz)   = U3D(i,k,j)
+          V1(i,zz)   = V3D(i,k,j)
+          T1(i,zz)   = T3D(i,k,j)
+          Q1(i,zz)   = QV3D(i,k,j)
+          Q1B(i,zz)  = QVFTEN(i,k,j)
+          Q1BL(i,zz) = QVPBLTEN(i,k,j)
+          Q2(i,zz)   = QC3D(i,k,j)
+          Q3(i,zz)   = QI3D(i,k,j)
+          OMG(i,zz)  = DOT(i,k)
+          GHT(i,zz)  = ZL(i,k)
+          PRSL(i,zz) = Pcps(i,k,j)
+        ENDDO
+      ENDDO
+#else
       DO k=kts,kte
         zz = kte+1-k        
         DO i=its,ite
@@ -471,6 +505,7 @@ CONTAINS
           PRSL(i,zz) = Pcps(i,k,j)
         ENDDO
       ENDDO
+#endif
 
       DO k=kts,kte+1
         zz = kte+2-k
@@ -479,10 +514,20 @@ CONTAINS
         ENDDO
       ENDDO 
 
+#if defined(non_hydrostatic_core) || defined(hydrostatic_core)
+!MPAS specific (Laura D. Fowler):
+      DO k=kts,kte
+         zz = kte+1-k
+         DO i=its,ite
+            sig1(i,zz) = znu(i,k,j)
+         ENDDO
+      ENDDO
+#else
       DO k=kts,kte
          zz = kte+1-k
          sig1(zz) = ZNU(k)
       ENDDO
+#endif
 
 !###############before call TIECNV, we need EVAP########################
 !       EVAP is the vapor flux at the surface
@@ -638,7 +683,13 @@ CONTAINS
           ZLU(lq,km),     ZLUDE(lq,km), ZMFU(lq,km),  ZMFD(lq,km),  &
           ZQSAT(lq,km),   pqc(lq,km),   pqi(lq,km),   ZRAIN(lq)
 
+#if defined(non_hydrostatic_core) || defined(hydrostatic_core)
+!MPAS specific (Laura D. Fowler):
+      REAL sig(km1)
+      REAL sig1(lq,km)
+#else
       REAL sig(km1),sig1(km)
+#endif
       INTEGER ICBOT(lq),   ICTOP(lq),     KTYPE(lq),   lndj(lq)
       REAL  dt
       LOGICAL LOCUM(lq)
@@ -883,7 +934,12 @@ CONTAINS
               PCTE(KLON,KLEV),        ZCAPE(KLON),        &
               ZHEAT(KLON),            ZHHATT(KLON,KLEV),  &
               ZHMIN(KLON),            ZRELH(KLON)
+#if defined(non_hydrostatic_core) || defined(hydrostatic_core)
+!MPAS specific (Laura D. Fowler):
+      REAL     sig1(KLON,KLEV)
+#else
       REAL     sig1(KLEV)
+#endif
       INTEGER  ILAB(KLON,KLEV),        IDTOP(KLON),   &
               ICTOP0(KLON),           ILWMIN(KLON)    
       INTEGER  KCBOT(KLON),            KCTOP(KLON),   &
@@ -2319,7 +2375,12 @@ CONTAINS
               PRFL(KLON),             PRAIN(KLON)
       REAL     PTEN(KLON,KLEV),        PDPMEL(KLON,KLEV), &
               PSFL(KLON),             ZPSUBCL(KLON)
+#if defined(non_hydrostatic_core) || defined(hydrostatic_core)
+!MPAS specific (Laura D. Fowler):
+      REAL sig1(KLON,KLEV)
+#else
       REAL     sig1(KLEV)
+#endif
       INTEGER  KCBOT(KLON),            KCTOP(KLON),     &
               KDTOP(KLON),            KTYPE(KLON)
       LOGICAL  LDDRAF(KLON),           LDCUM(KLON)
@@ -2421,7 +2482,12 @@ CONTAINS
       IF(LDCUM(JL).AND.JK.GE.KCBOT(JL).AND. &
              ZPSUBCL(JL).GT.1.E-20) THEN
           ZRFL=ZPSUBCL(JL)
+#if defined(non_hydrostatic_core) || defined(hydrostatic_core)
+!MPAS specific (Laura D. Fowler):
+          CEVAPCU=CEVAPCU1*SQRT(CEVAPCU2*SQRT(sig1(JL,JK)))
+#else
           CEVAPCU=CEVAPCU1*SQRT(CEVAPCU2*SQRT(sig1(JK)))
+#endif
           ZRNEW=(MAX(0.,SQRT(ZRFL/ZCUCOV)-   &
                   CEVAPCU*(PAPH(JL,JK+1)-PAPH(JL,JK))* &
                 MAX(0.,PQSEN(JL,JK)-PQEN(JL,JK))))**2*ZCUCOV

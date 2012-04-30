@@ -68,9 +68,10 @@
  endif
 
 !deep convection scheme:
- if(.not. (config_conv_deep_scheme .eq. 'off'          .or. &
-           config_conv_deep_scheme .eq. 'kain_fritsch' .or. &
-           config_conv_deep_scheme .eq. 'tiedtke'      )) then
+ if(.not. (config_conv_deep_scheme .eq. 'off'                  .or. &
+           config_conv_deep_scheme .eq. 'kain_fritsch'         .or. &
+           config_conv_deep_scheme .eq. 'kain_fritsch_trigger' .or. &
+           config_conv_deep_scheme .eq. 'tiedtke'              )) then
 
     write(mpas_err_message,'(A,A10)') 'illegal value for config_deep_conv_scheme: ', &
           trim(config_conv_deep_scheme)
@@ -78,12 +79,9 @@
 
  endif
 
-!ldf (2012-01-19): Tiedtke is still under testing. do not use right now.
- if(config_conv_deep_scheme .eq. 'tiedtke') then
-    write(mpas_err_message,'(A,A10)') 'Tiedtke is being tested. Do not use right now. Thanks '
-    call physics_error_fatal(mpas_err_message)
- endif
-!ldf end.
+!kain_fritsch_trigger:
+ if(config_conv_deep_scheme .eq. 'kain_fritsch_trigger') & 
+    call physics_error_fatal('DO NOT USE YET: kain_fritsch_trigger is being tested')
 
 !pbl scheme:
  if(.not. (config_pbl_scheme .eq. 'off' .or. &

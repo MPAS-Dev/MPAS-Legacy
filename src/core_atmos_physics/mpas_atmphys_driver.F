@@ -12,7 +12,7 @@
  use mpas_atmphys_driver_sfclayer
  use mpas_atmphys_constants
  use mpas_atmphys_update
- use mpas_atmphys_vars
+ use mpas_atmphys_vars, only: l_camlw,l_conv,l_radtlw,l_radtsw
 #ifdef non_hydrostatic_core
  use mpas_atmphys_interface_nhyd
 #elif hydrostatic_core
@@ -84,8 +84,8 @@
        call driver_radiation_lw(xtime_s,block%mesh,block%state%time_levs(1)%state, &
                               block%diag_physics,block%sfc_input,block%tend_physics)
     endif
-    if(l_camlw .and. config_radt_lw_scheme .eq. 'cam_lw') &
-                              call radiation_camlw_to_MPAS(block%diag_physics)
+!   if(l_camlw .and. config_radt_lw_scheme .eq. 'cam_lw') &
+!                             call radiation_camlw_to_MPAS(block%diag_physics)
 
     !call to accumulate long- and short-wave diagnostics if needed:
      if(config_bucket_update /= 'none' .and. config_bucket_radt .gt. 0._RKIND) &
@@ -119,15 +119,15 @@
     endif
 
     !call to convection scheme:
-    if(config_conv_deep_scheme .ne. 'off') then
+    call update_convection_step1(block%mesh,block%diag_physics,block%tend_physics)
+    if(l_conv) then
        call allocate_convection_deep
        call driver_convection_deep(itimestep,block%mesh,block%sfc_input,block%diag_physics, &
-                                  block%tend_physics)
+                                   block%tend_physics)
        call deallocate_convection_deep
-
-       !update diagnostics:
-       call update_convection_deep(config_bucket_rainc,block%mesh,block%diag_physics)
     endif
+    !update diagnostics:
+    call update_convection_step2(config_bucket_rainc,block%mesh,block%diag_physics)
 
     !deallocate arrays shared by all physics parameterizations:
     call deallocate_forall_physics
