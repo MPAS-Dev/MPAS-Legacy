@@ -134,7 +134,7 @@ write(0,*) 'min rthblten = ',minval(rthblten(:,1:nCellsSolve))
     if(config_conv_deep_scheme .eq. 'tiedtke') then
        allocate(rucuten_Edge(nVertLevels,nEdges))
        rucuten_Edge(:,:) = 0.
-       call tend_toEdges(dminfo,CellsToSend,CellsToRecv,mesh,rucuten,rvcuten,rucuten_Edge)
+       call tend_toEdges(mesh,rucuten,rvcuten,rucuten_Edge)
        do i = 1, nEdgesSolve
        do k  = 1, nVertLevels
           tend_u(k,i)=tend_u(k,i)+rucuten_Edge(k,i)*mass_edge(k,i)
