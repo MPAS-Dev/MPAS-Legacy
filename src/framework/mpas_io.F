@@ -435,6 +435,7 @@ module mpas_io
       do while (associated(dim_cursor))
          if (trim(dimname) == trim(dim_cursor % dimhandle % dimname)) then
             if (dimsize /= dim_cursor % dimhandle % dimsize) then
+ print *, 'dimsize dim_cursor % dimhandle % dimsize',dimsize, dim_cursor % dimhandle % dimsize
                if (present(ierr)) ierr = MPAS_IO_ERR_REDEF_DIM
             end if
             return

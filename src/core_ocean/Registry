@@ -85,6 +85,7 @@ namelist logical   advection config_check_monotonicity  false
 namelist logical   restore   config_restoreTS           false
 namelist real      restore   config_restoreT_timescale  90.0
 namelist real      restore   config_restoreS_timescale  90.0
+namelist logical   restore   config_use_monthly_forcing false
 
 %
 % dim  type  name_in_file  name_in_code
@@ -102,6 +103,7 @@ dim TWENTYONE 21
 dim vertexDegree vertexDegree
 dim nVertLevels nVertLevels
 dim nVertLevelsP1 nVertLevels+1
+dim nMonths nMonths
 
 %
 % var persistence type  name_in_file  ( dims )  time_levs iro-  name_in_code struct super-array array_class
@@ -201,9 +203,14 @@ var persistent integer boundaryCell ( nVertLevels nCells ) 0 iro boundaryCell me
 var persistent integer edgeMask ( nVertLevels nEdges ) 0 o edgeMask mesh - -
 var persistent integer vertexMask ( nVertLevels nVertices ) 0 o vertexMask mesh - -
 var persistent integer cellMask ( nVertLevels nCells ) 0 o cellMask mesh - -
-var persistent real    u_src ( nVertLevels nEdges ) 0 ir u_src mesh - -
-var persistent real    temperatureRestore ( nCells ) 0 ir temperatureRestore mesh - -
-var persistent real    salinityRestore ( nCells ) 0 ir salinityRestore mesh - -
+var persistent real    u_src ( nVertLevels nEdges ) 0 iro u_src mesh - -
+var persistent real    temperatureRestore ( nCells ) 0 iro temperatureRestore mesh - -
+var persistent real    salinityRestore ( nCells ) 0 iro salinityRestore mesh - -
+
+% mrp trying to figure out why these do not appear
+var persistent real    windStressMonthly ( nMonths nEdges ) 0 iro windStressMonthly mesh - -
+var persistent real    temperatureRestoreMonthly ( nMonths nCells ) 0 iro temperatureRestoreMonthly mesh - -
+var persistent real    salinityRestoreMonthly ( nMonths nCells ) 0 iro salinityRestoreMonthly mesh - -
 
 % Prognostic variables: read from input, saved in restart, and written to output
 var persistent real    u ( nVertLevels nEdges Time ) 2 ir u state - -
@@ -259,6 +266,11 @@ var persistent real    uReconstructY ( nVertLevels nCells Time ) 2 - uReconstruc
 var persistent real    uReconstructZ ( nVertLevels nCells Time ) 2 - uReconstructZ state - -
 var persistent real    uReconstructZonal ( nVertLevels nCells Time ) 2 o uReconstructZonal state - -
 var persistent real    uReconstructMeridional ( nVertLevels nCells Time ) 2 o uReconstructMeridional state - -
+var persistent real    uSrcReconstructX ( nVertLevels nCells Time ) 2 - uSrcReconstructX state - -
+var persistent real    uSrcReconstructY ( nVertLevels nCells Time ) 2 - uSrcReconstructY state - -
+var persistent real    uSrcReconstructZ ( nVertLevels nCells Time ) 2 - uSrcReconstructZ state - -
+var persistent real    uSrcReconstructZonal ( nVertLevels nCells Time ) 2 o uSrcReconstructZonal state - -
+var persistent real    uSrcReconstructMeridional ( nVertLevels nCells Time ) 2 o uSrcReconstructMeridional state - -
 var persistent real    MontPot ( nVertLevels nCells Time ) 2 - MontPot state - -
 var persistent real    pressure ( nVertLevels nCells Time ) 2 - pressure state - -
 var persistent real    wTop ( nVertLevelsP1 nCells Time ) 2 - wTop state - -
@@ -292,5 +304,5 @@ var persistent real    acc_uReconstructZonal ( nVertLevels nCells Time ) 2 o acc
 var persistent real    acc_uReconstructMeridional ( nVertLevels nCells Time ) 2 o acc_uReconstructMeridional state - -
 var persistent real    acc_uReconstructZonalVar ( nVertLevels nCells Time ) 2 o acc_uReconstructZonalVar state - -
 var persistent real    acc_uReconstructMeridionalVar ( nVertLevels nCells Time ) 2 o acc_uReconstructMeridionalVar state - -
-var persistent real	   acc_u ( nVertLevels nEdges Time ) 2 o acc_u state - -
-var persistent real	   acc_uVar ( nVertLevels nEdges Time ) 2 o acc_uVar state - -
+var persistent real    acc_u ( nVertLevels nEdges Time ) 2 o acc_u state - -
+var persistent real    acc_uVar ( nVertLevels nEdges Time ) 2 o acc_uVar state - -

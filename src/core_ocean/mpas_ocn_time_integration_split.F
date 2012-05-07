@@ -869,12 +869,24 @@ module ocn_time_integration_split
          end if
 
          call ocn_diagnostic_solve(dt, block % state % time_levs(2) % state, block % mesh)
+
          call mpas_reconstruct(block % mesh, block % state % time_levs(2) % state % u % array,          &
             block % state % time_levs(2) % state % uReconstructX % array,            &
             block % state % time_levs(2) % state % uReconstructY % array,            &
             block % state % time_levs(2) % state % uReconstructZ % array,            &
             block % state % time_levs(2) % state % uReconstructZonal % array,        &
             block % state % time_levs(2) % state % uReconstructMeridional % array)
+
+!TDR
+         call mpas_reconstruct(block % mesh, block % mesh % u_src % array,          &
+                          block % state % time_levs(2) % state % uSrcReconstructX % array,            &
+                          block % state % time_levs(2) % state % uSrcReconstructY % array,            &
+                          block % state % time_levs(2) % state % uSrcReconstructZ % array,            &
+                          block % state % time_levs(2) % state % uSrcReconstructZonal % array,        &
+                          block % state % time_levs(2) % state % uSrcReconstructMeridional % array    &
+                         )
+!TDR
+
 
          call ocn_time_average_accumulate(block % state % time_levs(2) % state, block % state % time_levs(1) % state)
 

@@ -99,7 +99,7 @@ module ocn_time_integration_rk4
       block => domain % blocklist
       call mpas_allocate_state(block, provis, &
                           block % mesh % nCells, block % mesh % nEdges, block % mesh % maxEdges, block % mesh % maxEdges2, &
-                          block % mesh % nVertices, block % mesh % vertexDegree, block % mesh % nVertLevels )
+                          block % mesh % nVertices, block % mesh % vertexDegree, block % mesh % nVertLevels, block % mesh % nMonths )
 
       provis_ptr => provis
       call mpas_create_state_links(provis_ptr)
@@ -342,6 +342,16 @@ module ocn_time_integration_rk4
                           block % state % time_levs(2) % state % uReconstructZonal % array,        &
                           block % state % time_levs(2) % state % uReconstructMeridional % array    &
                          )
+
+!TDR
+         call mpas_reconstruct(block % mesh, block % mesh % u_src % array,          &
+                          block % state % time_levs(2) % state % uSrcReconstructX % array,            &
+                          block % state % time_levs(2) % state % uSrcReconstructY % array,            &
+                          block % state % time_levs(2) % state % uSrcReconstructZ % array,            &
+                          block % state % time_levs(2) % state % uSrcReconstructZonal % array,        &
+                          block % state % time_levs(2) % state % uSrcReconstructMeridional % array    &
+                         )
+!TDR
 
          call ocn_time_average_accumulate(block % state % time_levs(2) % state, block % state % time_levs(1) % state)
 

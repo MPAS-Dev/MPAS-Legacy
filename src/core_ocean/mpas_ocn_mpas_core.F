@@ -11,6 +11,8 @@ module mpas_core
    use ocn_time_integration
    use ocn_tendency
 
+   use ocn_monthly_forcing
+
    use ocn_vel_pressure_grad
    use ocn_vel_vadv
    use ocn_vel_hmix
@@ -92,6 +94,9 @@ module mpas_core
 
       call mpas_ocn_tracer_advection_init(err_tmp)
       err = ior(err,err_tmp)
+
+      call ocn_monthly_forcing_init(err_tmp)
+      err = ior(err, err_tmp)
 
       call mpas_timer_init(domain)
 
@@ -273,6 +278,16 @@ module mpas_core
                        block % state % time_levs(1) % state % uReconstructMeridional % array    &
                       )
 
+!TDR
+      call mpas_reconstruct(mesh, mesh % u_src % array,                  &
+                       block % state % time_levs(1) % state % uSrcReconstructX % array,            &
+                       block % state % time_levs(1) % state % uSrcReconstructY % array,            &
+                       block % state % time_levs(1) % state % uSrcReconstructZ % array,            &
+                       block % state % time_levs(1) % state % uSrcReconstructZonal % array,        &
+                       block % state % time_levs(1) % state % uSrcReconstructMeridional % array    &
+                      )
+!TDR
+
       ! initialize velocities and tracers on land to be -1e34
       ! The reconstructed velocity on land will have values not exactly
       ! -1e34 due to the interpolation of reconstruction.
@@ -355,6 +370,12 @@ module mpas_core
          currTime = mpas_get_clock_time(clock, MPAS_NOW, ierr)
          call mpas_get_time(curr_time=currTime, dateTimeString=timeStamp, ierr=ierr)
          write(0,*) 'Doing timestep ', trim(timeStamp)
+   
+         block_ptr => domain % blocklist
+         do while(associated(block_ptr))
+           call ocn_build_forcing_arrays(currTime, block_ptr % mesh, ierr)
+           block_ptr => block_ptr % next
+         end do
 
          call mpas_timer_start("time integration", .false., timeIntTimer)
          call mpas_timestep(domain, itimestep, dt, timeStamp)
