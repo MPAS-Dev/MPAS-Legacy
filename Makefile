@@ -271,6 +271,19 @@ ifneq ($(wildcard $(NETCDF)/lib/libnetcdff.*), ) # CHECK FOR NETCDF4
 	LIBS += -lnetcdff
 endif # CHECK FOR NETCDF4
 
+####################################################
+# Section for adding external libraries and includes
+####################################################
+ifdef MPAS_EXTERNAL_LIBS
+ LIBS += $(MPAS_EXTERNAL_LIBS)
+endif
+ifdef MPAS_EXTERNAL_INCLUDES
+ CPPINCLUDES += $(MPAS_EXTERNAL_INCLUDES)
+ FCINCLUDES += $(MPAS_EXTERNAL_INCLUDES)
+endif
+####################################################
+
+
 all: mpas_main
 
 mpas_main: 
