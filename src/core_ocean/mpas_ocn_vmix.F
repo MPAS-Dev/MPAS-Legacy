@@ -288,13 +288,13 @@ contains
       !
       !-----------------------------------------------------------------
 
-      integer :: iEdge, nEdges, k, cell1, cell2, nVertLevels
+      integer :: iEdge, nEdges, k, cell1, cell2, nVertLevels, N
 
       integer, dimension(:), pointer :: maxLevelEdgeTop
 
       integer, dimension(:,:), pointer :: cellsOnEdge
 
-      real (kind=RKIND), dimension(:), allocatable :: A, C, uTemp
+      real (kind=RKIND), dimension(:), allocatable :: A, B, C, uTemp
 
       err = 0
 
@@ -305,43 +305,55 @@ contains
       maxLevelEdgeTop => grid % maxLevelEdgeTop % array
       cellsOnEdge => grid % cellsOnEdge % array
 
-      allocate(A(nVertLevels),C(nVertLevels),uTemp(nVertLevels)) 
+      allocate(A(nVertLevels),B(nVertLevels),C(nVertLevels),uTemp(nVertLevels)) 
+      A(1)=0
 
       do iEdge=1,nEdges
-        if (maxLevelEdgeTop(iEdge).gt.0) then
+        N=maxLevelEdgeTop(iEdge)
+        if (N.gt.0) then
 
-         ! Compute A(k), C(k) for momentum
-         ! mrp 110315 efficiency note: for z-level, could precompute
-         ! -2.0*dt/(h(k)_h(k+1))/h(k) in setup
-         ! h_edge is computed in compute_solve_diag, and is not available yet.
+         ! Compute A(k), B(k), C(k)
+         ! h_edge is computed in compute_solve_diag, and is not available yet,
+         ! so recompute h_edge here.
          cell1 = cellsOnEdge(1,iEdge)
          cell2 = cellsOnEdge(2,iEdge)
-         do k=1,maxLevelEdgeTop(iEdge)
+         do k=1,N
             h_edge(k,iEdge) = 0.5 * (h(k,cell1) + h(k,cell2))
          end do
 
-         do k=1,maxLevelEdgeTop(iEdge)-1
-            A(k) = -2.0*dt*vertViscTopOfEdge(k+1,iEdge) &
+         ! A is lower diagonal term
+         do k=2,N
+            A(k) = -2.0*dt*vertViscTopOfEdge(k,iEdge) &
+               / (h_edge(k-1,iEdge) + h_edge(k,iEdge)) &
+               / h_edge(k,iEdge)
+         enddo
+
+         ! C is upper diagonal term
+         do k=1,N-1
+            C(k) = -2.0*dt*vertViscTopOfEdge(k+1,iEdge) &
                / (h_edge(k,iEdge) + h_edge(k+1,iEdge)) &
                / h_edge(k,iEdge)
          enddo
-         A(maxLevelEdgeTop(iEdge)) = -dt*config_bottom_drag_coeff  &
-            *sqrt(2.0*ke_edge(k,iEdge))/h_edge(k,iEdge)
 
-         C(1) = 1 - A(1)
-         do k=2,maxLevelEdgeTop(iEdge)
-            C(k) = 1 - A(k) - A(k-1)
+         ! B is diagonal term
+         B(1) = 1 - C(1)
+         do k=2,N-1
+            B(k) = 1 - A(k) - C(k)
          enddo
 
-         call tridiagonal_solve(A,C,A,u(:,iEdge),uTemp,maxLevelEdgeTop(iEdge))
+         ! Apply bottom drag boundary condition on the viscous term
+         B(N) = 1 - A(N) + dt*config_bottom_drag_coeff  &
+            *sqrt(2.0*ke_edge(k,iEdge))/h_edge(k,iEdge)
 
-         u(1:maxLevelEdgeTop(iEdge),iEdge) = uTemp(1:maxLevelEdgeTop(iEdge))
-         u(maxLevelEdgeTop(iEdge)+1:nVertLevels,iEdge) = 0.0
+         call tridiagonal_solve(A(2:N),B,C(1:N-1),u(:,iEdge),uTemp,N)
+
+         u(1:N,iEdge) = uTemp(1:N)
+         u(N+1:nVertLevels,iEdge) = 0.0
 
         end if
       end do
 
-      deallocate(A,C,uTemp)
+      deallocate(A,B,C,uTemp)
 
    !--------------------------------------------------------------------
 
@@ -444,8 +456,7 @@ contains
                + fluxVertTop(iTracer,k) - fluxVertTop(iTracer,k+1)
            enddo
          enddo
-!print '(a,50e12.2)', 'fluxVertTop',fluxVertTop(3,1:maxLevelCell(iCell)+1)
-!print '(a,50e12.2)', 'tend_tr    ',tend_tr(3,1,1:maxLevelCell(iCell))
+
       enddo ! iCell loop
       deallocate(fluxVertTop)
    !--------------------------------------------------------------------
@@ -509,11 +520,11 @@ contains
       !
       !-----------------------------------------------------------------
 
-      integer :: iCell, nCells, k, nVertLevels, num_tracers
+      integer :: iCell, nCells, k, nVertLevels, num_tracers, N
 
       integer, dimension(:), pointer :: maxLevelCell
 
-      real (kind=RKIND), dimension(:), allocatable :: A, C
+      real (kind=RKIND), dimension(:), allocatable :: A,B,C
       real (kind=RKIND), dimension(:,:), allocatable :: tracersTemp
 
       err = 0
@@ -525,32 +536,39 @@ contains
       num_tracers = size(tracers, dim=1)
       maxLevelCell => grid % maxLevelCell % array
 
-      allocate(A(nVertLevels),C(nVertLevels), tracersTemp(num_tracers,nVertLevels))
+      allocate(A(nVertLevels),B(nVertLevels),C(nVertLevels),tracersTemp(num_tracers,nVertLevels))
 
       do iCell=1,nCells
-         ! Compute A(k), C(k) for tracers
-         ! mrp 110315 efficiency note: for z-level, could precompute
-         ! -2.0*dt/(h(k)_h(k+1))/h(k) in setup
-         do k=1,maxLevelCell(iCell)-1
-            A(k) = -2.0*dt*vertDiffTopOfCell(k+1,iCell) &
+         ! Compute A(k), B(k), C(k) for tracers
+         N = maxLevelCell(iCell)
+
+         ! A is lower diagonal term
+         A(1)=0
+         do k=2,N
+            A(k) = -2.0*dt*vertDiffTopOfCell(k,iCell) &
+                 / (h(k-1,iCell) + h(k,iCell)) / h(k,iCell)
+         enddo
+
+         ! C is upper diagonal term
+         do k=1,N-1
+            C(k) = -2.0*dt*vertDiffTopOfCell(k+1,iCell) &
                  / (h(k,iCell) + h(k+1,iCell)) / h(k,iCell)
          enddo
+         C(N) = 0.0
 
-         A(maxLevelCell(iCell)) = 0.0
-
-         C(1) = 1 - A(1)
-         do k=2,maxLevelCell(iCell)
-            C(k) = 1 - A(k) - A(k-1)
+         ! B is diagonal term
+         do k=1,N
+            B(k) = 1 - A(k) - C(k)
          enddo
 
-         call tridiagonal_solve_mult(A,C,A,tracers(:,:,iCell), &
-              tracersTemp, maxLevelCell(iCell), nVertLevels,num_tracers)
+         call tridiagonal_solve_mult(A(2:N),B,C(1:N-1),tracers(:,:,iCell), &
+              tracersTemp, N, nVertLevels,num_tracers)
 
-         tracers(:,1:maxLevelCell(iCell),iCell) = tracersTemp(:,1:maxLevelCell(iCell))
-         tracers(:,maxLevelCell(iCell)+1:nVertLevels,iCell) = -1e34
+         tracers(:,1:N,iCell) = tracersTemp(:,1:N)
+         tracers(:,N+1:nVertLevels,iCell) = -1e34
       end do
 
-      deallocate(A,C,tracersTemp)
+      deallocate(A,B,C,tracersTemp)
 
    !--------------------------------------------------------------------
 
