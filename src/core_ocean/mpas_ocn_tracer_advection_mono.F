@@ -102,14 +102,14 @@ module mpas_ocn_tracer_advection_mono
 
       ! allocate nCells arrays
 
-      allocate(tracer_new(nVertLevels, nCells))
-      allocate(tracer_cur(nVertLevels, nCells))
-      allocate(upwind_tendency(nVertLevels, nCells))
-      allocate(inv_h_new(nVertLevels, nCells))
-      allocate(tracer_max(nVertLevels, nCells))
-      allocate(tracer_min(nVertLevels, nCells))
-      allocate(flux_incoming(nVertLevels, nCells))
-      allocate(flux_outgoing(nVertLevels, nCells))
+      allocate(tracer_new(nVertLevels, nCells+1))
+      allocate(tracer_cur(nVertLevels, nCells+1))
+      allocate(upwind_tendency(nVertLevels, nCells+1))
+      allocate(inv_h_new(nVertLevels, nCells+1))
+      allocate(tracer_max(nVertLevels, nCells+1))
+      allocate(tracer_min(nVertLevels, nCells+1))
+      allocate(flux_incoming(nVertLevels, nCells+1))
+      allocate(flux_outgoing(nVertLevels, nCells+1))
 
       ! allocate nEdges arrays
       allocate(high_order_horiz_flux(nVertLevels, nEdges))
