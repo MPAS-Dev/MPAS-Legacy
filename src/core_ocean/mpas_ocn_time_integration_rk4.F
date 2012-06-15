@@ -81,20 +81,14 @@ module ocn_time_integration_rk4
       type (state_type), target :: provis
       type (state_type), pointer :: provis_ptr
 
-      integer :: rk_step, iEdge, cell1, cell2
+      integer :: rk_step
 
       real (kind=RKIND), dimension(4) :: rk_weights, rk_substep_weights
 
-      integer :: nCells, nEdges, nVertLevels, num_tracers
-      real (kind=RKIND) :: coef
-      real (kind=RKIND), dimension(:,:), pointer :: &
-        u, h, h_edge, vertViscTopOfEdge, vertDiffTopOfCell, ke_edge
+      integer :: nCells
+      real (kind=RKIND), dimension(:,:), pointer :: u, h, h_edge, vertViscTopOfEdge, vertDiffTopOfCell, ke_edge
       real (kind=RKIND), dimension(:,:,:), pointer :: tracers
-      integer, dimension(:), pointer :: & 
-        maxLevelCell, maxLevelEdgeTop
-      real (kind=RKIND), dimension(:), allocatable:: A,C,uTemp
-      real (kind=RKIND), dimension(:,:), allocatable:: tracersTemp
-
+      integer, dimension(:), pointer :: maxLevelCell
 
       block => domain % blocklist
       call mpas_allocate_state(block, provis, &
@@ -171,7 +165,7 @@ module ocn_time_integration_rk4
            ! mrp 110718 filter btr mode out of u_tend
            ! still got h perturbations with just this alone.  Try to set uBtr=0 after full u computation
            if (config_rk_filter_btr_mode) then
-               call filter_btr_mode_tend_u(block % tend, provis, block % diagnostics, block % mesh)
+               call ocn_filter_btr_mode_tend_u(block % tend, provis, block % mesh)
            endif
 
            call ocn_tend_scalar(block % tend, provis, block % diagnostics, block % mesh, dt)
@@ -276,15 +270,11 @@ module ocn_time_integration_rk4
          h           => block % state % time_levs(2) % state % h % array
          h_edge      => block % state % time_levs(2) % state % h_edge % array
          ke_edge     => block % state % time_levs(2) % state % ke_edge % array
-         num_tracers = block % state % time_levs(2) % state % num_tracers
          vertViscTopOfEdge => block % diagnostics % vertViscTopOfEdge % array
          vertDiffTopOfCell => block % diagnostics % vertDiffTopOfCell % array
          maxLevelCell    => block % mesh % maxLevelCell % array
-         maxLevelEdgeTop => block % mesh % maxLevelEdgeTop % array
                   
          nCells      = block % mesh % nCells
-         nEdges      = block % mesh % nEdges
-         nVertLevels = block % mesh % nVertLevels
 
          do iCell=1,nCells
             do k=1,maxLevelCell(iCell)
@@ -300,11 +290,11 @@ module ocn_time_integration_rk4
             !
             !  Implicit vertical solve for momentum
             !
-            call ocn_vel_vmix_tend_implicit(block % mesh, dt, ke_edge, vertvisctopofedge, h, h_edge, u, err)
+            call ocn_vel_vmix_tend_implicit(block % mesh, dt, ke_edge, vertViscTopOfEdge, h, h_edge, u, err)
 
           !  mrp 110718 filter btr mode out of u
            if (config_rk_filter_btr_mode) then
-               call filter_btr_mode_u(block % state % time_levs(2) % state, block % mesh)
+               call ocn_filter_btr_mode_u(block % state % time_levs(2) % state, block % mesh)
                !block % tend % h % array(:,:) = 0.0 ! I should not need this
            endif
 
@@ -312,9 +302,25 @@ module ocn_time_integration_rk4
             !  Implicit vertical solve for tracers
             !
 
-            call ocn_tracer_vmix_tend_implicit(block % mesh, dt, vertdifftopofcell, h, tracers, err)
+            call ocn_tracer_vmix_tend_implicit(block % mesh, dt, vertDiffTopOfCell, h, tracers, err)
             call mpas_timer_stop("RK4-implicit vert mix")
          end if
+
+         block => block % next
+      end do
+
+      ! Update halo on u and tracers, which weres just updated for implicit vertical mixing.  If not done, 
+      ! this leads to lack of volume conservation.  It is required because halo updates in RK4 are only
+      ! conducted on tendencies, not on the velocity and tracer fields.  So this update is required to 
+      ! communicate the change due to implicit vertical mixing across the boundary.
+
+      if (config_implicit_vertical_mix) then
+         call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(2) % state % u)
+         call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(2) % state % tracers)
+      end if
+
+      block => domain % blocklist
+      do while (associated(block))
 
          if (config_test_case == 1) then    ! For case 1, wind field should be fixed
             block % state % time_levs(2) % state % u % array(:,:) = block % state % time_levs(1) % state % u % array(:,:)
@@ -362,234 +368,6 @@ module ocn_time_integration_rk4
       call mpas_deallocate_state(provis)
 
    end subroutine ocn_time_integrator_rk4!}}}
-
-   subroutine filter_btr_mode_tend_u(tend, s, d, grid)!{{{
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   ! Filter and remove barotropic mode from the tendencies
-   !
-   ! Input: s - current model state
-   !        grid - grid metadata
-   !
-   ! Output: tend - computed tendencies for prognostic variables
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-      implicit none
-
-      type (tend_type), intent(inout) :: tend
-      type (state_type), intent(in) :: s
-      type (diagnostics_type), intent(in) :: d
-      type (mesh_type), intent(in) :: grid
-
-! mrp 110512 I just split compute_tend into compute_tend_u and compute_tend_h.
-!  Some of these variables can be removed, but at a later time.
-      integer :: iEdge, iCell, iVertex, k, cell1, cell2, &
-        vertex1, vertex2, eoe, i, j
-
-      integer :: nCells, nEdges, nVertices, nVertLevels, nEdgesSolve
-      real (kind=RKIND) :: vertSum, uhSum, hSum, sshEdge
-      real (kind=RKIND), dimension(:), pointer :: &
-        h_s, dvEdge, dcEdge, areaCell, areaTriangle, &
-        meshScalingDel2, meshScalingDel4
-      real (kind=RKIND), dimension(:,:), pointer :: &
-        weightsOnEdge, kiteAreasOnVertex, h_edge, h, u, v, pressure, &
-        tend_u, circulation, vorticity, ke, ke_edge, Vor_edge, &
-        MontPot, wTop, divergence, vertViscTopOfEdge
-      type (dm_info) :: dminfo
-
-      integer, dimension(:), pointer :: nEdgesOnCell, nEdgesOnEdge, &
-        maxLevelCell, maxLevelEdgeTop, maxLevelVertexBot
-      integer, dimension(:,:), pointer :: &
-        cellsOnEdge, cellsOnVertex, verticesOnEdge, edgesOnCell, &
-        edgesOnEdge, edgesOnVertex
-      real (kind=RKIND) :: u_diffusion
-      real (kind=RKIND), dimension(:), allocatable:: fluxVertTop,w_dudzTopEdge
-
-      real (kind=RKIND), allocatable, dimension(:,:) :: delsq_divergence
-      real (kind=RKIND), allocatable, dimension(:,:) :: delsq_u
-      real (kind=RKIND), allocatable, dimension(:,:) :: delsq_circulation, delsq_vorticity
-
-
-      real (kind=RKIND), dimension(:,:), pointer :: u_src
-      real (kind=RKIND), parameter :: rho_ref = 1000.0
-
-      call mpas_timer_start("filter_btr_mode_tend_u")
-
-      h           => s % h % array
-      u           => s % u % array
-      v           => s % v % array
-      wTop        => s % wTop % array
-      h_edge      => s % h_edge % array
-      circulation => s % circulation % array
-      vorticity   => s % vorticity % array
-      divergence  => s % divergence % array
-      ke          => s % ke % array
-      ke_edge     => s % ke_edge % array
-      Vor_edge     => s % Vor_edge % array
-      MontPot     => s % MontPot % array
-      pressure    => s % pressure % array
-      vertViscTopOfEdge => d % vertViscTopOfEdge % array
-
-      weightsOnEdge     => grid % weightsOnEdge % array
-      kiteAreasOnVertex => grid % kiteAreasOnVertex % array
-      cellsOnEdge       => grid % cellsOnEdge % array
-      cellsOnVertex     => grid % cellsOnVertex % array
-      verticesOnEdge    => grid % verticesOnEdge % array
-      nEdgesOnCell      => grid % nEdgesOnCell % array
-      edgesOnCell       => grid % edgesOnCell % array
-      nEdgesOnEdge      => grid % nEdgesOnEdge % array
-      edgesOnEdge       => grid % edgesOnEdge % array
-      edgesOnVertex     => grid % edgesOnVertex % array
-      dcEdge            => grid % dcEdge % array
-      dvEdge            => grid % dvEdge % array
-      areaCell          => grid % areaCell % array
-      areaTriangle      => grid % areaTriangle % array
-      h_s               => grid % h_s % array
-      maxLevelCell      => grid % maxLevelCell % array
-      maxLevelEdgeTop      => grid % maxLevelEdgeTop % array
-      maxLevelVertexBot    => grid % maxLevelVertexBot % array
-
-      tend_u      => tend % u % array
-                  
-      nCells      = grid % nCells
-      nEdges      = grid % nEdges
-      nEdgesSolve = grid % nEdgesSolve
-      nVertices   = grid % nVertices
-      nVertLevels = grid % nVertLevels
-
-      u_src => grid % u_src % array
-
-           do iEdge=1,grid % nEdges
-
-              uhSum = (h_edge(1,iEdge)) * tend_u(1,iEdge)
-              hSum  =  h_edge(1,iEdge)
-
-              do k=2,grid % maxLevelEdgeTop % array(iEdge)
-                 uhSum = uhSum + h_edge(k,iEdge) * tend_u(k,iEdge)
-                 hSum  =  hSum + h_edge(k,iEdge)
-              enddo
-
-              vertSum = uhSum/hSum
-
-              do k=1,grid % maxLevelEdgeTop % array(iEdge)
-                 tend_u(k,iEdge) = tend_u(k,iEdge) - vertSum
-              enddo
-
-           enddo ! iEdge
-
-      call mpas_timer_stop("filter_btr_mode_tend_u")
-
-   end subroutine filter_btr_mode_tend_u!}}}
-
-   subroutine filter_btr_mode_u(s, grid)!{{{
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   ! Filter and remove barotropic mode.
-   !
-   ! Input: s - current model state
-   !        grid - grid metadata
-   !
-   ! Output: tend - computed tendencies for prognostic variables
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-      implicit none
-
-      type (state_type), intent(inout) :: s
-      type (mesh_type), intent(in) :: grid
-
-! mrp 110512 I just split compute_tend into compute_tend_u and compute_tend_h.
-!  Some of these variables can be removed, but at a later time.
-      integer :: iEdge, iCell, iVertex, k, cell1, cell2, &
-        vertex1, vertex2, eoe, i, j
-
-      integer :: nCells, nEdges, nVertices, nVertLevels, nEdgesSolve
-      real (kind=RKIND) :: vertSum, uhSum, hSum, sshEdge
-      real (kind=RKIND), dimension(:), pointer :: &
-        h_s, dvEdge, dcEdge, areaCell, areaTriangle, &
-        meshScalingDel2, meshScalingDel4
-      real (kind=RKIND), dimension(:,:), pointer :: &
-        weightsOnEdge, kiteAreasOnVertex, h_edge, h, u, v, pressure, &
-        tend_u, circulation, vorticity, ke, ke_edge, Vor_edge, &
-        MontPot, wTop, divergence, vertViscTopOfEdge
-      type (dm_info) :: dminfo
-
-      integer, dimension(:), pointer :: nEdgesOnCell, nEdgesOnEdge, &
-        maxLevelCell, maxLevelEdgeTop, maxLevelVertexBot
-      integer, dimension(:,:), pointer :: &
-        cellsOnEdge, cellsOnVertex, verticesOnEdge, edgesOnCell, &
-        edgesOnEdge, edgesOnVertex
-      real (kind=RKIND) :: u_diffusion
-      real (kind=RKIND), dimension(:), allocatable:: fluxVertTop,w_dudzTopEdge
-
-      real (kind=RKIND), allocatable, dimension(:,:) :: delsq_divergence
-      real (kind=RKIND), allocatable, dimension(:,:) :: delsq_u
-      real (kind=RKIND), allocatable, dimension(:,:) :: delsq_circulation, delsq_vorticity
-
-
-      real (kind=RKIND), dimension(:,:), pointer :: u_src
-      real (kind=RKIND), parameter :: rho_ref = 1000.0
-
-      call mpas_timer_start("filter_btr_mode_u")
-
-      h           => s % h % array
-      u           => s % u % array
-      v           => s % v % array
-      wTop        => s % wTop % array
-      h_edge      => s % h_edge % array
-      circulation => s % circulation % array
-      vorticity   => s % vorticity % array
-      divergence  => s % divergence % array
-      ke          => s % ke % array
-      ke_edge     => s % ke_edge % array
-      Vor_edge     => s % Vor_edge % array
-      MontPot     => s % MontPot % array
-      pressure    => s % pressure % array
-
-      weightsOnEdge     => grid % weightsOnEdge % array
-      kiteAreasOnVertex => grid % kiteAreasOnVertex % array
-      cellsOnEdge       => grid % cellsOnEdge % array
-      cellsOnVertex     => grid % cellsOnVertex % array
-      verticesOnEdge    => grid % verticesOnEdge % array
-      nEdgesOnCell      => grid % nEdgesOnCell % array
-      edgesOnCell       => grid % edgesOnCell % array
-      nEdgesOnEdge      => grid % nEdgesOnEdge % array
-      edgesOnEdge       => grid % edgesOnEdge % array
-      edgesOnVertex     => grid % edgesOnVertex % array
-      dcEdge            => grid % dcEdge % array
-      dvEdge            => grid % dvEdge % array
-      areaCell          => grid % areaCell % array
-      areaTriangle      => grid % areaTriangle % array
-      h_s               => grid % h_s % array
-      maxLevelCell      => grid % maxLevelCell % array
-      maxLevelEdgeTop      => grid % maxLevelEdgeTop % array
-      maxLevelVertexBot    => grid % maxLevelVertexBot % array
-
-      nCells      = grid % nCells
-      nEdges      = grid % nEdges
-      nEdgesSolve = grid % nEdgesSolve
-      nVertices   = grid % nVertices
-      nVertLevels = grid % nVertLevels
-
-      u_src => grid % u_src % array
-
-           do iEdge=1,grid % nEdges
-
-              uhSum = (h_edge(1,iEdge)) * u(1,iEdge)
-              hSum  =  h_edge(1,iEdge)
-
-              do k=2,grid % maxLevelEdgeTop % array(iEdge)
-                 uhSum = uhSum + h_edge(k,iEdge) * u(k,iEdge)
-                 hSum  =  hSum + h_edge(k,iEdge)
-              enddo
-
-              vertSum = uhSum/hSum
-              do k=1,grid % maxLevelEdgeTop % array(iEdge)
-                 u(k,iEdge) = u(k,iEdge) - vertSum
-              enddo
-
-           enddo ! iEdge
-
-      call mpas_timer_stop("filter_btr_mode_u")
-
-   end subroutine filter_btr_mode_u!}}}
 
 end module ocn_time_integration_rk4
 

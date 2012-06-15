@@ -70,7 +70,9 @@ module ocn_tendency
              ocn_diagnostic_solve, &
              ocn_wtop, &
              ocn_fuperp, &
-             ocn_tendency_init
+             ocn_tendency_init, &
+             ocn_filter_btr_mode_u, &
+             ocn_filter_btr_mode_tend_u
 
    !--------------------------------------------------------------------
    !
@@ -1031,6 +1033,113 @@ contains
 
    end subroutine ocn_fuperp!}}}
 
+!***********************************************************************
+!
+!  routine ocn_filter_btr_mode_u
+!
+!> \brief   filters barotropic mode out of the velocity variable.
+!> \author  Mark Petersen
+!> \date    23 September 2011
+!> \version SVN:$Id$
+!> \details 
+!>  This routine filters barotropic mode out of the velocity variable.
+!
+!-----------------------------------------------------------------------
+   subroutine ocn_filter_btr_mode_u(s, grid)!{{{
+      implicit none
+
+      type (state_type), intent(inout) :: s
+      type (mesh_type), intent(in) :: grid
+
+      integer :: iEdge, k, nEdges
+      real (kind=RKIND) :: vertSum, uhSum, hSum
+      real (kind=RKIND), dimension(:,:), pointer :: h_edge, u
+      integer, dimension(:), pointer :: maxLevelEdgeTop
+
+      call mpas_timer_start("ocn_filter_btr_mode_u")
+
+      u           => s % u % array
+      h_edge      => s % h_edge % array
+      maxLevelEdgeTop => grid % maxLevelEdgeTop % array
+      nEdges      = grid % nEdges
+
+      do iEdge=1,nEdges
+
+        ! hSum is initialized outside the loop because on land boundaries 
+        ! maxLevelEdgeTop=0, but I want to initialize hSum with a 
+        ! nonzero value to avoid a NaN.
+        uhSum = h_edge(1,iEdge) * u(1,iEdge)
+        hSum  = h_edge(1,iEdge)
+
+        do k=2,maxLevelEdgeTop(iEdge)
+          uhSum = uhSum + h_edge(k,iEdge) * u(k,iEdge)
+          hSum  =  hSum + h_edge(k,iEdge)
+        enddo
+
+        vertSum = uhSum/hSum
+        do k=1,maxLevelEdgeTop(iEdge)
+          u(k,iEdge) = u(k,iEdge) - vertSum
+        enddo
+      enddo ! iEdge
+
+      call mpas_timer_stop("ocn_filter_btr_mode_u")
+
+   end subroutine ocn_filter_btr_mode_u!}}}
+
+!***********************************************************************
+!
+!  routine ocn_filter_btr_mode_tend_u
+!
+!> \brief   ocn_filters barotropic mode out of the u tendency
+!> \author  Mark Petersen
+!> \date    23 September 2011
+!> \version SVN:$Id$
+!> \details 
+!>  This routine filters barotropic mode out of the u tendency.
+!
+!-----------------------------------------------------------------------
+   subroutine ocn_filter_btr_mode_tend_u(tend, s, grid)!{{{
+      implicit none
+
+      type (tend_type), intent(inout) :: tend
+      type (state_type), intent(in) :: s
+      type (mesh_type), intent(in) :: grid
+
+      integer :: iEdge, k, nEdges
+      real (kind=RKIND) :: vertSum, uhSum, hSum
+      real (kind=RKIND), dimension(:,:), pointer :: h_edge, tend_u
+
+      integer, dimension(:), pointer :: maxLevelEdgeTop
+
+      call mpas_timer_start("ocn_filter_btr_mode_tend_u")
+
+      tend_u      => tend % u % array
+      h_edge      => s % h_edge % array
+      maxLevelEdgeTop => grid % maxLevelEdgeTop % array
+      nEdges      = grid % nEdges
+
+      do iEdge=1,nEdges
+
+        ! hSum is initialized outside the loop because on land boundaries 
+        ! maxLevelEdgeTop=0, but I want to initialize hSum with a 
+        ! nonzero value to avoid a NaN.
+        uhSum = h_edge(1,iEdge) * tend_u(1,iEdge)
+        hSum  = h_edge(1,iEdge)
+
+        do k=2,maxLevelEdgeTop(iEdge)
+          uhSum = uhSum + h_edge(k,iEdge) * tend_u(k,iEdge)
+          hSum  =  hSum + h_edge(k,iEdge)
+        enddo
+
+        vertSum = uhSum/hSum
+        do k=1,maxLevelEdgeTop(iEdge)
+          tend_u(k,iEdge) = tend_u(k,iEdge) - vertSum
+        enddo
+      enddo ! iEdge
+
+      call mpas_timer_stop("ocn_filter_btr_mode_tend_u")
+
+   end subroutine ocn_filter_btr_mode_tend_u!}}}
 
 !***********************************************************************
 !
