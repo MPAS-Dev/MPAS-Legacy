@@ -77,6 +77,8 @@ module mpas_ocn_tracer_advection_mono
 
       real (kind=RKIND), parameter :: eps = 1.e-10
 
+      type (field2dReal), pointer :: high_order_horiz_flux_field
+
       ! Initialize pointers
       dvEdge      => grid % dvEdge % array
       cellsOnEdge => grid % cellsOnEdge % array
@@ -100,6 +102,17 @@ module mpas_ocn_tracer_advection_mono
       nVertLevels = grid % nVertLevels
       num_tracers = size(tracers,dim=1)
 
+      allocate(high_order_horiz_flux_field)
+      nullify(high_order_horiz_flux_field % next)
+      high_order_horiz_flux_field % block => grid % block
+      high_order_horiz_flux_field % sendList => grid % xEdge % sendList
+      high_order_horiz_flux_field % recvList => grid % xEdge % recvList
+      high_order_horiz_flux_field % copyList => grid % xEdge % copyList
+      high_order_horiz_flux_field % dimSizes(1) = nVertLevels
+      high_order_horiz_flux_field % dimSizes(2) = nEdges+1
+      allocate(high_order_horiz_flux_field % array(high_order_horiz_flux_field % dimSizes(1), high_order_horiz_flux_field % dimSizes(2)))
+      high_order_horiz_flux => high_order_horiz_flux_field % array
+
       ! allocate nCells arrays
 
       allocate(tracer_new(nVertLevels, nCells+1))
@@ -112,7 +125,7 @@ module mpas_ocn_tracer_advection_mono
       allocate(flux_outgoing(nVertLevels, nCells+1))
 
       ! allocate nEdges arrays
-      allocate(high_order_horiz_flux(nVertLevels, nEdges))
+!     allocate(high_order_horiz_flux(nVertLevels, nEdges))
 
       ! allocate nVertLevels+1 and nCells arrays
       allocate(high_order_vert_flux(nVertLevels+1, nCells))
@@ -191,6 +204,8 @@ module mpas_ocn_tracer_advection_mono
             end do ! k loop
           end do ! i loop over nAdvCellsForEdge
         end do ! iEdge loop
+
+        call mpas_dmpar_exch_halo_field(high_order_horiz_flux_field)
 
         !  low order upwind vertical flux (monotonic and diffused)
         !  Remove low order flux from the high order flux.
@@ -348,6 +363,7 @@ module mpas_ocn_tracer_advection_mono
       deallocate(flux_outgoing)
       deallocate(high_order_horiz_flux)
       deallocate(high_order_vert_flux)
+      deallocate(high_order_horiz_flux_field)
    end subroutine mpas_ocn_tracer_advection_mono_tend!}}}
 
 !|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
