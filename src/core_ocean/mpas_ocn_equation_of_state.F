@@ -74,10 +74,13 @@ contains
    ! Input: grid - grid metadata
    !        s - state: tracers
    !        k_displaced 
-   !  If k_displaced<=0, state % rho is returned with no displaced
-   !  If k_displaced>0,the state % rhoDisplaced is returned, and is for
+   !
+   !  If k_displaced==0, state % rho is returned with no displacement 
+   !
+   !  If k_displaced~=0,the state % rhoDisplaced is returned, and is for
    !  a parcel adiabatically displaced from its original level to level 
-   !  k_displaced.  This does not effect the linear EOS.
+   !  k_displaced.  When using the linear EOS, state % rhoDisplaced is 
+   !  still filled, but depth (i.e. pressure) does not modify the output.
    !
    ! Output: s - state: computed density
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -103,18 +106,18 @@ contains
       indexT = s % index_temperature
       indexS = s % index_salinity
 
-      if (linearEos) then
+      !  Choose to fill the array rho or rhoDisplaced
+      if (k_displaced == 0) then
          rho => s % rho % array
+      else
+         rho => s % rhoDisplaced % array
+      endif
+
+      if (linearEos) then
 
          call ocn_equation_of_state_linear_rho(grid, indexT, indexS, tracers, rho, err)
 
       elseif (jmEos) then
-
-         if(k_displaced == 0) then
-             rho => s % rho % array
-         else
-             rho => s % rhoDisplaced % array
-         endif
 
          call ocn_equation_of_state_jm_rho(grid, k_displaced, displacement_type, indexT, indexS, tracers, rho, err)
 

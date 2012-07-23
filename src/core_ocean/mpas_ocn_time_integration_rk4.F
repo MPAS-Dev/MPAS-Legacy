@@ -85,11 +85,6 @@ module ocn_time_integration_rk4
 
       real (kind=RKIND), dimension(4) :: rk_weights, rk_substep_weights
 
-      integer :: nCells
-      real (kind=RKIND), dimension(:,:), pointer :: u, h, h_edge, vertViscTopOfEdge, vertDiffTopOfCell, ke_edge
-      real (kind=RKIND), dimension(:,:,:), pointer :: tracers
-      integer, dimension(:), pointer :: maxLevelCell
-
       block => domain % blocklist
       call mpas_allocate_state(block, provis, &
                           block % mesh % nCells, block % mesh % nEdges, block % mesh % maxEdges, block % mesh % maxEdges2, &
@@ -217,7 +212,7 @@ module ocn_time_integration_rk4
 
               call ocn_diagnostic_solve(dt, provis, block % mesh)
 
-              ! Compute velocity transport, used in advection terms of h and tracer tendancy
+              ! Compute velocity transport, used in advection terms of h and tracer tendency
                  provis % uTransport % array(:,:) &
                = provis % u          % array(:,:) &
                + provis % uBolusGM   % array(:,:)
@@ -262,61 +257,25 @@ module ocn_time_integration_rk4
       !  A little clean up at the end: decouple new scalar fields and compute diagnostics for new state
       !
       call mpas_timer_start("RK4-cleaup phase")
-      block => domain % blocklist
-      do while (associated(block))
-
-         u           => block % state % time_levs(2) % state % u % array
-         tracers     => block % state % time_levs(2) % state % tracers % array
-         h           => block % state % time_levs(2) % state % h % array
-         h_edge      => block % state % time_levs(2) % state % h_edge % array
-         ke_edge     => block % state % time_levs(2) % state % ke_edge % array
-         vertViscTopOfEdge => block % diagnostics % vertViscTopOfEdge % array
-         vertDiffTopOfCell => block % diagnostics % vertDiffTopOfCell % array
-         maxLevelCell    => block % mesh % maxLevelCell % array
-                  
-         nCells      = block % mesh % nCells
-
-         do iCell=1,nCells
-            do k=1,maxLevelCell(iCell)
-               tracers(:,k,iCell) = tracers(:,k,iCell) / h(k,iCell)
-            end do
-         end do
-
-         if (config_implicit_vertical_mix) then
-            call mpas_timer_start("RK4-implicit vert mix")
-
-            call ocn_vmix_coefs(block % mesh, block % state % time_levs(2) % state, block % diagnostics, err)
-
-            !
-            !  Implicit vertical solve for momentum
-            !
-            call ocn_vel_vmix_tend_implicit(block % mesh, dt, ke_edge, vertViscTopOfEdge, h, h_edge, u, err)
-
-          !  mrp 110718 filter btr mode out of u
-           if (config_rk_filter_btr_mode) then
-               call ocn_filter_btr_mode_u(block % state % time_levs(2) % state, block % mesh)
-               !block % tend % h % array(:,:) = 0.0 ! I should not need this
-           endif
-
-            !
-            !  Implicit vertical solve for tracers
-            !
-
-            call ocn_tracer_vmix_tend_implicit(block % mesh, dt, vertDiffTopOfCell, h, tracers, err)
-            call mpas_timer_stop("RK4-implicit vert mix")
-         end if
-
-         block => block % next
-      end do
-
-      ! Update halo on u and tracers, which weres just updated for implicit vertical mixing.  If not done, 
-      ! this leads to lack of volume conservation.  It is required because halo updates in RK4 are only
-      ! conducted on tendencies, not on the velocity and tracer fields.  So this update is required to 
-      ! communicate the change due to implicit vertical mixing across the boundary.
 
       if (config_implicit_vertical_mix) then
-         call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(2) % state % u)
-         call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(2) % state % tracers)
+        call mpas_timer_start("RK4-implicit vert mix")
+        block => domain % blocklist
+        do while(associated(block))
+          call ocn_vmix_implicit(dt, block % mesh, block % diagnostics, block % state % time_levs(2) % state, err)
+          block => block % next
+        end do
+
+        ! Update halo on u and tracers, which were just updated for implicit vertical mixing.  If not done, 
+        ! this leads to lack of volume conservation.  It is required because halo updates in RK4 are only
+        ! conducted on tendencies, not on the velocity and tracer fields.  So this update is required to 
+        ! communicate the change due to implicit vertical mixing across the boundary.
+        call mpas_timer_start("RK4-implicit vert mix halos")
+        call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(2) % state % u)
+        call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(2) % state % tracers)
+        call mpas_timer_stop("RK4-implicit vert mix halos")
+
+        call mpas_timer_stop("RK4-implicit vert mix")
       end if
 
       block => domain % blocklist
@@ -336,7 +295,7 @@ module ocn_time_integration_rk4
 
          call ocn_diagnostic_solve(dt, block % state % time_levs(2) % state, block % mesh)
 
-         ! Compute velocity transport, used in advection terms of h and tracer tendancy
+         ! Compute velocity transport, used in advection terms of h and tracer tendency
             block % state % time_levs(2) % state % uTransport % array(:,:) &
           = block % state % time_levs(2) % state % u % array(:,:) &
           + block % state % time_levs(2) % state % uBolusGM % array(:,:)

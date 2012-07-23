@@ -472,7 +472,7 @@ contains
       drhoTopOfCell = 0.0
       do iCell=1,nCells
          do k=2,maxLevelCell(iCell)
-            drhoTopOfCell(k,iCell) = rho(k-1,iCell) - rhoDisplaced(k-1,iCell)
+            drhoTopOfCell(k,iCell) = rhoDisplaced(k-1,iCell) - rhoDisplaced(k,iCell)
           end do
       end do
 

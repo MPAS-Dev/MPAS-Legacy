@@ -259,7 +259,7 @@ module mpas_core
       call ocn_diagnostic_solve(dt, block % state % time_levs(1) % state, mesh)
       call mpas_timer_stop("diagnostic solve", initDiagSolveTimer)
 
-      ! Compute velocity transport, used in advection terms of h and tracer tendancy
+      ! Compute velocity transport, used in advection terms of h and tracer tendency
         block % state % time_levs(1) % state % uTransport % array(:,:) &
       = block % state % time_levs(1) % state % u % array(:,:) &
       + block % state % time_levs(1) % state % uBolusGM % array(:,:)

@@ -47,7 +47,8 @@ module ocn_vmix
              ocn_tracer_vmix_tend_explicit, &
              ocn_vel_vmix_tend_implicit, &
              ocn_tracer_vmix_tend_implicit, &
-             ocn_vmix_init
+             ocn_vmix_init, &
+             ocn_vmix_implicit 
 
    !--------------------------------------------------------------------
    !
@@ -573,6 +574,61 @@ contains
    !--------------------------------------------------------------------
 
    end subroutine ocn_tracer_vmix_tend_implicit!}}}
+
+!***********************************************************************
+!
+!  routine ocn_vmix_implicit
+!
+!> \brief   Driver for implicit vertical mixing
+!> \author  Doug Jacobsen
+!> \date    19 September 2011
+!> \version SVN:$Id$
+!> \details 
+!>  This routine is a driver for handling implicit vertical mixing
+!>  of both momentum and tracers for a block. It's intended to reduce
+!>  redundant code.
+!
+!-----------------------------------------------------------------------
+
+   subroutine ocn_vmix_implicit(dt, grid, diagnostics, state, err)!{{{
+      real (kind=RKIND), intent(in) :: dt
+      type (mesh_type), intent(in) :: grid
+      type (diagnostics_type), intent(inout) :: diagnostics
+      type (state_type), intent(inout) :: state
+      integer, intent(out) :: err
+
+      integer :: nCells
+      real (kind=RKIND), dimension(:,:), pointer :: u, h, h_edge, vertViscTopOfEdge, vertDiffTopOfCell, ke_edge
+      real (kind=RKIND), dimension(:,:,:), pointer :: tracers
+      integer, dimension(:), pointer :: maxLevelCell
+
+      err = 0
+
+      u           => state % u % array
+      tracers     => state % tracers % array
+      h           => state % h % array
+      h_edge      => state % h_edge % array
+      ke_edge     => state % ke_edge % array
+      vertViscTopOfEdge => diagnostics % vertViscTopOfEdge % array
+      vertDiffTopOfCell => diagnostics % vertDiffTopOfCell % array
+      maxLevelCell    => grid % maxLevelCell % array
+               
+      nCells      = grid % nCells
+
+      call ocn_vmix_coefs(grid, state, diagnostics, err)
+
+      !
+      !  Implicit vertical solve for momentum
+      !
+      call ocn_vel_vmix_tend_implicit(grid, dt, ke_edge, vertViscTopOfEdge, h, h_edge, u, err)
+
+      !
+      !  Implicit vertical solve for tracers
+      !
+
+      call ocn_tracer_vmix_tend_implicit(grid, dt, vertDiffTopOfCell, h, tracers, err)
+
+   end subroutine ocn_vmix_implicit!}}}
 
 !***********************************************************************
 !

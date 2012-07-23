@@ -293,7 +293,7 @@ module ocn_time_integration_split
 
                      ! uTranport = uBcl + uBolus 
                      ! This is u used in advective terms for h and tracers 
-                     ! in tendancy calls in stage 3.
+                     ! in tendency calls in stage 3.
                        block % state % time_levs(2) % state % uTransport % array(k,iEdge) &
                      = block % mesh % edgeMask % array(k,iEdge) &
                      *(  block % state % time_levs(2) % state % uBcl       % array(k,iEdge) &
@@ -639,7 +639,7 @@ module ocn_time_integration_split
 
                      ! uTranport = uBtr + uBcl + uBolus + uCorrection
                      ! This is u used in advective terms for h and tracers 
-                     ! in tendancy calls in stage 3.
+                     ! in tendency calls in stage 3.
                        block % state % time_levs(2) % state % uTransport % array(k,iEdge) &
                      = block % mesh % edgeMask % array(k,iEdge) &
                      *(  block % state % time_levs(2) % state % uBtr       % array(  iEdge) &
@@ -825,36 +825,28 @@ module ocn_time_integration_split
       ! END large iteration loop 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+      if (config_implicit_vertical_mix) then
+        call mpas_timer_start("se implicit vert mix")
+        block => domain % blocklist
+        do while(associated(block))
+          call ocn_vmix_implicit(dt, block % mesh, block % diagnostics, block % state % time_levs(2) % state, err)
+          block => block % next
+        end do
+
+        ! Update halo on u and tracers, which were just updated for implicit vertical mixing.  If not done, 
+        ! this leads to lack of volume conservation.  It is required because halo updates in stage 3 are only
+        ! conducted on tendencies, not on the velocity and tracer fields.  So this update is required to 
+        ! communicate the change due to implicit vertical mixing across the boundary.
+        call mpas_timer_start("se implicit vert mix halos")
+        call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(2) % state % u)
+        call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(2) % state % tracers)
+        call mpas_timer_stop("se implicit vert mix halos")
+
+        call mpas_timer_stop("se implicit vert mix")
+      end if
+
       block => domain % blocklist
       do while (associated(block))
-
-
-         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-         !
-         !  Implicit vertical mixing, done after timestep is complete
-         !
-         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-         u           => block % state % time_levs(2) % state % u % array
-         tracers     => block % state % time_levs(2) % state % tracers % array
-         h           => block % state % time_levs(2) % state % h % array
-         h_edge      => block % state % time_levs(2) % state % h_edge % array
-         ke_edge     => block % state % time_levs(2) % state % ke_edge % array
-         num_tracers = block % state % time_levs(2) % state % num_tracers
-         vertViscTopOfEdge => block % diagnostics % vertViscTopOfEdge % array
-         vertDiffTopOfCell => block % diagnostics % vertDiffTopOfCell % array
-         maxLevelCell    => block % mesh % maxLevelCell % array
-         maxLevelEdgeTop => block % mesh % maxLevelEdgeTop % array
-
-         if (config_implicit_vertical_mix) then
-            call ocn_vmix_coefs(block % mesh, block % state % time_levs(2) % state, block % diagnostics, err)
-
-            !  Implicit vertical solve for momentum
-            call ocn_vel_vmix_tend_implicit(block % mesh, dt, ke_edge, vertvisctopofedge, h, h_edge, u, err)
-      
-            !  Implicit vertical solve for tracers
-            call ocn_tracer_vmix_tend_implicit(block % mesh, dt, vertdifftopofcell, h, tracers, err)
-         end if
 
          if (config_test_case == 1) then    ! For case 1, wind field should be fixed
             block % state % time_levs(2) % state % u % array(:,:) = block % state % time_levs(1) % state % u % array(:,:)
@@ -870,12 +862,18 @@ module ocn_time_integration_split
 
          call ocn_diagnostic_solve(dt, block % state % time_levs(2) % state, block % mesh)
 
+         ! Compute velocity transport, used in advection terms of h and tracer tendency
+            block % state % time_levs(2) % state % uTransport % array(:,:) &
+          = block % state % time_levs(2) % state % u % array(:,:) &
+          + block % state % time_levs(2) % state % uBolusGM % array(:,:)
+
          call mpas_reconstruct(block % mesh, block % state % time_levs(2) % state % u % array,          &
-            block % state % time_levs(2) % state % uReconstructX % array,            &
-            block % state % time_levs(2) % state % uReconstructY % array,            &
-            block % state % time_levs(2) % state % uReconstructZ % array,            &
-            block % state % time_levs(2) % state % uReconstructZonal % array,        &
-            block % state % time_levs(2) % state % uReconstructMeridional % array)
+                          block % state % time_levs(2) % state % uReconstructX % array,            &
+                          block % state % time_levs(2) % state % uReconstructY % array,            &
+                          block % state % time_levs(2) % state % uReconstructZ % array,            &
+                          block % state % time_levs(2) % state % uReconstructZonal % array,        &
+                          block % state % time_levs(2) % state % uReconstructMeridional % array    &
+                         )
 
 !TDR
          call mpas_reconstruct(block % mesh, block % mesh % u_src % array,          &
@@ -887,12 +885,11 @@ module ocn_time_integration_split
                          )
 !TDR
 
-
          call ocn_time_average_accumulate(block % state % time_levs(2) % state, block % state % time_levs(1) % state)
-
 
          block => block % next
       end do
+
       call mpas_timer_stop("se timestep", timer_main)
 
    end subroutine ocn_time_integrator_split!}}}
