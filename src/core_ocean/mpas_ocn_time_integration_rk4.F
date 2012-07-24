@@ -258,6 +258,21 @@ module ocn_time_integration_rk4
       !
       call mpas_timer_start("RK4-cleaup phase")
 
+      block => domain % blocklist
+      do while (associated(block))
+
+         ! In main RK loop, tracer array is phi*h.  Now divide by h^{n+1} to obtain phi^{n+1}.
+         do iCell=1,block % mesh % nCells
+            do k=1,block % mesh % maxLevelCell % array(iCell)
+                 block % state % time_levs(2) % state % tracers % array(:,k,iCell) &
+               = block % state % time_levs(2) % state % tracers % array(:,k,iCell) &
+                /block % state % time_levs(2) % state % h % array(k,iCell)
+            end do
+         end do
+
+         block => block % next
+      end do
+
       if (config_implicit_vertical_mix) then
         call mpas_timer_start("RK4-implicit vert mix")
         block => domain % blocklist
