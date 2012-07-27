@@ -43,8 +43,6 @@ module ocn_vel_forcing_windstress
    !--------------------------------------------------------------------
 
    logical :: windStressOn
-   real (kind=RKIND) :: rho_ref
-
 
 !***********************************************************************
 
@@ -125,7 +123,6 @@ contains
       edgeMask => grid % edgeMask % array
 
       do iEdge=1,nEdgesSolve
-
         ! efficiency note: it would be nice to avoid this
         ! if within a do.  This could be done with
         ! k =  max(maxLevelEdgeTop(iEdge),1)
@@ -133,7 +130,7 @@ contains
 
         do k = 1,min(maxLevelEdgeTop(iEdge),1)
            ! forcing in top layer only
-           tend(k,iEdge) =  tend(k,iEdge) + edgeMask(k, iEdge) * (u_src(k,iEdge)/rho_ref/h_edge(k,iEdge))
+           tend(k,iEdge) =  tend(k,iEdge) + edgeMask(k, iEdge) * (u_src(k,iEdge) / config_rho0 / h_edge(k,iEdge))
         enddo
 
       enddo
@@ -170,7 +167,6 @@ contains
       integer, intent(out) :: err !< Output: error flag
 
       windStressOn = .true.
-      rho_ref = 1000.0
 
       err = 0
 

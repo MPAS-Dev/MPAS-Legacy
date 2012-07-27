@@ -327,7 +327,7 @@ contains
       maxLevelCell => grid % maxLevelCell % array
 
       vertDiffTopOfCell = 0.0
-      coef = -gravity/1000.0/2.0
+      coef = -gravity/config_rho0/2.0
       do iCell = 1,nCells
          do k = 2,maxLevelCell(iCell)
             ! mrp 110324 efficiency note: this if is inside iCell and k loops.
@@ -517,7 +517,7 @@ contains
       ! compute RiTopOfEdge using drhoTopOfEdge and du2TopOfEdge
       ! coef = -g/rho_0/2
       RiTopOfEdge = 0.0
-      coef = -gravity/1000.0/2.0
+      coef = -gravity/config_rho0/2.0
       do iEdge = 1,nEdges
          do k = 2,maxLevelEdgeTop(iEdge)
             RiTopOfEdge(k,iEdge) = coef*drhoTopOfEdge(k,iEdge) &
@@ -529,7 +529,6 @@ contains
       ! compute RiTopOfCell using drhoTopOfCell and du2TopOfCell
       ! coef = -g/rho_0/2
       RiTopOfCell = 0.0
-      coef = -gravity/1000.0/2.0
       do iCell = 1,nCells
          do k = 2,maxLevelCell(iCell)
             RiTopOfCell(k,iCell) = coef*drhoTopOfCell(k,iCell) &
