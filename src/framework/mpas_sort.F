@@ -2,16 +2,16 @@ module mpas_sort
 
    use mpas_kind_types
 
-   interface quicksort
-      module procedure mpas_quicksort_int
-      module procedure mpas_quicksort_real
+   interface mpas_quicksort
+      module procedure mpas_quicksort_1dint
+      module procedure mpas_quicksort_1dreal
+      module procedure mpas_quicksort_2dint
+      module procedure mpas_quicksort_2dreal
    end interface
-
 
    contains
 
-
-   recursive subroutine mpas_mergesort(array, d1, n1, n2)
+   recursive subroutine mpas_mergesort(array, d1, n1, n2)!{{{
    
       implicit none
    
@@ -71,10 +71,133 @@ module mpas_sort
    
       array(1:d1,n1:n2) = temp(1:d1,1:k-1)
    
-   end subroutine mpas_mergesort
+   end subroutine mpas_mergesort!}}}
 
+   subroutine mpas_quicksort_1dint(nArray, array)!{{{
 
-   subroutine mpas_quicksort_int(nArray, array)
+      implicit none
+
+      integer, intent(in) :: nArray
+      integer, dimension(nArray), intent(inout) :: array
+
+      integer :: i, j, top, l, r, pivot, s
+      integer :: pivot_value
+      integer, dimension(1) :: temp
+      integer, dimension(1000) :: lstack, rstack
+
+      if (nArray < 1) return
+
+      top = 1
+      lstack(top) = 1
+      rstack(top) = nArray
+
+      do while (top > 0)
+
+         l = lstack(top)
+         r = rstack(top)
+         top = top - 1
+
+         pivot = (l+r)/2
+
+         pivot_value = array(pivot)
+         temp(1) = array(pivot)
+         array(pivot) = array(r)
+         array(r) = temp(1)
+
+         s = l
+         do i=l,r-1
+            if (array(i) <= pivot_value) then
+               temp(1) = array(s)
+               array(s) = array(i)
+               array(i) = temp(1)
+               s = s + 1
+            end if
+         end do
+
+         temp(1) = array(s)
+         array(s) = array(r)
+         array(r) = temp(1)
+
+         if (s-1 > l) then
+            top = top + 1
+if (top > 1000) write(0,*) 'Error: Quicksort exhausted its stack.'
+            lstack(top) = l
+            rstack(top) = s-1
+         end if
+
+         if (r > s+1) then
+            top = top + 1
+if (top > 1000) write(0,*) 'Error: Quicksort exhausted its stack.'
+            lstack(top) = s+1
+            rstack(top) = r
+         end if
+      end do
+
+   end subroutine mpas_quicksort_1dint!}}}
+
+   subroutine mpas_quicksort_1dreal(nArray, array)!{{{
+
+      implicit none
+
+      integer, intent(in) :: nArray
+      real (kind=RKIND), dimension(nArray), intent(inout) :: array
+
+      integer :: i, j, top, l, r, pivot, s
+      real (kind=RKIND) :: pivot_value
+      real (kind=RKIND), dimension(1) :: temp
+      integer, dimension(1000) :: lstack, rstack
+
+      if (nArray < 1) return
+
+      top = 1
+      lstack(top) = 1
+      rstack(top) = nArray
+
+      do while (top > 0)
+
+         l = lstack(top)
+         r = rstack(top)
+         top = top - 1
+
+         pivot = (l+r)/2
+
+         pivot_value = array(pivot)
+         temp(1) = array(pivot)
+         array(pivot) = array(r)
+         array(r) = temp(1)
+
+         s = l
+         do i=l,r-1
+            if (array(i) <= pivot_value) then
+               temp(1) = array(s)
+               array(s) = array(i)
+               array(i) = temp(1)
+               s = s + 1
+            end if
+         end do
+
+         temp(1) = array(s)
+         array(s) = array(r)
+         array(r) = temp(1)
+
+         if (s-1 > l) then
+            top = top + 1
+if (top > 1000) write(0,*) 'Error: Quicksort exhausted its stack.'
+            lstack(top) = l
+            rstack(top) = s-1
+         end if
+
+         if (r > s+1) then
+            top = top + 1
+if (top > 1000) write(0,*) 'Error: Quicksort exhausted its stack.'
+            lstack(top) = s+1
+            rstack(top) = r
+         end if
+      end do
+
+   end subroutine mpas_quicksort_1dreal!}}}
+
+   subroutine mpas_quicksort_2dint(nArray, array)!{{{
 
       implicit none
 
@@ -134,10 +257,9 @@ if (top > 1000) write(0,*) 'Error: Quicksort exhausted its stack.'
          end if
       end do
 
-   end subroutine mpas_quicksort_int
+   end subroutine mpas_quicksort_2dint!}}}
 
-
-   subroutine mpas_quicksort_real(nArray, array)
+   subroutine mpas_quicksort_2dreal(nArray, array)!{{{
 
       implicit none
 
@@ -197,10 +319,9 @@ if (top > 1000) write(0,*) 'Error: Quicksort exhausted its stack.'
          end if
       end do
 
-   end subroutine mpas_quicksort_real
+   end subroutine mpas_quicksort_2dreal!}}}
 
-
-   integer function mpas_binary_search(array, d1, n1, n2, key)
+   integer function mpas_binary_search(array, d1, n1, n2, key)!{{{
 
       implicit none
 
@@ -227,6 +348,6 @@ if (top > 1000) write(0,*) 'Error: Quicksort exhausted its stack.'
          end if 
       end do 
 
-   end function mpas_binary_search
+   end function mpas_binary_search!}}}
 
 end module mpas_sort

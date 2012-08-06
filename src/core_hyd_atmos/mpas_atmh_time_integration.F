@@ -1420,7 +1420,8 @@ module atmh_time_integration
       real (kind=RKIND), dimension(:), pointer :: dvEdge, dcEdge, areaCell
       integer, dimension(:,:), pointer :: cellsOnEdge
 
-      type (field3DReal) :: tempField
+      type (field3DReal), pointer :: tempField
+      type (field3DReal), target :: tempFieldTarget
 
       real (kind=RKIND), dimension( s_old % num_scalars, grid % nEdges+1) :: h_flux
       real (kind=RKIND), dimension(2, s_old % num_scalars, grid % nCells+1) :: v_flux, v_flux_upwind, s_update
@@ -1628,12 +1629,16 @@ module atmh_time_integration
             end do ! end loop over cells to compute scale factor
 
 
+       tempField => tempFieldTarget
        tempField % block => block
        tempField % dimSizes(1) = 2
        tempField % dimSizes(2) = num_scalars
        tempField % dimSizes(3) = grid % nCells
        tempField % sendList => block % parinfo % cellsToSend
        tempField % recvList => block % parinfo % cellsToRecv
+       tempField % copyList => block % parinfo % cellsToCopy
+       tempField % prev => null()
+       tempField % next => null()
 
        tempField % array => scale_in
        call mpas_dmpar_exch_halo_field(tempField)

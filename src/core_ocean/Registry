@@ -13,6 +13,7 @@ namelist integer   sw_model config_stats_interval      100
 namelist logical   sw_model config_initial_stats       false
 namelist logical   sw_model config_prescribe_velocity  false
 namelist logical   sw_model config_prescribe_thickness false
+namelist integer   sw_model config_num_halos           3
 namelist character io       config_input_name          grid.nc
 namelist character io       config_output_name         output.nc
 namelist character io       config_restart_name        restart.nc
@@ -208,9 +209,9 @@ var persistent real    temperatureRestore ( nCells ) 0 iro temperatureRestore me
 var persistent real    salinityRestore ( nCells ) 0 iro salinityRestore mesh - -
 
 % mrp trying to figure out why these do not appear
-var persistent real    windStressMonthly ( nMonths nEdges ) 0 iro windStressMonthly mesh - -
-var persistent real    temperatureRestoreMonthly ( nMonths nCells ) 0 iro temperatureRestoreMonthly mesh - -
-var persistent real    salinityRestoreMonthly ( nMonths nCells ) 0 iro salinityRestoreMonthly mesh - -
+var persistent real    windStressMonthly ( nMonths nEdges ) 0 - windStressMonthly mesh - -
+var persistent real    temperatureRestoreMonthly ( nMonths nCells ) 0 - temperatureRestoreMonthly mesh - -
+var persistent real    salinityRestoreMonthly ( nMonths nCells ) 0 - salinityRestoreMonthly mesh - -
 
 % Prognostic variables: read from input, saved in restart, and written to output
 var persistent real    u ( nVertLevels nEdges Time ) 2 ir u state - -

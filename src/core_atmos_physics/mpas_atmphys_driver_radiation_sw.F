@@ -3,7 +3,6 @@
  use mpas_grid_types
  use mpas_timer
 
- use mpas_atmphys_manager
  use mpas_atmphys_constants
  use mpas_atmphys_manager, only: gmt,curr_julday,julday,year
  use mpas_atmphys_camrad_init

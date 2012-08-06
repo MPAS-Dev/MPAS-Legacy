@@ -1406,16 +1406,17 @@ contains
                   ! Distribute field to multiple blocks
                   field_1dint_ptr => field_cursor % int1dField
                   i = 1
-                  if (trim(field_1dint_ptr % dimNames(1)) == 'nCells') then
-                     ownedSize = field_1dint_ptr % block % mesh % nCellsSolve
-                  else if (trim(field_1dint_ptr % dimNames(1)) == 'nEdges') then
-                     ownedSize = field_1dint_ptr % block % mesh % nEdgesSolve
-                  else if (trim(field_1dint_ptr % dimNames(1)) == 'nVertices') then
-                     ownedSize = field_1dint_ptr % block % mesh % nVerticesSolve
-                  else
-                     ownedSize = field_1dint_ptr % dimSizes(1)
-                  end if
                   do while (associated(field_1dint_ptr))
+                     if (trim(field_1dint_ptr % dimNames(1)) == 'nCells') then
+                        ownedSize = field_1dint_ptr % block % mesh % nCellsSolve
+                     else if (trim(field_1dint_ptr % dimNames(1)) == 'nEdges') then
+                        ownedSize = field_1dint_ptr % block % mesh % nEdgesSolve
+                     else if (trim(field_1dint_ptr % dimNames(1)) == 'nVertices') then
+                        ownedSize = field_1dint_ptr % block % mesh % nVerticesSolve
+                     else
+                        ownedSize = field_1dint_ptr % dimSizes(1)
+                     end if
+
                      if (field_cursor % int1dField % isSuperArray) then
                         field_1dint_ptr % array(j) = int0d_temp
                      else
@@ -1483,16 +1484,17 @@ contains
                   ! Distribute field to multiple blocks
                   field_2dint_ptr => field_cursor % int2dField
                   i = 1
-                  if (trim(field_2dint_ptr % dimNames(2)) == 'nCells') then
-                     ownedSize = field_2dint_ptr % block % mesh % nCellsSolve
-                  else if (trim(field_2dint_ptr % dimNames(2)) == 'nEdges') then
-                     ownedSize = field_2dint_ptr % block % mesh % nEdgesSolve
-                  else if (trim(field_2dint_ptr % dimNames(2)) == 'nVertices') then
-                     ownedSize = field_2dint_ptr % block % mesh % nVerticesSolve
-                  else
-                     ownedSize = field_2dint_ptr % dimSizes(2)
-                  end if
                   do while (associated(field_2dint_ptr))
+                     if (trim(field_2dint_ptr % dimNames(2)) == 'nCells') then
+                        ownedSize = field_2dint_ptr % block % mesh % nCellsSolve
+                     else if (trim(field_2dint_ptr % dimNames(2)) == 'nEdges') then
+                        ownedSize = field_2dint_ptr % block % mesh % nEdgesSolve
+                     else if (trim(field_2dint_ptr % dimNames(2)) == 'nVertices') then
+                        ownedSize = field_2dint_ptr % block % mesh % nVerticesSolve
+                     else
+                        ownedSize = field_2dint_ptr % dimSizes(2)
+                     end if
+
                      if (field_cursor % int2dField % isSuperArray) then
                         field_2dint_ptr % array(j,1:ownedSize) = int1d_temp(i:i+ownedSize-1)
                      else
@@ -1564,16 +1566,17 @@ contains
                   ! Distribute field to multiple blocks
                   field_3dint_ptr => field_cursor % int3dField
                   i = 1
-                  if (trim(field_3dint_ptr % dimNames(3)) == 'nCells') then
-                     ownedSize = field_3dint_ptr % block % mesh % nCellsSolve
-                  else if (trim(field_3dint_ptr % dimNames(3)) == 'nEdges') then
-                     ownedSize = field_3dint_ptr % block % mesh % nEdgesSolve
-                  else if (trim(field_3dint_ptr % dimNames(3)) == 'nVertices') then
-                     ownedSize = field_3dint_ptr % block % mesh % nVerticesSolve
-                  else
-                     ownedSize = field_3dint_ptr % dimSizes(3)
-                  end if
                   do while (associated(field_3dint_ptr))
+                     if (trim(field_3dint_ptr % dimNames(3)) == 'nCells') then
+                        ownedSize = field_3dint_ptr % block % mesh % nCellsSolve
+                     else if (trim(field_3dint_ptr % dimNames(3)) == 'nEdges') then
+                        ownedSize = field_3dint_ptr % block % mesh % nEdgesSolve
+                     else if (trim(field_3dint_ptr % dimNames(3)) == 'nVertices') then
+                        ownedSize = field_3dint_ptr % block % mesh % nVerticesSolve
+                     else
+                        ownedSize = field_3dint_ptr % dimSizes(3)
+                     end if
+
                      if (field_cursor % int3dField % isSuperArray) then
                         field_3dint_ptr % array(j,:,1:ownedSize) = int2d_temp(:,i:i+ownedSize-1)
                      else
@@ -1663,16 +1666,18 @@ contains
                   ! Distribute field to multiple blocks
                   field_1dreal_ptr => field_cursor % real1dField
                   i = 1
-                  if (trim(field_1dreal_ptr % dimNames(1)) == 'nCells') then
-                     ownedSize = field_1dreal_ptr % block % mesh % nCellsSolve
-                  else if (trim(field_1dreal_ptr % dimNames(1)) == 'nEdges') then
-                     ownedSize = field_1dreal_ptr % block % mesh % nEdgesSolve
-                  else if (trim(field_1dreal_ptr % dimNames(1)) == 'nVertices') then
-                     ownedSize = field_1dreal_ptr % block % mesh % nVerticesSolve
-                  else
-                     ownedSize = field_1dreal_ptr % dimSizes(1)
-                  end if
+
                   do while (associated(field_1dreal_ptr))
+                     if (trim(field_1dreal_ptr % dimNames(1)) == 'nCells') then
+                        ownedSize = field_1dreal_ptr % block % mesh % nCellsSolve
+                     else if (trim(field_1dreal_ptr % dimNames(1)) == 'nEdges') then
+                        ownedSize = field_1dreal_ptr % block % mesh % nEdgesSolve
+                     else if (trim(field_1dreal_ptr % dimNames(1)) == 'nVertices') then
+                        ownedSize = field_1dreal_ptr % block % mesh % nVerticesSolve
+                     else
+                        ownedSize = field_1dreal_ptr % dimSizes(1)
+                     end if
+
                      if (field_cursor % real1dField % isSuperArray) then
                         field_1dreal_ptr % array(j) = real0d_temp
                      else
@@ -1740,16 +1745,17 @@ contains
                   ! Distribute field to multiple blocks
                   field_2dreal_ptr => field_cursor % real2dField
                   i = 1
-                  if (trim(field_2dreal_ptr % dimNames(2)) == 'nCells') then
-                     ownedSize = field_2dreal_ptr % block % mesh % nCellsSolve
-                  else if (trim(field_2dreal_ptr % dimNames(2)) == 'nEdges') then
-                     ownedSize = field_2dreal_ptr % block % mesh % nEdgesSolve
-                  else if (trim(field_2dreal_ptr % dimNames(2)) == 'nVertices') then
-                     ownedSize = field_2dreal_ptr % block % mesh % nVerticesSolve
-                  else
-                     ownedSize = field_2dreal_ptr % dimSizes(2)
-                  end if
                   do while (associated(field_2dreal_ptr))
+                     if (trim(field_2dreal_ptr % dimNames(2)) == 'nCells') then
+                        ownedSize = field_2dreal_ptr % block % mesh % nCellsSolve
+                     else if (trim(field_2dreal_ptr % dimNames(2)) == 'nEdges') then
+                        ownedSize = field_2dreal_ptr % block % mesh % nEdgesSolve
+                     else if (trim(field_2dreal_ptr % dimNames(2)) == 'nVertices') then
+                        ownedSize = field_2dreal_ptr % block % mesh % nVerticesSolve
+                     else
+                        ownedSize = field_2dreal_ptr % dimSizes(2)
+                     end if
+
                      if (field_cursor % real2dField % isSuperArray) then
                         field_2dreal_ptr % array(j,1:ownedSize) = real1d_temp(i:i+ownedSize-1)
                      else
@@ -1824,16 +1830,17 @@ contains
                   ! Distribute field to multiple blocks
                   field_3dreal_ptr => field_cursor % real3dField
                   i = 1
-                  if (trim(field_3dreal_ptr % dimNames(3)) == 'nCells') then
-                     ownedSize = field_3dreal_ptr % block % mesh % nCellsSolve
-                  else if (trim(field_3dreal_ptr % dimNames(3)) == 'nEdges') then
-                     ownedSize = field_3dreal_ptr % block % mesh % nEdgesSolve
-                  else if (trim(field_3dreal_ptr % dimNames(3)) == 'nVertices') then
-                     ownedSize = field_3dreal_ptr % block % mesh % nVerticesSolve
-                  else
-                     ownedSize = field_3dreal_ptr % dimSizes(3)
-                  end if
                   do while (associated(field_3dreal_ptr))
+                     if (trim(field_3dreal_ptr % dimNames(3)) == 'nCells') then
+                        ownedSize = field_3dreal_ptr % block % mesh % nCellsSolve
+                     else if (trim(field_3dreal_ptr % dimNames(3)) == 'nEdges') then
+                        ownedSize = field_3dreal_ptr % block % mesh % nEdgesSolve
+                     else if (trim(field_3dreal_ptr % dimNames(3)) == 'nVertices') then
+                        ownedSize = field_3dreal_ptr % block % mesh % nVerticesSolve
+                     else
+                        ownedSize = field_3dreal_ptr % dimSizes(3)
+                     end if
+
                      if (field_cursor % real3dField % isSuperArray) then
 !write(0,*) 'DEBUGGING : copying the temporary array'
                         field_3dreal_ptr % array(j,:,1:ownedSize) = real2d_temp(:,i:i+ownedSize-1)

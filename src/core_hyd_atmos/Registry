@@ -21,6 +21,7 @@ namelist logical   sw_model config_positive_definite    false
 namelist logical   sw_model config_monotonic            true
 namelist integer   sw_model config_mp_physics           0
 namelist real      sw_model config_apvm_upwinding       0.5
+namelist integer   sw_model config_num_halos            2
 namelist integer   dimensions config_nvertlevels        26
 namelist character io       config_input_name           grid.nc
 namelist character io       config_output_name          output.nc

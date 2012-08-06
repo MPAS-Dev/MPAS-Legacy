@@ -1433,7 +1433,8 @@ module atm_time_integration
       integer, dimension(:), pointer :: nAdvCellsForEdge
       real (kind=RKIND), dimension(:,:), pointer :: adv_coefs, adv_coefs_3rd
 
-      type (field2DReal) :: tempField
+      type (field2DReal), pointer :: tempField
+      type (field2DReal), target :: tempFieldTarget
 
       real (kind=RKIND), dimension( grid % nVertLevels, grid % nCells ) :: scalar_old, scalar_new
       real (kind=RKIND), dimension( grid % nVertLevels, grid % nCells ) :: s_max, s_min, s_update
@@ -1699,12 +1700,16 @@ module atm_time_integration
 !
 !  WCS_halo_opt_2 - communicate only first halo row in these next two exchanges
 !
+      tempField => tempFieldTarget
 
       tempField % block => block
       tempField % dimSizes(1) = grid % nVertLevels
       tempField % dimSizes(2) = grid % nCells
       tempField % sendList => block % parinfo % cellsToSend
       tempField % recvList => block % parinfo % cellsToRecv
+      tempField % copyList => block % parinfo % cellsToCopy
+      tempField % prev => null()
+      tempField % next => null()
 
       tempField % array => scale_in
       call mpas_dmpar_exch_halo_field(tempField, (/ 1 /))

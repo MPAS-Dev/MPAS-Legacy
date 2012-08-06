@@ -35,6 +35,7 @@ namelist real      nhyd_model config_smdiv                0.1
 namelist logical   nhyd_model config_newpx                false
 namelist real      nhyd_model config_apvm_upwinding       0.5
 namelist logical   nhyd_model config_h_ScaleWithMesh      false
+namelist integer   nhyd_model config_num_halos            2
 namelist real      damping    config_zd                   22000.0
 namelist real      damping    config_xnutr                0.0
 namelist integer   dimensions config_nvertlevels          26

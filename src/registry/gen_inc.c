@@ -180,7 +180,7 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
    struct dimension * dim_ptr;
    struct dimension_list * dimlist_ptr;
    struct group_list * group_ptr;
-   FILE * fd;
+   FILE * fd, *fd2;
    char super_array[1024];
    char array_class[1024];
    char outer_dim[1024];
@@ -202,13 +202,17 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
    }
    dim_ptr = dims;
    while (dim_ptr) {
-      if (dim_ptr->constant_value < 0 && !dim_ptr->namelist_defined && !is_derived_dim(dim_ptr->name_in_code)) fortprintf(fd, "      integer :: %sSolve\n", dim_ptr->name_in_code);
-      if (dim_ptr->constant_value < 0 && dim_ptr->namelist_defined && !is_derived_dim(dim_ptr->name_in_code)) fortprintf(fd, "      integer :: %sSolve\n", dim_ptr->name_in_file);
+      if (dim_ptr->constant_value < 0 && !dim_ptr->namelist_defined && !is_derived_dim(dim_ptr->name_in_code)) {
+		  fortprintf(fd, "      integer :: %sSolve\n", dim_ptr->name_in_code);
+		  fortprintf(fd, "      integer, dimension(:), pointer :: %sArray\n", dim_ptr->name_in_code);
+	  }
+      if (dim_ptr->constant_value < 0 && dim_ptr->namelist_defined && !is_derived_dim(dim_ptr->name_in_code)) {
+		  fortprintf(fd, "      integer :: %sSolve\n", dim_ptr->name_in_file);
+	  }
       dim_ptr = dim_ptr->next;
    }
 
    fclose(fd);
-
 
    /*
     *  Generate dummy dimension argument list
@@ -232,7 +236,6 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
 
    fclose(fd);
 
-
    /*
     *  Generate dummy dimension argument declaration list
     */
@@ -249,6 +252,74 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
    while (dim_ptr) {
       if (dim_ptr->constant_value < 0 && !dim_ptr->namelist_defined && !is_derived_dim(dim_ptr->name_in_code)) fortprintf(fd, ", %s", dim_ptr->name_in_code);
       if (dim_ptr->constant_value < 0 && dim_ptr->namelist_defined && !is_derived_dim(dim_ptr->name_in_code)) fortprintf(fd, ", %s", dim_ptr->name_in_file);
+      dim_ptr = dim_ptr->next;
+   }
+   fortprintf(fd, "\n");
+
+   fclose(fd);
+
+   /*
+    *  Generate dummy dimension argument declaration list
+    */
+   fd = fopen("dim_dummy_decls_inout.inc", "w");
+   dim_ptr = dims;
+   if (dim_ptr && dim_ptr->constant_value < 0 && !dim_ptr->namelist_defined && !is_derived_dim(dim_ptr->name_in_code)) {
+      fortprintf(fd, "      integer, intent(inout) :: %s", dim_ptr->name_in_code);
+      dim_ptr = dim_ptr->next;
+   }
+   else if (dim_ptr && dim_ptr->constant_value < 0 && dim_ptr->namelist_defined && !is_derived_dim(dim_ptr->name_in_code)) {
+      fortprintf(fd, "      integer, intent(inout) :: %s", dim_ptr->name_in_file);
+      dim_ptr = dim_ptr->next;
+   }
+   while (dim_ptr) {
+      if (dim_ptr->constant_value < 0 && !dim_ptr->namelist_defined && !is_derived_dim(dim_ptr->name_in_code)) fortprintf(fd, ", %s", dim_ptr->name_in_code);
+      if (dim_ptr->constant_value < 0 && dim_ptr->namelist_defined && !is_derived_dim(dim_ptr->name_in_code)) fortprintf(fd, ", %s", dim_ptr->name_in_file);
+      dim_ptr = dim_ptr->next;
+   }
+   fortprintf(fd, "\n");
+
+   fclose(fd);
+
+   /*
+    *  Generate non-input dummy dimension argument declaration list
+    */
+   fd = fopen("dim_dummy_decls_noinput.inc", "w");
+   dim_ptr = dims;
+   if (dim_ptr && dim_ptr->constant_value < 0 && !dim_ptr->namelist_defined && !is_derived_dim(dim_ptr->name_in_code)) {
+      fortprintf(fd, "      integer :: %s", dim_ptr->name_in_code);
+      dim_ptr = dim_ptr->next;
+   }
+   else if (dim_ptr && dim_ptr->constant_value < 0 && dim_ptr->namelist_defined && !is_derived_dim(dim_ptr->name_in_code)) {
+      fortprintf(fd, "      integer :: %s", dim_ptr->name_in_file);
+      dim_ptr = dim_ptr->next;
+   }
+   while (dim_ptr) {
+      if (dim_ptr->constant_value < 0 && !dim_ptr->namelist_defined && !is_derived_dim(dim_ptr->name_in_code)) fortprintf(fd, ", %s", dim_ptr->name_in_code);
+      if (dim_ptr->constant_value < 0 && dim_ptr->namelist_defined && !is_derived_dim(dim_ptr->name_in_code)) fortprintf(fd, ", %s", dim_ptr->name_in_file);
+      dim_ptr = dim_ptr->next;
+   }
+   fortprintf(fd, "\n");
+
+   fclose(fd);
+
+
+
+   /*
+    *  Generate dummy dimension assignment instructions
+    */
+   fd = fopen("dim_dummy_assigns.inc", "w");
+   dim_ptr = dims;
+   if (dim_ptr && dim_ptr->constant_value < 0 && !dim_ptr->namelist_defined && !is_derived_dim(dim_ptr->name_in_code)) {
+      fortprintf(fd, "      %s = block %% mesh %% %s\n", dim_ptr->name_in_code, dim_ptr->name_in_code);
+      dim_ptr = dim_ptr->next;
+   } 
+   else if (dim_ptr && dim_ptr->constant_value < 0 && dim_ptr->namelist_defined && !is_derived_dim(dim_ptr->name_in_code)) {
+      fortprintf(fd, "      %s = block %% mesh %% %s\n", dim_ptr->name_in_file, dim_ptr->name_in_file);
+      dim_ptr = dim_ptr->next;
+   }
+   while (dim_ptr) {
+      if (dim_ptr->constant_value < 0 && !dim_ptr->namelist_defined && !is_derived_dim(dim_ptr->name_in_code)) fortprintf(fd, "      %s = block %% mesh %% %s\n", dim_ptr->name_in_code, dim_ptr->name_in_code);
+      if (dim_ptr->constant_value < 0 && dim_ptr->namelist_defined && !is_derived_dim(dim_ptr->name_in_code)) fortprintf(fd, "      %s = block %% mesh %% %s\n", dim_ptr->name_in_file, dim_ptr->name_in_file);
       dim_ptr = dim_ptr->next;
    }
    fortprintf(fd, "\n");
@@ -479,14 +550,69 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
 
    group_ptr = groups;
    while (group_ptr) {
-      if (group_ptr->vlist->var->ntime_levs > 1)
+      if (group_ptr->vlist->var->ntime_levs > 1) {
          fortprintf(fd, "      type (%s_multilevel_type), pointer :: %s\n", group_ptr->name, group_ptr->name);
-      else
+         fortprintf(fd, "      type (%s_type), pointer :: provis\n", group_ptr->name, group_ptr->name);
+	  } else {
          fortprintf(fd, "      type (%s_type), pointer :: %s\n", group_ptr->name, group_ptr->name);
+	  }
       group_ptr = group_ptr->next;
    }
 
    fclose(fd);
+
+
+   /*
+    *  Generate routines for allocating provisional types
+    */
+   fd = fopen("provis_alloc_routines.inc", "w");
+
+   group_ptr = groups;
+   while (group_ptr) {
+      if (group_ptr->vlist->var->ntime_levs > 1) {
+		 fortprintf(fd, "   subroutine mpas_setup_provis_%ss(b)!{{{\n", group_ptr->name);
+		 fortprintf(fd, "      type (block_type), pointer :: b\n");
+		 fortprintf(fd, "      type (block_type), pointer :: block\n\n");
+		 fortprintf(fd, "#include \"dim_dummy_decls_noinput.inc\"\n\n");
+		 fortprintf(fd, "      block => b\n");
+		 fortprintf(fd, "      do while(associated(block))\n");
+		 fortprintf(fd, "#include \"dim_dummy_assigns.inc\"\n\n");
+         fortprintf(fd, "         allocate(block %% provis)\n");
+         fortprintf(fd, "         call mpas_allocate_%s(block, block %% provis, &\n", group_ptr->name);
+         fortprintf(fd, "#include \"dim_dummy_args.inc\"\n");
+         fortprintf(fd, "                              )\n\n");
+		 fortprintf(fd, "         block => block %% next \n");
+		 fortprintf(fd, "      end do\n\n");
+		 fortprintf(fd, "      block => b\n");
+		 fortprintf(fd, "      do while(associated(block))\n");
+         fortprintf(fd, "         if(associated(block %% prev) .and. associated(block %% next)) then\n");
+         fortprintf(fd, "            call mpas_create_%s_links(block %% provis, prev = block %% prev %% provis, next = block %% next %% provis)\n", group_ptr->name);
+         fortprintf(fd, "         else if(associated(block %% prev)) then\n");
+         fortprintf(fd, "            call mpas_create_%s_links(block %% provis, prev = block %% prev %% provis)\n", group_ptr->name);
+         fortprintf(fd, "         else if(associated(block %% next)) then\n");
+         fortprintf(fd, "            call mpas_create_%s_links(block %% provis, next = block %% next %% provis)\n", group_ptr->name);
+         fortprintf(fd, "         else\n");
+         fortprintf(fd, "            call mpas_create_%s_links(block %% provis)\n", group_ptr->name);
+         fortprintf(fd, "         end if\n");
+		 fortprintf(fd, "         block => block %% next \n");
+		 fortprintf(fd, "      end do\n");
+		 fortprintf(fd, "   end subroutine mpas_setup_provis_%ss!}}}\n\n", group_ptr->name);
+
+		 fortprintf(fd, "   subroutine mpas_deallocate_provis_%ss(b)!{{{\n", group_ptr->name);
+		 fortprintf(fd, "      type (block_type), pointer :: b\n");
+		 fortprintf(fd, "      type (block_type), pointer :: block\n\n");
+		 fortprintf(fd, "      block => b\n");
+		 fortprintf(fd, "      do while(associated(block))\n");
+		 fortprintf(fd, "         call mpas_deallocate_%s(block %% provis)\n", group_ptr->name);
+		 fortprintf(fd, "         deallocate(block %% provis)\n");
+		 fortprintf(fd, "         block => block %% next\n");
+		 fortprintf(fd, "      end do\n");
+		 fortprintf(fd, "   end subroutine mpas_deallocate_provis_%ss!}}}\n", group_ptr->name);
+	  }
+      group_ptr = group_ptr->next;
+   }
+   fclose(fd);
+
 
 
    /* To be included in allocate_block */
@@ -967,7 +1093,18 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
    /* subroutine to call link subroutine for every field type */
    fortprintf(fd, "      subroutine mpas_create_field_links(b)\n\n");
    fortprintf(fd, "         implicit none\n");
-   fortprintf(fd, "         type (block_type), pointer :: b\n\n");
+   fortprintf(fd, "         type (block_type), pointer :: b\n");
+   fortprintf(fd, "         type (block_type), pointer :: prev, next\n\n");
+   fortprintf(fd, "         if(associated(b %% prev)) then\n");
+   fortprintf(fd, "           prev => b %% prev\n");
+   fortprintf(fd, "         else\n");
+   fortprintf(fd, "           nullify(prev)\n");
+   fortprintf(fd, "         end if\n");
+   fortprintf(fd, "         if(associated(b %% next)) then\n");
+   fortprintf(fd, "           next => b %% next\n");
+   fortprintf(fd, "         else\n");
+   fortprintf(fd, "           nullify(next)\n");
+   fortprintf(fd, "         end if\n\n");
    group_ptr = groups;
    while (group_ptr)
    {
@@ -995,12 +1132,28 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
          {
             for(i=1; i<=ntime_levs; i++) 
             {
-               fortprintf(fd, "         call mpas_create_%s_links(b %% %s %% time_levs(%i) %% %s)\n", group_ptr->name, group_ptr->name, i, group_ptr->name);
+				fortprintf(fd, "         if(associated(next) .and. associated(prev)) then\n");	
+				fortprintf(fd, "           call mpas_create_%s_links(b %% %s %% time_levs(%i) %% %s, prev = prev %% %s %% time_levs(%i) %% %s, next = next %% %s %% time_levs(%i) %% %s)\n", group_ptr->name, group_ptr->name, i, group_ptr->name, i, group_ptr->name, group_ptr->name, i, group_ptr->name);
+				fortprintf(fd, "         else if(associated(next)) then\n");	
+				fortprintf(fd, "           call mpas_create_%s_links(b %% %s %% time_levs(%i) %% %s, next = next %% %s %% time_levs(%i) %% %s)\n", group_ptr->name, group_ptr->name, i, group_ptr->name, group_ptr->name, i, group_ptr->name);
+				fortprintf(fd, "         else if(associated(prev)) then\n");	
+				fortprintf(fd, "           call mpas_create_%s_links(b %% %s %% time_levs(%i) %% %s, prev = prev %% %s %% time_levs(%i) %% %s)\n", group_ptr->name, group_ptr->name, i, group_ptr->name, group_ptr->name, i, group_ptr->name);
+				fortprintf(fd, "         else\n");
+				fortprintf(fd, "           call mpas_create_%s_links(b %% %s %% time_levs(%i) %% %s)\n", group_ptr->name, group_ptr->name, i, group_ptr->name);
+				fortprintf(fd, "         end if\n\n");
             }	
          }
          else
          {
-            fortprintf(fd, "         call mpas_create_%s_links(b %% %s)\n", group_ptr->name, group_ptr->name); 
+			fortprintf(fd, "         if(associated(next) .and. associated(prev)) then\n");	
+            fortprintf(fd, "           call mpas_create_%s_links(b %% %s, prev = prev %% %s, next = next %% %s)\n", group_ptr->name, group_ptr->name, group_ptr->name, group_ptr->name); 
+			fortprintf(fd, "         else if(associated(next)) then\n");	
+            fortprintf(fd, "           call mpas_create_%s_links(b %% %s, next = next %% %s)\n", group_ptr->name, group_ptr->name, group_ptr->name); 
+			fortprintf(fd, "         else if(associated(prev)) then\n");	
+            fortprintf(fd, "           call mpas_create_%s_links(b %% %s, prev = prev %% %s)\n", group_ptr->name, group_ptr->name, group_ptr->name); 
+			fortprintf(fd, "         else\n");
+            fortprintf(fd, "           call mpas_create_%s_links(b %% %s)\n", group_ptr->name, group_ptr->name); 
+			fortprintf(fd, "         end if\n\n");
          }
      }
      else if (var_ptr->ndims > 0)
@@ -1012,12 +1165,28 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
          {
             for(i=1; i<=ntime_levs; i++) 
             {
-               fortprintf(fd, "         call mpas_create_%s_links(b %% %s %% time_levs(%i) %% %s)\n", group_ptr->name, group_ptr->name, i, group_ptr->name);
+				fortprintf(fd, "         if(associated(next) .and. associated(prev)) then\n");	
+				fortprintf(fd, "           call mpas_create_%s_links(b %% %s %% time_levs(%i) %% %s, prev = prev %% %s %% time_levs(%i) %% %s, next = next %% %s %% time_levs(%i) %% %s)\n", group_ptr->name, group_ptr->name, i, group_ptr->name, group_ptr->name, i, group_ptr->name, group_ptr->name, i, group_ptr->name);
+				fortprintf(fd, "         else if(associated(next)) then\n");	
+				fortprintf(fd, "           call mpas_create_%s_links(b %% %s %% time_levs(%i) %% %s, next = next %% %s %% time_levs(%i) %% %s)\n", group_ptr->name, group_ptr->name, i, group_ptr->name, group_ptr->name, i, group_ptr->name);
+				fortprintf(fd, "         else if(associated(prev)) then\n");	
+				fortprintf(fd, "           call mpas_create_%s_links(b %% %s %% time_levs(%i) %% %s, prev = prev %% %s %% time_levs(%i) %% %s)\n", group_ptr->name, group_ptr->name, i, group_ptr->name, group_ptr->name, i, group_ptr->name);
+				fortprintf(fd, "         else\n");
+				fortprintf(fd, "           call mpas_create_%s_links(b %% %s %% time_levs(%i) %% %s)\n", group_ptr->name, group_ptr->name, i, group_ptr->name);
+				fortprintf(fd, "         end if\n\n");
             }	
          }
          else
          {
-            fortprintf(fd, "         call mpas_create_%s_links(b %% %s)\n", group_ptr->name, group_ptr->name); 
+			 fortprintf(fd, "         if(associated(next) .and. associated(prev)) then\n");	
+			 fortprintf(fd, "           call mpas_create_%s_links(b %% %s, prev = prev %% %s, next = next %% %s)\n", group_ptr->name, group_ptr->name, group_ptr->name, group_ptr->name);
+			 fortprintf(fd, "         else if(associated(next)) then\n");	
+			 fortprintf(fd, "           call mpas_create_%s_links(b %% %s, next = next %% %s)\n", group_ptr->name, group_ptr->name, group_ptr->name); 
+			 fortprintf(fd, "         else if(associated(prev)) then\n");	
+			 fortprintf(fd, "           call mpas_create_%s_links(b %% %s, prev = prev %% %s)\n", group_ptr->name, group_ptr->name, group_ptr->name); 
+			 fortprintf(fd, "         else\n");
+			 fortprintf(fd, "           call mpas_create_%s_links(b %% %s)\n", group_ptr->name, group_ptr->name); 
+			 fortprintf(fd, "         end if\n\n");
          }
      }
 
@@ -1029,9 +1198,10 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
    group_ptr = groups;
 
    while (group_ptr) {
-      fortprintf(fd, "      subroutine mpas_create_%s_links(%s)\n\n", group_ptr->name, group_ptr->name); 
+      fortprintf(fd, "      subroutine mpas_create_%s_links(%s, prev, next)\n\n", group_ptr->name, group_ptr->name); 
       fortprintf(fd, "         implicit none\n");
-      fortprintf(fd, "         type (%s_type), pointer :: %s\n\n", group_ptr->name, group_ptr->name);
+      fortprintf(fd, "         type (%s_type), pointer :: %s\n", group_ptr->name, group_ptr->name);
+	  fortprintf(fd, "         type (%s_type), pointer, optional :: prev, next\n", group_ptr->name);
 
       var_list_ptr = group_ptr->vlist;
       while (var_list_ptr) {
@@ -1050,17 +1220,62 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
                   fortprintf(fd, "         %s %% %s %% sendList => %s %% %s %% block %% parinfo %% cellsToSend\n", group_ptr->name, var_ptr2->super_array, group_ptr->name, var_ptr2->super_array);
                   fortprintf(fd, "         %s %% %s %% recvList => %s %% %s %% block %% parinfo %% cellsToRecv\n", group_ptr->name, var_ptr2->super_array, group_ptr->name, var_ptr2->super_array);
                   fortprintf(fd, "         %s %% %s %% copyList => %s %% %s %% block %% parinfo %% cellsToCopy\n", group_ptr->name, var_ptr2->super_array, group_ptr->name, var_ptr2->super_array);
+				  fortprintf(fd, "         if(present(prev)) then\n");
+				  fortprintf(fd, "           %s %% %s %% prev => prev %% %s\n", group_ptr->name, var_ptr2->super_array, var_ptr2->super_array);
+				  fortprintf(fd, "         else\n");
+				  fortprintf(fd, "           nullify(%s %% %s %% prev)\n", group_ptr->name, var_ptr2->super_array);
+				  fortprintf(fd, "         end if\n");
+				  fortprintf(fd, "         if(present(next)) then\n");
+				  fortprintf(fd, "           %s %% %s %% next => next %% %s\n", group_ptr->name, var_ptr2->super_array, var_ptr2->super_array);
+				  fortprintf(fd, "         else\n");
+				  fortprintf(fd, "           nullify(%s %% %s %% next)\n", group_ptr->name, var_ptr2->super_array);
+				  fortprintf(fd, "         end if\n\n");
                }
                else if (strncmp("nEdges",outer_dim,1024) == 0) {
                   fortprintf(fd, "         %s %% %s %% sendList => %s %% %s %% block %% parinfo %% edgesToSend\n", group_ptr->name, var_ptr2->super_array, group_ptr->name, var_ptr2->super_array);
                   fortprintf(fd, "         %s %% %s %% recvList => %s %% %s %% block %% parinfo %% edgesToRecv\n", group_ptr->name, var_ptr2->super_array, group_ptr->name, var_ptr2->super_array);
                   fortprintf(fd, "         %s %% %s %% copyList => %s %% %s %% block %% parinfo %% edgesToCopy\n", group_ptr->name, var_ptr2->super_array, group_ptr->name, var_ptr2->super_array);
+				  fortprintf(fd, "         if(present(prev)) then\n");
+				  fortprintf(fd, "           %s %% %s %% prev => prev %% %s\n", group_ptr->name, var_ptr2->super_array, var_ptr2->super_array);
+				  fortprintf(fd, "         else\n");
+				  fortprintf(fd, "           nullify(%s %% %s %% prev)\n", group_ptr->name, var_ptr2->super_array);
+				  fortprintf(fd, "         end if\n");
+				  fortprintf(fd, "         if(present(next)) then\n");
+				  fortprintf(fd, "           %s %% %s %% next => next %% %s\n", group_ptr->name, var_ptr2->super_array, var_ptr2->super_array);
+				  fortprintf(fd, "         else\n");
+				  fortprintf(fd, "           nullify(%s %% %s %% next)\n", group_ptr->name, var_ptr2->super_array);
+				  fortprintf(fd, "         end if\n\n");
                }
                else if (strncmp("nVertices",outer_dim,1024) == 0) {
                   fortprintf(fd, "         %s %% %s %% sendList => %s %% %s %% block %% parinfo %% verticesToSend\n", group_ptr->name, var_ptr2->super_array, group_ptr->name, var_ptr2->super_array);
                   fortprintf(fd, "         %s %% %s %% recvList => %s %% %s %% block %% parinfo %% verticesToRecv\n", group_ptr->name, var_ptr2->super_array, group_ptr->name, var_ptr2->super_array);
                   fortprintf(fd, "         %s %% %s %% copyList => %s %% %s %% block %% parinfo %% verticesToCopy\n", group_ptr->name, var_ptr2->super_array, group_ptr->name, var_ptr2->super_array);
-               }
+				  fortprintf(fd, "         if(present(prev)) then\n");
+				  fortprintf(fd, "           %s %% %s %% prev => prev %% %s\n", group_ptr->name, var_ptr2->super_array, var_ptr2->super_array);
+				  fortprintf(fd, "         else\n");
+				  fortprintf(fd, "           nullify(%s %% %s %% prev)\n", group_ptr->name, var_ptr2->super_array);
+				  fortprintf(fd, "         end if\n");
+				  fortprintf(fd, "         if(present(next)) then\n");
+				  fortprintf(fd, "           %s %% %s %% next => next %% %s\n", group_ptr->name, var_ptr2->super_array, var_ptr2->super_array);
+				  fortprintf(fd, "         else\n");
+				  fortprintf(fd, "           nullify(%s %% %s %% next)\n", group_ptr->name, var_ptr2->super_array);
+				  fortprintf(fd, "         end if\n\n");
+               } else {
+				  fortprintf(fd, "         nullify(%s %% %s %% sendList)\n", group_ptr->name, var_ptr2->super_array);
+				  fortprintf(fd, "         nullify(%s %% %s %% recvList)\n", group_ptr->name, var_ptr2->super_array);
+				  fortprintf(fd, "         nullify(%s %% %s %% copyList)\n", group_ptr->name, var_ptr2->super_array);
+				  fortprintf(fd, "         if(present(prev)) then\n");
+				  fortprintf(fd, "           %s %% %s %% prev => prev %% %s\n", group_ptr->name, var_ptr2->super_array, var_ptr2->super_array);
+				  fortprintf(fd, "         else\n");
+				  fortprintf(fd, "           nullify(%s %% %s %% prev)\n", group_ptr->name, var_ptr2->super_array);
+				  fortprintf(fd, "         end if\n");
+				  fortprintf(fd, "         if(present(next)) then\n");
+				  fortprintf(fd, "           %s %% %s %% next => next %% %s\n", group_ptr->name, var_ptr2->super_array, var_ptr2->super_array);
+				  fortprintf(fd, "         else\n");
+				  fortprintf(fd, "           nullify(%s %% %s %% next)\n", group_ptr->name, var_ptr2->super_array);
+				  fortprintf(fd, "         end if\n\n");
+
+			   }
             fortprintf(fd, "\n");
          }
          else 
@@ -1073,17 +1288,61 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
                   fortprintf(fd, "         %s %% %s %% sendList => %s %% %s %% block %% parinfo %% cellsToSend\n", group_ptr->name, var_ptr->name_in_code, group_ptr->name, var_ptr->name_in_code);
                   fortprintf(fd, "         %s %% %s %% recvList => %s %% %s %% block %% parinfo %% cellsToRecv\n", group_ptr->name, var_ptr->name_in_code, group_ptr->name, var_ptr->name_in_code);
                   fortprintf(fd, "         %s %% %s %% copyList => %s %% %s %% block %% parinfo %% cellsToCopy\n", group_ptr->name, var_ptr->name_in_code, group_ptr->name, var_ptr->name_in_code);
+				  fortprintf(fd, "         if(present(prev)) then\n");
+				  fortprintf(fd, "           %s %% %s %% prev => prev %% %s\n", group_ptr->name, var_ptr->name_in_code, var_ptr->name_in_code);
+				  fortprintf(fd, "         else\n");
+				  fortprintf(fd, "           nullify(%s %% %s %% prev)\n", group_ptr->name, var_ptr->name_in_code);
+				  fortprintf(fd, "         end if\n");
+				  fortprintf(fd, "         if(present(next)) then\n");
+				  fortprintf(fd, "           %s %% %s %% next => next %% %s\n", group_ptr->name, var_ptr->name_in_code, var_ptr->name_in_code);
+				  fortprintf(fd, "         else\n");
+				  fortprintf(fd, "           nullify(%s %% %s %% next)\n", group_ptr->name, var_ptr->name_in_code);
+				  fortprintf(fd, "         end if\n\n");
                }
                else if (strncmp("nEdges",outer_dim,1024) == 0) {
                   fortprintf(fd, "         %s %% %s %% sendList => %s %% %s %% block %% parinfo %% edgesToSend\n", group_ptr->name, var_ptr->name_in_code, group_ptr->name, var_ptr->name_in_code);
                   fortprintf(fd, "         %s %% %s %% recvList => %s %% %s %% block %% parinfo %% edgesToRecv\n", group_ptr->name, var_ptr->name_in_code, group_ptr->name, var_ptr->name_in_code);
                   fortprintf(fd, "         %s %% %s %% copyList => %s %% %s %% block %% parinfo %% edgesToCopy\n", group_ptr->name, var_ptr->name_in_code, group_ptr->name, var_ptr->name_in_code);
+				  fortprintf(fd, "         if(present(prev)) then\n");
+				  fortprintf(fd, "           %s %% %s %% prev => prev %% %s\n", group_ptr->name, var_ptr->name_in_code, var_ptr->name_in_code);
+				  fortprintf(fd, "         else\n");
+				  fortprintf(fd, "           nullify(%s %% %s %% prev)\n", group_ptr->name, var_ptr->name_in_code);
+				  fortprintf(fd, "         end if\n");
+				  fortprintf(fd, "         if(present(next)) then\n");
+				  fortprintf(fd, "           %s %% %s %% next => next %% %s\n", group_ptr->name, var_ptr->name_in_code, var_ptr->name_in_code);
+				  fortprintf(fd, "         else\n");
+				  fortprintf(fd, "           nullify(%s %% %s %% next)\n", group_ptr->name, var_ptr->name_in_code);
+				  fortprintf(fd, "         end if\n\n");
                }
                else if (strncmp("nVertices",outer_dim,1024) == 0) {
                   fortprintf(fd, "         %s %% %s %% sendList => %s %% %s %% block %% parinfo %% verticesToSend\n", group_ptr->name, var_ptr->name_in_code, group_ptr->name, var_ptr->name_in_code);
                   fortprintf(fd, "         %s %% %s %% recvList => %s %% %s %% block %% parinfo %% verticesToRecv\n", group_ptr->name, var_ptr->name_in_code, group_ptr->name, var_ptr->name_in_code);
                   fortprintf(fd, "         %s %% %s %% copyList => %s %% %s %% block %% parinfo %% verticesToCopy\n", group_ptr->name, var_ptr->name_in_code, group_ptr->name, var_ptr->name_in_code);
-               }
+				  fortprintf(fd, "         if(present(prev)) then\n");
+				  fortprintf(fd, "           %s %% %s %% prev => prev %% %s\n", group_ptr->name, var_ptr->name_in_code, var_ptr->name_in_code);
+				  fortprintf(fd, "         else\n");
+				  fortprintf(fd, "           nullify(%s %% %s %% prev)\n", group_ptr->name, var_ptr->name_in_code);
+				  fortprintf(fd, "         end if\n");
+				  fortprintf(fd, "         if(present(next)) then\n");
+				  fortprintf(fd, "           %s %% %s %% next => next %% %s\n", group_ptr->name, var_ptr->name_in_code, var_ptr->name_in_code);
+				  fortprintf(fd, "         else\n");
+				  fortprintf(fd, "           nullify(%s %% %s %% next)\n", group_ptr->name, var_ptr->name_in_code);
+				  fortprintf(fd, "         end if\n\n");
+               } else {
+                  fortprintf(fd, "         nullify(%s %% %s %% sendList)\n", group_ptr->name, var_ptr->name_in_code);
+                  fortprintf(fd, "         nullify(%s %% %s %% recvList)\n", group_ptr->name, var_ptr->name_in_code);
+                  fortprintf(fd, "         nullify(%s %% %s %% copyList)\n", group_ptr->name, var_ptr->name_in_code);
+				  fortprintf(fd, "         if(present(prev)) then\n");
+				  fortprintf(fd, "           %s %% %s %% prev => prev %% %s\n", group_ptr->name, var_ptr->name_in_code, var_ptr->name_in_code);
+				  fortprintf(fd, "         else\n");
+				  fortprintf(fd, "           nullify(%s %% %s %% prev)\n", group_ptr->name, var_ptr->name_in_code);
+				  fortprintf(fd, "         end if\n");
+				  fortprintf(fd, "         if(present(next)) then\n");
+				  fortprintf(fd, "           %s %% %s %% next => next %% %s\n", group_ptr->name, var_ptr->name_in_code, var_ptr->name_in_code);
+				  fortprintf(fd, "         else\n");
+				  fortprintf(fd, "           nullify(%s %% %s %% next)\n", group_ptr->name, var_ptr->name_in_code);
+				  fortprintf(fd, "         end if\n\n");
+			   }
                fortprintf(fd, "\n");
 	    }
             var_list_ptr = var_list_ptr->next;
@@ -1107,7 +1366,7 @@ void gen_reads(struct group_list * groups, struct variable * vars, struct dimens
    struct dimension_list * dimlist_ptr, * lastdim;
    struct group_list * group_ptr;
    struct dtable * dictionary;
-   FILE * fd;
+   FILE * fd, *fd2;
    char vtype[5];
    char fname[32];
    char super_array[1024];
@@ -1857,6 +2116,7 @@ void gen_reads(struct group_list * groups, struct variable * vars, struct dimens
     * MGD NEW CODE
     */
    fd = fopen("exchange_input_field_halos.inc", "w");
+   fd2 = fopen("non_decomp_copy_input_fields.inc", "w");
 
    group_ptr = groups;
    while (group_ptr) {
@@ -1868,14 +2128,16 @@ void gen_reads(struct group_list * groups, struct variable * vars, struct dimens
          i = 1;
          while (dimlist_ptr) {
             if (i == var_ptr->ndims) { 
+
+                  if (var_ptr->ntime_levs > 1) {
+                     snprintf(struct_deref, 1024, "domain %% blocklist %% %s %% time_levs(1) %% %s", group_ptr->name, group_ptr->name);
+				  } else {
+                     snprintf(struct_deref, 1024, "domain %% blocklist %% %s", group_ptr->name);
+				  }
+
                if (!strncmp(dimlist_ptr->dim->name_in_file, "nCells", 1024) ||
                    !strncmp(dimlist_ptr->dim->name_in_file, "nEdges", 1024) ||
                    !strncmp(dimlist_ptr->dim->name_in_file, "nVertices", 1024)) {
-   
-                  if (var_ptr->ntime_levs > 1)
-                     snprintf(struct_deref, 1024, "domain %% blocklist %% %s %% time_levs(1) %% %s", group_ptr->name, group_ptr->name);
-                  else
-                     snprintf(struct_deref, 1024, "domain %% blocklist %% %s", group_ptr->name);
                   
                   if (strncmp(var_ptr->super_array, "-", 1024) != 0) {
                      fortprintf(fd, "      if ((%s %% %s %% ioinfo %% input .and. input_obj %% stream == STREAM_INPUT) .or. &\n", struct_deref, var_ptr->super_array);
@@ -1898,7 +2160,13 @@ void gen_reads(struct group_list * groups, struct variable * vars, struct dimens
             
                   fortprintf(fd, "      end if\n\n");
    
-               }
+               } else {
+                  fortprintf(fd2, "      if ((%s %% %s %% ioinfo %% input .and. input_obj %% stream == STREAM_INPUT) .or. &\n", struct_deref, var_ptr->name_in_code);
+                  fortprintf(fd2, "          (%s %% %s %% ioinfo %% restart .and. input_obj %% stream == STREAM_RESTART) .or. &\n", struct_deref, var_ptr->name_in_code);
+                  fortprintf(fd2, "          (%s %% %s %% ioinfo %% sfc .and. input_obj %% stream == STREAM_SFC)) then\n", struct_deref, var_ptr->name_in_code);
+				  fortprintf(fd2, "          call mpas_dmpar_copy_field(%s %% %s)\n", struct_deref, var_ptr->name_in_code);
+                  fortprintf(fd2, "      end if\n\n");
+			   }
             }
    
             i++;
@@ -1911,6 +2179,7 @@ void gen_reads(struct group_list * groups, struct variable * vars, struct dimens
    }
 
    fclose(fd);
+   fclose(fd2);
 
 
 #ifdef LEGACY_CODE

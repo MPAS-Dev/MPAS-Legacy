@@ -70,122 +70,114 @@ module sw_time_integration
 
       real (kind=RKIND), dimension(4) :: rk_weights, rk_substep_weights
 
-      block => domain % blocklist
-      call mpas_allocate_state(block, provis, &
-                          block % mesh % nCells, block % mesh % nEdges, block % mesh % maxEdges, block % mesh % maxEdges2, &
-                          block % mesh % nVertices, block % mesh % vertexDegree, block % mesh % nVertLevels, &
-                          block % mesh % nTracers)
-      
-      provis_ptr => provis
-      call mpas_create_state_links(provis_ptr)
+      call mpas_setup_provis_states(domain % blocklist)
+   
+     !
+     ! Initialize time_levs(2) with state at current time
+     ! Initialize first RK state
+     ! Couple tracers time_levs(2) with h in time-levels
+     ! Initialize RK weights
+     !
+     block => domain % blocklist
+     do while (associated(block))
 
-      !
-      ! Initialize time_levs(2) with state at current time
-      ! Initialize first RK state
-      ! Couple tracers time_levs(2) with h in time-levels
-      ! Initialize RK weights
-      !
-      block => domain % blocklist
-      do while (associated(block))
-
-         block % state % time_levs(2) % state % u % array(:,:) = block % state % time_levs(1) % state % u % array(:,:)
-         block % state % time_levs(2) % state % h % array(:,:) = block % state % time_levs(1) % state % h % array(:,:)
-         do iCell=1,block % mesh % nCells  ! couple tracers to h
-           do k=1,block % mesh % nVertLevels
-             block % state % time_levs(2) % state % tracers % array(:,k,iCell) = block % state % time_levs(1) % state % tracers % array(:,k,iCell) &
-                                                                       * block % state % time_levs(1) % state % h % array(k,iCell)
-            end do
-         end do
-
-         call mpas_copy_state(provis, block % state % time_levs(1) % state)
-
-         block => block % next
-      end do
-
-      rk_weights(1) = dt/6.
-      rk_weights(2) = dt/3.
-      rk_weights(3) = dt/3.
-      rk_weights(4) = dt/6.
-
-      rk_substep_weights(1) = dt/2.
-      rk_substep_weights(2) = dt/2.
-      rk_substep_weights(3) = dt
-      rk_substep_weights(4) = 0.
-
-
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-      ! BEGIN RK loop 
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-      do rk_step = 1, 4
-
-! ---  update halos for diagnostic variables
-
-        call mpas_dmpar_exch_halo_field(provis % pv_edge)
-
-        if (config_h_mom_eddy_visc4 > 0.0) then
-           call mpas_dmpar_exch_halo_field(provis % divergence)
-           call mpas_dmpar_exch_halo_field(provis % vorticity)
-        end if
-
-! ---  compute tendencies
-
-        block => domain % blocklist
-        do while (associated(block))
-           call sw_compute_tend(block % tend, provis, block % mesh)
-           call sw_compute_scalar_tend(block % tend, provis, block % mesh)
-           call sw_enforce_boundary_edge(block % tend, block % mesh)
-           block => block % next
+        block % state % time_levs(2) % state % u % array(:,:) = block % state % time_levs(1) % state % u % array(:,:)
+        block % state % time_levs(2) % state % h % array(:,:) = block % state % time_levs(1) % state % h % array(:,:)
+        do iCell=1,block % mesh % nCells  ! couple tracers to h
+          do k=1,block % mesh % nVertLevels
+            block % state % time_levs(2) % state % tracers % array(:,k,iCell) = block % state % time_levs(1) % state % tracers % array(:,k,iCell) &
+                                                                      * block % state % time_levs(1) % state % h % array(k,iCell)
+           end do
         end do
 
-! ---  update halos for prognostic variables
+        call mpas_copy_state(block % provis, block % state % time_levs(1) % state)
 
-        call mpas_dmpar_exch_halo_field(domain % blocklist % tend % u)
-        call mpas_dmpar_exch_halo_field(domain % blocklist % tend % h)
-        call mpas_dmpar_exch_halo_field(domain % blocklist % tend % tracers)
+        block => block % next
+     end do
 
-! ---  compute next substep state
+     rk_weights(1) = dt/6.
+     rk_weights(2) = dt/3.
+     rk_weights(3) = dt/3.
+     rk_weights(4) = dt/6.
 
-        if (rk_step < 4) then
-           block => domain % blocklist
-           do while (associated(block))
-              provis % u % array(:,:)       = block % state % time_levs(1) % state % u % array(:,:)  &
-                                            + rk_substep_weights(rk_step) * block % tend % u % array(:,:)
-              provis % h % array(:,:)       = block % state % time_levs(1) % state % h % array(:,:)  &
-                                            + rk_substep_weights(rk_step) * block % tend % h % array(:,:)
-              do iCell=1,block % mesh % nCells
-                 do k=1,block % mesh % nVertLevels
-                    provis % tracers % array(:,k,iCell) = ( &
-                                                           block % state % time_levs(1) % state % h % array(k,iCell) * &
-                                                           block % state % time_levs(1) % state % tracers % array(:,k,iCell)  &
-                                      + rk_substep_weights(rk_step) * block % tend % tracers % array(:,k,iCell) &
-                                                          ) / provis % h % array(k,iCell)
-                 end do
-              end do
-              if (config_test_case == 1) then    ! For case 1, wind field should be fixed
-                 provis % u % array(:,:) = block % state % time_levs(1) % state % u % array(:,:)
-              end if
-              call sw_compute_solve_diagnostics(dt, provis, block % mesh)
-              block => block % next
-           end do
-        end if
+     rk_substep_weights(1) = dt/2.
+     rk_substep_weights(2) = dt/2.
+     rk_substep_weights(3) = dt
+     rk_substep_weights(4) = 0.
+
+
+     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+     ! BEGIN RK loop 
+     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+     do rk_step = 1, 4
+
+! --- update halos for diagnostic variables
+
+        call mpas_dmpar_exch_halo_field(domain % blocklist % provis % pv_edge)
+
+        if (config_h_mom_eddy_visc4 > 0.0) then
+            call mpas_dmpar_exch_halo_field(domain % blocklist % provis % divergence)
+            call mpas_dmpar_exch_halo_field(domain % blocklist % provis % vorticity)
+       end if
+
+! --- compute tendencies
+
+       block => domain % blocklist
+       do while (associated(block))
+          call sw_compute_tend(block % tend, block % provis, block % mesh)
+          call sw_compute_scalar_tend(block % tend, block % provis, block % mesh)
+          call sw_enforce_boundary_edge(block % tend, block % mesh)
+          block => block % next
+       end do
+
+! --- update halos for prognostic variables
+
+       call mpas_dmpar_exch_halo_field(domain % blocklist % tend % u)
+       call mpas_dmpar_exch_halo_field(domain % blocklist % tend % h)
+       call mpas_dmpar_exch_halo_field(domain % blocklist % tend % tracers)
+
+! --- compute next substep state
+
+       if (rk_step < 4) then
+          block => domain % blocklist
+          do while (associated(block))
+             block % provis % u % array(:,:) = block % state % time_levs(1) % state % u % array(:,:)  &
+                                             + rk_substep_weights(rk_step) * block % tend % u % array(:,:)
+             block % provis % h % array(:,:) = block % state % time_levs(1) % state % h % array(:,:)  &
+                                             + rk_substep_weights(rk_step) * block % tend % h % array(:,:)
+             do iCell=1,block % mesh % nCells
+                do k=1,block % mesh % nVertLevels
+                   block % provis % tracers % array(:,k,iCell) = ( block % state % time_levs(1) % state % h % array(k,iCell) * &
+                                                                   block % state % time_levs(1) % state % tracers % array(:,k,iCell)  &
+                                   + rk_substep_weights(rk_step) * block % tend % tracers % array(:,k,iCell) &
+                                                                 ) / block % provis % h % array(k,iCell)
+                end do
+             end do
+             if (config_test_case == 1) then    ! For case 1, wind field should be fixed
+                block % provis % u % array(:,:) = block % state % time_levs(1) % state % u % array(:,:)
+             end if
+             call sw_compute_solve_diagnostics(dt, block % provis, block % mesh)
+             block => block % next
+          end do
+       end if
 
 !--- accumulate update (for RK4)
 
-        block => domain % blocklist
-        do while (associated(block))
-           block % state % time_levs(2) % state % u % array(:,:) = block % state % time_levs(2) % state % u % array(:,:) &
-                                   + rk_weights(rk_step) * block % tend % u % array(:,:) 
-           block % state % time_levs(2) % state % h % array(:,:) = block % state % time_levs(2) % state % h % array(:,:) &
-                                   + rk_weights(rk_step) * block % tend % h % array(:,:) 
-           do iCell=1,block % mesh % nCells
-              do k=1,block % mesh % nVertLevels
-                 block % state % time_levs(2) % state % tracers % array(:,k,iCell) =  &
-                                                                       block % state % time_levs(2) % state % tracers % array(:,k,iCell) &
-                                               + rk_weights(rk_step) * block % tend % tracers % array(:,k,iCell)
-              end do
-           end do
-           block => block % next
-        end do
+       block => domain % blocklist
+       do while (associated(block))
+          block % state % time_levs(2) % state % u % array(:,:) = block % state % time_levs(2) % state % u % array(:,:) &
+                                  + rk_weights(rk_step) * block % tend % u % array(:,:) 
+          block % state % time_levs(2) % state % h % array(:,:) = block % state % time_levs(2) % state % h % array(:,:) &
+                                  + rk_weights(rk_step) * block % tend % h % array(:,:) 
+          do iCell=1,block % mesh % nCells
+             do k=1,block % mesh % nVertLevels
+                block % state % time_levs(2) % state % tracers % array(:,k,iCell) =  &
+                                                                      block % state % time_levs(2) % state % tracers % array(:,k,iCell) &
+                                              + rk_weights(rk_step) * block % tend % tracers % array(:,k,iCell)
+             end do
+          end do
+          block => block % next
+       end do
 
       end do
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
@@ -223,7 +215,7 @@ module sw_time_integration
          block => block % next
       end do
 
-      call mpas_deallocate_state(provis)
+      call mpas_deallocate_provis_states(domain % blocklist)
 
    end subroutine sw_rk4
 

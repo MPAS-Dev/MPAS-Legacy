@@ -21,6 +21,7 @@ namelist logical     sw_model  config_monotonic             false
 namelist logical     sw_model  config_wind_stress           false
 namelist logical     sw_model  config_bottom_drag           false
 namelist real        sw_model  config_apvm_upwinding        0.5
+namelist integer     sw_model  config_num_halos             2
 namelist character   io        config_input_name            grid.nc
 namelist character   io        config_output_name           output.nc
 namelist character   io        config_restart_name          restart.nc

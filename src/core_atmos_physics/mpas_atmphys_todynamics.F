@@ -227,7 +227,8 @@ write(0,*) 'min rthratensw = ',minval(rthratensw(:,1:nCellsSolve))
 !local variables:
 !-----------------
  type(block_type),pointer :: block
- type (field2DReal):: tempField
+ type (field2DReal), pointer :: tempField
+ type (field2DReal), target :: tempFieldTarget
  integer:: iCell,iEdge,k,j,nCells,nCellsSolve,nVertLevels
  integer,dimension(:),pointer  :: nEdgesOnCell
  integer,dimension(:,:),pointer:: edgesOnCell
@@ -249,8 +250,8 @@ write(0,*) 'min rthratensw = ',minval(rthratensw(:,1:nCellsSolve))
  nEdgesOnCell => mesh % nEdgesOnCell % array
  edge_normal  => mesh % edgeNormalVectors % array
 
- allocate(Ux_tend_halo(nVertLevels,nCells))
- allocate(Uy_tend_halo(nVertLevels,nCells))
+ allocate(Ux_tend_halo(nVertLevels,nCells+1))
+ allocate(Uy_tend_halo(nVertLevels,nCells+1))
 
  Ux_tend_halo(:,:) = 0.
  Uy_tend_halo(:,:) = 0.
@@ -261,11 +262,15 @@ write(0,*) 'min rthratensw = ',minval(rthratensw(:,1:nCellsSolve))
     enddo
  enddo
 
+ tempField => tempFieldTarget 
  tempField % block => block
  tempField % dimSizes(1) = nVertLevels
  tempField % dimSizes(2) = nCellsSolve
  tempField % sendList => block % parinfo % cellsToSend
  tempField % recvList => block % parinfo % cellsToRecv
+ tempField % copyList => block % parinfo % cellsToCopy
+ tempField % prev => null()
+ tempField % next => null()
 
  tempField % array => Ux_tend_halo
  call mpas_dmpar_exch_halo_field(tempField)

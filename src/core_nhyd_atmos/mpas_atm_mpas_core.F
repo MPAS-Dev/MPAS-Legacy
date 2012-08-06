@@ -46,12 +46,18 @@ module mpas_core
 
       call atm_simulation_clock_init(domain, dt, startTimeStamp)
 
+      call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(1) % state % u)
+
       block => domain % blocklist
       do while (associated(block))
          call atm_mpas_init_block(domain % dminfo, block, block % mesh, dt)
          block % state % time_levs(1) % state % xtime % scalar = startTimeStamp
          block => block % next
       end do
+
+      call mpas_dmpar_exch_halo_field(domain % blocklist % diag % pv_edge)
+      call mpas_dmpar_exch_halo_field(domain % blocklist % diag % ru)
+      call mpas_dmpar_exch_halo_field(domain % blocklist % diag % rw)
 
       current_outfile_frames = 0
 
@@ -160,19 +166,11 @@ module mpas_core
       type (block_type), intent(inout) :: block
       type (mesh_type), intent(inout) :: mesh
       real (kind=RKIND), intent(in) :: dt
-
-      call mpas_dmpar_exch_halo_field(block % state % time_levs(1) % state % u)
    
       if (.not. config_do_restart .or. (config_do_restart .and. config_do_DAcycling)) then
          call atm_init_coupled_diagnostics( block % state % time_levs(1) % state, block % diag, mesh)
       end if
       call atm_compute_solve_diagnostics(dt, block % state % time_levs(1) % state, block % diag, mesh)
-
-      call mpas_dmpar_exch_halo_field(block % diag % pv_edge)
-
-      call mpas_dmpar_exch_halo_field(block % diag % ru)
-
-      call mpas_dmpar_exch_halo_field(block % diag % rw)
 
       call mpas_rbf_interp_initialize(mesh)
       call mpas_init_reconstruct(mesh)

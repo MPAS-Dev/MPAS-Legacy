@@ -116,14 +116,16 @@ module ocn_time_average
         acc_u => state % acc_u % array
         acc_uVar => state % acc_uVar % array
 
-        acc_ssh = acc_ssh / nAccumulate
-        acc_sshVar = acc_sshVar / nAccumulate
-        acc_uReconstructZonal = acc_uReconstructZonal / nAccumulate
-        acc_uReconstructMeridional = acc_uReconstructMeridional / nAccumulate
-        acc_uReconstructZonalVar = acc_uReconstructZonalVar / nAccumulate
-        acc_uReconstructMeridionalVar = acc_uReconstructMeridionalVar / nAccumulate
-        acc_u = acc_u / nAccumulate
-        acc_uVar = acc_uVar / nAccumulate
+        if(nAccumulate > 0) then
+          acc_ssh = acc_ssh / nAccumulate
+          acc_sshVar = acc_sshVar / nAccumulate
+          acc_uReconstructZonal = acc_uReconstructZonal / nAccumulate
+          acc_uReconstructMeridional = acc_uReconstructMeridional / nAccumulate
+          acc_uReconstructZonalVar = acc_uReconstructZonalVar / nAccumulate
+          acc_uReconstructMeridionalVar = acc_uReconstructMeridionalVar / nAccumulate
+          acc_u = acc_u / nAccumulate
+          acc_uVar = acc_uVar / nAccumulate
+        end if
     end subroutine ocn_time_average_normalize!}}}
 
 end module ocn_time_average

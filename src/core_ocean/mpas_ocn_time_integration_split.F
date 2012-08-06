@@ -419,7 +419,7 @@ module ocn_time_integration_split
                    flux = ((1.0-config_btr_gam1_uWt1) * block % state % time_levs(oldBtrSubcycleTime) % state % uBtrSubcycle % array(iEdge) &
                           + config_btr_gam1_uWt1 * block % state % time_levs(newBtrSubcycleTime) % state % uBtrSubcycle % array(iEdge)) &
                           * hSum 
-      
+
                    block % tend % ssh % array(cell1) = block % tend % ssh % array(cell1) - flux * block % mesh % dvEdge % array(iEdge)
                    block % tend % ssh % array(cell2) = block % tend % ssh % array(cell2) + flux * block % mesh % dvEdge % array(iEdge) 
       

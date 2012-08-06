@@ -2219,7 +2219,8 @@ module init_atm_test_cases
       real (kind=RKIND), dimension(:,:), pointer :: v
       real (kind=RKIND), dimension(:,:), pointer :: sorted_arr
 
-      type (field1DReal):: tempField
+      type (field1DReal), pointer :: tempField
+      type (field1DReal), target :: tempFieldTarget
 
       real(kind=RKIND), dimension(:), pointer :: hs, hs1
       real(kind=RKIND) :: hm, zh, dzmin, dzmina, dzmina_global, dzminf, sm
@@ -3193,11 +3194,15 @@ if (y > 1249.0) y = 1249.0
 
                end do
 
+               tempField => tempFieldTarget
                tempField % block => block
                tempField % dimSizes(1) = grid % nCells
                tempField % sendList => parinfo % cellsToSend
                tempField % recvList => parinfo % cellsToRecv
+               tempField % copyList => parinfo % cellsToCopy
                tempField % array => hs
+               tempField % prev => null()
+               tempField % next => null()
 
  call mpas_timer_start("EXCHANGE_1D_REAL")
                call mpas_dmpar_exch_halo_field(tempField)
@@ -4015,7 +4020,7 @@ write(0,*) 'PROCESSING SEAICE'
             if (vert_level(k) == 200100.0) sorted_arr(1,k) = 99999.0
             sorted_arr(2,k) = fg % t % array(k,iCell)
          end do
-         call quicksort(config_nfglevels, sorted_arr)
+         call mpas_quicksort(config_nfglevels, sorted_arr)
          do k=1,grid%nVertLevels
             target_z = 0.5 * (grid % zgrid % array(k,iCell) + grid % zgrid % array(k+1,iCell))
             state % theta_m % array(k,iCell) = vertical_interp(target_z, config_nfglevels, sorted_arr, order=1, extrap=1)
@@ -4030,7 +4035,7 @@ write(0,*) 'PROCESSING SEAICE'
             if (vert_level(k) == 200100.0) sorted_arr(1,k) = 99999.0
             sorted_arr(2,k) = fg % rh % array(k,iCell)
          end do
-         call quicksort(config_nfglevels, sorted_arr)
+         call mpas_quicksort(config_nfglevels, sorted_arr)
          do k=1,grid%nVertLevels
             target_z = 0.5 * (grid % zgrid % array(k,iCell) + grid % zgrid % array(k+1,iCell))
             state % scalars % array(state % index_qv,k,iCell) = vertical_interp(target_z, config_nfglevels, sorted_arr, order=1, extrap=0)
@@ -4045,7 +4050,7 @@ write(0,*) 'PROCESSING SEAICE'
             if (vert_level(k) == 200100.0) sorted_arr(1,k) = 99999.0
             sorted_arr(2,k) = fg % z % array(k,iCell)
          end do
-         call quicksort(config_nfglevels, sorted_arr)
+         call mpas_quicksort(config_nfglevels, sorted_arr)
          do k=1,grid%nVertLevels
             target_z = 0.5 * (grid % zgrid % array(k,iCell) + grid % zgrid % array(k+1,iCell))
             fg % gfs_z % array(k,iCell) = vertical_interp(target_z, config_nfglevels, sorted_arr, order=1, extrap=1)
@@ -4063,7 +4068,7 @@ write(0,*) 'PROCESSING SEAICE'
             end if
             sorted_arr(2,k) = log(fg % p % array(k,iCell))
          end do
-         call quicksort(config_nfglevels, sorted_arr)
+         call mpas_quicksort(config_nfglevels, sorted_arr)
          do k=1,grid%nVertLevels
             target_z = 0.5 * (grid % zgrid % array(k,iCell) + grid % zgrid % array(k+1,iCell))
             diag % pressure % array(k,iCell) = exp(vertical_interp(target_z, config_nfglevels, sorted_arr, order=1, extrap=1))
@@ -4081,7 +4086,7 @@ write(0,*) 'PROCESSING SEAICE'
 !            end if
 !            sorted_arr(2,k) = log(fg % p % array(k,iCell))
 !         end do
-!         call quicksort(config_nfglevels, sorted_arr)
+!         call mpas_quicksort(config_nfglevels, sorted_arr)
 !         do k=1,grid%nVertLevels+1
 !            target_z = grid % zgrid % array(k,iCell)
 !            fg % gfs_p % array(k,iCell) = exp(vertical_interp(target_z, config_nfglevels, sorted_arr, order=1, extrap=1))
@@ -4100,7 +4105,7 @@ write(0,*) 'PROCESSING SEAICE'
             if (vert_level(k) == 200100.0) sorted_arr(1,k) = 99999.0
             sorted_arr(2,k) = fg % u % array(k,iEdge)
          end do
-         call quicksort(config_nfglevels, sorted_arr)
+         call mpas_quicksort(config_nfglevels, sorted_arr)
          do k=1,grid%nVertLevels
             target_z = 0.25 * (grid % zgrid % array(k,cellsOnEdge(1,iEdge)) + grid % zgrid % array(k+1,cellsOnEdge(1,iEdge)) + grid % zgrid % array(k,cellsOnEdge(2,iEdge)) + grid % zgrid % array(k+1,cellsOnEdge(2,iEdge)))
             state % u % array(k,iEdge) = vertical_interp(target_z, config_nfglevels, sorted_arr, order=1, extrap=0)
@@ -4141,7 +4146,7 @@ write(0,*) 'PROCESSING SEAICE'
                end if
                sorted_arr(2,k) = log(fg % p % array(k,iCell))
             end do
-            call quicksort(config_nfglevels, sorted_arr)
+            call mpas_quicksort(config_nfglevels, sorted_arr)
             target_z = grid % zgrid % array(1,iCell)
             fg % psfc % array(iCell) = exp(vertical_interp(target_z, config_nfglevels, sorted_arr, order=1, extrap=1))
 

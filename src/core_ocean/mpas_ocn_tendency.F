@@ -949,7 +949,10 @@ contains
               h_tend_col(k) = - zstarWeight(k)*h(k,iCell)*div_hu_btr(iCell)
               hSum = hSum + zstarWeight(k)*h(k,iCell)
            end do
-           h_tend_col = h_tend_col / hSum
+           if(hSum > 0.0) then
+             h_tend_col = h_tend_col / hSum
+           else
+           end if
 
            ! Vertical velocity through layer interface at top and 
            ! bottom is zero.

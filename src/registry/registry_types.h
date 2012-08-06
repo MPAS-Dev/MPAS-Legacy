@@ -71,6 +71,7 @@ struct variable {
    int timedim;
    int ntime_levs;
    int iostreams;
+   int decomposed;
    struct dimension_list * dimlist;
    struct variable * next;
 };

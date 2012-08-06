@@ -187,7 +187,11 @@ module mpas_core
          call mpas_timer_stop("time integration")
 
          ! Move time level 2 fields back into time level 1 for next time step
-         call mpas_shift_time_levels_state(domain % blocklist % state)
+         block_ptr => domain % blocklist
+         do while(associated(block_ptr))
+            call mpas_shift_time_levels_state(block_ptr % state)
+            block_ptr => block_ptr % next
+         end do
 
          !TODO: mpas_get_clock_ringing_alarms is probably faster than multiple mpas_is_alarm_ringing...
 

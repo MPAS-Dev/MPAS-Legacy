@@ -274,12 +274,22 @@ module ocn_advection
             if (ip1 > n-1) ip1 = 1
   
             iEdge = grid % EdgesOnCell % array (i,iCell)
-            xv1 = grid % xVertex % array(grid % verticesOnEdge % array (1,iedge))/grid % sphere_radius
-            yv1 = grid % yVertex % array(grid % verticesOnEdge % array (1,iedge))/grid % sphere_radius
-            zv1 = grid % zVertex % array(grid % verticesOnEdge % array (1,iedge))/grid % sphere_radius
-            xv2 = grid % xVertex % array(grid % verticesOnEdge % array (2,iedge))/grid % sphere_radius
-            yv2 = grid % yVertex % array(grid % verticesOnEdge % array (2,iedge))/grid % sphere_radius
-            zv2 = grid % zVertex % array(grid % verticesOnEdge % array (2,iedge))/grid % sphere_radius
+
+            if(grid % on_a_sphere) then
+              xv1 = grid % xVertex % array(grid % verticesOnEdge % array (1,iedge))/grid % sphere_radius
+              yv1 = grid % yVertex % array(grid % verticesOnEdge % array (1,iedge))/grid % sphere_radius
+              zv1 = grid % zVertex % array(grid % verticesOnEdge % array (1,iedge))/grid % sphere_radius
+              xv2 = grid % xVertex % array(grid % verticesOnEdge % array (2,iedge))/grid % sphere_radius
+              yv2 = grid % yVertex % array(grid % verticesOnEdge % array (2,iedge))/grid % sphere_radius
+              zv2 = grid % zVertex % array(grid % verticesOnEdge % array (2,iedge))/grid % sphere_radius
+            else
+              xv1 = grid % xVertex % array(grid % verticesOnEdge % array (1,iedge))
+              yv1 = grid % yVertex % array(grid % verticesOnEdge % array (1,iedge))
+              zv1 = grid % zVertex % array(grid % verticesOnEdge % array (1,iedge))
+              xv2 = grid % xVertex % array(grid % verticesOnEdge % array (2,iedge))
+              yv2 = grid % yVertex % array(grid % verticesOnEdge % array (2,iedge))
+              zv2 = grid % zVertex % array(grid % verticesOnEdge % array (2,iedge))
+            end if
   
             if ( grid % on_a_sphere ) then
                call ocn_arc_bisect( xv1, yv1, zv1,  &

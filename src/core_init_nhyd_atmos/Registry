@@ -7,6 +7,7 @@ namelist character nhyd_model config_start_time           none
 namelist character nhyd_model config_stop_time            none
 namelist integer   nhyd_model config_theta_adv_order      3
 namelist real      nhyd_model config_coef_3rd_order       0.25
+namelist integer   nhyd_model config_num_halos            2
 namelist integer   dimensions config_nvertlevels          26
 namelist integer   dimensions config_nsoillevels          4
 namelist integer   dimensions config_nfglevels            27

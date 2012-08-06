@@ -44,9 +44,9 @@ module mpas_grid_types
       type (field3DReal), pointer :: prev, next
 
       ! Halo communication lists
-      type (exchange_list), dimension(:), pointer :: sendList
-      type (exchange_list), dimension(:), pointer :: recvList
-      type (exchange_list), dimension(:), pointer :: copyList
+      type (mpas_multihalo_exchange_list), pointer :: sendList
+      type (mpas_multihalo_exchange_list), pointer :: recvList
+      type (mpas_multihalo_exchange_list), pointer :: copyList
    end type field3DReal
 
 
@@ -73,9 +73,9 @@ module mpas_grid_types
       type (field2DReal), pointer :: prev, next
 
       ! Halo communication lists
-      type (exchange_list), dimension(:), pointer :: sendList
-      type (exchange_list), dimension(:), pointer :: recvList
-      type (exchange_list), dimension(:), pointer :: copyList
+      type (mpas_multihalo_exchange_list), pointer :: sendList
+      type (mpas_multihalo_exchange_list), pointer :: recvList
+      type (mpas_multihalo_exchange_list), pointer :: copyList
    end type field2DReal
 
 
@@ -102,9 +102,9 @@ module mpas_grid_types
       type (field1DReal), pointer :: prev, next
 
       ! Halo communication lists
-      type (exchange_list), dimension(:), pointer :: sendList
-      type (exchange_list), dimension(:), pointer :: recvList
-      type (exchange_list), dimension(:), pointer :: copyList
+      type (mpas_multihalo_exchange_list), pointer :: sendList
+      type (mpas_multihalo_exchange_list), pointer :: recvList
+      type (mpas_multihalo_exchange_list), pointer :: copyList
    end type field1DReal
 
 
@@ -129,9 +129,9 @@ module mpas_grid_types
       type (field0DReal), pointer :: prev, next
 
       ! Halo communication lists
-      type (exchange_list), dimension(:), pointer :: sendList
-      type (exchange_list), dimension(:), pointer :: recvList
-      type (exchange_list), dimension(:), pointer :: copyList
+      type (mpas_multihalo_exchange_list), pointer :: sendList
+      type (mpas_multihalo_exchange_list), pointer :: recvList
+      type (mpas_multihalo_exchange_list), pointer :: copyList
    end type field0DReal
 
 
@@ -158,9 +158,9 @@ module mpas_grid_types
       type (field3DInteger), pointer :: prev, next
 
       ! Halo communication lists
-      type (exchange_list), dimension(:), pointer :: sendList
-      type (exchange_list), dimension(:), pointer :: recvList
-      type (exchange_list), dimension(:), pointer :: copyList
+      type (mpas_multihalo_exchange_list), pointer :: sendList
+      type (mpas_multihalo_exchange_list), pointer :: recvList
+      type (mpas_multihalo_exchange_list), pointer :: copyList
    end type field3DInteger
 
 
@@ -187,9 +187,9 @@ module mpas_grid_types
       type (field2DInteger), pointer :: prev, next
 
       ! Halo communication lists
-      type (exchange_list), dimension(:), pointer :: sendList
-      type (exchange_list), dimension(:), pointer :: recvList
-      type (exchange_list), dimension(:), pointer :: copyList
+      type (mpas_multihalo_exchange_list), pointer :: sendList
+      type (mpas_multihalo_exchange_list), pointer :: recvList
+      type (mpas_multihalo_exchange_list), pointer :: copyList
    end type field2DInteger
 
 
@@ -216,9 +216,9 @@ module mpas_grid_types
       type (field1DInteger), pointer :: prev, next
 
       ! Halo communication lists
-      type (exchange_list), dimension(:), pointer :: sendList
-      type (exchange_list), dimension(:), pointer :: recvList
-      type (exchange_list), dimension(:), pointer :: copyList
+      type (mpas_multihalo_exchange_list), pointer :: sendList
+      type (mpas_multihalo_exchange_list), pointer :: recvList
+      type (mpas_multihalo_exchange_list), pointer :: copyList
    end type field1DInteger
 
 
@@ -243,9 +243,9 @@ module mpas_grid_types
       type (field0DInteger), pointer :: prev, next
 
       ! Halo communication lists
-      type (exchange_list), dimension(:), pointer :: sendList
-      type (exchange_list), dimension(:), pointer :: recvList
-      type (exchange_list), dimension(:), pointer :: copyList
+      type (mpas_multihalo_exchange_list), pointer :: sendList
+      type (mpas_multihalo_exchange_list), pointer :: recvList
+      type (mpas_multihalo_exchange_list), pointer :: copyList
    end type field0DInteger
 
 
@@ -272,9 +272,9 @@ module mpas_grid_types
       type (field1DChar), pointer :: prev, next
 
       ! Halo communication lists
-      type (exchange_list), dimension(:), pointer :: sendList
-      type (exchange_list), dimension(:), pointer :: recvList
-      type (exchange_list), dimension(:), pointer :: copyList
+      type (mpas_multihalo_exchange_list), pointer :: sendList
+      type (mpas_multihalo_exchange_list), pointer :: recvList
+      type (mpas_multihalo_exchange_list), pointer :: copyList
    end type field1DChar
 
 
@@ -299,9 +299,9 @@ module mpas_grid_types
       type (field0DChar), pointer :: prev, next
 
       ! Halo communication lists
-      type (exchange_list), dimension(:), pointer :: sendList
-      type (exchange_list), dimension(:), pointer :: recvList
-      type (exchange_list), dimension(:), pointer :: copyList
+      type (mpas_multihalo_exchange_list), pointer :: sendList
+      type (mpas_multihalo_exchange_list), pointer :: recvList
+      type (mpas_multihalo_exchange_list), pointer :: copyList
    end type field0DChar
 
 
@@ -325,17 +325,17 @@ module mpas_grid_types
 
    ! Type for storing (possibly architecture specific) information concerning to parallelism
    type parallel_info
-      type (exchange_list), dimension(:), pointer :: cellsToSend            ! List of types describing which cells to send to other blocks
-      type (exchange_list), dimension(:), pointer :: cellsToRecv            ! List of types describing which cells to receive from other blocks
-      type (exchange_list), dimension(:), pointer :: cellsToCopy            ! List of types describing which cells to copy from other blocks
+      type (mpas_multihalo_exchange_list), pointer :: cellsToSend            ! List of types describing which cells to send to other blocks
+      type (mpas_multihalo_exchange_list), pointer :: cellsToRecv            ! List of types describing which cells to receive from other blocks
+      type (mpas_multihalo_exchange_list), pointer :: cellsToCopy            ! List of types describing which cells to copy from other blocks
 
-      type (exchange_list), dimension(:), pointer :: edgesToSend            ! List of types describing which edges to send to other blocks
-      type (exchange_list), dimension(:), pointer :: edgesToRecv            ! List of types describing which edges to receive from other blocks
-      type (exchange_list), dimension(:), pointer :: edgesToCopy            ! List of types describing which edges to copy from other blocks
+      type (mpas_multihalo_exchange_list), pointer :: edgesToSend            ! List of types describing which edges to send to other blocks
+      type (mpas_multihalo_exchange_list), pointer :: edgesToRecv            ! List of types describing which edges to receive from other blocks
+      type (mpas_multihalo_exchange_list), pointer :: edgesToCopy            ! List of types describing which edges to copy from other blocks
 
-      type (exchange_list), dimension(:), pointer :: verticesToSend         ! List of types describing which vertices to send to other blocks
-      type (exchange_list), dimension(:), pointer :: verticesToRecv         ! List of types describing which vertices to receive from other blocks
-      type (exchange_list), dimension(:), pointer :: verticesToCopy         ! List of types describing which vertices to copy from other blocks
+      type (mpas_multihalo_exchange_list), pointer :: verticesToSend         ! List of types describing which vertices to send to other blocks
+      type (mpas_multihalo_exchange_list), pointer :: verticesToRecv         ! List of types describing which vertices to receive from other blocks
+      type (mpas_multihalo_exchange_list), pointer :: verticesToCopy         ! List of types describing which vertices to copy from other blocks
    end type parallel_info
 
 
@@ -363,6 +363,19 @@ module mpas_grid_types
       type (dm_info), pointer :: dminfo
    end type domain_type
 
+   interface mpas_deallocate_field
+     module procedure mpas_deallocate_field0d_integer
+     module procedure mpas_deallocate_field1d_integer
+     module procedure mpas_deallocate_field2d_integer
+     module procedure mpas_deallocate_field3d_integer
+     module procedure mpas_deallocate_field0d_real
+     module procedure mpas_deallocate_field1d_real
+     module procedure mpas_deallocate_field2d_real
+     module procedure mpas_deallocate_field3d_real
+     module procedure mpas_deallocate_field0d_char
+     module procedure mpas_deallocate_field1d_char
+   end interface
+
 
    contains
 
@@ -381,40 +394,25 @@ module mpas_grid_types
    end subroutine mpas_allocate_domain
 
 
-   subroutine mpas_allocate_block(b, dom, blockID, &
+   subroutine mpas_allocate_block(nHaloLayers, b, dom, blockID, &
 #include "dim_dummy_args.inc"
                             )
 
       implicit none
 
+      integer, intent(in) :: nHaloLayers
       type (block_type), pointer :: b
       type (domain_type), pointer :: dom
       integer, intent(in) :: blockID
 #include "dim_dummy_decls.inc"
 
 
-      integer, parameter :: nHaloLayers = 2
 
       integer :: i
 
       b % blockID = blockID
 
-      nullify(b % prev)
-      nullify(b % next)
-
       allocate(b % parinfo)
-
-      allocate(b % parinfo % cellsToSend(nHaloLayers))
-      allocate(b % parinfo % cellsToRecv(nHaloLayers))
-      allocate(b % parinfo % cellsToCopy(nHaloLayers))
-
-      allocate(b % parinfo % edgesToSend(nHaloLayers + 1)) ! first index is owned-cell edges
-      allocate(b % parinfo % edgesToRecv(nHaloLayers + 1)) ! first index is owned-cell edges
-      allocate(b % parinfo % edgesToCopy(nHaloLayers + 1)) ! first index is owned-cell edges
-
-      allocate(b % parinfo % verticesToSend(nHaloLayers + 1)) ! first index is owned-cell vertices
-      allocate(b % parinfo % verticesToRecv(nHaloLayers + 1)) ! first index is owned-cell vertices
-      allocate(b % parinfo % verticesToCopy(nHaloLayers + 1)) ! first index is owned-cell vertices
 
       b % domain => dom
 
@@ -425,8 +423,10 @@ module mpas_grid_types
 
 #include "group_alloc_routines.inc"
 
+#include "provis_alloc_routines.inc"
 
-   subroutine mpas_deallocate_domain(dom)
+
+   subroutine mpas_deallocate_domain(dom)!{{{
 
       implicit none
 
@@ -442,10 +442,268 @@ module mpas_grid_types
 
       deallocate(dom) 
 
-   end subroutine mpas_deallocate_domain
+   end subroutine mpas_deallocate_domain!}}}
 
+   subroutine mpas_deallocate_field0d_integer(f)!{{{
+       type (field0dInteger), pointer :: f
+       type (field0dInteger), pointer :: f_cursor
 
-   subroutine mpas_deallocate_block(b)
+       f_cursor => f
+
+       do while(associated(f_cursor))
+         if(associated(f % next)) then
+           f => f % next
+         else
+           nullify(f)
+         end if
+
+         if(associated(f_cursor % ioinfo)) then
+           deallocate(f_cursor % ioinfo)
+         end if
+
+         deallocate(f_cursor)
+         f_cursor => f
+       end do
+
+   end subroutine mpas_deallocate_field0d_integer!}}}
+
+   subroutine mpas_deallocate_field1d_integer(f)!{{{
+       type (field1dInteger), pointer :: f
+       type (field1dInteger), pointer :: f_cursor
+
+       f_cursor => f
+       do while(associated(f_cursor))
+         if(associated(f % next)) then
+           f => f % next
+         else
+           nullify(f)
+         end if
+
+         if(associated(f_cursor % ioinfo)) then
+           deallocate(f_cursor % ioinfo)
+         end if
+
+         if(associated(f_cursor % array)) then
+           deallocate(f_cursor % array)
+         end if
+
+         deallocate(f_cursor)
+
+         f_cursor => f
+       end do
+
+   end subroutine mpas_deallocate_field1d_integer!}}}
+
+   subroutine mpas_deallocate_field2d_integer(f)!{{{
+       type (field2dInteger), pointer :: f
+       type (field2dInteger), pointer :: f_cursor
+
+       f_cursor => f
+       do while(associated(f_cursor))
+         if(associated(f % next)) then
+           f => f % next
+         else
+           nullify(f)
+         end if
+
+         if(associated(f_cursor % ioinfo)) then
+           deallocate(f_cursor % ioinfo)
+         end if
+
+         if(associated(f_cursor % array)) then
+           deallocate(f_cursor % array)
+         end if
+
+         deallocate(f_cursor)
+
+         f_cursor => f
+       end do
+
+   end subroutine mpas_deallocate_field2d_integer!}}}
+
+   subroutine mpas_deallocate_field3d_integer(f)!{{{
+       type (field3dInteger), pointer :: f
+       type (field3dInteger), pointer :: f_cursor
+
+       f_cursor => f
+       do while(associated(f_cursor))
+         if(associated(f % next)) then
+           f => f % next
+         else
+           nullify(f)
+         end if
+
+         if(associated(f_cursor % ioinfo)) then
+           deallocate(f_cursor % ioinfo)
+         end if
+
+         if(associated(f_cursor % array)) then
+           deallocate(f_cursor % array)
+         end if
+
+         deallocate(f_cursor)
+
+         f_cursor => f
+       end do
+
+   end subroutine mpas_deallocate_field3d_integer!}}}
+
+   subroutine mpas_deallocate_field0d_real(f)!{{{
+       type (field0dReal), pointer :: f
+       type (field0dReal), pointer :: f_cursor
+
+       f_cursor => f
+
+       do while(associated(f_cursor))
+         if(associated(f % next)) then
+           f => f % next
+         else
+           nullify(f)
+         end if
+
+         if(associated(f_cursor % ioinfo)) then
+           deallocate(f_cursor % ioinfo)
+         end if
+
+         deallocate(f_cursor)
+
+         f_cursor => f
+       end do
+
+   end subroutine mpas_deallocate_field0d_real!}}}
+
+   subroutine mpas_deallocate_field1d_real(f)!{{{
+       type (field1dReal), pointer :: f
+       type (field1dReal), pointer :: f_cursor
+
+       f_cursor => f
+       do while(associated(f_cursor))
+         if(associated(f % next)) then
+           f => f % next
+         else
+           nullify(f)
+         end if
+
+         if(associated(f_cursor % ioinfo)) then
+           deallocate(f_cursor % ioinfo)
+         end if
+
+         if(associated(f_cursor % array)) then
+           deallocate(f_cursor % array)
+         end if
+
+         deallocate(f_cursor)
+
+         f_cursor => f
+       end do
+
+   end subroutine mpas_deallocate_field1d_real!}}}
+
+   subroutine mpas_deallocate_field2d_real(f)!{{{
+       type (field2dReal), pointer :: f
+       type (field2dReal), pointer :: f_cursor
+
+       f_cursor => f
+       do while(associated(f_cursor))
+         if(associated(f % next)) then
+           f => f % next
+         else
+           nullify(f)
+         end if
+
+         if(associated(f_cursor % ioinfo)) then
+           deallocate(f_cursor % ioinfo)
+         end if
+
+         if(associated(f_cursor % array)) then
+           deallocate(f_cursor % array)
+         end if
+
+         deallocate(f_cursor)
+
+         f_cursor => f
+       end do
+
+   end subroutine mpas_deallocate_field2d_real!}}}
+
+   subroutine mpas_deallocate_field3d_real(f)!{{{
+       type (field3dReal), pointer :: f
+       type (field3dReal), pointer :: f_cursor
+
+       f_cursor => f
+       do while(associated(f_cursor))
+         if(associated(f % next)) then
+           f => f % next
+         else
+           nullify(f)
+         end if
+
+         if(associated(f_cursor % ioinfo)) then
+           deallocate(f_cursor % ioinfo)
+         end if
+
+         if(associated(f_cursor % array)) then
+           deallocate(f_cursor % array)
+         end if
+
+         deallocate(f_cursor)
+
+         f_cursor => f
+       end do
+
+   end subroutine mpas_deallocate_field3d_real!}}}
+
+   subroutine mpas_deallocate_field0d_char(f)!{{{
+       type (field0dChar), pointer :: f
+       type (field0dChar), pointer :: f_cursor
+
+       f_cursor => f
+
+       do while(associated(f_cursor))
+         if(associated(f % next)) then
+           f => f % next
+         else
+           nullify(f)
+         end if
+
+         if(associated(f_cursor % ioinfo)) then
+           deallocate(f_cursor % ioinfo)
+         end if
+
+         deallocate(f_cursor)
+         f_cursor => f
+       end do
+
+   end subroutine mpas_deallocate_field0d_char!}}}
+
+   subroutine mpas_deallocate_field1d_char(f)!{{{
+       type (field1dChar), pointer :: f
+       type (field1dChar), pointer :: f_cursor
+
+       f_cursor => f
+       do while(associated(f_cursor))
+         if(associated(f % next)) then
+           f => f % next
+         else
+           nullify(f)
+         end if
+
+         if(associated(f_cursor % ioinfo)) then
+           deallocate(f_cursor % ioinfo)
+         end if
+
+         if(associated(f_cursor % array)) then
+           deallocate(f_cursor % array)
+         end if
+
+         deallocate(f_cursor)
+
+         f_cursor => f
+       end do
+
+   end subroutine mpas_deallocate_field1d_char!}}}
+
+   subroutine mpas_deallocate_block(b)!{{{
  
       implicit none
 
@@ -472,7 +730,7 @@ module mpas_grid_types
 
 #include "block_deallocs.inc"
 
-   end subroutine mpas_deallocate_block
+   end subroutine mpas_deallocate_block!}}}
 
 
 #include "group_dealloc_routines.inc"

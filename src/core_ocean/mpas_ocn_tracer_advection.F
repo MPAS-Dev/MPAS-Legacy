@@ -18,6 +18,8 @@ module mpas_ocn_tracer_advection
    use mpas_kind_types
    use mpas_grid_types
    use mpas_configure
+   use mpas_sort
+   use mpas_hash
 
    use mpas_ocn_tracer_advection_std
    use mpas_ocn_tracer_advection_mono
@@ -58,9 +60,12 @@ module mpas_ocn_tracer_advection
       integer, dimension(:,:), pointer :: cellsOnCell, cellsOnEdge, advCellsForEdge, highOrderAdvectionMask, lowOrderAdvectionMask, boundaryCell
       integer, dimension(:), pointer :: nEdgesOnCell, nAdvCellsForEdge, maxLevelCell
 
-      integer, dimension(:), pointer :: cell_list, ordered_cell_list
-      integer :: cell1, cell2, iEdge, n, i, j, j_in, iCell, k, nVertLevels
+      integer, dimension(:), pointer :: cell_indices
+      integer, dimension(:,:), pointer :: sorted_cell_indices
+      integer :: cell1, cell2, iEdge, n, i, j, j_in, iCell, k, nVertLevels, nCells
       logical :: addcell, highOrderAdvection
+
+      type (hashtable) :: cell_hash
 
       deriv_two => grid % deriv_two % array
       adv_coefs => grid % adv_coefs % array
@@ -76,24 +81,21 @@ module mpas_ocn_tracer_advection
       maxLevelCell => grid % maxLevelCell % array
       nAdvCellsForEdge => grid % nAdvCellsForEdge % array
 
+      nCells = grid % nCells
       nVertLevels = grid % nVertLevels
 
-      allocate(cell_list(grid % maxEdges2 + 2))
-      allocate(ordered_cell_list(grid % maxEdges2 + 2))
+      allocate(cell_indices(grid % maxEdges2 + 2))
+      allocate(sorted_cell_indices(2, grid % maxEdges2 + 2))
 
       err = 0
 
       highOrderAdvectionMask = 0
       lowOrderAdvectionMask = 0
-      if(config_horiz_tracer_adv_order == 2) then
-        
-      end if
 
       do iEdge = 1, grid % nEdges
         nAdvCellsForEdge(iEdge) = 0
         cell1 = cellsOnEdge(1,iEdge)
         cell2 = cellsOnEdge(2,iEdge)
-        
 
         do k = 1, nVertLevels
           if (boundaryCell(k, cell1) == 1 .or. boundaryCell(k, cell2) == 1) then
@@ -108,131 +110,108 @@ module mpas_ocn_tracer_advection
         !
         ! do only if this edge flux is needed to update owned cells
         !
-        if (cell1 <= grid%nCells .or. cell2 <= grid%nCells) then
+        if (cell1 <= grid % nCells .and. cell2 <= grid % nCells) then
+           ! Insert cellsOnEdge to list of advection cells
+           call mpas_hash_init(cell_hash)
+           call mpas_hash_insert(cell_hash, cell1)
+           call mpas_hash_insert(cell_hash, cell2)
+           cell_indices(1) = cell1
+           cell_indices(2) = cell2
+           sorted_cell_indices(1, 1) = grid % indexToCellID % array(cell1)
+           sorted_cell_indices(2, 1) = cell1
+           sorted_cell_indices(1, 2) = grid % indexToCellID % array(cell2)
+           sorted_cell_indices(2, 2) = cell2
+           n = 2
 
-          cell_list(1) = cell1
-          cell_list(2) = cell2
-          n = 2 
+           ! Build unique list of cells used for advection on edge
+           do i = 1, nEdgesOnCell(cell1)
+             if(.not. mpas_hash_search(cell_hash, cellsOnCell(i, cell1))) then
+               n = n + 1
+               cell_indices(n) = cellsOnCell(i, cell1)
+               sorted_cell_indices(1, n) = grid % indexToCellID % array(cellsOnCell(i, cell1))
+               sorted_cell_indices(2, n) = cellsOnCell(i, cell1)
+               call mpas_hash_insert(cell_hash, cellsOnCell(i, cell1))
+             end if
+           end do ! loop over i
 
-        !  add cells surrounding cell 1.  n is number of cells currently in list
-          do i = 1, nEdgesOnCell(cell1)
-            if(cellsOnCell(i,cell1) /= cell2) then
-              n = n + 1
-              cell_list(n) = cellsOnCell(i,cell1)
-            end if
-          end do
+           do i = 1, nEdgesOnCell(cell2)
+             if(.not. mpas_hash_search(cell_hash, cellsOnCell(i, cell2))) then
+               n = n + 1
+               cell_indices(n) = cellsOnCell(i, cell2)
+               sorted_cell_indices(1, n) = grid % indexToCellID % array(cellsOnCell(i, cell2))
+               sorted_cell_indices(2, n) = cellsOnCell(i, cell2)
+               call mpas_hash_insert(cell_hash, cellsOnCell(i, cell2))
+             end if
+           end do ! loop over i
 
-        !  add cells surrounding cell 2 (brute force approach)
-          do iCell = 1, nEdgesOnCell(cell2)
-            addcell = .true.
-            do i=1,n
-              if(cell_list(i) == cellsOnCell(iCell,cell2)) addcell = .false.
-            end do
-            if(addcell) then
-              n = n+1
-              cell_list(n) = cellsOnCell(iCell,cell2)
-            end if
-          end do
+           call mpas_hash_destroy(cell_hash)
 
-        ! order the list by increasing cell number (brute force approach)
+           call mpas_quicksort(n, sorted_cell_indices)
 
-          do i=1,n
-            ordered_cell_list(i) = grid % nCells + 2
-            j_in = 1
-            do j=1,n
-              if(ordered_cell_list(i) > cell_list(j) ) then
-                j_in = j
-                ordered_cell_list(i) = cell_list(j)
-              end if
-            end do
-!           ordered_cell_list(i) = cell_list(j_in)
-            cell_list(j_in) = grid % nCells + 3
-          end do
+           nAdvCellsForEdge(iEdge) = n
+           do iCell = 1, nAdvCellsForEdge(iEdge)
+             advCellsForEdge(iCell, iEdge) = sorted_cell_indices(2, iCell)
+           end do ! loop over iCell
 
-          nAdvCellsForEdge(iEdge) = n
-          do iCell = 1, nAdvCellsForEdge(iEdge)
-            advCellsForEdge(iCell,iEdge) = ordered_cell_list(iCell)
-          end do
+           adv_coefs(:,iEdge) = 0.
+           adv_coefs_2nd(:,iEdge) = 0.
+           adv_coefs_3rd(:,iEdge) = 0.
 
-        ! we have the ordered list, now construct coefficients
+           k = mpas_binary_search(sorted_cell_indices, 2, 1, nAdvCellsForEdge(iEdge), grid % indexToCellID % array(cell1))
+           if(k <= nAdvCellsForEdge(iEdge)) then
+             adv_coefs(k, iEdge) = adv_coefs(k, iEdge) + deriv_two(1,1,iEdge)
+             adv_coefs_3rd(k, iEdge) = adv_coefs_3rd(k, iEdge) + deriv_two(1,1,iEdge)
+           end if
 
-          adv_coefs(:,iEdge) = 0.
-          adv_coefs_2nd(:,iEdge) = 0.
-          adv_coefs_3rd(:,iEdge) = 0.
-        
-        ! pull together third and fourth order contributions to the flux
-        ! first from cell1
+           do iCell = 1, nEdgesOnCell(cell1)
+             k = mpas_binary_search(sorted_cell_indices, 2, 1, nAdvCellsForEdge(iEdge), grid % indexToCellID % array(cellsOnCell(iCell,cell1)))
+             if(k <= nAdvCellsForEdge(iEdge)) then
+               adv_coefs(k, iEdge) = adv_coefs(k, iEdge) + deriv_two(iCell+1, 1, iEdge)
+               adv_coefs_3rd(k, iEdge) = adv_coefs_3rd(k, iEdge) + deriv_two(iCell+1, 1, iEdge)
+             end if
+           end do ! loop over iCell
 
-          j_in = 0
-          do j=1, n
-            if( ordered_cell_list(j) == cell1 ) j_in = j
-          end do
-          adv_coefs    (j_in,iEdge) = adv_coefs    (j_in,iEdge) + deriv_two(1,1,iEdge)
-          adv_coefs_3rd(j_in,iEdge) = adv_coefs_3rd(j_in,iEdge) + deriv_two(1,1,iEdge)
+           k = mpas_binary_search(sorted_cell_indices, 2, 1, nAdvCellsForEdge(iEdge), grid % indexToCellID % array(cell2))
+           if(k <= nAdvCellsForEdge(iEdge)) then
+             adv_coefs(k, iEdge) = adv_coefs(k, iEdge) + deriv_two(1,2,iEdge)
+             adv_coefs_3rd(k, iEdge) = adv_coefs_3rd(k, iEdge) + deriv_two(1,2,iEdge)
+           end if
 
-          do iCell = 1, nEdgesOnCell(cell1)
-            j_in = 0
-            do j=1, n
-              if( ordered_cell_list(j) == cellsOnCell(iCell,cell1) ) j_in = j
-            end do
-            adv_coefs    (j_in,iEdge) = adv_coefs    (j_in,iEdge) + deriv_two(iCell+1,1,iEdge)
-            adv_coefs_3rd(j_in,iEdge) = adv_coefs_3rd(j_in,iEdge) + deriv_two(iCell+1,1,iEdge)
-          end do
+           do iCell = 1, nEdgesOnCell(cell2)
+             k = mpas_binary_search(sorted_cell_indices, 2, 1, nAdvCellsForEdge(iEdge), grid % indexToCellID % array(cellsOnCell(iCell,cell2)))
+             if(k <= nAdvCellsForEdge(iEdge)) then
+               adv_coefs(k, iEdge) = adv_coefs(k, iEdge) + deriv_two(iCell+1, 2, iEdge)
+               adv_coefs_3rd(k, iEdge) = adv_coefs_3rd(k, iEdge) + deriv_two(iCell+1, 2, iEdge)
+             end if
+           end do ! loop over iCell
 
-        ! pull together third and fourth order contributions to the flux
-        ! now from cell2
+           do iCell = 1,nAdvCellsForEdge(iEdge)
+             adv_coefs    (iCell,iEdge) = - (grid % dcEdge % array (iEdge) **2) * adv_coefs    (iCell,iEdge) / 12.
+             adv_coefs_3rd(iCell,iEdge) = - (grid % dcEdge % array (iEdge) **2) * adv_coefs_3rd(iCell,iEdge) / 12.
+           end do ! loop over iCell
 
-          j_in = 0
-          do j=1, n
-            if( ordered_cell_list(j) == cell2 ) j_in = j
-          enddo
-          adv_coefs    (j_in,iEdge) = adv_coefs    (j_in,iEdge) + deriv_two(1,2,iEdge)
-          adv_coefs_3rd(j_in,iEdge) = adv_coefs_3rd(j_in,iEdge) - deriv_two(1,2,iEdge)
+           k = mpas_binary_search(sorted_cell_indices, 2, 1, nAdvCellsForEdge(iEdge), grid % indexToCellID % array(cell1))
+           if(k <= nAdvCellsForEdge(iEdge)) then
+             adv_coefs(k, iEdge) = adv_coefs(k, iEdge) + 0.5
+             adv_coefs_2nd(k, iEdge) = adv_coefs_2nd(k, iEdge) + 0.5
+           end if
 
-          do iCell = 1, nEdgesOnCell(cell2)
-            j_in = 0
-            do j=1, n
-              if( ordered_cell_list(j) == cellsOnCell(iCell,cell2) ) j_in = j
-            enddo
-            adv_coefs    (j_in,iEdge) = adv_coefs    (j_in,iEdge) + deriv_two(iCell+1,2,iEdge)
-            adv_coefs_3rd(j_in,iEdge) = adv_coefs_3rd(j_in,iEdge) - deriv_two(iCell+1,2,iEdge)
-          end do
+           k = mpas_binary_search(sorted_cell_indices, 2, 1, nAdvCellsForEdge(iEdge), grid % indexToCellID % array(cell2))
+           if(k <= nAdvCellsForEdge(iEdge)) then
+             adv_coefs(k, iEdge) = adv_coefs(k, iEdge) + 0.5
+             adv_coefs_2nd(k, iEdge) = adv_coefs_2nd(k, iEdge) + 0.5
+           end if
 
-          do j = 1,n
-            adv_coefs    (j,iEdge) = - (grid % dcEdge % array (iEdge) **2) * adv_coefs    (j,iEdge) / 12.
-            adv_coefs_3rd(j,iEdge) = - (grid % dcEdge % array (iEdge) **2) * adv_coefs_3rd(j,iEdge) / 12.
-          end do
-
-        ! 2nd order centered contribution - place this in the main flux weights
-
-          j_in = 0
-          do j=1, n
-            if( ordered_cell_list(j) == cell1 ) j_in = j
-          enddo
-          adv_coefs(j_in,iEdge) = adv_coefs(j_in,iEdge) + 0.5
-          adv_coefs_2nd(j_in,iEdge) = adv_coefs_2nd(j_in,iEdge) + 0.5
-
-          j_in = 0
-          do j=1, n
-            if( ordered_cell_list(j) == cell2 ) j_in = j
-          enddo
-          adv_coefs(j_in,iEdge) = adv_coefs(j_in,iEdge) + 0.5
-          adv_coefs_2nd(j_in,iEdge) = adv_coefs_2nd(j_in,iEdge) + 0.5
-
-        !  multiply by edge length - thus the flux is just dt*ru times the results of the vector-vector multiply
-
-          do j=1,n
-            adv_coefs    (j,iEdge) = grid % dvEdge % array(iEdge) * adv_coefs    (j,iEdge)
-            adv_coefs_2nd(j,iEdge) = grid % dvEdge % array(iEdge) * adv_coefs_2nd(j,iEdge)
-            adv_coefs_3rd(j,iEdge) = grid % dvEdge % array(iEdge) * adv_coefs_3rd(j,iEdge)
-          end do
-
-        end if  ! only do for edges of owned-cells
-        
+           do iCell=1,nAdvCellsForEdge(iEdge)
+             adv_coefs    (iCell,iEdge) = grid % dvEdge % array(iEdge) * adv_coefs    (iCell,iEdge)
+             adv_coefs_2nd(iCell,iEdge) = grid % dvEdge % array(iEdge) * adv_coefs_2nd(iCell,iEdge)
+             adv_coefs_3rd(iCell,iEdge) = grid % dvEdge % array(iEdge) * adv_coefs_3rd(iCell,iEdge)
+           end do ! loop over iCell
+        end if
       end do ! end loop over edges
 
-      deallocate(cell_list)
-      deallocate(ordered_cell_list)
+      deallocate(cell_indices)
+      deallocate(sorted_cell_indices)
 
       ! If 2nd order advection, set masks appropriately.
       if(config_horiz_tracer_adv_order == 2) then

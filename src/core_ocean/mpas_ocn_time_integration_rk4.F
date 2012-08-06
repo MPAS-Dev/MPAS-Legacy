@@ -78,20 +78,22 @@ module ocn_time_integration_rk4
 
       integer :: iCell, k, i, err
       type (block_type), pointer :: block
-      type (state_type), target :: provis
-      type (state_type), pointer :: provis_ptr
 
       integer :: rk_step
 
       real (kind=RKIND), dimension(4) :: rk_weights, rk_substep_weights
 
-      block => domain % blocklist
-      call mpas_allocate_state(block, provis, &
-                          block % mesh % nCells, block % mesh % nEdges, block % mesh % maxEdges, block % mesh % maxEdges2, &
-                          block % mesh % nVertices, block % mesh % vertexDegree, block % mesh % nVertLevels, block % mesh % nMonths )
+      integer :: nCells, nEdges, nVertLevels, num_tracers
+      real (kind=RKIND) :: coef
+      real (kind=RKIND), dimension(:,:), pointer :: &
+        u, h, h_edge, vertViscTopOfEdge, vertDiffTopOfCell, ke_edge
+      real (kind=RKIND), dimension(:,:,:), pointer :: tracers
+      integer, dimension(:), pointer :: & 
+        maxLevelCell, maxLevelEdgeTop
+      real (kind=RKIND), dimension(:), allocatable:: A,C,uTemp
+      real (kind=RKIND), dimension(:,:), allocatable:: tracersTemp
 
-      provis_ptr => provis
-      call mpas_create_state_links(provis_ptr)
+      call mpas_setup_provis_states(domain % blocklist)
 
       !
       ! Initialize time_levs(2) with state at current time
@@ -101,19 +103,18 @@ module ocn_time_integration_rk4
       !
       block => domain % blocklist
       do while (associated(block))
+        block % state % time_levs(2) % state % u % array(:,:) = block % state % time_levs(1) % state % u % array(:,:)
+        block % state % time_levs(2) % state % h % array(:,:) = block % state % time_levs(1) % state % h % array(:,:)
+        do iCell=1,block % mesh % nCells  ! couple tracers to h
+          do k=1,block % mesh % maxLevelCell % array(iCell)
+            block % state % time_levs(2) % state % tracers % array(:,k,iCell) = block % state % time_levs(1) % state % tracers % array(:,k,iCell) &
+                                                                      * block % state % time_levs(1) % state % h % array(k,iCell)
+           end do
+        end do
 
-         block % state % time_levs(2) % state % u % array(:,:) = block % state % time_levs(1) % state % u % array(:,:)
-         block % state % time_levs(2) % state % h % array(:,:) = block % state % time_levs(1) % state % h % array(:,:)
-         do iCell=1,block % mesh % nCells  ! couple tracers to h
-           do k=1,block % mesh % maxLevelCell % array(iCell)
-             block % state % time_levs(2) % state % tracers % array(:,k,iCell) = block % state % time_levs(1) % state % tracers % array(:,k,iCell) &
-                                                                       * block % state % time_levs(1) % state % h % array(k,iCell)
-            end do
-         end do
+        call mpas_copy_state(block % provis, block % state % time_levs(1) % state)
 
-         call mpas_copy_state(provis, block % state % time_levs(1) % state)
-
-         block => block % next
+        block => block % next
       end do
 
       rk_weights(1) = dt/6.
@@ -135,10 +136,10 @@ module ocn_time_integration_rk4
 ! ---  update halos for diagnostic variables
 
         call mpas_timer_start("RK4-diagnostic halo update")
-        call mpas_dmpar_exch_halo_field(provis % Vor_edge)
+        call mpas_dmpar_exch_halo_field(domain % blocklist % provis % Vor_edge)
         if (config_h_mom_eddy_visc4 > 0.0) then
-           call mpas_dmpar_exch_halo_field(provis % divergence)
-           call mpas_dmpar_exch_halo_field(provis % vorticity)
+           call mpas_dmpar_exch_halo_field(domain % blocklist % provis % divergence)
+           call mpas_dmpar_exch_halo_field(domain % blocklist % provis % vorticity)
         end if
         call mpas_timer_stop("RK4-diagnostic halo update")
 
@@ -149,21 +150,21 @@ module ocn_time_integration_rk4
         do while (associated(block))
 
            ! mrp 111206 put ocn_wtop call at top for ALE
-           call ocn_wtop(provis, provis, block % mesh)
+           call ocn_wtop(block % provis, block % provis, block % mesh)
 
            if (.not.config_implicit_vertical_mix) then
-              call ocn_vmix_coefs(block % mesh, provis, block % diagnostics, err)
+              call ocn_vmix_coefs(block % mesh, block % provis, block % diagnostics, err)
            end if
-           call ocn_tend_h(block % tend, provis, block % mesh)
-           call ocn_tend_u(block % tend, provis, block % diagnostics, block % mesh)
+           call ocn_tend_h(block % tend, block % provis, block % mesh)
+           call ocn_tend_u(block % tend, block % provis, block % diagnostics, block % mesh)
 
            ! mrp 110718 filter btr mode out of u_tend
            ! still got h perturbations with just this alone.  Try to set uBtr=0 after full u computation
            if (config_rk_filter_btr_mode) then
-               call ocn_filter_btr_mode_tend_u(block % tend, provis, block % mesh)
+               call ocn_filter_btr_mode_tend_u(block % tend, block % provis, block % mesh)
            endif
 
-           call ocn_tend_scalar(block % tend, provis, block % diagnostics, block % mesh, dt)
+           call ocn_tend_scalar(block % tend, block % provis, block % diagnostics, block % mesh, dt)
            block => block % next
         end do
         call mpas_timer_stop("RK4-tendency computations")
@@ -183,46 +184,43 @@ module ocn_time_integration_rk4
            block => domain % blocklist
            do while (associated(block))
 
-              provis % u % array(:,:)       = block % state % time_levs(1) % state % u % array(:,:)  &
-                                         + rk_substep_weights(rk_step) * block % tend % u % array(:,:)
+              block % provis % u % array(:,:) = block % state % time_levs(1) % state % u % array(:,:)  &
+                                                    + rk_substep_weights(rk_step) * block % tend % u % array(:,:)
 
-              provis % h % array(:,:)       = block % state % time_levs(1) % state % h % array(:,:)  &
-                                         + rk_substep_weights(rk_step) * block % tend % h % array(:,:)
+              block % provis % h % array(:,:) = block % state % time_levs(1) % state % h % array(:,:)  &
+                                              + rk_substep_weights(rk_step) * block % tend % h % array(:,:)
               do iCell=1,block % mesh % nCells
                  do k=1,block % mesh % maxLevelCell % array(iCell)
-                    provis % tracers % array(:,k,iCell) = ( &
-                                                                      block % state % time_levs(1) % state % h % array(k,iCell) * &
-                                                                      block % state % time_levs(1) % state % tracers % array(:,k,iCell)  &
-                                      + rk_substep_weights(rk_step) * block % tend % tracers % array(:,k,iCell) &
-                                                                     ) / provis % h % array(k,iCell)
+                 block % provis % tracers % array(:,k,iCell) = ( block % state % time_levs(1) % state % h % array(k,iCell) * &
+                                                                 block % state % time_levs(1) % state % tracers % array(:,k,iCell)  &
+                                                             + rk_substep_weights(rk_step) * block % tend % tracers % array(:,k,iCell) &
+                                                               ) / block % provis % h % array(k,iCell)
                  end do
 
               end do
               if (config_test_case == 1) then    ! For case 1, wind field should be fixed
-                 provis % u % array(:,:) = block % state % time_levs(1) % state % u % array(:,:)
+                 block % provis % u % array(:,:) = block % state % time_levs(1) % state % u % array(:,:)
               end if
 
               if (config_prescribe_velocity) then
-                 provis % u % array(:,:) = block % state % time_levs(1) % state % u % array(:,:)
+                 block % provis % u % array(:,:) = block % state % time_levs(1) % state % u % array(:,:)
               end if
 
               if (config_prescribe_thickness) then
-                 provis % h % array(:,:) = block % state % time_levs(1) % state % h % array(:,:)
+                 block % provis % h % array(:,:) = block % state % time_levs(1) % state % h % array(:,:)
               end if
 
-              call ocn_diagnostic_solve(dt, provis, block % mesh)
+              call ocn_diagnostic_solve(dt, block % provis, block % mesh)
 
               ! Compute velocity transport, used in advection terms of h and tracer tendency
-                 provis % uTransport % array(:,:) &
-               = provis % u          % array(:,:) &
-               + provis % uBolusGM   % array(:,:)
+              block % provis % uTransport % array(:,:) &
+                    = block % provis % u          % array(:,:) &
+                    + block % provis % uBolusGM   % array(:,:)
 
               block => block % next
            end do
         end if
         call mpas_timer_stop("RK4-update diagnostic variables")
-
-
 
 !--- accumulate update (for RK4)
 
@@ -257,22 +255,6 @@ module ocn_time_integration_rk4
       !  A little clean up at the end: decouple new scalar fields and compute diagnostics for new state
       !
       call mpas_timer_start("RK4-cleaup phase")
-
-      block => domain % blocklist
-      do while (associated(block))
-
-         ! In main RK loop, tracer array is phi*h.  Now divide by h^{n+1} to obtain phi^{n+1}.
-         do iCell=1,block % mesh % nCells
-            do k=1,block % mesh % maxLevelCell % array(iCell)
-                 block % state % time_levs(2) % state % tracers % array(:,k,iCell) &
-               = block % state % time_levs(2) % state % tracers % array(:,k,iCell) &
-                /block % state % time_levs(2) % state % h % array(k,iCell)
-            end do
-         end do
-
-         block => block % next
-      end do
-
       if (config_implicit_vertical_mix) then
         call mpas_timer_start("RK4-implicit vert mix")
         block => domain % blocklist
@@ -295,7 +277,6 @@ module ocn_time_integration_rk4
 
       block => domain % blocklist
       do while (associated(block))
-
          if (config_test_case == 1) then    ! For case 1, wind field should be fixed
             block % state % time_levs(2) % state % u % array(:,:) = block % state % time_levs(1) % state % u % array(:,:)
          end if
@@ -339,7 +320,7 @@ module ocn_time_integration_rk4
       end do
       call mpas_timer_stop("RK4-cleaup phase")
 
-      call mpas_deallocate_state(provis)
+      call mpas_deallocate_provis_states(domain % blocklist)
 
    end subroutine ocn_time_integrator_rk4!}}}
 
