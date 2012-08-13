@@ -236,8 +236,9 @@ module ocn_time_integration_rk4
            do iCell=1,block % mesh % nCells
               do k=1,block % mesh % maxLevelCell % array(iCell)
                  block % state % time_levs(2) % state % tracers % array(:,k,iCell) =  &
-                                                                       block % state % time_levs(2) % state % tracers % array(:,k,iCell) &
-                                               + rk_weights(rk_step) * block % tend % tracers % array(:,k,iCell)
+                                                                       ( block % state % time_levs(2) % state % tracers % array(:,k,iCell) &
+                                                                        + rk_weights(rk_step) * block % tend % tracers % array(:,k,iCell) )&
+                                                                       / block % state % time_levs(2) % state % h % array(k, iCell)
               end do
            end do
 
