@@ -1,19 +1,14 @@
       module mpas_timer
 
+        use mpas_kind_types
         use mpas_grid_types
-        use mpas_dmpar
 
         implicit none
         save
-!       private
 
 #ifdef _PAPI
         include 'f90papi.h'
 #endif
-
-!#ifdef _MPI
-!        include 'mpif.h'
-!#endif
 
         type timer_node
           character (len=StrKIND) :: timer_name
@@ -38,6 +33,10 @@
         contains
 
         subroutine mpas_timer_start(timer_name, clear_timer, timer_ptr)!{{{
+#         ifdef _MPI
+          use mpi
+#         endif
+
           character (len=*), intent (in) :: timer_name !< Input: name of timer, stored as name of timer
           logical, optional, intent(in) :: clear_timer !< Input: flag to clear timer
           type (timer_node), optional, pointer :: timer_ptr !< Output: pointer to store timer in module
@@ -159,6 +158,10 @@
         end subroutine mpas_timer_start!}}}
        
         subroutine mpas_timer_stop(timer_name, timer_ptr)!{{{
+#         ifdef _MPI
+          use mpi
+#         endif
+
           character (len=*), intent(in) :: timer_name !< Input: name of timer to stop
           type (timer_node), pointer, optional :: timer_ptr !< Input: pointer to timer, for stopping
 
@@ -250,9 +253,7 @@
             tname = ''
             do i=0,timer_ptr%levels+2
               tname = tname//' '
-!             write(*,'(a,$)') ' '
             end do
-!           tname = tname//timer_ptr%timer_name
 
             if(timer_ptr%total_time == 0.0d0) then
               timer_ptr%min_time = 0.0d0
@@ -315,6 +316,8 @@
         end subroutine mpas_timer_init!}}}
 
         subroutine mpas_timer_sync()!{{{
+          use mpas_dmpar
+
           type (timer_node), pointer :: current
           real (kind=RKIND) :: all_total_time, all_max_time, all_min_time, all_ave_time
 
@@ -334,20 +337,12 @@
             current % total_time = all_total_time
 
 #ifdef _MPI
-            if(all_total_time > 0) then
-              current % efficiency = all_ave_time / all_total_time
-            else
-              current % efficiency = 1.0
-            end if
+            current % efficiency = all_ave_time / all_total_time
 #else
             current % efficiency = 1.0
 #endif
 
-            if(current % calls > 0) then
-              current % avg_time = current % total_time / current % calls
-            else
-              current % avg_time = 0.0
-            end if
+            current % avg_time = current % total_time / current % calls
 
             call mpas_dmpar_max_real(domain_info, current % max_time, all_max_time)
             current % max_time = all_max_time
