@@ -30,7 +30,6 @@ module mpas_io_input
    integer :: readCellStart, readCellEnd, nReadCells
    integer :: readEdgeStart, readEdgeEnd, nReadEdges
    integer :: readVertexStart, readVertexEnd, nReadVertices
-   integer :: readVertLevelStart, readVertLevelEnd, nReadVertLevels
 
    contains
 
@@ -147,10 +146,6 @@ module mpas_io_input
       call mpas_dmpar_get_index_range(domain % dminfo, 1, nVertices, readVertexStart, readVertexEnd)   
       nReadVertices = readVertexEnd - readVertexStart + 1
 
-      readVertLevelStart = 1
-      readVertLevelEnd = nVertLevels
-      nReadVertLevels = nVertLevels
-
       allocate(readingBlock)
       readingBlock % domain => domain
       readingBlock % blockID = domain % dminfo % my_proc_id
@@ -245,7 +240,6 @@ module mpas_io_input
       do while (associated(block_ptr))
         block_ptr % mesh % sphere_radius = domain % blocklist % mesh % sphere_radius
         block_ptr % mesh % on_a_sphere = domain % blocklist % mesh % on_a_sphere
-        block_ptr % mesh % nVertLevelsSolve = domain % blocklist % mesh % nVertLevelsSolve   ! No vertical decomp yet...
 
         ! Link the sendList and recvList pointers in each field type to the appropriate lists 
         !   in parinfo, e.g., cellsToSend and cellsToRecv; in future, it can also be extended to 
@@ -279,7 +273,7 @@ module mpas_io_input
       !      process
       !   2) All processes then send the global indices that were read to the 
       !      processes that own those indices based on 
-      !      {send,recv}{Cell,Edge,Vertex,VertLevel}List
+      !      {send,recv}{Cell,Edge,Vertex}List
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
       call mpas_read_and_distribute_fields(input_obj)
 

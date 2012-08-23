@@ -1041,7 +1041,6 @@ module mpas_block_creator
        block_ptr % mesh % nCellsArray(:) = nCellsCursor % array(:)
        block_ptr % mesh % nEdgesArray(:) = nEdgesCursor % array(:)
        block_ptr % mesh % nVerticesArray(:) = nVerticesCursor % array(:)
-       block_ptr % mesh % nVertLevelsSolve = nVertLevels ! No vertical Decomposition yet...
 
        ! Set block's local id
        block_ptr % localBlockID = localBlockID
