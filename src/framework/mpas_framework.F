@@ -13,18 +13,19 @@ module mpas_framework
    contains
 
    
-   subroutine mpas_framework_init(dminfo, domain)
+   subroutine mpas_framework_init(dminfo, domain, mpi_comm)
 
       implicit none
 
       type (dm_info), pointer :: dminfo
       type (domain_type), pointer :: domain
+      integer, intent(in), optional :: mpi_comm
 
       integer :: pio_num_iotasks
       integer :: pio_stride
 
       allocate(dminfo)
-      call mpas_dmpar_init(dminfo)
+      call mpas_dmpar_init(dminfo, mpi_comm)
 
       call mpas_read_namelist(dminfo)
 
