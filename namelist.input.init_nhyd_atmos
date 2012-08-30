@@ -5,6 +5,12 @@
    config_stop_time       = '2010-10-23_00:00:00'
 /
 
+&dcmip
+   config_dcmip_case          = '2-0-0'
+   config_planet_scale        = 1.0
+   config_rotation_rate_scale = 1.0
+/
+
 &dimensions
    config_nvertlevels     = 41
    config_nsoillevels     = 4
@@ -33,8 +39,8 @@
 /
 
 &io
-   config_input_name         = 'x1.40962.geogrid.nc'
-   config_output_name        = 'x1.40962.init.2010-10-23.nc'
+   config_input_name         = 'x1.40962.grid.nc'
+   config_output_name        = 'x1.40962.init.nc'
    config_pio_num_iotasks    = 0
    config_pio_stride         = 1
 /
@@ -47,7 +53,4 @@
 /
 
 &restart
-   config_restart_interval = 3000
-   config_do_restart = .false.
-   config_restart_time = 1036800.0
 /

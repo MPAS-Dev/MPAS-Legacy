@@ -20,7 +20,6 @@ module mpas_core
       use mpas_configure
       use mpas_kind_types
       use mpas_grid_types
-      use atm_test_cases
 
       implicit none
 
@@ -37,7 +36,20 @@ module mpas_core
       integer :: i
       integer :: ierr
 
-      if (.not. config_do_restart) call atm_setup_test_case(domain)
+      if (.not. config_do_restart) then
+
+         ! Code that was previously handled by atm_setup_test_case()
+
+         block => domain % blocklist
+         do while (associated(block))
+            do i=2,nTimeLevs
+               call mpas_copy_state(block % state % time_levs(i) % state, block % state % time_levs(1) % state)
+            end do
+            block => block % next
+         end do
+
+      end if
+
 
       !
       ! Initialize core

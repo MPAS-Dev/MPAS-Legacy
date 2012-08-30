@@ -1865,12 +1865,11 @@ module atm_time_integration
 
       !SHP-curvature
       logical, parameter :: curvature = .true.
-      real (kind=RKIND), parameter :: omega_e = 7.29212e-05
       real (kind=RKIND) :: r_earth
       real (kind=RKIND), dimension(:,:), pointer :: ur_cell, vr_cell
 
       real (kind=RKIND), parameter :: c_s = 0.125
-!     real (kind=RKIND), parameter :: c_s = 0.25
+!      real (kind=RKIND), parameter :: c_s = 0.25
       real (kind=RKIND), dimension( grid % nVertLevels ) :: d_diag, d_off_diag, flux_arr
       real (kind=RKIND), dimension(:,:), pointer :: defc_a, defc_b
       logical :: delsq_horiz_mixing, newpx
@@ -1891,7 +1890,7 @@ module atm_time_integration
 !-----------
 
       !SHP-curvature
-      r_earth = a
+      r_earth = grid % sphere_radius
       ur_cell => diag % uReconstructZonal % array
       vr_cell => diag % uReconstructMeridional % array
 
@@ -2152,10 +2151,19 @@ module atm_time_integration
                tend_u(k,iEdge) = tend_u(k,iEdge) + rho_edge(k,iEdge)* (q(k) - (ke(k,cell2) - ke(k,cell1))       &
                                                                     / dcEdge(iEdge))                            &
                                                 - u(k,iEdge)*0.5*(divergence_ru(k,cell1)+divergence_ru(k,cell2)) 
+               !SHP-curvature
+               if (curvature) then
                tend_u(k,iEdge) = tend_u(k,iEdge) &
-                                - 2.*omega_e*cos(grid % angleEdge % array(iEdge))*cos(grid % latEdge % array(iEdge)) &
-                                  *.25*(rw(k,cell1)+rw(k+1,cell1)+rw(k,cell2)+rw(k+1,cell2))                         &
-                                - u(k,iEdge)*.25*(rw(k+1,cell1)+rw(k,cell1)+rw(k,cell2)+rw(k+1,cell2))/r_earth
+                                - 2.*omega*cos(grid % angleEdge % array(iEdge))*cos(grid % latEdge % array(iEdge))  &
+                                  *rho_edge(k,iEdge)*.25*(w(k,cell1)+w(k+1,cell1)+w(k,cell2)+w(k+1,cell2))          & 
+                                - u(k,iEdge)*.25*(w(k+1,cell1)+w(k,cell1)+w(k,cell2)+w(k+1,cell2))                  &
+                                  *rho_edge(k,iEdge)/r_earth
+               !old-err.
+               !tend_u(k,iEdge) = tend_u(k,iEdge) &
+               !                 - 2.*omega_e*cos(grid % angleEdge % array(iEdge))*cos(grid % latEdge % array(iEdge))  &
+               !                   *.25*(rw(k,cell1)+rw(k+1,cell1)+rw(k,cell2)+rw(k+1,cell2))                          &
+               !                 - u(k,iEdge)*.25*(rw(k+1,cell1)+rw(k,cell1)+rw(k,cell2)+rw(k+1,cell2))/r_earth
+               end if
             end do
          end do
 
@@ -2506,12 +2514,19 @@ module atm_time_integration
 
          do iCell = 1, grid % nCellsSolve
             do k=2,nVertLevels
-               tend_w(k,iCell) = tend_w(k,iCell) &
-                                + rho_zz(k,iCell)*( (fzm(k)*ur_cell(k,iCell)+fzp(k)*ur_cell(k-1,iCell))**2.             &
-                                                +(fzm(k)*vr_cell(k,iCell)+fzp(k)*vr_cell(k-1,iCell))**2. )/r_earth   &
-                                + 2.*omega_e*cos(grid % latCell % array(iCell))*rho_zz(k,iCell)   &
-                                    *(fzm(k)*ur_cell(k,iCell)+fzp(k)*ur_cell(k-1,iCell))
+               tend_w(k,iCell) = tend_w(k,iCell) + (rho_zz(k,iCell)*fzm(k)+rho_zz(k-1,iCell)*fzp(k))*          &
+                                         ( (fzm(k)*ur_cell(k,iCell)+fzp(k)*ur_cell(k-1,iCell))**2.             &
+                                          +(fzm(k)*vr_cell(k,iCell)+fzp(k)*vr_cell(k-1,iCell))**2. )/r_earth   &
+                                   + 2.*omega*cos(grid % latCell % array(iCell))                               &
+                                          *(fzm(k)*ur_cell(k,iCell)+fzp(k)*ur_cell(k-1,iCell))                 &
+                                          *(rho_zz(k,iCell)*fzm(k)+rho_zz(k-1,iCell)*fzp(k))
 
+               !old_err.
+               !tend_w(k,iCell) = tend_w(k,iCell) &
+               !                 + rho_zz(k,iCell)*( (fzm(k)*ur_cell(k,iCell)+fzp(k)*ur_cell(k-1,iCell))**2.          &
+               !                                 +(fzm(k)*vr_cell(k,iCell)+fzp(k)*vr_cell(k-1,iCell))**2. )/r_earth   &
+               !                 + 2.*omega_e*cos(grid % latCell % array(iCell))*rho_zz(k,iCell)      &
+               !                     *(fzm(k)*ur_cell(k,iCell)+fzp(k)*ur_cell(k-1,iCell))
             end do
          end do
 

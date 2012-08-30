@@ -4,12 +4,12 @@
    config_start_time = '2010-10-23_00:00:00'
    config_run_duration = '5_00:00:00'
    config_number_of_sub_steps = 6
-   config_h_mom_eddy_visc2 = 0000.
-   config_h_mom_eddy_visc4 = 0.
-   config_v_mom_eddy_visc2 = 00.0
-   config_h_theta_eddy_visc2 = 0000.
-   config_h_theta_eddy_visc4 = 00.
-   config_v_theta_eddy_visc2 = 00.0
+   config_h_mom_eddy_visc2 = 0.0
+   config_h_mom_eddy_visc4 = 0.0
+   config_v_mom_eddy_visc2 = 0.0
+   config_h_theta_eddy_visc2 = 0.0
+   config_h_theta_eddy_visc4 = 0.0
+   config_v_theta_eddy_visc2 = 0.0
    config_horiz_mixing = '2d_smagorinsky'
    config_len_disp = 120000.0
    config_theta_adv_order = 3
@@ -35,12 +35,8 @@
    config_xnutr = 0.0
 /
 
-&dimensions
-   config_nvertlevels = 41
-/
-
 &io
-   config_input_name = 'x1.40962.init.2010-10-23.nc'
+   config_input_name = 'x1.40962.init.nc'
    config_output_name = 'x1.40962.output.nc'
    config_restart_name = 'restart.nc'
    config_output_interval = '1_00:00:00'

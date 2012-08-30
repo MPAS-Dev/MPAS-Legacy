@@ -111,9 +111,9 @@ module atm_advection
 
             do i=1,n
                advCells(i+1,iCell) = cell_list(i)
-               xc(i) = grid % xCell % array(advCells(i+1,iCell))/a
-               yc(i) = grid % yCell % array(advCells(i+1,iCell))/a
-               zc(i) = grid % zCell % array(advCells(i+1,iCell))/a
+               xc(i) = grid % xCell % array(advCells(i+1,iCell))/grid%sphere_radius
+               yc(i) = grid % yCell % array(advCells(i+1,iCell))/grid%sphere_radius
+               zc(i) = grid % zCell % array(advCells(i+1,iCell))/grid%sphere_radius
             end do
 
             theta_abs(iCell) =  pii/2. - sphere_angle( xc(1), yc(1), zc(1),  &
@@ -131,8 +131,8 @@ module atm_advection
                                          xc(i+1), yc(i+1), zc(i+1),  &
                                          xc(ip2), yc(ip2), zc(ip2)   )
 
-               dl_sphere(i) = a*arc_length( xc(1),   yc(1),   zc(1),  &
-                                            xc(i+1), yc(i+1), zc(i+1) )
+               dl_sphere(i) = grid%sphere_radius*arc_length( xc(1),   yc(1),   zc(1),  &
+                                                             xc(i+1), yc(i+1), zc(i+1) )
             end do
 
             length_scale = 1.
@@ -262,12 +262,12 @@ module atm_advection
             if (ip1 > n-1) ip1 = 1
   
             iEdge = grid % EdgesOnCell % array (i,iCell)
-            xv1 = grid % xVertex % array(grid % verticesOnEdge % array (1,iedge))/a
-            yv1 = grid % yVertex % array(grid % verticesOnEdge % array (1,iedge))/a
-            zv1 = grid % zVertex % array(grid % verticesOnEdge % array (1,iedge))/a
-            xv2 = grid % xVertex % array(grid % verticesOnEdge % array (2,iedge))/a
-            yv2 = grid % yVertex % array(grid % verticesOnEdge % array (2,iedge))/a
-            zv2 = grid % zVertex % array(grid % verticesOnEdge % array (2,iedge))/a
+            xv1 = grid % xVertex % array(grid % verticesOnEdge % array (1,iedge))/grid%sphere_radius
+            yv1 = grid % yVertex % array(grid % verticesOnEdge % array (1,iedge))/grid%sphere_radius
+            zv1 = grid % zVertex % array(grid % verticesOnEdge % array (1,iedge))/grid%sphere_radius
+            xv2 = grid % xVertex % array(grid % verticesOnEdge % array (2,iedge))/grid%sphere_radius
+            yv2 = grid % yVertex % array(grid % verticesOnEdge % array (2,iedge))/grid%sphere_radius
+            zv2 = grid % zVertex % array(grid % verticesOnEdge % array (2,iedge))/grid%sphere_radius
   
             if ( grid % on_a_sphere ) then
                call arc_bisect( xv1, yv1, zv1,  &
@@ -825,16 +825,16 @@ END SUBROUTINE ELGS
 !  compute poynomial fit for this cell if all needed neighbors exist
          if (grid % on_a_sphere) then
 
-            xc(1) = grid % xCell % array(iCell)/a
-            yc(1) = grid % yCell % array(iCell)/a
-            zc(1) = grid % zCell % array(iCell)/a
+            xc(1) = grid % xCell % array(iCell)/grid%sphere_radius
+            yc(1) = grid % yCell % array(iCell)/grid%sphere_radius
+            zc(1) = grid % zCell % array(iCell)/grid%sphere_radius
 
 
             do i=2,n
                iv = grid % verticesOnCell % array(i-1,iCell)
-               xc(i) = grid % xVertex % array(iv)/a
-               yc(i) = grid % yVertex % array(iv)/a
-               zc(i) = grid % zVertex % array(iv)/a
+               xc(i) = grid % xVertex % array(iv)/grid%sphere_radius
+               yc(i) = grid % yVertex % array(iv)/grid%sphere_radius
+               zc(i) = grid % zVertex % array(iv)/grid%sphere_radius
             end do
 
             theta_abs(iCell) =  pii/2. - sphere_angle( xc(1), yc(1), zc(1),  &
@@ -852,8 +852,8 @@ END SUBROUTINE ELGS
                                          xc(i+1), yc(i+1), zc(i+1),  &
                                          xc(ip2), yc(ip2), zc(ip2)   )
 
-               dl_sphere(i) = a*arc_length( xc(1),   yc(1),   zc(1),  &
-                                            xc(i+1), yc(i+1), zc(i+1) )
+               dl_sphere(i) = grid%sphere_radius*arc_length( xc(1),   yc(1),   zc(1),  &
+                                                             xc(i+1), yc(i+1), zc(i+1) )
             end do
 
             length_scale = 1.

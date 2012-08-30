@@ -4,7 +4,6 @@ PHYSICS=-DDO_PHYSICS
 #PHYSICS=
 
 OBJS = mpas_atm_mpas_core.o \
-       mpas_atm_test_cases.o \
        mpas_atm_time_integration.o \
        mpas_atm_advection.o
 
@@ -19,13 +18,11 @@ physcore:
 core_hyd: $(OBJS)
 	ar -ru libdycore.a $(OBJS) phys/*.o
 
-mpas_atm_test_cases.o: mpas_atm_advection.o
-
 mpas_atm_time_integration.o: 
 
 mpas_atm_advection.o: 
 
-mpas_atm_mpas_core.o: mpas_atm_advection.o mpas_atm_test_cases.o mpas_atm_time_integration.o
+mpas_atm_mpas_core.o: mpas_atm_advection.o mpas_atm_time_integration.o
 
 clean:
 	( cd ../core_atmos_physics; make clean )

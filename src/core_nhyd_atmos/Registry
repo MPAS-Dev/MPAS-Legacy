@@ -1,7 +1,6 @@
 %
 % namelist  type  namelist_record  name  default_value
 %
-namelist integer   nhyd_model config_test_case            0
 namelist character nhyd_model config_time_integration     SRK3
 namelist real      nhyd_model config_dt                   600.0
 namelist character nhyd_model config_calendar_type        gregorian
@@ -38,7 +37,6 @@ namelist logical   nhyd_model config_h_ScaleWithMesh      false
 namelist integer   nhyd_model config_num_halos            2
 namelist real      damping    config_zd                   22000.0
 namelist real      damping    config_xnutr                0.0
-namelist integer   dimensions config_nvertlevels          26
 namelist character io         config_input_name           init.nc
 namelist character io         config_sfc_update_name      sfc_update.nc
 namelist character io         config_output_name          output.nc
@@ -69,7 +67,7 @@ dim vertexDegree vertexDegree
 dim FIFTEEN 15
 dim TWENTYONE 21
 dim R3 3
-dim nVertLevels namelist:config_nvertlevels
+dim nVertLevels nVertLevels
 dim nVertLevelsP1 nVertLevels+1
 
 %
