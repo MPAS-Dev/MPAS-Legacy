@@ -1326,7 +1326,7 @@ module atm_time_integration
                   wdtn(iScalar,k) = wwAvg(k,iCell)*(fnm(k)*scalar_new(iScalar,k,iCell)+fnp(k)*scalar_new(iScalar,k-1,iCell))
                 end do
              end do
-             do k=1,grid % nVertLevelsSolve
+             do k=1,grid % nVertLevels   ! Could be nVertLevelsSolve?
                 do iScalar=1,s_old % num_scalars
                   scalar_new(iScalar,k,iCell) = (   scalar_old(iScalar,k,iCell)*h_old(k,iCell) &
                         + dt*( scalar_tend(iScalar,k,iCell) -rdnw(k)*(wdtn(iScalar,k+1)-wdtn(iScalar,k)) ) )/h_new(k,iCell)
@@ -1355,7 +1355,7 @@ module atm_time_integration
                wdtn(iScalar,k) = wwAvg(k,iCell)*(fnm(k)*scalar_new(iScalar,k,iCell)+fnp(k)*scalar_new(iScalar,k-1,iCell))
              enddo
 
-             do k=1,grid % nVertLevelsSolve
+             do k=1,grid % nVertLevels   ! Could be nVertLevelsSolve?
                 do iScalar=1,s_old % num_scalars
                   scalar_new(iScalar,k,iCell) = (   scalar_old(iScalar,k,iCell)*h_old(k,iCell) &
                         + dt*( scalar_tend(iScalar,k,iCell) -rdnw(k)*(wdtn(iScalar,k+1)-wdtn(iScalar,k)) ) )/h_new(k,iCell)
@@ -1383,7 +1383,7 @@ module atm_time_integration
                wdtn(iScalar,k) = wwAvg(k,iCell)*(fnm(k)*scalar_new(iScalar,k,iCell)+fnp(k)*scalar_new(iScalar,k-1,iCell))
              enddo
 
-             do k=1,grid % nVertLevelsSolve
+             do k=1,grid % nVertLevels   ! Could be nVertLevelsSolve?
                 do iScalar=1,s_old % num_scalars
                   scalar_new(iScalar,k,iCell) = (   scalar_old(iScalar,k,iCell)*h_old(k,iCell) &
                         + dt*( scalar_tend(iScalar,k,iCell) -rdnw(k)*(wdtn(iScalar,k+1)-wdtn(iScalar,k)) ) )/h_new(k,iCell)

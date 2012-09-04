@@ -276,7 +276,7 @@ module atmh_time_integration
                                          block % mesh % areaCell % array (iCell) &
                                        - block % state % time_levs(2) % state % pressure % array (block % mesh % nVertLevels + 1, 1) * &
                                          block % mesh % areaCell % array (iCell)
-             do k=1, block % mesh % nVertLevelsSolve
+             do k=1, block % mesh % nVertLevels   ! Could be nVertLevelsSolve?
                scalar_mass = scalar_mass - block % state % time_levs(2) % state % scalars % array (2,k,iCell) * &
                                            block % state % time_levs(2) % state % h % array (k,iCell) * &
                                            block % mesh % dnw % array (k) * &
@@ -1378,7 +1378,7 @@ module atmh_time_integration
         end do
         wdtn(:,nVertLevels+1) = 0.
 
-         do k=1,grid % nVertLevelsSolve
+         do k=1,grid % nVertLevels   ! Could be nVertLevelsSolve?
             do iScalar=1,num_scalars
               scalar_new(iScalar,k,iCell) = (   scalar_old(iScalar,k,iCell)*h_old(k,iCell) &
                     + dt*( scalar_tend(iScalar,k,iCell) -rdnw(k)*(wdtn(iScalar,k+1)-wdtn(iScalar,k)) ) )/h_new(k,iCell)
