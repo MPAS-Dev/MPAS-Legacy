@@ -267,6 +267,15 @@ else # USE_PAPI IF
 	PAPI_MESSAGE="Papi libraries are off."
 endif # USE_PAPI IF
 
+ifeq "$(TAU)" "true"
+	LINKER=tau_f90.sh
+	CPPINCLUDES += -DMPAS_TAU
+	TAU_MESSAGE="TAU Hooks are on."
+else
+	LINKER=$(FC)
+	TAU_MESSAGE="TAU Hooks are off."
+endif
+
 ifneq ($(wildcard $(NETCDF)/lib/libnetcdff.*), ) # CHECK FOR NETCDF4
 	LIBS += -lnetcdff
 endif # CHECK FOR NETCDF4
@@ -291,6 +300,7 @@ mpas_main:
                  CC="$(CC)" \
                  SFC="$(SFC)" \
                  SCC="$(SCC)" \
+                 LINKER="$(LINKER)" \
                  CFLAGS="$(CFLAGS)" \
                  FFLAGS="$(FFLAGS)" \
                  LDFLAGS="$(LDFLAGS)" \
@@ -306,6 +316,7 @@ mpas_main:
 	@echo $(DEBUG_MESSAGE)
 	@echo $(SERIAL_MESSAGE)
 	@echo $(PAPI_MESSAGE)
+	@echo $(TAU_MESSAGE)
 clean:
 	cd src; $(MAKE) clean RM="$(RM)" CORE="$(CORE)"
 	$(RM) $(CORE)_model.exe

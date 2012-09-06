@@ -3,7 +3,7 @@
 all: mpas
 
 mpas: reg_includes externals frame ops dycore drver
-	$(FC) $(LDFLAGS) -o $(CORE)_model.exe driver/*.o -L. -ldycore -lops -lframework $(LIBS) -I./external/esmf_time_f90 -L./external/esmf_time_f90 -lesmf_time
+	$(LINKER) $(LDFLAGS) -o $(CORE)_model.exe driver/*.o -L. -ldycore -lops -lframework $(LIBS) -I./external/esmf_time_f90 -L./external/esmf_time_f90 -lesmf_time
 
 reg_includes: 
 	( cd registry; $(MAKE) CC="$(SCC)" )

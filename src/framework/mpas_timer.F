@@ -46,6 +46,10 @@
 
           integer :: clock, hz, usecs
 
+#ifdef MPAS_TAU 
+          call tau_start(timer_name)
+#endif
+
           timer_added = .false.
           timer_found = .false.
 
@@ -170,6 +174,10 @@
           real (kind=RKIND) :: time_temp
           logical :: timer_found, string_equal, check_flag
           integer :: clock, hz, usecs
+
+#ifdef MPAS_TAU 
+          call tau_stop(timer_name)
+#endif
  
           timer_found = .false.
  
