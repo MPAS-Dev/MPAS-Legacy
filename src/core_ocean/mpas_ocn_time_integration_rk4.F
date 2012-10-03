@@ -236,9 +236,8 @@ module ocn_time_integration_rk4
            do iCell=1,block % mesh % nCells
               do k=1,block % mesh % maxLevelCell % array(iCell)
                  block % state % time_levs(2) % state % tracers % array(:,k,iCell) =  &
-                                                                       ( block % state % time_levs(2) % state % tracers % array(:,k,iCell) &
-                                                                        + rk_weights(rk_step) * block % tend % tracers % array(:,k,iCell) )&
-                                                                       / block % state % time_levs(2) % state % h % array(k, iCell)
+                                                                        block % state % time_levs(2) % state % tracers % array(:,k,iCell) &
+                                                                        + rk_weights(rk_step) * block % tend % tracers % array(:,k,iCell)
               end do
            end do
 
@@ -256,6 +255,20 @@ module ocn_time_integration_rk4
       !  A little clean up at the end: decouple new scalar fields and compute diagnostics for new state
       !
       call mpas_timer_start("RK4-cleaup phase")
+
+      ! Rescale tracers
+      block => domain % blocklist
+      do while(associated(block))
+        do iCell = 1, block % mesh % nCells
+          do k = 1, block % mesh % maxLevelCell % array(iCell)
+            block % state % time_levs(2) % state % tracers % array(:, k, iCell) = block % state % time_levs(2) % state % tracers % array(:, k, iCell) &
+                                                                                / block % state % time_levs(2) % state % h % array(k, iCell)
+          end do
+        end do
+        block => block % next
+      end do
+
+
       if (config_implicit_vertical_mix) then
         call mpas_timer_start("RK4-implicit vert mix")
         block => domain % blocklist
