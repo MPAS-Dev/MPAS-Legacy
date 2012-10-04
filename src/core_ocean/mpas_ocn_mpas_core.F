@@ -116,27 +116,27 @@ module mpas_core
 
       call ocn_init_split_timestep(domain)
 
-      print *, ' Vertical grid type is: ',config_vert_grid_type
+      write (0,'(a,a10)'), ' Vertical grid type is: ',config_vert_grid_type
 
       if (config_vert_grid_type.ne.'isopycnal'.and. &
           config_vert_grid_type.ne.'zlevel'.and. &
           config_vert_grid_type.ne.'zstar1'.and. &
           config_vert_grid_type.ne.'zstar'.and. &
           config_vert_grid_type.ne.'zstarWeights') then
-         print *, ' Incorrect choice of config_vert_grid_type.'
+         write (0,*) ' Incorrect choice of config_vert_grid_type.'
          call mpas_dmpar_abort(dminfo)
       endif
 
-      print *, ' Pressure type is: ',config_pressure_type
+      write (0,'(a,a10)'), ' Pressure type is: ',config_pressure_type
       if (config_pressure_type.ne.'pressure'.and. &
           config_pressure_type.ne.'MontgomeryPotential') then
-         print *, ' Incorrect choice of config_pressure_type.'
+         write (0,*) ' Incorrect choice of config_pressure_type.'
          call mpas_dmpar_abort(dminfo)
       endif
 
       if (config_filter_btr_mode.and. &
           config_vert_grid_type.ne.'zlevel')then
-         print *, 'filter_btr_mode has only been tested with'// &
+         write (0,*) 'filter_btr_mode has only been tested with'// &
             ' config_vert_grid_type=zlevel.'
          call mpas_dmpar_abort(dminfo)
       endif

@@ -262,7 +262,7 @@ module mpas_io_input
           call mpas_dmpar_abort(domain % dminfo)
         end if
 !write(0,*) 'MGD DEBUGGING time = ', input_obj % time
-        write(0,*) 'Restarting model from time ', timeStamp
+        write(0,*) 'Restarting model from time ', trim(timeStamp)
       end if
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 

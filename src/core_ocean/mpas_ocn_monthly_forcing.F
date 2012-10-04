@@ -176,6 +176,8 @@ contains
 
       if(config_use_monthly_forcing) then
         monthlyForcingOn = .true.
+
+        write (0,'(a)') " Monthly forcing is on.  Make sure monthly forcing variables include iro in Registry, and are in your initial condition or restart file."
       end if
 
    !--------------------------------------------------------------------

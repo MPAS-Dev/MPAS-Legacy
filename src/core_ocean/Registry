@@ -208,10 +208,10 @@ var persistent real    u_src ( nVertLevels nEdges ) 0 iro u_src mesh - -
 var persistent real    temperatureRestore ( nCells ) 0 iro temperatureRestore mesh - -
 var persistent real    salinityRestore ( nCells ) 0 iro salinityRestore mesh - -
 
-% mrp trying to figure out why these do not appear
-var persistent real    windStressMonthly ( nMonths nEdges ) 0 iro windStressMonthly mesh - -
-var persistent real    temperatureRestoreMonthly ( nMonths nCells ) 0 iro temperatureRestoreMonthly mesh - -
-var persistent real    salinityRestoreMonthly ( nMonths nCells ) 0 iro salinityRestoreMonthly mesh - -
+% Monthly forcing variables.  Change to iro when monthly forcing is used.
+var persistent real    windStressMonthly ( nMonths nEdges ) 0 - windStressMonthly mesh - -
+var persistent real    temperatureRestoreMonthly ( nMonths nCells ) 0 - temperatureRestoreMonthly mesh - -
+var persistent real    salinityRestoreMonthly ( nMonths nCells ) 0 - salinityRestoreMonthly mesh - -
 
 % Prognostic variables: read from input, saved in restart, and written to output
 var persistent real    u ( nVertLevels nEdges Time ) 2 ir u state - -
