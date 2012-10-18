@@ -6229,10 +6229,12 @@ write(0,*) 'PROCESSING SEAICE'
          nearest_distance = current_distance
          do i = 1, nEdgesOnCell(current_cell)
             iCell = cellsOnCell(i,current_cell)
-            d = sphere_distance(latCell(iCell), lonCell(iCell), target_lat, target_lon, 1.0_RKIND)
-            if (d < nearest_distance) then
-               nearest_cell = iCell
-               nearest_distance = d
+            if (iCell <= nCells) then
+               d = sphere_distance(latCell(iCell), lonCell(iCell), target_lat, target_lon, 1.0_RKIND)
+               if (d < nearest_distance) then
+                  nearest_cell = iCell
+                  nearest_distance = d
+               end if
             end if
          end do
       end do
@@ -6281,10 +6283,12 @@ write(0,*) 'PROCESSING SEAICE'
          end if
          do i = 1, nEdgesOnCell(iCell)
             iEdge = edgesOnCell(i,iCell)
-            d = sphere_distance(latEdge(iEdge), lonEdge(iEdge), target_lat, target_lon, 1.0_RKIND)
-            if (d < nearest_distance) then
-               nearest_edge = iEdge
-               nearest_distance = d
+            if (iEdge <= nEdges) then
+               d = sphere_distance(latEdge(iEdge), lonEdge(iEdge), target_lat, target_lon, 1.0_RKIND)
+               if (d < nearest_distance) then
+                  nearest_edge = iEdge
+                  nearest_distance = d
+               end if
             end if
          end do
       end do
