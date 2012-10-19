@@ -404,7 +404,7 @@ contains
         maxLevelCell, maxLevelEdgeTop, maxLevelEdgeBot, &
         maxLevelVertexBot
       integer, dimension(:,:), pointer :: cellsOnEdge, cellsOnVertex, &
-        verticesOnEdge, edgesOnEdge, edgesOnVertex,boundaryCell
+        verticesOnEdge, edgesOnEdge, edgesOnVertex,boundaryCell, kiteIndexOnCell, verticesOnCell, edgeSignOnVertex, edgeSignOnCell, edgesOnCell
 
       real (kind=RKIND) :: d2fdx2_cell1, d2fdx2_cell2, coef_3rd_order, r_tmp, invAreaCell1, invAreaCell2, invAreaTri1, invAreaTri2, invLength, h_vertex
 
@@ -453,6 +453,7 @@ contains
       verticesOnEdge    => grid % verticesOnEdge % array
       nEdgesOnCell      => grid % nEdgesOnCell % array
       nEdgesOnEdge      => grid % nEdgesOnEdge % array
+      edgesOnCell       => grid % edgesOnCell % array
       edgesOnEdge       => grid % edgesOnEdge % array
       edgesOnVertex     => grid % edgesOnVertex % array
       dcEdge            => grid % dcEdge % array
@@ -466,6 +467,8 @@ contains
       maxLevelEdgeTop   => grid % maxLevelEdgeTop % array
       maxLevelEdgeBot   => grid % maxLevelEdgeBot % array
       maxLevelVertexBot => grid % maxLevelVertexBot % array
+      kiteIndexOnCell => grid % kiteIndexOnCell % array
+      verticesOnCell => grid % verticesOnCell % array
                   
       nCells      = grid % nCells
       nEdges      = grid % nEdges
@@ -474,6 +477,9 @@ contains
       vertexDegree = grid % vertexDegree
 
       boundaryCell => grid % boundaryCell % array
+
+      edgeSignOnVertex => grid % edgeSignOnVertex % array
+      edgeSignOnCell => grid % edgeSignOnCell % array
 
 
       !
@@ -576,40 +582,33 @@ contains
       divergence(:,:) = 0.0
       ke(:,:) = 0.0
       v(:,:) = 0.0
-      do iEdge=1,nEdges
-         vertex1 = verticesOnEdge(1,iEdge)
-         vertex2 = verticesOnEdge(2,iEdge)
+      do iVertex = 1, nVertices
+         invAreaTri1 = 1.0 / areaTriangle(iVertex)
+         do i = 1, vertexDegree
+            iEdge = edgesOnVertex(i, iVertex)
+            do k = 1, maxLevelVertexBot(iVertex)
+              r_tmp = dcEdge(iEdge) * u(k, iEdge)
 
-         cell1 = cellsOnEdge(1,iEdge)
-         cell2 = cellsOnEdge(2,iEdge)
-
-         invAreaTri1 = 1.0 / areaTriangle(vertex1)
-         invAreaTri2 = 1.0 / areaTriangle(vertex2)
-
-         !dwj: 02/23/12 arraCell(nCells+1) is still 0, this is a temporary fix
-         invAreaCell1 = 1.0 / max(areaCell(cell1), 1.0)
-         invAreaCell2 = 1.0 / max(areaCell(cell2), 1.0)
-
-         do k=1,maxLevelEdgeBot(iEdge)
-            ! Compute circulation and relative vorticity at each vertex
-            r_tmp = dcEdge(iEdge) * u(k,iEdge)
-            circulation(k,vertex1) = circulation(k,vertex1) - r_tmp
-            circulation(k,vertex2) = circulation(k,vertex2) + r_tmp
-
-            vorticity(k, vertex1) = vorticity(k, vertex1) - r_tmp * invAreaTri1
-            vorticity(k, vertex2) = vorticity(k, vertex2) + r_tmp * invAreaTri2
-
-            ! Compute the divergence at each cell center
-            r_tmp = dvEdge(iEdge) * u(k, iEdge)
-            divergence(k,cell1) = divergence(k,cell1) + r_tmp * invAreaCell1
-            divergence(k,cell2) = divergence(k,cell2) - r_tmp * invAreaCell2
-
-            ! Compute kinetic energy in each cell
-            r_tmp = r_tmp * dcEdge(iEdge) * u(k,iEdge)
-            ke(k,cell1) = ke(k,cell1) + 0.25 * r_tmp * invAreaCell1
-            ke(k,cell2) = ke(k,cell2) + 0.25 * r_tmp * invAreaCell2
+              circulation(k, iVertex) = circulation(k, iVertex) + edgeSignOnVertex(i, iVertex) * r_tmp 
+              vorticity(k, iVertex) = vorticity(k, iVertex) + edgeSignOnVertex(i, iVertex) * r_tmp * invAreaTri1
+            end do
          end do
+      end do
 
+      do iCell = 1, nCells
+         invAreaCell1 = 1.0 / areaCell(iCell)
+         do i = 1, nEdgesOnCell(iCell)
+            iEdge = edgesOnCell(i, iCell)
+            do k = 1, maxLevelCell(iCell)
+               r_tmp = dvEdge(iEdge) * u(k, iEdge) * invAreaCell1
+
+               divergence(k, iCell) = divergence(k, iCell) - edgeSignOnCell(i, iCell) * r_tmp
+               ke(k, iCell) = ke(k, iCell) + 0.25 * r_tmp * dcEdge(iEdge) * u(k,iEdge)
+            end do
+         end do
+      end do
+
+      do iEdge=1,nEdges
          ! Compute v (tangential) velocities
          do i=1,nEdgesOnEdge(iEdge)
             eoe = edgesOnEdge(i,iEdge)
@@ -626,28 +625,26 @@ contains
       ! Compute kinetic energy in each vertex
       !
       kev(:,:) = 0.0; kevc(:,:) = 0.0
-      do iEdge=1,nEdges*ke_vertex_flag
-         do k=1,nVertLevels
-            r_tmp = dcEdge(iEdge) * dvEdge(iEdge) * u(k, iEdge)**2
-            kev(k,verticesOnEdge(1,iEdge)) = kev(k,verticesOnEdge(1,iEdge)) + r_tmp
-            kev(k,verticesOnEdge(2,iEdge)) = kev(k,verticesOnEdge(2,iEdge)) + r_tmp
-         end do
-      end do
-      do iVertex = 1,nVertices*ke_vertex_flag
-         do k=1,nVertLevels
-           kev(k,iVertex) = kev(k,iVertex) / areaTriangle(iVertex) * 0.25
-         enddo
-      enddo
       do iVertex = 1, nVertices*ke_vertex_flag
-       do i=1,grid % vertexDegree
-         iCell = cellsOnVertex(i,iVertex)
-         !dwj: 02/23/12 arraCell(nCells+1) is still 0, this is a temporary fix
-         invAreaCell1 = 1.0 / max(areaCell(iCell), 1.0)
-         do k=1,nVertLevels
-           kevc(k,iCell) = kevc(k,iCell) + kiteAreasOnVertex(i, iVertex) * kev(k, iVertex) * invAreaCell1
-         enddo
-       enddo
-      enddo
+        do i = 1, vertexDegree
+          iEdge = edgesOnVertex(i, iVertex)
+          r_tmp = dcEdge(iEdge) * dvEdge(iEdge) * 0.25 / areaTriangle(iVertex)
+          do k = 1, nVertLevels
+            kev(k, iVertex) = kev(k, iVertex) + r_tmp * u(k, iEdge)**2
+          end do
+        end do
+      end do
+
+      do iCell = 1, nCells*ke_vertex_flag
+        invAreaCell1 = 1.0 / areaCell(iCell)
+        do i = 1, nEdgesOnCell(iCell)
+          j = kiteIndexOnCell(i, iCell)
+          iVertex = verticesOnCell(i, iCell)
+          do k = 1, nVertLevels
+            kevc(k, iCell) = kevc(k, iCell) + kiteAreasOnVertex(j, iVertex) * kev(k, iVertex) * invAreaCell1
+          end do
+        end do
+      end do
 
       !
       ! Compute kinetic energy in each cell by blending ke and kevc
@@ -690,30 +687,26 @@ contains
 
       Vor_cell(:,:) = 0.0
       Vor_edge(:,:) = 0.0
-      do iVertex = 1,nVertices
-         do i=1,vertexDegree
-            iCell = cellsOnVertex(i,iVertex)
-            iEdge = edgesOnVertex(i,iVertex)
+      do iEdge = 1, nEdges
+        vertex1 = verticesOnEdge(1, iEdge)
+        vertex2 = verticesOnEdge(2, iEdge)
+        do k = 1, maxLevelEdgeBot(iEdge)
+          Vor_edge(k, iEdge) = 0.5 * (Vor_vertex(k, vertex1) + Vor_vertex(k, vertex2))
+        end do
+      end do
 
-            !dwj: 02/23/12 arraCell(nCells+1) is still 0, this is a temporary fix
-            invAreaCell1 = 1.0 / max(areaCell(iCell), 1.0)
+      do iCell = 1, nCells
+        invAreaCell1 = 1.0 / areaCell(iCell)
 
-            ! Compute pv at cell centers
-            !    ( this computes Vor_cell for all real cells and distance-1 ghost cells )
-            do k = 1,maxLevelCell(iCell)
-               Vor_cell(k,iCell) = Vor_cell(k,iCell) + kiteAreasOnVertex(i, iVertex) * Vor_vertex(k, iVertex) * invAreaCell1
-            enddo
+        do i = 1, nEdgesOnCell(iCell)
+          j = kiteIndexOnCell(i, iCell)
+          iVertex = verticesOnCell(i, iCell)
+          do k = 1, maxLevelCell(iCell)
+            Vor_cell(k, iCell) = Vor_cell(k, iCell) + kiteAreasOnVertex(j, iVertex) * Vor_vertex(k, iVertex) * invAreaCell1
+          end do
+        end do
+      end do
 
-            ! Compute pv at the edges
-            !   ( this computes Vor_edge at all edges bounding real cells )
-            do k=1,maxLevelEdgeBot(iEdge)
-               Vor_edge(k,iEdge) = Vor_edge(k,iEdge) + 0.5 * Vor_vertex(k,iVertex)
-            enddo
-         enddo
-      enddo
-
-!     gradVor_n(:,:) = 0.0
-!     gradVor_t(:,:) = 0.0
       do iEdge = 1,nEdges
          cell1 = cellsOnEdge(1, iEdge)
          cell2 = cellsOnEdge(2, iEdge)
@@ -868,7 +861,7 @@ contains
       type (mesh_type), intent(in) :: grid !< Input: Grid information
 
       integer :: iEdge, iCell, iVertex, k, cell1, cell2, vertex1, vertex2, eoe, i, j, cov
-      real (kind=RKIND) :: flux, vorticity_abs, h_vertex, workpv, rho0Inv, hSum
+      real (kind=RKIND) :: flux, vorticity_abs, h_vertex, workpv, rho0Inv, hSum, invAreaCell
 
       integer :: nCells, nEdges, nVertices, nVertLevels, vertexDegree
 
@@ -876,12 +869,12 @@ contains
       real (kind=RKIND), dimension(:), pointer :: &
         dvEdge, areaCell, zstarWeight
       real (kind=RKIND), dimension(:,:), pointer :: uTransport,h,wTop, h_edge
-      real (kind=RKIND), dimension(:,:), allocatable:: div_hu
-      real (kind=RKIND), dimension(:), allocatable:: div_hu_btr, h_tend_col
+      real (kind=RKIND), dimension(:), allocatable:: div_hu, h_tend_col
+      real (kind=RKIND) :: div_hu_btr
 
       integer, dimension(:,:), pointer :: cellsOnEdge, cellsOnVertex, &
         verticesOnEdge, edgesOnCell, edgesOnEdge, edgesOnVertex, &
-        boundaryEdge, boundaryCell
+        boundaryEdge, boundaryCell, edgeSignOnCell
       integer, dimension(:), pointer :: nEdgesOnCell, nEdgesOnEdge, &
         maxLevelCell, maxLevelEdgeTop, maxLevelEdgeBot, &
         maxLevelVertexBot,  maxLevelVertexTop
@@ -891,8 +884,11 @@ contains
       uTransport  => s2 % uTransport % array
       wTop        => s2 % wTop % array
 
+      nEdgesOnCell      => grid % nEdgesOnCell % array
       areaCell          => grid % areaCell % array
       cellsOnEdge       => grid % cellsOnEdge % array
+      edgesOnCell       => grid % edgesOnCell % array
+      edgeSignOnCell    => grid % edgeSignOnCell % array
       maxLevelCell      => grid % maxLevelCell % array
       maxLevelEdgeBot   => grid % maxLevelEdgeBot % array
       dvEdge            => grid % dvEdge % array
@@ -902,66 +898,56 @@ contains
       nEdges      = grid % nEdges
       nVertLevels = grid % nVertLevels
 
-      allocate(div_hu(nVertLevels,nCells+1), div_hu_btr(nCells+1), &
-          h_tend_col(nVertLevels))
+
+      if (config_vert_grid_type.eq.'isopycnal') then
+        ! set vertical velocity to zero in isopycnal case
+        wTop=0.0_RKIND
+        return
+      end if
+
+      allocate(div_hu(nVertLevels), h_tend_col(nVertLevels))
 
       !
       ! Compute div(h^{edge} u) for each cell
       ! See Ringler et al. (2010) jcp paper, eqn 19, 21, and fig. 3.
       !
-      div_hu(:,:) = 0.0
-      do iEdge=1,nEdges
-         cell1 = cellsOnEdge(1,iEdge)
-         cell2 = cellsOnEdge(2,iEdge)
-         do k=1,maxLevelEdgeBot(iEdge)
-            flux = uTransport(k,iEdge) * dvEdge(iEdge) * h_edge(k,iEdge) 
-            div_hu(k,cell1) = div_hu(k,cell1) + flux
-            div_hu(k,cell2) = div_hu(k,cell2) - flux
-         end do 
-      end do 
 
       do iCell=1,nCells
-         div_hu_btr(iCell) = 0.0
-         do k=1,maxLevelCell(iCell)
-            div_hu(k,iCell) = div_hu(k,iCell) / areaCell(iCell)
-            div_hu_btr(iCell) = div_hu_btr(iCell) + div_hu(k,iCell)
-         end do
-      end do
+        div_hu(:) = 0.0_RKIND
+        div_hu_btr = 0.0_RKIND
+        hSum = 0.0_RKIND
+        invAreaCell = 1.0_RKIND / areaCell(iCell)
 
-      !
-      ! vertical velocity through layer interface
-      !
-      !dwj: 10/25/2011 - Need to explore isopycnal vs zlevel flags
-      if (config_vert_grid_type.eq.'isopycnal') then
-        ! set vertical velocity to zero in isopycnal case
-        wTop=0.0  
+        do i = 1, nEdgesOnCell(iCell)
+          iEdge = edgesOnCell(i, iCell)
 
-      else  ! zlevel or zstar type vertical grid
-
-        do iCell=1,nCells
-
-           hSum = 0.0
-           do k=1,maxLevelCell(iCell)
-              h_tend_col(k) = - zstarWeight(k)*h(k,iCell)*div_hu_btr(iCell)
-              hSum = hSum + zstarWeight(k)*h(k,iCell)
-           end do
-           if(hSum > 0.0) then
-             h_tend_col = h_tend_col / hSum
-           else
-           end if
-
-           ! Vertical velocity through layer interface at top and 
-           ! bottom is zero.
-           wTop(1,iCell) = 0.0
-           wTop(maxLevelCell(iCell)+1,iCell) = 0.0
-           do k=maxLevelCell(iCell),2,-1
-              wTop(k,iCell) = wTop(k+1,iCell) - div_hu(k,iCell) - h_tend_col(k)
-           end do
+          do k = 1, maxLevelEdgeBot(iEdge)
+            flux = uTransport(k, iEdge) * dvEdge(iEdge) * h_edge(k, iEdge)
+            flux = edgeSignOnCell(i, iCell) * flux * invAreaCell
+            div_hu(k) = div_hu(k) - flux
+            div_hu_btr = div_hu_btr - flux
+          end do
         end do
 
-      endif
+        do k = 1, maxLevelCell(iCell)
+           h_tend_col(k) = - zstarWeight(k) * h(k, iCell) * div_hu_btr
+           hSum = hSum + zstarWeight(k) * h(k, iCell)
+        end do
 
-      deallocate(div_hu, div_hu_btr, h_tend_col)
+        if(hSum > 0.0) then
+           h_tend_col = h_tend_col / hSum
+        end if
+
+        ! Vertical velocity through layer interface at top and 
+        ! bottom is zero.
+        wTop(1,iCell) = 0.0_RKIND
+        wTop(maxLevelCell(iCell)+1,iCell) = 0.0_RKIND
+        do k=maxLevelCell(iCell),2,-1
+           wTop(k,iCell) = wTop(k+1,iCell) - div_hu(k) - h_tend_col(k)
+        end do
+      end do
+
+      deallocate(div_hu, h_tend_col)
 
    end subroutine ocn_wtop!}}}
 

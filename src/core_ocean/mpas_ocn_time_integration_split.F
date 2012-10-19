@@ -408,6 +408,40 @@ module ocn_time_integration_split
                 ! config_btr_gam1_uWt1=0.5     flux = 1/2*(uBtrNew+uBtrOld)*H
                 ! config_btr_gam1_uWt1=  0     flux = uBtrOld*H
                 ! mrp 120201 efficiency: could we combine the following edge and cell loops?
+
+                do iCell = 1, block % mesh % nCells
+                  do i = 1, block % mesh % nEdgesOnCell % array(iCell)
+                    iEdge = block % mesh % edgesOnCell % array(i, iCell)
+
+                    cell1 = block % mesh % cellsOnEdge % array(1, iEdge)
+                    cell2 = block % mesh % cellsOnEdge % array(2, iEdge)
+
+                    sshEdge = 0.5 * (block % state % time_levs(oldBtrSubcycleTime) % state % sshSubcycle % array(cell1) &
+                              + block % state % time_levs(oldBtrSubcycleTime) % state % sshSubcycle % array(cell2) )
+
+                   ! method 0: orig, works only without pbc:      
+                   !hSum = sshEdge + block % mesh % refBottomDepthTopOfCell % array (block % mesh % maxLevelEdgeTop % array(iEdge)+1)
+ 
+                   ! method 1, matches method 0 without pbcs, works with pbcs.
+                   hSum = sshEdge + min(block % mesh % bottomDepth % array(cell1), &
+                                        block % mesh % bottomDepth % array(cell2))
+
+                   ! method 2: may be better than method 1.
+                   ! Take average  of full thickness at two neighboring cells.
+                   !hSum = sshEdge + 0.5 *(  block % mesh % bottomDepth % array(cell1) &
+                   !                       + block % mesh % bottomDepth % array(cell2) )
+
+
+                    flux = ((1.0-config_btr_gam1_uWt1) * block % state % time_levs(oldBtrSubcycleTime) % state % uBtrSubcycle % array(iEdge) &
+                           + config_btr_gam1_uWt1 * block % state % time_levs(newBtrSubcycleTime) % state % uBtrSubcycle % array(iEdge)) &
+                           * hSum 
+
+                    block % tend % ssh % array(iCell) = block % tend % ssh % array(iCell) + block % mesh % edgeSignOncell % array(i, iCell) * flux &
+                           * block % mesh % dvEdge % array(iEdge)
+
+                  end do
+                end do
+
                 do iEdge=1,block % mesh % nEdges
                    cell1 = block % mesh % cellsOnEdge % array(1,iEdge)
                    cell2 = block % mesh % cellsOnEdge % array(2,iEdge)
@@ -418,11 +452,11 @@ module ocn_time_integration_split
                    ! method 0: orig, works only without pbc:      
                    !hSum = sshEdge + block % mesh % refBottomDepthTopOfCell % array (block % mesh % maxLevelEdgeTop % array(iEdge)+1)
  
-                   ! method 1, should match before:
+                   ! method 1, matches method 0 without pbcs, works with pbcs.
                    hSum = sshEdge + min(block % mesh % bottomDepth % array(cell1), &
                                         block % mesh % bottomDepth % array(cell2))
 
-                   ! method 2, better, I think.
+                   ! method 2: may be better than method 1.
                    ! take average  of full thickness at two neighboring cells
                    !hSum = sshEdge + 0.5 *(  block % mesh % bottomDepth % array(cell1) &
                    !                       + block % mesh % bottomDepth % array(cell2) )
@@ -431,9 +465,6 @@ module ocn_time_integration_split
                           + config_btr_gam1_uWt1 * block % state % time_levs(newBtrSubcycleTime) % state % uBtrSubcycle % array(iEdge)) &
                           * hSum 
 
-                   block % tend % ssh % array(cell1) = block % tend % ssh % array(cell1) - flux * block % mesh % dvEdge % array(iEdge)
-                   block % tend % ssh % array(cell2) = block % tend % ssh % array(cell2) + flux * block % mesh % dvEdge % array(iEdge) 
-      
                    block % state % time_levs(1) % state % FBtr % array(iEdge) = block % state % time_levs(1) % state % FBtr % array(iEdge) &
                      + FBtr_coeff*flux
                 end do
@@ -463,6 +494,8 @@ module ocn_time_integration_split
       
                 block => domain % blocklist
                 do while (associated(block))
+                   allocate(utemp(block % mesh % nEdges+1))
+                   uTemp(:) = block % state % time_levs(newBtrSubcycleTime) % state % uBtrSubcycle % array(:)
                    do iEdge=1,block % mesh % nEdges 
                      cell1 = block % mesh % cellsOnEdge % array(1,iEdge)
                      cell2 = block % mesh % cellsOnEdge % array(2,iEdge)
@@ -472,7 +505,8 @@ module ocn_time_integration_split
                      do i = 1,block % mesh % nEdgesOnEdge % array(iEdge)
                          eoe = block % mesh % edgesOnEdge % array(i,iEdge)
                        CoriolisTerm = CoriolisTerm + block % mesh % weightsOnEdge % array(i,iEdge) &
-                             * block % state % time_levs(uPerpTime) % state % uBtrSubcycle % array(eoe) &
+                             !* block % state % time_levs(uPerpTime) % state % uBtrSubcycle % array(eoe) &
+                             * uTemp(eoe) &
                              * block % mesh % fEdge  % array(eoe) 
                      end do
       
@@ -489,6 +523,7 @@ module ocn_time_integration_split
                          + dt/config_n_btr_subcycles *(CoriolisTerm - gravity *(sshCell2 - sshCell1) /block % mesh % dcEdge % array(iEdge) &
                          + block % state % time_levs(1) % state % GBtrForcing % array(iEdge))) * block % mesh % edgeMask % array(1,iEdge)
                    end do
+                   deallocate(uTemp)
       
                    block => block % next
                 end do  ! block
@@ -513,6 +548,45 @@ module ocn_time_integration_split
                   ! config_btr_gam3_uWt2=0.5     flux = 1/2*(uBtrNew+uBtrOld)*H
                   ! config_btr_gam3_uWt2=  0     flux = uBtrOld*H
                   ! mrp 120201 efficiency: could we combine the following edge and cell loops?
+
+                  do iCell = 1, block % mesh % nCells
+                    do i = 1, block % mesh % nEdgesOnCell % array(iCell)
+                      iEdge = block % mesh % edgesOnCell % array(i, iCell)
+
+                      cell1 = block % mesh % cellsOnEdge % array(1,iEdge)
+                      cell2 = block % mesh % cellsOnEdge % array(2,iEdge)
+
+                      ! SSH is a linear combination of SSHold and SSHnew.
+                      sshCell1 = (1-config_btr_gam2_SSHWt1)*block % state % time_levs(oldBtrSubcycleTime) % state % sshSubcycle % array(cell1) &
+                                +   config_btr_gam2_SSHWt1 *block % state % time_levs(newBtrSubcycleTime) % state % sshSubcycle % array(cell1)
+                      sshCell2 = (1-config_btr_gam2_SSHWt1)*block % state % time_levs(oldBtrSubcycleTime) % state % sshSubcycle % array(cell2) &
+                                +   config_btr_gam2_SSHWt1 *block % state % time_levs(newBtrSubcycleTime) % state % sshSubcycle % array(cell2)
+ 
+                      sshEdge = 0.5 * (sshCell1 + sshCell2)
+
+                     ! method 0: orig, works only without pbc:      
+                     !hSum = sshEdge + block % mesh % refBottomDepthTopOfCell % array (block % mesh % maxLevelEdgeTop % array(iEdge)+1)
+ 
+                     ! method 1, matches method 0 without pbcs, works with pbcs.
+                     hSum = sshEdge + min(block % mesh % bottomDepth % array(cell1), &
+                                          block % mesh % bottomDepth % array(cell2))
+
+                     ! method 2: may be better than method 1.
+                     ! take average  of full thickness at two neighboring cells
+                     !hSum = sshEdge + 0.5 *(  block % mesh % bottomDepth % array(cell1) &
+                     !                       + block % mesh % bottomDepth % array(cell2) )
+      
+       
+                      flux = ((1.0-config_btr_gam3_uWt2) * block % state % time_levs(oldBtrSubcycleTime) % state % uBtrSubcycle % array(iEdge) &
+                             + config_btr_gam3_uWt2 * block % state % time_levs(newBtrSubcycleTime) % state % uBtrSubcycle % array(iEdge)) &
+                             * hSum
+
+                      block % tend % ssh % array(iCell) = block % tend % ssh % array(iCell) + block % mesh % edgeSignOnCell % array(i, iCell) * flux &
+                             * block % mesh % dvEdge % array(iEdge)
+
+                    end do
+                  end do
+
                   do iEdge=1,block % mesh % nEdges
                      cell1 = block % mesh % cellsOnEdge % array(1,iEdge)
                      cell2 = block % mesh % cellsOnEdge % array(2,iEdge)
@@ -527,7 +601,7 @@ module ocn_time_integration_split
                      ! method 0: orig, works only without pbc:      
                      !hSum = sshEdge + block % mesh % refBottomDepthTopOfCell % array (block % mesh % maxLevelEdgeTop % array(iEdge)+1)
  
-                     ! method 1, should match before:
+                     ! method 1, matches method 0 without pbcs, works with pbcs.
                      hSum = sshEdge + min(block % mesh % bottomDepth % array(cell1), &
                                           block % mesh % bottomDepth % array(cell2))
 
@@ -539,9 +613,6 @@ module ocn_time_integration_split
                      flux = ((1.0-config_btr_gam3_uWt2) * block % state % time_levs(oldBtrSubcycleTime) % state % uBtrSubcycle % array(iEdge) &
                             + config_btr_gam3_uWt2 * block % state % time_levs(newBtrSubcycleTime) % state % uBtrSubcycle % array(iEdge)) &
                             * hSum
-      
-                     block % tend % ssh % array(cell1) = block % tend % ssh % array(cell1) - flux * block % mesh % dvEdge % array(iEdge) 
-                     block % tend % ssh % array(cell2) = block % tend % ssh % array(cell2) + flux * block % mesh % dvEdge % array(iEdge) 
       
                      block % state % time_levs(1) % state % FBtr % array(iEdge) = block % state % time_levs(1) % state % FBtr % array(iEdge) + flux
                   end do

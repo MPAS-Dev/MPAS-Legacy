@@ -101,13 +101,13 @@ contains
       !
       !-----------------------------------------------------------------
 
-      integer :: iEdge, nEdges, cell1, cell2, nVertLevels, k
+      integer :: iEdge, nEdges, cell1, cell2, nVertLevels, k, i
       integer :: iCell, nCells
 
-      integer, dimension(:), pointer :: maxLevelEdgeBot, MaxLevelCell
-      integer, dimension(:,:), pointer :: cellsOnEdge
+      integer, dimension(:), pointer :: maxLevelEdgeBot, MaxLevelCell, nEdgesOnCell
+      integer, dimension(:,:), pointer :: cellsOnEdge, edgesOnCell, edgeSignOnCell
 
-      real (kind=RKIND) :: flux, invAreaCell1, invAreaCell2
+      real (kind=RKIND) :: flux, invAreaCell, invAreaCell1, invAreaCell2
       real (kind=RKIND), dimension(:), pointer :: dvEdge, areaCell
 
       !-----------------------------------------------------------------
@@ -130,19 +130,19 @@ contains
       dvEdge => grid % dvEdge % array
       areaCell => grid % areaCell % array
 
-      do iEdge=1,nEdges
-         cell1 = cellsOnEdge(1,iEdge)
-         cell2 = cellsOnEdge(2,iEdge)
-         do k=1,maxLevelEdgeBot(iEdge)
-            flux = u(k,iEdge) * dvEdge(iEdge) * h_edge(k,iEdge)
-            tend(k,cell1) = tend(k,cell1) - flux 
-            tend(k,cell2) = tend(k,cell2) + flux 
-         end do
-      end do
-      do iCell=1,nCells
-         do k=1,maxLevelCell(iCell)
-            tend(k,iCell) = tend(k,iCell) / areaCell(iCell)
-         end do
+      nEdgesOnCell => grid % nEdgesOnCell % array
+      edgesOnCell => grid % edgesOnCell % array
+      edgeSignOnCell => grid % edgeSignOnCell % array
+
+      do iCell = 1, nCells
+        invAreaCell = 1.0 / areaCell(iCell)
+        do i = 1, nEdgesOnCell(iCell)
+          iEdge = edgesOnCell(i, iCell)
+          do k = 1, maxLevelEdgeBot(iEdge)
+            flux = u(k, iEdge) * dvEdge(iEdge) * h_edge(k, iEdge)
+            tend(k, iCell) = tend(k, iCell) + edgeSignOnCell(i, iCell) * flux * invAreaCell
+          end do
+        end do
       end do
 
    !--------------------------------------------------------------------

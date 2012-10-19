@@ -112,22 +112,22 @@ contains
       !
       !-----------------------------------------------------------------
 
-      integer :: iEdge, cell1, cell2, vertex1, vertex2, k
+      integer :: iEdge, cell1, cell2, vertex1, vertex2, k, i
       integer :: iCell, iVertex
-      integer :: nVertices, nVertLevels, nCells, nEdges, nEdgesSolve
+      integer :: nVertices, nVertLevels, nCells, nEdges, nEdgesSolve, vertexDegree
 
       integer, dimension(:), pointer :: maxLevelEdgeTop, maxLevelVertexBot, &
-            maxLevelCell
-      integer, dimension(:,:), pointer :: cellsOnEdge, verticesOnEdge, edgeMask
+            maxLevelCell, nEdgesOnCell
+      integer, dimension(:,:), pointer :: cellsOnEdge, verticesOnEdge, edgeMask, edgesOnVertex, edgesOnCell, edgeSignOnVertex, edgeSignOnCell
 
 
       real (kind=RKIND) :: u_diffusion, invAreaCell1, invAreaCell2, invAreaTri1, &
-            invAreaTri2, invDcEdge, invDvEdge, r_tmp, delsq_u
+            invAreaTri2, invDcEdge, invDvEdge, r_tmp
       real (kind=RKIND), dimension(:), pointer :: dcEdge, dvEdge, areaTriangle, &
             meshScalingDel4, areaCell
 
       real (kind=RKIND), dimension(:,:), allocatable :: delsq_divergence, &
-            delsq_circulation, delsq_vorticity
+            delsq_circulation, delsq_vorticity, delsq_u
 
       err = 0
 
@@ -138,6 +138,8 @@ contains
       nEdgesSolve = grid % nEdgessolve
       nVertices = grid % nVertices
       nVertLevels = grid % nVertLevels
+      vertexDegree = grid % vertexDegree
+
       maxLevelEdgeTop => grid % maxLevelEdgeTop % array
       maxLevelVertexBot => grid % maxLevelVertexBot % array
       maxLevelCell => grid % maxLevelCell % array
@@ -149,43 +151,57 @@ contains
       areaCell => grid % areaCell % array
       meshScalingDel4 => grid % meshScalingDel4 % array
       edgeMask => grid % edgeMask % array
+      nEdgesOnCell => grid % nEdgesOnCell % array
+      edgesOnVertex => grid % edgesOnVertex % array
+      edgesOnCell => grid % edgesOnCell % array
+      edgeSignOnVertex => grid % edgeSignOnVertex % array
+      edgeSignOnCell => grid % edgeSignOnCell % array
 
+      allocate(delsq_u(nVertLEvels, nEdges+1))
       allocate(delsq_divergence(nVertLevels, nCells+1))
       allocate(delsq_vorticity(nVertLevels, nVertices+1))
 
+      delsq_u(:,:) = 0.0
       delsq_vorticity(:,:) = 0.0
       delsq_divergence(:,:) = 0.0
 
-      do iEdge=1,nEdges
+      !Compute delsq_u
+      do iEdge = 1, nEdges
          cell1 = cellsOnEdge(1,iEdge)
          cell2 = cellsOnEdge(2,iEdge)
 
          vertex1 = verticesOnEdge(1,iEdge)
          vertex2 = verticesOnEdge(2,iEdge)
 
-         invAreaTri1 = 1.0 / areaTriangle(vertex1)
-         invAreaTri2 = 1.0 / areaTriangle(vertex2)
-
-         invAreaCell1 = 1.0 / areaCell(cell1)
-         invAreaCell2 = 1.0 / areaCell(cell2)
-
          invDcEdge = 1.0 / dcEdge(iEdge)
          invDvEdge = 1.0 / dvEdge(iEdge)
 
          do k=1,maxLevelEdgeTop(iEdge)
             ! Compute \nabla^2 u = \nabla divergence + k \times \nabla vorticity
-            delsq_u =          ( divergence(k,cell2)  - divergence(k,cell1) ) * invDcEdge  &
+            delsq_u(k, iEdge) =          ( divergence(k,cell2)  - divergence(k,cell1) ) * invDcEdge  &
                 -viscVortCoef *( vorticity(k,vertex2) - vorticity(k,vertex1)) * invDcEdge * sqrt(3.0)   ! TDR
+         end do
+      end do
 
-            ! vorticity using \nabla^2 u
-            r_tmp = dcEdge(iEdge) * delsq_u
-            delsq_vorticity(k,vertex1) = delsq_vorticity(k,vertex1) - r_tmp * invAreaTri1
-            delsq_vorticity(k,vertex2) = delsq_vorticity(k,vertex2) + r_tmp * invAreaTri2
+      ! Compute delsq_vorticity
+      do iVertex = 1, nVertices
+         invAreaTri1 = 1.0 / areaTriangle(iVertex)
+         do i = 1, vertexDegree
+            iEdge = edgesOnVertex(i, iVertex)
+            do k = 1, maxLevelVertexBot(iVertex)
+               delsq_vorticity(k, iVertex) = delsq_vorticity(k, iVertex) + edgeSignOnVertex(i, iVertex) * dcEdge(iEdge) * delsq_u(k, iEdge) * invAreaTri1
+            end do
+         end do
+      end do
 
-            ! Divergence using \nabla^2 u
-            r_tmp = dvEdge(iEdge) * delsq_u
-            delsq_divergence(k, cell1) = delsq_divergence(k,cell1) + r_tmp * invAreaCell1
-            delsq_divergence(k, cell2) = delsq_divergence(k,cell2) - r_tmp * invAreaCell2
+      ! Compute delsq_divergence
+      do iCell = 1, nCells
+         invAreaCell1 = 1.0 / areaCell(iCell)
+         do i = 1, nEdgesOnCell(iCell)
+            iEdge = edgesOnCell(i, iCell)
+            do k = 1, maxLevelCell(iCell)
+               delsq_divergence(k, iCell) = delsq_divergence(k, iCell) - edgeSignOnCell(i, iCell) * dvEdge(iEdge) * delsq_u(k, iEdge) * invAreaCell1
+            end do
          end do
       end do
 
@@ -209,6 +225,7 @@ contains
          end do
       end do
 
+      deallocate(delsq_u)
       deallocate(delsq_divergence)
       deallocate(delsq_vorticity)
 

@@ -312,3 +312,8 @@ var persistent real    acc_uReconstructZonalVar ( nVertLevels nCells Time ) 2 o 
 var persistent real    acc_uReconstructMeridionalVar ( nVertLevels nCells Time ) 2 o acc_uReconstructMeridionalVar state - -
 var persistent real    acc_u ( nVertLevels nEdges Time ) 2 o acc_u state - -
 var persistent real    acc_uVar ( nVertLevels nEdges Time ) 2 o acc_uVar state - -
+
+% Sign fields, for openmp and bit reproducibility without branching statements.
+var persistent integer edgeSignOnCell ( maxEdges nCells ) 0 - edgeSignOnCell mesh - -
+var persistent integer edgeSignOnVertex ( maxEdges nVertices ) 0 - edgeSignOnVertex mesh - -
+var persistent integer kiteIndexOnCell ( maxEdges nCells ) 0 - kiteIndexOnCell mesh - -

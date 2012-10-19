@@ -249,6 +249,7 @@ module mpas_core
       integer :: i, iEdge, iCell, k
       integer :: err1
    
+      call ocn_setup_sign_and_index_fields(mesh)
       call ocn_initialize_advection_rk(mesh, err)
       call mpas_ocn_tracer_advection_coefficients(mesh, err1)
       err = ior(err, err1)
@@ -701,7 +702,7 @@ module mpas_core
             do iCell = 1,nCells
                ! Check if abs(ssh)>2m.  If so, print warning.
                if (abs(sum(h(1:maxLevelCell(iCell),iCell))-bottomDepth(iCell))>2.0) then
-                  write (0,*) ' Warning: abs(sum(h)-bottomDepth)>2m.  Most likely, initial h does not match bottomDepth.'
+                  write (0,'(a)') ' Warning: abs(sum(h)-bottomDepth)>2m.  Most likely, initial h does not match bottomDepth.'
                   write (0,*) ' iCell, K=maxLevelCell(iCell), bottomDepth(iCell),sum(h),bottomDepth,hZLevel(K),h(K): ', &
                                 iCell, maxLevelCell(iCell), bottomDepth(iCell),sum(h(1:maxLevelCell(iCell),iCell)),bottomDepth(iCell), &
                                 hZLevel(maxLevelCell(iCell)), h(maxLevelCell(iCell),iCell)
@@ -1075,6 +1076,72 @@ end subroutine ocn_compute_max_level!}}}
       end if
 
    end subroutine ocn_compute_mesh_scaling!}}}
+
+   subroutine ocn_setup_sign_and_index_fields(mesh)!{{{
+
+       type (mesh_type), intent(inout) :: mesh
+
+       integer, dimension(:), pointer :: nEdgesOnCell
+       integer, dimension(:,:), pointer :: edgesOnCell, edgesOnVertex, cellsOnVertex, cellsOnEdge, verticesOnCell, verticesOnEdge
+       integer, dimension(:,:), pointer :: edgeSignOnCell, edgeSignOnVertex, kiteIndexOnCell
+
+       integer :: nCells, nEdges, nVertices, vertexDegree
+       integer :: iCell, iEdge, iVertex, i, j, k
+
+       nCells = mesh % nCells
+       nEdges = mesh % nEdges
+       nVertices = mesh % nVertices
+       vertexDegree = mesh % vertexDegree
+
+       nEdgesOnCell => mesh % nEdgesOnCell % array
+       edgesOnCell => mesh % edgeSOnCell % array
+       edgesOnVertex => mesh % edgesOnVertex % array
+       cellsOnVertex => mesh % cellsOnVertex % array
+       cellsOnEdge => mesh % cellsOnEdge % array
+       verticesOnCell => mesh % verticesOnCell % array
+       verticesOnEdge => mesh % verticesOnEdge % array
+       edgeSignOnCell => mesh % edgeSignOnCell % array
+       edgeSignOnVertex => mesh % edgeSignOnVertex % array
+       kiteIndexOnCell => mesh % kiteIndexOnCell % array
+
+       edgeSignOnCell = 0.0_RKIND
+       edgeSignOnVertex = 0.0_RKIND
+       kiteIndexOnCell = 0.0_RKIND
+
+       do iCell = 1, nCells
+         do i = 1, nEdgesOnCell(iCell) 
+           iEdge = edgesOnCell(i, iCell)
+           iVertex = verticesOnCell(i, iCell)
+
+           ! Vector points from cell 1 to cell 2
+           if(iCell == cellsOnEdge(1, iEdge)) then
+             edgeSignOnCell(i, iCell) = -1
+           else
+             edgeSignOnCell(i, iCell) =  1
+           end if
+
+           do j = 1, vertexDegree
+             if(cellsOnVertex(j, iVertex) == iCell) then
+               kiteIndexOnCell(i, iCell) = j
+             end if
+           end do
+         end do
+       end do
+
+       do iVertex = 1, nVertices
+         do i = 1, vertexDegree
+           iEdge = edgesOnVertex(i, iVertex)
+
+           ! Vector points from vertex 1 to vertex 2
+           if(iVertex == verticesOnEdge(1, iEdge)) then
+             edgeSignOnVertex(i, iVertex) = -1
+           else
+             edgeSignOnVertex(i, iVertex) =  1
+           end if
+         end do
+       end do
+
+   end subroutine ocn_setup_sign_and_index_fields!}}}
 
 end module mpas_core
 

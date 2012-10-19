@@ -107,13 +107,13 @@ contains
       !
       !-----------------------------------------------------------------
 
-      integer :: iEdge, nEdges, nVertLevels, cell1, cell2
-      integer :: k, iTracer, num_tracers
+      integer :: iCell, iEdge, nCells, nEdges, nVertLevels, cell1, cell2
+      integer :: i, k, iTracer, num_tracers
 
       integer, dimension(:,:), allocatable :: boundaryMask
 
-      integer, dimension(:), pointer :: maxLevelEdgeTop
-      integer, dimension(:,:), pointer :: cellsOnEdge, edgeMask
+      integer, dimension(:), pointer :: maxLevelEdgeTop, nEdgesOnCell
+      integer, dimension(:,:), pointer :: cellsOnEdge, edgeMask, edgesOnCell, edgeSignOnCell
 
       real (kind=RKIND) :: invAreaCell1, invAreaCell2
       real (kind=RKIND) :: tracer_turb_flux, flux, r_tmp
@@ -134,6 +134,7 @@ contains
       if (.not.del2On) return
 
       nEdges = grid % nEdges
+      nCells = grid % nCells
       nVertLevels = grid % nVertLevels
       num_tracers = size(tracers, dim=1)
 
@@ -145,31 +146,37 @@ contains
       dcEdge => grid % dcEdge % array
       meshScalingDel2 => grid % meshScalingDel2 % array
 
+      nEdgesOnCell => grid % nEdgesOnCell % array
+      edgesOnCell => grid % edgesOnCell % array
+      edgeSignOnCell => grid % edgeSignOnCell % array
+
       !
       ! compute a boundary mask to enforce insulating boundary conditions in the horizontal
       !
-      do iEdge=1,nEdges
-         cell1 = cellsOnEdge(1,iEdge)
-         cell2 = cellsOnEdge(2,iEdge)
-         invAreaCell1 = 1.0/areaCell(cell1)
-         invAreaCell2 = 1.0/areaCell(cell2)
+      do iCell = 1, nCells
+        invAreaCell1 = 1.0 / areaCell(iCell)
+        do i = 1, nEdgesOncell(iCell)
+          iEdge = edgesOnCell(i, iCell)
+          cell1 = cellsOnEdge(1,iEdge)
+          cell2 = cellsOnEdge(2,iEdge)
 
-         r_tmp = meshScalingDel2(iEdge) * eddyDiff2 * dvEdge(iEdge) / dcEdge(iEdge)
-
-         do k=1,maxLevelEdgeTop(iEdge)
-           do iTracer=1,num_tracers
+          r_tmp = meshScalingDel2(iEdge) * eddyDiff2 * dvEdge(iEdge) / dcEdge(iEdge)
+           
+          do k = 1, maxLevelEdgeTop(iEdge)
+            do iTracer = 1, num_tracers
               ! \kappa_2 \nabla \phi on edge
-              tracer_turb_flux = tracers(iTracer,k,cell2) - tracers(iTracer,k,cell1)
+              tracer_turb_flux = tracers(iTracer, k, cell2) - tracers(iTracer, k, cell1)
 
               ! div(h \kappa_2 \nabla \phi) at cell center
-              flux = h_edge(k,iEdge) * tracer_turb_flux * edgeMask(k, iEdge) * r_tmp
+              flux = h_edge(k, iEdge) * tracer_turb_flux * edgeMask(k, iEdge) * r_tmp
 
-              tend(iTracer,k,cell1) = tend(iTracer,k,cell1) + flux * invAreaCell1
-              tend(iTracer,k,cell2) = tend(iTracer,k,cell2) - flux * invAreaCell2
-           end do
-         end do
+              tend(iTracer, k, iCell) = tend(iTracer, k, iCell) - edgeSignOnCell(i, iCell) * flux * invAreaCell1
+            end do
+          end do
 
+        end do
       end do
+
    !--------------------------------------------------------------------
 
    end subroutine ocn_tracer_hmix_del2_tend!}}}

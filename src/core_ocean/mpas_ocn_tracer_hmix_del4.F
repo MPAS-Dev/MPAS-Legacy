@@ -108,10 +108,10 @@ contains
       !-----------------------------------------------------------------
 
       integer :: iEdge, nEdges, num_tracers, nVertLevels, nCells
-      integer :: iTracer, k, iCell, cell1, cell2
+      integer :: iTracer, k, iCell, cell1, cell2, i
 
-      integer, dimension(:), pointer :: maxLevelEdgeTop, maxLevelCell
-      integer, dimension(:,:), pointer :: edgeMask, cellsOnEdge
+      integer, dimension(:), pointer :: maxLevelEdgeTop, maxLevelCell, nEdgesOnCell
+      integer, dimension(:,:), pointer :: edgeMask, cellsOnEdge, edgesOnCell, edgeSignOnCell
 
       real (kind=RKIND) :: invAreaCell1, invAreaCell2, tracer_turb_flux, flux, invdcEdge, r_tmp1, r_tmp2
 
@@ -148,56 +148,55 @@ contains
 
       edgeMask => grid % edgeMask % array
 
+      nEdgesOnCell => grid % nEdgesOnCell % array
+      edgesOnCell => grid % edgesOnCell % array
+      edgeSignOnCell => grid % edgeSignOnCell % array
+
       allocate(delsq_tracer(num_tracers,nVertLevels, nCells+1))
 
       delsq_tracer(:,:,:) = 0.0
 
       ! first del2: div(h \nabla \phi) at cell center
-      do iEdge=1,nEdges
-         cell1 = cellsOnEdge(1,iEdge)
-         cell2 = cellsOnEdge(2,iEdge)
+      do iCell = 1, nCells
+        invAreaCell1 = 1.0 / areaCell(iCell)
+        do i = 1, nEdgesOnCell(iCell)
+          iEdge = edgesOnCell(i, iCell)
+          invdcEdge = dvEdge(iEdge) / dcEdge(iEdge)
+          cell1 = cellsOnEdge(1,iEdge)
+          cell2 = cellsOnEdge(2,iEdge)
 
-         invdcEdge = 1.0 / dcEdge(iEdge)
+          do k = 1, maxLevelEdgeTop(iEdge)
+            do iTracer = 1, num_tracers * edgeMask(k, iEdge)
 
-         invAreaCell1 = 1.0 / areaCell(cell1)
-         invAreaCell2 = 1.0 / areaCell(cell2)
+              r_tmp1 = invdcEdge * h_edge(k, iEdge) * tracers(iTracer, k, cell1)
+              r_tmp2 = invdcEdge * h_edge(k, iEdge) * tracers(iTracer, k, cell2)
 
-         do k=1,maxLevelEdgeTop(iEdge)
-           do iTracer=1,num_tracers * edgeMask(k, iEdge)
-
-              r_tmp1 = dvEdge(iEdge) * h_edge(k,iEdge) * invdcEdge
-
-              r_tmp2 = r_tmp1 * tracers(iTracer,k,cell2)
-              r_tmp1 = r_tmp1 * tracers(iTracer,k,cell1)
-
-              delsq_tracer(iTracer,k,cell1) = delsq_tracer(iTracer,k,cell1) + (r_tmp2 - r_tmp1) * invAreaCell1
-              delsq_tracer(iTracer,k,cell2) = delsq_tracer(iTracer,k,cell2) - (r_tmp2 - r_tmp1) * invAreaCell2
-           end do
-         end do
+              delsq_tracer(iTracer, k, iCell) = delsq_tracer(iTracer, k, iCell) - edgeSignOnCell(i, iCell) * (r_tmp2 - r_tmp1) * invAreaCell1
+            end do
+          end do
+        end do
       end do
 
       ! second del2: div(h \nabla [delsq_tracer]) at cell center
-      do iEdge=1,grid % nEdges
-         cell1 = grid % cellsOnEdge % array(1,iEdge)
-         cell2 = grid % cellsOnEdge % array(2,iEdge)
+      do iCell = 1, nCells
+        invAreaCell1 = 1.0 / areaCell(iCell)
+        do i = 1, nEdgesOnCell(iCell)
+          iEdge = edgesOnCell(i, iCell)
+          cell1 = cellsOnEdge(1, iEdge)
+          cell2 = cellsOnedge(2, iEdge)
 
-         invAreaCell1 = 1.0 / areaCell(cell1)
-         invAreaCell2 = 1.0 / areaCell(cell2)
+          invdcEdge = meshScalingDel4(iEdge) * dvEdge(iEdge) * eddyDiff4 / dcEdge(iEdge)
 
-         invdcEdge = 1.0 / dcEdge(iEdge)
+          do k = 1, maxLevelEdgeTop(iEdge)
+            do iTracer = 1, num_tracers * edgeMask(k, iEdge)
+              tracer_turb_flux = (delsq_tracer(iTracer, k, cell2) - delsq_tracer(iTracer, k, cell1))
+                
+              flux = tracer_turb_flux * invdcEdge
 
-         do k=1,maxLevelEdgeTop(iEdge)
-            do iTracer=1,num_tracers * edgeMask(k,iEdge)
-               tracer_turb_flux = meshScalingDel4(iEdge) * eddyDiff4 &
-                  * (delsq_tracer(iTracer,k,cell2) - delsq_tracer(iTracer,k,cell1)) &
-                  * invdcEdge
-
-               flux = dvEdge (iEdge) * tracer_turb_flux
-
-               tend(iTracer,k,cell1) = tend(iTracer,k,cell1) - flux * invAreaCell1
-               tend(iTracer,k,cell2) = tend(iTracer,k,cell2) + flux * invAreaCell2
-            enddo
-         enddo
+              tend(iTracer, k, iCell) = tend(iTracer, k, iCell) + edgeSignOnCell(i, iCell) * invAreaCell1
+            end do
+          end do
+        end do
       end do
 
       deallocate(delsq_tracer)

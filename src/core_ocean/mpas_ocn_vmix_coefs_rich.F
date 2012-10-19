@@ -427,13 +427,13 @@ contains
       !
       !-----------------------------------------------------------------
 
-      integer :: nVertLevels, nCells, nEdges, iCell, iEdge, k
+      integer :: nVertLevels, nCells, nEdges, iCell, iEdge, k, i
       integer :: cell1, cell2
 
-      integer, dimension(:), pointer :: maxLevelCell, maxLevelEdgeTop, maxLevelEdgeBot
-      integer, dimension(:,:), pointer :: cellsOnEdge
+      integer, dimension(:), pointer :: maxLevelCell, maxLevelEdgeTop, maxLevelEdgeBot, nEdgesOnCell
+      integer, dimension(:,:), pointer :: cellsOnEdge, edgesOncell, edgeSignOnCell
 
-      real (kind=RKIND) :: coef
+      real (kind=RKIND) :: coef, invAreaCell
       real (kind=RKIND), dimension(:), pointer :: dcEdge, dvEdge, areaCell
       real (kind=RKIND), dimension(:,:), allocatable :: drhoTopOfCell, du2TopOfCell, &
                                                         drhoTopOfEdge, du2TopOfEdge
@@ -453,6 +453,9 @@ contains
       dvEdge => grid % dvEdge % array
       dcEdge => grid % dcEdge % array
       areaCell => grid % areaCell % array
+      nEdgesOnCell => grid % nEdgesOnCell % array
+      edgesOnCell => grid % edgesOnCell % array
+      edgeSignOnCell => grid % edgeSignOnCell % array
 
       allocate( &
          drhoTopOfCell(nVertLevels+1,nCells+1), drhoTopOfEdge(nVertLevels+1,nEdges), &
@@ -498,20 +501,15 @@ contains
 
       ! interpolate du2TopOfEdge to du2TopOfCell
       du2TopOfCell = 0.0
-      do iEdge=1,nEdges
-         cell1 = cellsOnEdge(1,iEdge)
-         cell2 = cellsOnEdge(2,iEdge)
-         do k=2,maxLevelEdgeBot(iEdge)
-            du2TopOfCell(k,cell1) = du2TopOfCell(k,cell1) &
-               + 0.5 * dcEdge(iEdge) * dvEdge(iEdge) * du2TopOfEdge(k,iEdge)
-            du2TopOfCell(k,cell2) = du2TopOfCell(k,cell2) &
-               + 0.5 * dcEdge(iEdge) * dvEdge(iEdge) * du2TopOfEdge(k,iEdge)
-         end do
-      end do
-      do iCell = 1,nCells
-         do k = 2,maxLevelCell(iCell)
-            du2TopOfCell(k,iCell) = du2TopOfCell(k,iCell) / areaCell(iCell)
-         end do
+      do iCell = 1, nCells
+        invAreaCell = 1.0 / areaCell(iCell)
+        do i = 1, nEdgesOnCell(iCell)
+          iEdge = edgesOnCell(i, iCell)
+
+          do k = 2, maxLevelEdgeBot(iEdge)
+            du2TopOfCell(k, iCell) = du2TopOfCell(k, iCell) + 0.5 * dcEdge(iEdge) * dvEdge(iEdge) * du2TopOfEdge(k, iEdge) * invAreaCell
+          end do
+        end do
       end do
 
       ! compute RiTopOfEdge using drhoTopOfEdge and du2TopOfEdge
