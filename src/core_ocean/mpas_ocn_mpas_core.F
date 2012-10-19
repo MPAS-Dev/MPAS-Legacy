@@ -106,9 +106,9 @@ module mpas_core
 
       if (.not. config_do_restart) call setup_sw_test_case(domain)
 
-      call ocn_compute_max_level(domain)
+      if (config_vert_grid_type.ne.'isopycnal') call ocn_init_vert_coord(domain)
 
-      call ocn_init_z_level(domain)
+      call ocn_compute_max_level(domain)
 
       if (config_enforce_zstar_at_restart) then
          call ocn_init_h_zstar(domain)
@@ -351,7 +351,9 @@ module mpas_core
       call mpas_get_time(curr_time=currTime, dateTimeString=timeStamp, ierr=ierr)
       write(0,*) 'Initial time ', trim(timeStamp)
 
-      call ocn_write_output_frame(output_obj, output_frame, domain)
+      if (config_write_output_on_startup) then
+         call ocn_write_output_frame(output_obj, output_frame, domain)
+      endif
       block_ptr => domain % blocklist
 
       do while(associated(block_ptr))
@@ -390,7 +392,8 @@ module mpas_core
       
          if (mpas_is_alarm_ringing(clock, outputAlarmID, ierr=ierr)) then
             call mpas_reset_clock_alarm(clock, outputAlarmID, ierr=ierr)
-            ! output_frame will always be > 1 here unless it was reset after the maximum number of frames per outfile was reached
+            ! output_frame will always be > 1 here unless it was reset after the 
+            ! maximum number of frames per outfile was reached.
             if(output_frame == 1) then
                call mpas_output_state_finalize(output_obj, domain % dminfo)
                call mpas_output_state_init(output_obj, domain, "OUTPUT", trim(timeStamp))
@@ -531,8 +534,9 @@ module mpas_core
 
    end subroutine mpas_timestep!}}}
 
-   subroutine ocn_init_z_level(domain)!{{{
-   ! Initialize zlevel-type variables
+   subroutine ocn_init_vert_coord(domain)!{{{
+   ! Initialize zlevel-type variables and adjust initial conditions for
+   ! partial bottom cells.
 
       use mpas_grid_types
       use mpas_configure
@@ -540,16 +544,21 @@ module mpas_core
       implicit none
 
       type (domain_type), intent(inout) :: domain
+      type (dm_info) :: dminfo
 
-      integer :: i, iCell, iEdge, iVertex, k
+      integer :: i, iCell, iEdge, iVertex, k, nCells, num_tracers
       type (block_type), pointer :: block
 
       integer :: iTracer, cell, cell1, cell2
-      real (kind=RKIND) :: uhSum, hSum, hEdge1
-      real (kind=RKIND), dimension(:), pointer :: referenceBottomDepth, &
-         referenceBottomDepthTopOfCell, zstarWeight, hZLevel
+      real (kind=RKIND) :: uhSum, hSum, hEdge1, zMidPBC
+
+      integer, dimension(:), pointer :: maxLevelCell
+      real (kind=RKIND), dimension(:), pointer :: refBottomDepth, &
+         refBottomDepthTopOfCell, zstarWeight, hZLevel, bottomDepth
+      real (kind=RKIND), dimension(:), allocatable :: minBottomDepth, minBottomDepthMid, zMidZLevel
          
       real (kind=RKIND), dimension(:,:), pointer :: h
+      real (kind=RKIND), dimension(:,:,:), pointer :: tracers
       integer :: nVertLevels
 
       ! Initialize z-level grid variables from h, read in from input file.
@@ -557,26 +566,32 @@ module mpas_core
       do while (associated(block))
 
          h          => block % state % time_levs(1) % state % h % array
-         referenceBottomDepth => block % mesh % referenceBottomDepth % array
-         referenceBottomDepthTopOfCell => block % mesh % referenceBottomDepthTopOfCell % array
+         tracers    => block % state % time_levs(1) % state % tracers % array
+         refBottomDepth => block % mesh % refBottomDepth % array
+         refBottomDepthTopOfCell => block % mesh % refBottomDepthTopOfCell % array
+         bottomDepth => block % mesh % bottomDepth % array
          zstarWeight => block % mesh % zstarWeight % array
          hZLevel => block % mesh % hZLevel % array
+         maxLevelCell => block % mesh % maxLevelCell % array
+
+         nCells      = block % mesh % nCells
          nVertLevels = block % mesh % nVertLevels
+         num_tracers = size(tracers, dim=1)
 
          ! mrp 120208 right now hZLevel is in the grid.nc file.
-         ! We would like to transition to using referenceBottomDepth
+         ! We would like to transition to using refBottomDepth
          ! as the defining variable instead, and will transition soon.
          ! When the transition is done, hZLevel can be removed from
          ! registry and the following four lines deleted.
-         referenceBottomDepth(1) = hZLevel(1)
+         refBottomDepth(1) = hZLevel(1)
          do k = 2,nVertLevels
-            referenceBottomDepth(k) = referenceBottomDepth(k-1) + hZLevel(k)
+            refBottomDepth(k) = refBottomDepth(k-1) + hZLevel(k)
          end do
 
          ! TopOfCell needed where zero depth for the very top may be referenced.
-         referenceBottomDepthTopOfCell(1) = 0.0
+         refBottomDepthTopOfCell(1) = 0.0
          do k = 1,nVertLevels
-            referenceBottomDepthTopOfCell(k+1) = referenceBottomDepth(k)
+            refBottomDepthTopOfCell(k+1) = refBottomDepth(k)
          end do
 
          ! Initialization of zstarWeights.  This determines how SSH perturbations
@@ -588,9 +603,7 @@ module mpas_core
 
          elseif (config_vert_grid_type.eq.'zstar') then
 
-            do k = 1,nVertLevels
-               zstarWeight(k) = hZLevel(k)
-            enddo
+            zstarWeight = 1.0
 
          elseif (config_vert_grid_type.eq.'zstarWeights') then
 
@@ -605,10 +618,117 @@ module mpas_core
 
          endif
 
+         ! Initial condition files (ocean.nc, produced by basin) include a realistic
+         ! bottomDepth variable and h,T,S variables for full thickness cells.
+         ! If running with pbcs, set config_alter_ICs_for_pbc='zlevel_pbcs_on'. Then thin pbc cells
+         !    will be changed, and h,T,S will be altered to match the pbcs.
+         ! If running without pbcs, set config_alter_ICs_for_pbc='zlevel_pbcs_off'. Then 
+         !    bottomDepth will be altered so it is full cells everywhere.
+         !    If your input file does not include bottomDepth, the false option will
+         !    initialize bottomDepth correctly for a non-pbc run.
+
+
+         if (.not.config_do_restart) then
+
+          if (config_alter_ICs_for_pbcs.eq.'zlevel_pbcs_on') then
+
+            write (0,'(a)') ' Altering bottomDepth to avoid very thin cells.'
+            write (0,'(a)') ' Altering h and tracer initial conditions to conform with partial bottom cells.'
+
+            allocate(minBottomDepth(nVertLevels),minBottomDepthMid(nVertLevels),zMidZLevel(nVertLevels))
+
+            ! min_pbc_fraction restricts pbcs from being too small.
+            ! A typical value is 10%, so pbcs must occupy at least 10% of the cell thickness.
+            ! If min_pbc_fraction = 0.0, bottomDepth gives the actual depth for that cell.
+            ! If min_pbc_fraction = 1.0, bottomDepth reverts to discrete z-level depths, same 
+            !    as partial_bottom_cells = .false.
+
+            do k=1,nVertLevels
+               minBottomDepth(k) = refBottomDepth(k) - (1.0-config_min_pbc_fraction)*hZLevel(k)
+               minBottomDepthMid(k) = 0.5*(minBottomDepth(k) + refBottomDepthTopOfCell(k))
+               zMidZLevel(k) = - 0.5*(refBottomDepth(k) + refBottomDepthTopOfCell(k))
+            enddo
+
+            do iCell=1,nCells
+               k = maxLevelCell(iCell)
+
+                if (bottomDepth(iCell).lt.minBottomDepthMid(k)) then
+                   ! Round up to cell above
+                   maxLevelCell(iCell) = maxLevelCell(iCell) - 1
+                   bottomDepth(iCell) = refBottomDepth(maxLevelCell(iCell))
+                elseif (bottomDepth(iCell).lt.minBottomDepth(k)) then
+                   ! Round down cell to the min_pbc_fraction.
+                   bottomDepth(iCell) = minBottomDepth(k)
+                endif
+                k = maxLevelCell(iCell)
+
+               ! Alter thickness of bottom level to account for PBC
+               h(k,iCell) = bottomDepth(iCell) - refBottomDepthTopOfCell(k) 
+
+               ! Linearly interpolate the initial T&S for new location of bottom cell for PBCs
+               zMidPBC = -0.5*(bottomDepth(iCell) + refBottomDepthTopOfCell(k))
+
+               do iTracer=1,num_tracers
+                  tracers(iTracer,k,iCell) = tracers(iTracer,k,iCell) &
+                     + (tracers(iTracer,k-1,iCell) - tracers(iTracer,k,iCell)) &
+                      /(zMidZLevel(k-1)-zMidZLevel(k)) &
+                      *(zMidPBC - zMidZLevel(k))
+               enddo
+
+            enddo  
+
+            deallocate(minBottomDepth,zMidZLevel)
+
+          elseif (config_alter_ICs_for_pbcs.eq.'zlevel_pbcs_off') then
+
+            do iCell = 1,nCells
+               bottomDepth(iCell) = refBottomDepth(maxLevelCell(iCell))
+            enddo
+
+          elseif (config_alter_ICs_for_pbcs.eq.'off') then
+            ! No action taken.  This is for isopycnal or sigma coordinates,
+            !  or if ICs were already altered upon start-up.
+
+          else
+
+             write (0,*) ' Incorrect choice of config_alter_ICs_for_pbcs.'
+             call mpas_dmpar_abort(dminfo)
+
+          endif
+         endif
+
+         if (config_check_ssh_consistency) then
+            do iCell = 1,nCells
+               ! Check if abs(ssh)>2m.  If so, print warning.
+               if (abs(sum(h(1:maxLevelCell(iCell),iCell))-bottomDepth(iCell))>2.0) then
+                  write (0,*) ' Warning: abs(sum(h)-bottomDepth)>2m.  Most likely, initial h does not match bottomDepth.'
+                  write (0,*) ' iCell, K=maxLevelCell(iCell), bottomDepth(iCell),sum(h),bottomDepth,hZLevel(K),h(K): ', &
+                                iCell, maxLevelCell(iCell), bottomDepth(iCell),sum(h(1:maxLevelCell(iCell),iCell)),bottomDepth(iCell), &
+                                hZLevel(maxLevelCell(iCell)), h(maxLevelCell(iCell),iCell)
+               endif
+            enddo
+         endif
+
+         if (config_check_zlevel_consistency) then
+            do iCell = 1,nCells
+               ! Check that bottomDepth and maxLevelCell match.  Some older grids do not have the bottomDepth variable.
+               if (bottomDepth(iCell) > refBottomDepth(maxLevelCell(iCell)).or. &
+                   bottomDepth(iCell) < refBottomDepthTopOfCell(maxLevelCell(iCell))) then
+                  write (0,'(a)') ' fatal error: bottomDepth and maxLevelCell do not match:'
+                  write (0,'(a,2i5,10f10.2)') ' iCell, maxLevelCell(iCell), bottomDepth(iCell): ', &
+                                iCell, maxLevelCell(iCell), bottomDepth(iCell)
+                  write (0,'(a,10f10.2)') ' refBottomDepth(maxLevelCell(iCell)), refBottomDepthTopOfCell(maxLevelCell(iCell)): ', &
+                                refBottomDepth(maxLevelCell(iCell)), refBottomDepthTopOfCell(maxLevelCell(iCell))
+                  call mpas_dmpar_abort(dminfo)
+               endif
+
+            enddo
+         endif
+
       block => block % next
       end do
 
-   end subroutine ocn_init_z_level!}}}
+   end subroutine ocn_init_vert_coord!}}}
 
    subroutine ocn_init_split_timestep(domain)!{{{
    ! Initialize splitting variables
@@ -625,7 +745,7 @@ module mpas_core
 
       integer :: iTracer, cell, cell1, cell2
       real (kind=RKIND) :: uhSum, hSum, hEdge1
-      real (kind=RKIND), dimension(:), pointer :: referenceBottomDepth
+      real (kind=RKIND), dimension(:), pointer :: refBottomDepth
          
       real (kind=RKIND), dimension(:,:), pointer :: h
       integer :: nVertLevels
@@ -635,7 +755,7 @@ module mpas_core
       do while (associated(block))
 
          h          => block % state % time_levs(1) % state % h % array
-         referenceBottomDepth => block % mesh % referenceBottomDepth % array
+         refBottomDepth => block % mesh % refBottomDepth % array
          nVertLevels = block % mesh % nVertLevels
 
          ! Compute barotropic velocity at first timestep
@@ -651,7 +771,7 @@ module mpas_core
             if (config_filter_btr_mode) then
                do iCell=1,block % mesh % nCells
                   block % state % time_levs(1) % state % h % array(1,iCell) & 
-                = block % mesh % referenceBottomDepth % array(1)
+                = block % mesh % refBottomDepth % array(1)
                enddo
             endif 
 
@@ -735,7 +855,7 @@ module mpas_core
 
       real (kind=RKIND) :: hSum, sumZstarWeights
       real (kind=RKIND), dimension(:), pointer :: hZLevel, zstarWeight, &
-         referenceBottomDepth
+         refBottomDepth
       real (kind=RKIND), dimension(:,:), pointer :: h
 
       ! Initialize z-level grid variables from h, read in from input file.
@@ -747,7 +867,7 @@ module mpas_core
          hZLevel => block % mesh % hZLevel % array
          maxLevelCell => block % mesh % maxLevelCell % array
          zstarWeight => block % mesh % zstarWeight % array
-         referenceBottomDepth => block % mesh % referenceBottomDepth % array
+         refBottomDepth => block % mesh % refBottomDepth % array
 
          do iCell=1,block % mesh % nCells
             ! Compute the total column thickness, hSum, and the sum of zstar weights.
@@ -762,7 +882,7 @@ module mpas_core
             ! where zeta is SSH and W_k are weights
             do k = 1,maxLevelCell(iCell)
                h(k,iCell) = hZLevel(k) &
-                 + (hSum - referenceBottomDepth(maxLevelCell(iCell))) &
+                 + (hSum - refBottomDepth(maxLevelCell(iCell))) &
                   * zstarWeight(k)/sumZstarWeights
             enddo
 
@@ -787,10 +907,6 @@ subroutine ocn_compute_max_level(domain)!{{{
    integer :: i, iCell, iEdge, iVertex, k
    type (block_type), pointer :: block
 
-   real (kind=RKIND), dimension(:,:), pointer :: h, u, u_src, rho
-   real (kind=RKIND), dimension(:,:,:), pointer :: tracers
-   real (kind=RKIND) :: delta_rho, pi, latCenter, lonCenter, dist
-   real (kind=RKIND) :: centerx, centery
    integer :: nCells, nEdges, nVertices, nVertLevels, vertexDegree
 
    integer, dimension(:), pointer :: &

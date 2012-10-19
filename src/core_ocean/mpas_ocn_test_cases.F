@@ -342,10 +342,10 @@
       do iCell=1,grid % nCells
          if (grid % lonCell % array(iCell) < 0.0) grid % lonCell % array(iCell) = grid % lonCell % array(iCell) + 2.0 * pii
          r = sqrt(min(rr**2.0, (grid % lonCell % array(iCell) - lambda_c)**2.0 + (grid % latCell % array(iCell) - theta_c)**2.0))
-         grid % h_s % array(iCell) = hs0 * (1.0 - r/rr)
+         grid % bottomDepth % array(iCell) = hs0 * (1.0 - r/rr)
       end do
 ! output about mountain
-print *, 'h_s',minval(grid % h_s % array),sum(grid % h_s % array)/grid % nCells, maxval(grid % h_s % array)
+print *, 'bottomDepth',minval(grid % bottomDepth % array),sum(grid % bottomDepth % array)/grid % nCells, maxval(grid % bottomDepth % array)
 
       !
       ! Initialize tracer fields
@@ -372,7 +372,7 @@ print *, 'h_s',minval(grid % h_s % array),sum(grid % h_s % array)/grid % nCells,
                                          )**2.0 &
                                       ) / &
                                       gravity
-         state % h % array(1,iCell) = state % h % array(1,iCell) - grid % h_s % array(iCell)
+         state % h % array(1,iCell) = state % h % array(1,iCell) - grid % bottomDepth % array(iCell)
       end do
 
    end subroutine sw_test_case_5

@@ -411,11 +411,22 @@ module ocn_time_integration_split
                 do iEdge=1,block % mesh % nEdges
                    cell1 = block % mesh % cellsOnEdge % array(1,iEdge)
                    cell2 = block % mesh % cellsOnEdge % array(2,iEdge)
-      
+
                    sshEdge = 0.5 * (block % state % time_levs(oldBtrSubcycleTime) % state % sshSubcycle % array(cell1) &
                              + block % state % time_levs(oldBtrSubcycleTime) % state % sshSubcycle % array(cell2) )
-                   hSum = sshEdge + block % mesh % referenceBottomDepthTopOfCell % array (block % mesh % maxLevelEdgeTop % array(iEdge)+1)
-      
+
+                   ! method 0: orig, works only without pbc:      
+                   !hSum = sshEdge + block % mesh % refBottomDepthTopOfCell % array (block % mesh % maxLevelEdgeTop % array(iEdge)+1)
+ 
+                   ! method 1, should match before:
+                   hSum = sshEdge + min(block % mesh % bottomDepth % array(cell1), &
+                                        block % mesh % bottomDepth % array(cell2))
+
+                   ! method 2, better, I think.
+                   ! take average  of full thickness at two neighboring cells
+                   !hSum = sshEdge + 0.5 *(  block % mesh % bottomDepth % array(cell1) &
+                   !                       + block % mesh % bottomDepth % array(cell2) )
+
                    flux = ((1.0-config_btr_gam1_uWt1) * block % state % time_levs(oldBtrSubcycleTime) % state % uBtrSubcycle % array(iEdge) &
                           + config_btr_gam1_uWt1 * block % state % time_levs(newBtrSubcycleTime) % state % uBtrSubcycle % array(iEdge)) &
                           * hSum 
@@ -511,9 +522,19 @@ module ocn_time_integration_split
                                +   config_btr_gam2_SSHWt1 *block % state % time_levs(newBtrSubcycleTime) % state % sshSubcycle % array(cell1)
                      sshCell2 = (1-config_btr_gam2_SSHWt1)*block % state % time_levs(oldBtrSubcycleTime) % state % sshSubcycle % array(cell2) &
                                +   config_btr_gam2_SSHWt1 *block % state % time_levs(newBtrSubcycleTime) % state % sshSubcycle % array(cell2)
-
                      sshEdge = 0.5 * (sshCell1 + sshCell2)
-                     hSum = sshEdge + block % mesh % referenceBottomDepthTopOfCell % array (block % mesh % maxLevelEdgeTop % array(iEdge)+1)
+
+                     ! method 0: orig, works only without pbc:      
+                     !hSum = sshEdge + block % mesh % refBottomDepthTopOfCell % array (block % mesh % maxLevelEdgeTop % array(iEdge)+1)
+ 
+                     ! method 1, should match before:
+                     hSum = sshEdge + min(block % mesh % bottomDepth % array(cell1), &
+                                          block % mesh % bottomDepth % array(cell2))
+
+                     ! method 2, better, I think.
+                     ! take average  of full thickness at two neighboring cells
+                     !hSum = sshEdge + 0.5 *(  block % mesh % bottomDepth % array(cell1) &
+                     !                       + block % mesh % bottomDepth % array(cell2) )
       
                      flux = ((1.0-config_btr_gam3_uWt2) * block % state % time_levs(oldBtrSubcycleTime) % state % uBtrSubcycle % array(iEdge) &
                             + config_btr_gam3_uWt2 * block % state % time_levs(newBtrSubcycleTime) % state % uBtrSubcycle % array(iEdge)) &

@@ -9,12 +9,13 @@
 /
 &io
    config_input_name = 'grid.nc'
-   config_output_name = 'output..nc'
+   config_output_name = 'output.nc'
    config_restart_name = 'restart.nc'
    config_output_interval = '1_00:00:00'
    config_frames_per_outfile = 1000000
    config_pio_num_iotasks = 0
    config_pio_stride      = 1
+   config_write_output_on_startup = .true.
 /
 &decomposition
    config_number_of_blocks = 0
@@ -30,6 +31,12 @@
    config_vert_grid_type = 'isopycnal'
    config_pressure_type = 'pressure'
    config_rho0 = 1014.65
+/
+&partial_bottom_cells
+   config_alter_ICs_for_pbcs = 'off'
+   config_min_pbc_fraction = 0.10
+   config_check_ssh_consistency = .true.
+   config_check_zlevel_consistency = .false.
 /
 &split_explicit_ts
    config_n_ts_iter  =  2 

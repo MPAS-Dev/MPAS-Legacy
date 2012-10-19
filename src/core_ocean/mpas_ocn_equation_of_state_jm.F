@@ -96,7 +96,7 @@ contains
 
 
       real (kind=RKIND), dimension(:), pointer :: &
-        referenceBottomDepth, pRefEOS
+        refBottomDepth, pRefEOS
       real (kind=RKIND), dimension(:,:), intent(inout) :: &
         rho
       real (kind=RKIND), dimension(:,:,:), intent(in) :: tracers
@@ -197,7 +197,7 @@ contains
       nCells      = grid % nCells
       maxLevelCell      => grid % maxLevelCell % array
       nVertLevels = grid % nVertLevels
-      referenceBottomDepth => grid % referenceBottomDepth % array
+      refBottomDepth => grid % refBottomDepth % array
 
 
 !  Jackett and McDougall
@@ -214,14 +214,14 @@ contains
       allocate(pRefEOS(nVertLevels),p(nVertLevels),p2(nVertLevels))
 
       ! This could be put in the init routine.
-      ! Note I am using referenceBottomDepth, so pressure on top level does
+      ! Note I am using refBottomDepth, so pressure on top level does
       ! not include SSH contribution.  I am not sure if that matters, but
       ! POP does it the same way.
-      depth = 0.5*referenceBottomDepth(1)
+      depth = 0.5*refBottomDepth(1)
       pRefEOS(1) = 0.059808*(exp(-0.025*depth) - 1.0) &
           + 0.100766*depth + 2.28405e-7*depth**2
       do k = 2,nVertLevels
-         depth = 0.5*(referenceBottomDepth(k)+referenceBottomDepth(k-1))
+         depth = 0.5*(refBottomDepth(k)+refBottomDepth(k-1))
          pRefEOS(k) = 0.059808*(exp(-0.025*depth) - 1.0) &
              + 0.100766*depth + 2.28405e-7*depth**2
       enddo

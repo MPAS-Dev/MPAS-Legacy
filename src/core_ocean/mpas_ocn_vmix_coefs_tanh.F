@@ -177,22 +177,22 @@ contains
 
       integer :: k, nVertLevels
 
-      real (kind=RKIND), dimension(:), pointer :: referenceBottomDepth
+      real (kind=RKIND), dimension(:), pointer :: refBottomDepth
 
       err = 0
 
       if(.not.tanhViscOn) return
 
       nVertLevels = grid % nVertLevels
-      referenceBottomDepth => grid % referenceBottomDepth % array
+      refBottomDepth => grid % refBottomDepth % array
 
-      ! referenceBottomDepth is used here for simplicity.  Using zMid and h, which 
+      ! refBottomDepth is used here for simplicity.  Using zMid and h, which 
       ! vary in time, would give the exact location of the top, but it
       ! would only change the diffusion value very slightly.
       vertViscTopOfEdge = 0.0
       do k=2,nVertLevels
          vertViscTopOfEdge(k,:) = -(config_max_visc_tanh-config_min_visc_tanh)/2.0 &
-            *tanh((referenceBottomDepth(k-1)+config_ZMid_tanh) &
+            *tanh((refBottomDepth(k-1)+config_ZMid_tanh) &
                   /config_zWidth_tanh) &
             + (config_max_visc_tanh+config_min_visc_tanh)/2
       end do
@@ -250,22 +250,22 @@ contains
 
       integer :: k, nVertLevels
 
-      real (kind=RKIND), dimension(:), pointer :: referenceBottomDepth
+      real (kind=RKIND), dimension(:), pointer :: refBottomDepth
 
       err = 0
 
       if(.not.tanhDiffOn) return
 
       nVertLevels = grid % nVertLevels
-      referenceBottomDepth => grid % referenceBottomDepth % array
+      refBottomDepth => grid % refBottomDepth % array
 
-      ! referenceBottomDepth is used here for simplicity.  Using zMid and h, which 
+      ! refBottomDepth is used here for simplicity.  Using zMid and h, which 
       ! vary in time, would give the exact location of the top, but it
       ! would only change the diffusion value very slightly.
       vertDiffTopOfCell = 0.0
       do k=2,nVertLevels
          vertDiffTopOfCell(k,:) = -(config_max_diff_tanh-config_min_diff_tanh)/2.0 &
-            *tanh((referenceBottomDepth(k-1)+config_ZMid_tanh) &
+            *tanh((refBottomDepth(k-1)+config_ZMid_tanh) &
                   /config_zWidth_tanh) &
             + (config_max_diff_tanh+config_min_diff_tanh)/2
       end do

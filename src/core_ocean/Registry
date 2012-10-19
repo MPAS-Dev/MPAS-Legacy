@@ -19,11 +19,12 @@ namelist character io       config_output_name         output.nc
 namelist character io       config_restart_name        restart.nc
 namelist character io       config_output_interval     24:00:00
 namelist integer   io       config_frames_per_outfile  0
-namelist integer   io       config_pio_num_iotasks      0 
-namelist integer   io       config_pio_stride           1
+namelist integer   io       config_pio_num_iotasks     0 
+namelist integer   io       config_pio_stride          1
+namelist logical   io       config_write_output_on_startup  true
 namelist character decomposition config_block_decomp_file_prefix  graph.info.part.
 namelist integer   decomposition config_number_of_blocks          0
-namelist logical   decomposition config_explicit_proc_decomp      .false.
+namelist logical   decomposition config_explicit_proc_decomp      false
 namelist character decomposition config_proc_decomp_file_prefix   graph.info.part.
 namelist logical   restart  config_do_restart          false
 namelist character restart  config_restart_interval    none
@@ -31,6 +32,10 @@ namelist character grid     config_vert_grid_type      isopycnal
 namelist character grid     config_pressure_type       pressure
 namelist real      grid     config_rho0                1028
 namelist logical   grid     config_enforce_zstar_at_restart false
+namelist character partial_bottom_cells config_alter_ICs_for_pbcs zlevel_pbcs_off
+namelist real      partial_bottom_cells config_min_pbc_fraction  0.10
+namelist logical   partial_bottom_cells config_check_ssh_consistency true
+namelist logical   partial_bottom_cells config_check_zlevel_consistency false
 namelist integer   split_explicit_ts config_n_ts_iter     2
 namelist integer   split_explicit_ts config_n_bcl_iter_beg   2
 namelist integer   split_explicit_ts config_n_bcl_iter_mid   2
@@ -60,7 +65,7 @@ namelist real      hmix     config_rayleigh_damping_coeff 0.0
 namelist real      hmix     config_apvm_scale_factor      0.0
 namelist character vmix     config_vert_visc_type       const
 namelist character vmix     config_vert_diff_type       const
-namelist logical   vmix     config_implicit_vertical_mix  .true.
+namelist logical   vmix     config_implicit_vertical_mix  true
 namelist real      vmix     config_convective_visc      1.0
 namelist real      vmix     config_convective_diff      1.0
 namelist real      vmix     config_bottom_drag_coeff    1.0e-3
@@ -162,7 +167,7 @@ var persistent integer cellsOnVertex ( vertexDegree nVertices ) 0 iro cellsOnVer
 var persistent real    kiteAreasOnVertex ( vertexDegree nVertices ) 0 iro kiteAreasOnVertex mesh - -
 var persistent real    fEdge ( nEdges ) 0 iro fEdge mesh - -
 var persistent real    fVertex ( nVertices ) 0 iro fVertex mesh - -
-var persistent real    h_s ( nCells ) 0 iro h_s mesh - -
+var persistent real    bottomDepth ( nCells ) 0 iro bottomDepth mesh - -
 
 % Space needed for advection
 var persistent real    deriv_two ( maxEdges2 TWO nEdges ) 0 - deriv_two mesh - -
@@ -192,8 +197,8 @@ var persistent integer maxLevelEdgeTop ( nEdges ) 0 - maxLevelEdgeTop mesh - -
 var persistent integer maxLevelEdgeBot ( nEdges ) 0 - maxLevelEdgeBot mesh - -
 var persistent integer maxLevelVertexTop ( nVertices ) 0 - maxLevelVertexTop mesh - -
 var persistent integer maxLevelVertexBot ( nVertices ) 0 - maxLevelVertexBot mesh - -
-var persistent real referenceBottomDepth ( nVertLevels ) 0 iro referenceBottomDepth mesh - -
-var persistent real referenceBottomDepthTopOfCell ( nVertLevelsP1 ) 0 - referenceBottomDepthTopOfCell mesh - -
+var persistent real refBottomDepth ( nVertLevels ) 0 iro refBottomDepth mesh - -
+var persistent real refBottomDepthTopOfCell ( nVertLevelsP1 ) 0 - refBottomDepthTopOfCell mesh - -
 var persistent real hZLevel ( nVertLevels ) 0 iro hZLevel mesh - -
 var persistent real zstarWeight ( nVertLevels ) 0 - zstarWeight mesh - -
 

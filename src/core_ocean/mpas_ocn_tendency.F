@@ -411,8 +411,7 @@ contains
       real (kind=RKIND), dimension(:), allocatable:: pTop
 
       real (kind=RKIND), dimension(:), pointer :: &
-        h_s, fVertex, dvEdge, dcEdge, areaCell, areaTriangle, &
-        referenceBottomDepth, ssh
+        bottomDepth, fVertex, dvEdge, dcEdge, areaCell, areaTriangle, ssh
       real (kind=RKIND), dimension(:,:), pointer :: &
         weightsOnEdge, kiteAreasOnVertex, h_edge, h, u, v, pressure,&
         circulation, vorticity, ke, ke_edge, MontPot, wTop, zMid, &
@@ -435,11 +434,11 @@ contains
       kev         => s % kev % array
       kevc        => s % kevc % array
       ke_edge     => s % ke_edge % array
-      Vor_edge     => s % Vor_edge % array
-      Vor_vertex   => s % Vor_vertex % array
-      Vor_cell     => s % Vor_cell % array
-      gradVor_n     => s % gradVor_n % array
-      gradVor_t     => s % gradVor_t % array
+      Vor_edge    => s % Vor_edge % array
+      Vor_vertex  => s % Vor_vertex % array
+      Vor_cell    => s % Vor_cell % array
+      gradVor_n   => s % gradVor_n % array
+      gradVor_t   => s % gradVor_t % array
       rho         => s % rho % array
       MontPot     => s % MontPot % array
       pressure    => s % pressure % array
@@ -460,9 +459,8 @@ contains
       dvEdge            => grid % dvEdge % array
       areaCell          => grid % areaCell % array
       areaTriangle      => grid % areaTriangle % array
-      h_s               => grid % h_s % array
+      bottomDepth       => grid % bottomDepth % array
       fVertex           => grid % fVertex % array
-      referenceBottomDepth        => grid % referenceBottomDepth % array
       deriv_two         => grid % deriv_two % array
       maxLevelCell      => grid % maxLevelCell % array
       maxLevelEdgeTop   => grid % maxLevelEdgeTop % array
@@ -779,9 +777,9 @@ contains
            pTop(1) = 0.0
            ! For isopycnal mode, p is the Montgomery Potential.
            ! At top layer it is g*SSH, where SSH may be off by a 
-           ! constant (ie, h_s can be relative to top or bottom)
+           ! constant (ie, bottomDepth can be relative to top or bottom)
            MontPot(1,iCell) = gravity &
-              * (h_s(iCell) + sum(h(1:nVertLevels,iCell)))
+              * (bottomDepth(iCell) + sum(h(1:nVertLevels,iCell)))
 
            do k=2,nVertLevels
               pTop(k) = pTop(k-1) + rho(k-1,iCell)*gravity* h(k-1,iCell)
@@ -810,10 +808,10 @@ contains
 
            ! Compute zMid, the z-coordinate of the middle of the layer.
            ! This is used for the rho g grad z momentum term.
-           ! Note the negative sign, since referenceBottomDepth is positive
+           ! Note the negative sign, since bottomDepth is positive
            ! and z-coordinates are negative below the surface.
            k = maxLevelCell(iCell)
-           zMid(k:nVertLevels,iCell) = -referenceBottomDepth(k) + 0.5*h(k,iCell)
+           zMid(k:nVertLevels,iCell) = -bottomDepth(iCell) + 0.5*h(k,iCell)
 
            do k=maxLevelCell(iCell)-1, 1, -1
               zMid(k,iCell) = zMid(k+1,iCell)  &
@@ -830,13 +828,11 @@ contains
       !
       do iCell=1,nCells
          ! Start at the bottom where we know the depth, and go up.
-         ! The bottom depth for this cell is 
-         ! referenceBottomDepth(maxLevelCell(iCell)).
-         ! Note the negative sign, since referenceBottomDepth is positive
+         ! The bottom depth for this cell is bottomDepth(iCell).
+         ! Note the negative sign, since bottomDepth is positive
          ! and z-coordinates are negative below the surface.
 
-         ssh(iCell) = -referenceBottomDepth(maxLevelCell(iCell)) &
-           + sum(h(1:maxLevelCell(iCell),iCell))
+         ssh(iCell) = - bottomDepth(iCell) + sum(h(1:maxLevelCell(iCell),iCell))
 
       end do
 
@@ -878,7 +874,7 @@ contains
 
 
       real (kind=RKIND), dimension(:), pointer :: &
-        h_s, fVertex, fEdge, dvEdge, dcEdge, areaCell, areaTriangle, zstarWeight
+        dvEdge, areaCell, zstarWeight
       real (kind=RKIND), dimension(:,:), pointer :: uTransport,h,wTop, h_edge
       real (kind=RKIND), dimension(:,:), allocatable:: div_hu
       real (kind=RKIND), dimension(:), allocatable:: div_hu_btr, h_tend_col
