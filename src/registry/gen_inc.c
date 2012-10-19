@@ -143,8 +143,8 @@ void gen_namelists(struct namelist * nls)
          fortprintf(fd, "            call mpas_dmpar_abort(dminfo)\n");
          fortprintf(fd, "         else if (ierr < 0) then\n");
          fortprintf(fd, "            write(0,*) \'Namelist record &%s not found; using default values for this namelist\'\'s variables\'\n",nls_ptr->record);
-         fortprintf(fd, "            rewind(funit)\n");
          fortprintf(fd, "         end if\n");
+         fortprintf(fd, "         rewind(funit)\n");
 
          dict_insert(dictionary, nls_ptr->record);
       }
