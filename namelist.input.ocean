@@ -62,6 +62,12 @@
    config_h_tracer_eddy_diff2 = 1.0e5
    config_h_tracer_eddy_diff4 = 0.0
 /
+&hmix_leith
+   config_use_leith_del2 = .false.
+   config_leith_parameter = 1.0
+   config_leith_dx = 15000.0
+   config_leith_visc2_max = 2.5e3
+/
 &vmix
    config_vert_visc_type  = 'const'
    config_vert_diff_type  = 'const'

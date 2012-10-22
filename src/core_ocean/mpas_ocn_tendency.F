@@ -172,7 +172,7 @@ contains
 
       real (kind=RKIND), dimension(:,:), pointer :: &
         h_edge, h, u, rho, zMid, pressure, &
-        tend_u, circulation, vorticity, ke, ke_edge, Vor_edge, &
+        tend_u, circulation, vorticity, viscosity, ke, ke_edge, Vor_edge, &
         MontPot, wTop, divergence, vertViscTopOfEdge
 
       real (kind=RKIND), dimension(:,:), pointer :: u_src
@@ -186,6 +186,7 @@ contains
       wTop        => s % wTop % array
       zMid        => s % zMid % array
       h_edge      => s % h_edge % array
+      viscosity   => s % viscosity % array
       vorticity   => s % vorticity % array
       divergence  => s % divergence % array
       ke          => s % ke % array
@@ -237,7 +238,7 @@ contains
       !   strictly only valid for config_h_mom_eddy_visc2 == constant
       !
       call mpas_timer_start("hmix", .false., velHmixTimer)
-      call ocn_vel_hmix_tend(grid, divergence, vorticity, tend_u, err)
+      call ocn_vel_hmix_tend(grid, divergence, vorticity, viscosity, tend_u, err)
       call mpas_timer_stop("hmix", velHmixTimer)
 
       !

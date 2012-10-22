@@ -10,6 +10,7 @@ OBJS = mpas_ocn_mpas_core.o \
 	   mpas_ocn_vel_vadv.o \
 	   mpas_ocn_vel_hmix.o \
 	   mpas_ocn_vel_hmix_del2.o \
+	   mpas_ocn_vel_hmix_leith.o \
 	   mpas_ocn_vel_hmix_del4.o \
 	   mpas_ocn_vel_forcing.o \
 	   mpas_ocn_vel_forcing_windstress.o \
@@ -87,9 +88,11 @@ mpas_ocn_vel_pressure_grad.o:
 
 mpas_ocn_vel_vadv.o:
 
-mpas_ocn_vel_hmix.o: mpas_ocn_vel_hmix_del2.o mpas_ocn_vel_hmix_del4.o
+mpas_ocn_vel_hmix.o: mpas_ocn_vel_hmix_del2.o mpas_ocn_vel_hmix_leith.o mpas_ocn_vel_hmix_del4.o
 
 mpas_ocn_vel_hmix_del2.o:
+
+mpas_ocn_vel_hmix_leith.o:
 
 mpas_ocn_vel_hmix_del4.o:
 
@@ -179,6 +182,7 @@ mpas_ocn_mpas_core.o: mpas_ocn_mpas_core.o \
 					  mpas_ocn_vel_vadv.o \
 					  mpas_ocn_vel_hmix.o \
 					  mpas_ocn_vel_hmix_del2.o \
+					  mpas_ocn_vel_hmix_leith.o \
 					  mpas_ocn_vel_hmix_del4.o \
 					  mpas_ocn_vel_forcing.o \
 					  mpas_ocn_vel_forcing_windstress.o \

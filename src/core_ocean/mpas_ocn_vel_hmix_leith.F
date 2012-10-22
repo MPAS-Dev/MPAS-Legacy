@@ -1,18 +1,18 @@
 !|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
 !
-!  ocn_vel_hmix_del2
+!  ocn_vel_hmix_leith
 !
-!> \brief Ocean horizontal mixing - Laplacian parameterization 
-!> \author Phil Jones, Doug Jacobsen
-!> \date   15 September 2011
+!> \brief Ocean horizontal mixing - Leith parameterization 
+!> \author Mark Petersen
+!> \date   22 October 2012
 !> \version SVN:$Id:$
 !> \details
 !>  This module contains routines for computing horizontal mixing 
-!>  tendencies using a Laplacian formulation.
+!>  tendencies using the Leith parameterization.
 !
 !-----------------------------------------------------------------------
 
-module ocn_vel_hmix_del2
+module ocn_vel_hmix_leith
 
    use mpas_grid_types
    use mpas_configure
@@ -33,8 +33,8 @@ module ocn_vel_hmix_del2
    !
    !--------------------------------------------------------------------
 
-   public :: ocn_vel_hmix_del2_tend, &
-             ocn_vel_hmix_del2_init
+   public :: ocn_vel_hmix_leith_tend, &
+             ocn_vel_hmix_leith_init
 
    !-------------------------------------------------------------------
    !
@@ -42,10 +42,9 @@ module ocn_vel_hmix_del2
    !
    !--------------------------------------------------------------------
 
-   logical ::  hmixDel2On  !< integer flag to determine whether del2 chosen
+   logical ::  hmixLeithOn  !< integer flag to determine whether leith chosen
 
    real (kind=RKIND) :: &
-      eddyVisc2,        &!< base eddy diffusivity for Laplacian
       viscVortCoef
 
 !***********************************************************************
@@ -54,23 +53,30 @@ contains
 
 !***********************************************************************
 !
-!  routine ocn_vel_hmix_del2_tend
+!  routine ocn_vel_hmix_leith_tend
 !
-!> \brief   Computes tendency term for Laplacian horizontal momentum mixing
-!> \author  Phil Jones, Doug Jacobsen
-!> \date    22 August 2011
+!> \brief  Computes tendency term for horizontal momentum mixing with Leith parameterization
+!> \author Mark Petersen, Todd Ringler
+!> \date   22 October 2012
 !> \version SVN:$Id$
 !> \details 
-!>  This routine computes the horizontal mixing tendency for momentum
-!>  based on a Laplacian form for the mixing, \f$\nu_2 \nabla^2 u\f$
-!>  This tendency takes the
-!>  form \f$\nu( \nabla divergence + k \times \nabla vorticity )\f$,
-!>  where \f$\nu\f$ is a viscosity and \f$k\f$ is the vertical unit vector.
-!>  This form is strictly only valid for constant \f$\nu\f$ .
+!> This routine computes the horizontal mixing tendency for momentum
+!> based on the Leith closure.  The Leith closure is the
+!> enstrophy-cascade analogy to the Smagorinsky (1963) energy-cascade
+!> closure, i.e. Leith (1996) assumes an inertial range of enstrophy flux
+!> moving toward the grid scale. The assumption of an enstrophy cascade
+!> and dimensional analysis produces right-hand-side dissipation,
+!> $\bf{D}$, of velocity of the form
+!> $ {\bf D} = \nabla \cdot \left( \nu_\ast \nabla {\bf u} \right) 
+!>    = \nabla \cdot \left( \gamma \left| \nabla \omega  \right| 
+!>      \left( \Delta x \right)^3 \nabla \bf{u} \right)
+!> where $\omega$ is the relative vorticity and $\gamma$ is a non-dimensional, 
+!> $O(1)$ parameter. We set $\gamma=1$.
+
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_vel_hmix_del2_tend(grid, divergence, vorticity, viscosity, tend, err)!{{{
+   subroutine ocn_vel_hmix_leith_tend(grid, divergence, vorticity, viscosity, tend, err)!{{{
 
       !-----------------------------------------------------------------
       !
@@ -118,7 +124,7 @@ contains
       integer, dimension(:,:), pointer :: cellsOnEdge, verticesOnEdge, edgeMask
 
       real (kind=RKIND) :: u_diffusion, invLength1, invLength2, visc2
-      real (kind=RKIND), dimension(:), pointer :: meshScalingDel2, &
+      real (kind=RKIND), dimension(:), pointer :: meshScaling, &
               dcEdge, dvEdge
 
       !-----------------------------------------------------------------
@@ -129,13 +135,13 @@ contains
 
       err = 0
 
-      if(.not.hmixDel2On) return
+      if(.not.hmixLeithOn) return
 
       nEdgesSolve = grid % nEdgesSolve
       maxLevelEdgeTop => grid % maxLevelEdgeTop % array
       cellsOnEdge => grid % cellsOnEdge % array
       verticesOnEdge => grid % verticesOnEdge % array
-      meshScalingDel2 => grid % meshScalingDel2 % array
+      meshScaling => grid % meshScaling % array
       edgeMask => grid % edgeMask % array
       dcEdge => grid % dcEdge % array
       dvEdge => grid % dvEdge % array
@@ -159,7 +165,12 @@ contains
                           -viscVortCoef &
                           *( vorticity(k,vertex2) - vorticity(k,vertex1) ) * invLength2
 
-            visc2 = meshScalingDel2(iEdge) * eddyVisc2
+            ! Here the first line is (\delta x)^3
+            ! the second line is |\nabla \omega|
+            ! and u_diffusion is \nabla^2 u (see formula for $\bf{D}$ above).
+            visc2 = ( config_leith_parameter * config_leith_dx * meshScaling(iEdge) / 3.14)**3 &
+                     * abs( vorticity(k,vertex2) - vorticity(k,vertex1) ) * invLength1 * sqrt(3.0)
+            visc2 = min(visc2, config_leith_visc2_max)
 
             tend(k,iEdge) = tend(k,iEdge) + edgeMask(k, iEdge) * visc2 * u_diffusion
 
@@ -170,23 +181,23 @@ contains
 
    !--------------------------------------------------------------------
 
-   end subroutine ocn_vel_hmix_del2_tend!}}}
+   end subroutine ocn_vel_hmix_leith_tend!}}}
 
 !***********************************************************************
 !
-!  routine ocn_vel_hmix_del2_init
+!  routine ocn_vel_hmix_leith_init
 !
-!> \brief   Initializes ocean momentum Laplacian horizontal mixing
-!> \author  Phil Jones, Doug Jacobsen
-!> \date    15 September 2011
+!> \brief   Initializes ocean momentum horizontal mixing with Leith parameterization
+!> \author Mark Petersen
+!> \date   22 October 2012
 !> \version SVN:$Id$
 !> \details 
 !>  This routine initializes a variety of quantities related to 
-!>  Laplacian horizontal momentum mixing in the ocean.  
+!>  Leith parameterization for horizontal momentum mixing in the ocean.  
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_vel_hmix_del2_init(err)!{{{
+   subroutine ocn_vel_hmix_leith_init(err)!{{{
 
 
    integer, intent(out) :: err !< Output: error flag
@@ -199,28 +210,26 @@ contains
 
    err = 0
 
-   hmixDel2On = .false.
+   hmixLeithOn = .false.
 
-   if ( config_h_mom_eddy_visc2 > 0.0 ) then
-      hmixDel2On = .true.
-      eddyVisc2 = config_h_mom_eddy_visc2
-
+   if (config_use_leith_del2) then
+      hmixLeithOn = .true.
 
       if (config_visc_vorticity_term) then
          viscVortCoef = config_visc_vorticity_visc2_scale
       else
          viscVortCoef = 0.0
       endif
-   endif
 
+   endif
 
    !--------------------------------------------------------------------
 
-   end subroutine ocn_vel_hmix_del2_init!}}}
+   end subroutine ocn_vel_hmix_leith_init!}}}
 
 !***********************************************************************
 
-end module ocn_vel_hmix_del2
+end module ocn_vel_hmix_leith
 
 !|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
 ! vim: foldmethod=marker

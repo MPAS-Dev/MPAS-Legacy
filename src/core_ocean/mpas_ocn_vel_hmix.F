@@ -20,6 +20,7 @@ module ocn_vel_hmix
    use mpas_configure
    use mpas_timer
    use ocn_vel_hmix_del2
+   use ocn_vel_hmix_leith
    use ocn_vel_hmix_del4
 
    implicit none
@@ -47,7 +48,7 @@ module ocn_vel_hmix
    !
    !--------------------------------------------------------------------
 
-   type (timer_node), pointer :: del2Timer, del4Timer
+   type (timer_node), pointer :: del2Timer, leithTimer, del4Timer
 
 
 !***********************************************************************
@@ -72,7 +73,7 @@ contains
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_vel_hmix_tend(grid, divergence, vorticity, tend, err)!{{{
+   subroutine ocn_vel_hmix_tend(grid, divergence, vorticity, viscosity, tend, err)!{{{
 
       !-----------------------------------------------------------------
       !
@@ -98,6 +99,9 @@ contains
       real (kind=RKIND), dimension(:,:), intent(inout) :: &
          tend          !< Input/Output: velocity tendency
 
+      real (kind=RKIND), dimension(:,:), intent(inout) :: &
+         viscosity     !< Input: viscosity
+
       !-----------------------------------------------------------------
       !
       ! output variables
@@ -112,7 +116,7 @@ contains
       !
       !-----------------------------------------------------------------
 
-      integer :: err1, err2
+      integer :: err1, err2, err3
 
       !-----------------------------------------------------------------
       !
@@ -122,14 +126,21 @@ contains
       !
       !-----------------------------------------------------------------
 
+      viscosity = 0.0
+
       call mpas_timer_start("del2", .false., del2Timer)
-      call ocn_vel_hmix_del2_tend(grid, divergence, vorticity, tend, err1)
+      call ocn_vel_hmix_del2_tend(grid, divergence, vorticity, viscosity, tend, err1)
       call mpas_timer_stop("del2", del2Timer)
+
+      call mpas_timer_start("leith", .false., leithTimer)
+      call ocn_vel_hmix_leith_tend(grid, divergence, vorticity, viscosity, tend, err2)
+      call mpas_timer_stop("leith", leithTimer)
+
       call mpas_timer_start("del4", .false., del4Timer)
-      call ocn_vel_hmix_del4_tend(grid, divergence, vorticity, tend, err2)
+      call ocn_vel_hmix_del4_tend(grid, divergence, vorticity, tend, err3)
       call mpas_timer_stop("del4", del4Timer)
 
-      err = ior(err1, err2)
+      err = ior(ior(err1, err2),err3)
 
    !--------------------------------------------------------------------
 
@@ -163,12 +174,13 @@ contains
 
       integer, intent(out) :: err !< Output: error flag
 
-      integer :: err1, err2
+      integer :: err1, err2, err3
 
       call ocn_vel_hmix_del2_init(err1)
-      call ocn_vel_hmix_del4_init(err2)
+      call ocn_vel_hmix_leith_init(err2)
+      call ocn_vel_hmix_del4_init(err3)
 
-      err = ior(err1, err2)
+      err = ior(ior(err1, err2),err3)
 
    !--------------------------------------------------------------------
 
