@@ -561,6 +561,7 @@ module mpas_core
       real (kind=RKIND), dimension(:,:), pointer :: h
       real (kind=RKIND), dimension(:,:,:), pointer :: tracers
       integer :: nVertLevels
+      logical :: consistentSSH
 
       ! Initialize z-level grid variables from h, read in from input file.
       block => domain % blocklist
@@ -699,15 +700,23 @@ module mpas_core
          endif
 
          if (config_check_ssh_consistency) then
+            consistentSSH = .true.
             do iCell = 1,nCells
                ! Check if abs(ssh)>2m.  If so, print warning.
                if (abs(sum(h(1:maxLevelCell(iCell),iCell))-bottomDepth(iCell))>2.0) then
+                  consistentSSH = .false.
+#ifdef MPAS_DEBUG
                   write (0,'(a)') ' Warning: abs(sum(h)-bottomDepth)>2m.  Most likely, initial h does not match bottomDepth.'
                   write (0,*) ' iCell, K=maxLevelCell(iCell), bottomDepth(iCell),sum(h),bottomDepth,hZLevel(K),h(K): ', &
                                 iCell, maxLevelCell(iCell), bottomDepth(iCell),sum(h(1:maxLevelCell(iCell),iCell)),bottomDepth(iCell), &
                                 hZLevel(maxLevelCell(iCell)), h(maxLevelCell(iCell),iCell)
+#endif                            
                endif
             enddo
+
+            if (.not. consistentSSH) then
+               write(0,*) 'Warning: SSH is not consisntent'
+            end if
          endif
 
          if (config_check_zlevel_consistency) then
