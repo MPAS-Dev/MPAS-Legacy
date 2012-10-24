@@ -231,8 +231,9 @@ ifndef FFLAGS_DEBUG
 	DEBUG_MESSAGE="Debug flags are not defined for this compile group. Defaulting to Optimized flags"
 else # FFLAGS_DEBUG IF
 	FFLAGS=$(FFLAGS_DEBUG)
-	CFLAGS=$(CFLAGS_DEBUG) -DMPAS_DEBUG
+	CFLAGS=$(CFLAGS_DEBUG)
 	LDFLAGS=$(LDFLAGS_DEBUG)
+	override CPPFLAGS += -DMPAS_DEBUG
 	DEBUG_MESSAGE="Debugging is on."
 endif # FFLAGS_DEBUG IF
 
