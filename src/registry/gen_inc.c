@@ -813,6 +813,10 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
             fortprintf(fd, "      %s %% %s %% fieldName = \'%s\'\n", group_ptr->name, var_ptr->name_in_code, var_ptr->name_in_file);
             fortprintf(fd, "      %s %% %s %% isSuperArray = .false.\n", group_ptr->name, var_ptr->name_in_code);
             if (var_ptr->ndims > 0) {
+	  		  if(var_ptr->persistence == SCRATCH){
+				  fortprintf(fd, "      ! SCRATCH VARIABLE\n");
+				  fortprintf(fd, "      nullify(%s %% %s %% array)\n", group_ptr->name, var_ptr->name_in_code); 
+			  } else if(var_ptr->persistence == PERSISTENT){
                fortprintf(fd, "      allocate(%s %% %s %% array(", group_ptr->name, var_ptr->name_in_code);
                dimlist_ptr = var_ptr->dimlist;
                if (!strncmp(dimlist_ptr->dim->name_in_file, "nCells", 1024) ||
@@ -843,6 +847,7 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
                else if (var_ptr->vtype == CHARACTER)
                   fortprintf(fd, "      %s %% %s %% array = \'\'\n", group_ptr->name, var_ptr->name_in_code ); /* initialize field to zero */
 
+			  }
                dimlist_ptr = var_ptr->dimlist;
                i = 1;
                while (dimlist_ptr) {
@@ -869,7 +874,7 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
                   i++;
                   dimlist_ptr = dimlist_ptr->next;
                }
-            }
+			}
 
             if (var_ptr->timedim) fortprintf(fd, "      %s %% %s %% hasTimeDimension = .true.\n", group_ptr->name, var_ptr->name_in_code);
             else fortprintf(fd, "      %s %% %s %% hasTimeDimension = .false.\n", group_ptr->name, var_ptr->name_in_code);
@@ -934,14 +939,18 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
                var_list_ptr2 = var_list_ptr;
                var_list_ptr = var_list_ptr->next;
             }
-            fortprintf(fd, "      deallocate(%s %% %s %% array)\n", group_ptr->name, var_list_ptr2->var->super_array);
+            fortprintf(fd, "      if(associated(%s %% %s %% array)) then\n", group_ptr->name, var_list_ptr2->var->super_array);
+            fortprintf(fd, "         deallocate(%s %% %s %% array)\n", group_ptr->name, var_list_ptr2->var->super_array);
+            fortprintf(fd, "      end if\n");
             fortprintf(fd, "      deallocate(%s %% %s %% ioinfo)\n", group_ptr->name, var_list_ptr2->var->super_array);
             fortprintf(fd, "      call mpas_deallocate_attlist(%s %% %s %% attList)\n", group_ptr->name, var_list_ptr2->var->super_array);
             fortprintf(fd, "      deallocate(%s %% %s)\n\n", group_ptr->name, var_list_ptr2->var->super_array);
          }
          else {
             if (var_ptr->ndims > 0) {
-               fortprintf(fd, "      deallocate(%s %% %s %% array)\n", group_ptr->name, var_ptr->name_in_code);
+               fortprintf(fd, "      if(associated(%s %% %s %% array)) then\n", group_ptr->name, var_ptr->name_in_code);
+               fortprintf(fd, "         deallocate(%s %% %s %% array)\n", group_ptr->name, var_ptr->name_in_code);
+               fortprintf(fd, "      end if\n");
                fortprintf(fd, "      deallocate(%s %% %s %% ioinfo)\n", group_ptr->name, var_ptr->name_in_code);
                fortprintf(fd, "      call mpas_deallocate_attlist(%s %% %s %% attList)\n", group_ptr->name, var_ptr->name_in_code);
                fortprintf(fd, "      deallocate(%s %% %s)\n\n", group_ptr->name, var_ptr->name_in_code);
@@ -1111,7 +1120,6 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
      var_list_ptr = group_ptr->vlist;
      var_list_ptr = var_list_ptr->next;
      var_ptr = var_list_ptr->var;
-
      
      int ntime_levs = 1;
      
@@ -2126,6 +2134,7 @@ void gen_reads(struct group_list * groups, struct variable * vars, struct dimens
 
          dimlist_ptr = var_ptr->dimlist;
          i = 1;
+		 if(var_ptr->persistence == PERSISTENT){
          while (dimlist_ptr) {
             if (i == var_ptr->ndims) { 
 
@@ -2172,6 +2181,7 @@ void gen_reads(struct group_list * groups, struct variable * vars, struct dimens
             i++;
             dimlist_ptr = dimlist_ptr -> next;
          }
+		 }
 
          if (var_list_ptr) var_list_ptr = var_list_ptr->next;
       }

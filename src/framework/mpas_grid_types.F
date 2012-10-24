@@ -363,6 +363,26 @@ module mpas_grid_types
       type (dm_info), pointer :: dminfo
    end type domain_type
 
+   interface mpas_allocate_scratch_field
+     module procedure mpas_allocate_scratch_field1d_integer
+     module procedure mpas_allocate_scratch_field2d_integer
+     module procedure mpas_allocate_scratch_field3d_integer
+     module procedure mpas_allocate_scratch_field1d_real
+     module procedure mpas_allocate_scratch_field2d_real
+     module procedure mpas_allocate_scratch_field3d_real
+     module procedure mpas_allocate_scratch_field1d_char
+   end interface
+
+   interface mpas_deallocate_scratch_field
+     module procedure mpas_deallocate_scratch_field1d_integer
+     module procedure mpas_deallocate_scratch_field2d_integer
+     module procedure mpas_deallocate_scratch_field3d_integer
+     module procedure mpas_deallocate_scratch_field1d_real
+     module procedure mpas_deallocate_scratch_field2d_real
+     module procedure mpas_deallocate_scratch_field3d_real
+     module procedure mpas_deallocate_scratch_field1d_char
+   end interface
+
    interface mpas_deallocate_field
      module procedure mpas_deallocate_field0d_integer
      module procedure mpas_deallocate_field1d_integer
@@ -443,6 +463,406 @@ module mpas_grid_types
       deallocate(dom) 
 
    end subroutine mpas_deallocate_domain!}}}
+
+   subroutine mpas_allocate_scratch_field1d_integer(f, single_block_in)!{{{
+       type (field1dInteger), pointer :: f
+       logical, intent(in), optional :: single_block_in
+       logical :: single_block
+       type (field1dInteger), pointer :: f_cursor
+
+       if(present(single_block_in)) then
+          single_block = single_block_in
+       else
+          single_block = .false.
+       end if
+
+       if(.not. single_block) then
+          f_cursor => f
+          do while(associated(f_cursor))
+             if(.not.associated(f_cursor % array)) then
+                allocate(f_cursor % array(f_cursor % dimSizes(1)))
+             end if
+             f_cursor => f_cursor % next
+          end do
+       else
+          if(.not.associated(f % array)) then
+            allocate(f % array(f % dimSizes(1)))
+          end if
+       end if
+
+   end subroutine mpas_allocate_scratch_field1d_integer!}}}
+
+   subroutine mpas_allocate_scratch_field2d_integer(f, single_block_in)!{{{
+       type (field2dInteger), pointer :: f
+       logical, intent(in), optional :: single_block_in
+       logical :: single_block
+       type (field2dInteger), pointer :: f_cursor
+
+       if(present(single_block_in)) then
+          single_block = single_block_in
+       else
+          single_block = .false.
+       end if
+
+       if(.not. single_block) then
+          f_cursor => f
+          do while(associated(f_cursor))
+             if(.not.associated(f_cursor % array)) then
+                allocate(f_cursor % array(f_cursor % dimSizes(1), f_cursor % dimSizes(2)))
+             end if
+             f_cursor => f_cursor % next
+          end do
+       else
+          if(.not.associated(f % array)) then
+            allocate(f % array(f % dimSizes(1), f % dimSizes(2)))
+          end if
+       end if
+
+   end subroutine mpas_allocate_scratch_field2d_integer!}}}
+
+   subroutine mpas_allocate_scratch_field3d_integer(f, single_block_in)!{{{
+       type (field3dInteger), pointer :: f
+       logical, intent(in), optional :: single_block_in
+       logical :: single_block
+       type (field3dInteger), pointer :: f_cursor
+
+       if(present(single_block_in)) then
+          single_block = single_block_in
+       else
+          single_block = .false.
+       end if
+
+       if(.not. single_block) then
+          f_cursor => f
+          do while(associated(f_cursor))
+             if(.not.associated(f_cursor % array)) then
+                allocate(f_cursor % array(f_cursor % dimSizes(1), f_cursor % dimSizes(2), f_cursor % dimSizes(3)))
+             end if
+             f_cursor => f_cursor % next
+          end do
+       else
+          if(.not.associated(f % array)) then
+            allocate(f % array(f % dimSizes(1), f % dimSizes(2), f % dimSizes(3)))
+          end if
+       end if
+
+   end subroutine mpas_allocate_scratch_field3d_integer!}}}
+
+   subroutine mpas_allocate_scratch_field1d_real(f, single_block_in)!{{{
+       type (field1dReal), pointer :: f
+       logical, intent(in), optional :: single_block_in
+       logical :: single_block
+       type (field1dReal), pointer :: f_cursor
+
+       if(present(single_block_in)) then
+          single_block = single_block_in
+       else
+          single_block = .false.
+       end if
+
+       if(.not. single_block) then
+          f_cursor => f
+          do while(associated(f_cursor))
+             if(.not.associated(f_cursor % array)) then
+                allocate(f_cursor % array(f_cursor % dimSizes(1)))
+             end if
+             f_cursor => f_cursor % next
+          end do
+       else
+          if(.not.associated(f % array)) then
+            allocate(f % array(f % dimSizes(1)))
+          end if
+       end if
+
+   end subroutine mpas_allocate_scratch_field1d_real!}}}
+
+   subroutine mpas_allocate_scratch_field2d_real(f, single_block_in)!{{{
+       type (field2dReal), pointer :: f
+       logical, intent(in), optional :: single_block_in
+       logical :: single_block
+       type (field2dReal), pointer :: f_cursor
+
+       if(present(single_block_in)) then
+          single_block = single_block_in
+       else
+          single_block = .false.
+       end if
+
+       if(.not. single_block) then
+          f_cursor => f
+          do while(associated(f_cursor))
+             if(.not.associated(f_cursor % array)) then
+                allocate(f_cursor % array(f_cursor % dimSizes(1), f_cursor % dimSizes(2)))
+             end if
+             f_cursor => f_cursor % next
+          end do
+       else
+          if(.not.associated(f % array)) then
+            allocate(f % array(f % dimSizes(1), f % dimSizes(2)))
+          end if
+       end if
+
+   end subroutine mpas_allocate_scratch_field2d_real!}}}
+
+   subroutine mpas_allocate_scratch_field3d_real(f, single_block_in)!{{{
+       type (field3dReal), pointer :: f
+       logical, intent(in), optional :: single_block_in
+       logical :: single_block
+       type (field3dReal), pointer :: f_cursor
+
+       if(present(single_block_in)) then
+          single_block = single_block_in
+       else
+          single_block = .false.
+       end if
+
+       if(.not. single_block) then
+          f_cursor => f
+          do while(associated(f_cursor))
+             if(.not.associated(f_cursor % array)) then
+                allocate(f_cursor % array(f_cursor % dimSizes(1), f_cursor % dimSizes(2), f_cursor % dimSizes(3)))
+             end if
+             f_cursor => f_cursor % next
+          end do
+       else
+          if(.not.associated(f % array)) then
+            allocate(f % array(f % dimSizes(1), f % dimSizes(2), f % dimSizes(3)))
+          end if
+       end if
+
+   end subroutine mpas_allocate_scratch_field3d_real!}}}
+
+   subroutine mpas_allocate_scratch_field1d_char(f, single_block_in)!{{{
+       type (field1dChar), pointer :: f
+       logical, intent(in), optional :: single_block_in
+       logical :: single_block
+       type (field1dChar), pointer :: f_cursor
+
+       if(present(single_block_in)) then
+          single_block = single_block_in
+       else
+          single_block = .false.
+       end if
+
+       if(.not. single_block) then
+          f_cursor => f
+          do while(associated(f_cursor))
+             if(.not.associated(f_cursor % array)) then
+                allocate(f_cursor % array(f_cursor % dimSizes(1)))
+             end if
+             f_cursor => f_cursor % next
+          end do
+       else
+          if(.not.associated(f % array)) then
+            allocate(f % array(f % dimSizes(1)))
+          end if
+       end if
+
+   end subroutine mpas_allocate_scratch_field1d_char!}}}
+
+   subroutine mpas_deallocate_scratch_field1d_integer(f, single_block_in)!{{{
+       type (field1dInteger), pointer :: f
+       logical, intent(in), optional :: single_block_in
+       logical :: single_block
+       type (field1dInteger), pointer :: f_cursor
+
+       if(present(single_block_in)) then
+          single_block = single_block_in
+       else
+          single_block = .false.
+       end if
+
+       if(.not.single_block) then
+          f_cursor => f
+          do while(associated(f_cursor))
+            if(associated(f_cursor % array)) then
+              deallocate(f_cursor % array)
+            end if
+   
+            f_cursor => f_cursor % next
+          end do
+       else
+          if(associated(f % array)) then
+             deallocate(f % array)
+          end if
+       end if
+
+   end subroutine mpas_deallocate_scratch_field1d_integer!}}}
+
+   subroutine mpas_deallocate_scratch_field2d_integer(f, single_block_in)!{{{
+       type (field2dInteger), pointer :: f
+       logical, intent(in), optional :: single_block_in
+       logical :: single_block
+       type (field2dInteger), pointer :: f_cursor
+
+       if(present(single_block_in)) then
+          single_block = single_block_in
+       else
+          single_block = .false.
+       end if
+
+       if(.not.single_block) then
+          f_cursor => f
+          do while(associated(f_cursor))
+            if(associated(f_cursor % array)) then
+              deallocate(f_cursor % array)
+            end if
+   
+            f_cursor => f_cursor % next
+          end do
+       else
+          if(associated(f % array)) then
+             deallocate(f % array)
+          end if
+       end if
+
+   end subroutine mpas_deallocate_scratch_field2d_integer!}}}
+
+   subroutine mpas_deallocate_scratch_field3d_integer(f, single_block_in)!{{{
+       type (field3dInteger), pointer :: f
+       logical, intent(in), optional :: single_block_in
+       logical :: single_block
+       type (field3dInteger), pointer :: f_cursor
+
+       if(present(single_block_in)) then
+          single_block = single_block_in
+       else
+          single_block = .false.
+       end if
+
+       if(.not.single_block) then
+          f_cursor => f
+          do while(associated(f_cursor))
+            if(associated(f_cursor % array)) then
+              deallocate(f_cursor % array)
+            end if
+   
+            f_cursor => f_cursor % next
+          end do
+       else
+          if(associated(f % array)) then
+             deallocate(f % array)
+          end if
+       end if
+
+   end subroutine mpas_deallocate_scratch_field3d_integer!}}}
+
+   subroutine mpas_deallocate_scratch_field1d_real(f, single_block_in)!{{{
+       type (field1dReal), pointer :: f
+       logical, intent(in), optional :: single_block_in
+       logical :: single_block
+       type (field1dReal), pointer :: f_cursor
+
+       if(present(single_block_in)) then
+          single_block = single_block_in
+       else
+          single_block = .false.
+       end if
+
+       if(.not.single_block) then
+          f_cursor => f
+          do while(associated(f_cursor))
+            if(associated(f_cursor % array)) then
+              deallocate(f_cursor % array)
+            end if
+   
+            f_cursor => f_cursor % next
+          end do
+       else
+          if(associated(f % array)) then
+             deallocate(f % array)
+          end if
+       end if
+
+   end subroutine mpas_deallocate_scratch_field1d_real!}}}
+
+   subroutine mpas_deallocate_scratch_field2d_real(f, single_block_in)!{{{
+       type (field2dReal), pointer :: f
+       logical, intent(in), optional :: single_block_in
+       logical :: single_block
+       type (field2dReal), pointer :: f_cursor
+
+       if(present(single_block_in)) then
+          single_block = single_block_in
+       else
+          single_block = .false.
+       end if
+
+       if(.not.single_block) then
+          f_cursor => f
+          do while(associated(f_cursor))
+            if(associated(f_cursor % array)) then
+              deallocate(f_cursor % array)
+            end if
+   
+            f_cursor => f_cursor % next
+          end do
+       else
+          if(associated(f % array)) then
+             deallocate(f % array)
+          end if
+       end if
+
+   end subroutine mpas_deallocate_scratch_field2d_real!}}}
+
+   subroutine mpas_deallocate_scratch_field3d_real(f, single_block_in)!{{{
+       type (field3dReal), pointer :: f
+       logical, intent(in), optional :: single_block_in
+       logical :: single_block
+       type (field3dReal), pointer :: f_cursor
+
+       if(present(single_block_in)) then
+          single_block = single_block_in
+       else
+          single_block = .false.
+       end if
+
+       if(.not.single_block) then
+          f_cursor => f
+          do while(associated(f_cursor))
+            if(associated(f_cursor % array)) then
+              deallocate(f_cursor % array)
+            end if
+   
+            f_cursor => f_cursor % next
+          end do
+       else
+          if(associated(f % array)) then
+             deallocate(f % array)
+          end if
+       end if
+
+   end subroutine mpas_deallocate_scratch_field3d_real!}}}
+
+   subroutine mpas_deallocate_scratch_field1d_char(f, single_block_in)!{{{
+       type (field1dChar), pointer :: f
+       logical, intent(in), optional :: single_block_in
+       logical :: single_block
+       type (field1dChar), pointer :: f_cursor
+
+       if(present(single_block_in)) then
+          single_block = single_block_in
+       else
+          single_block = .false.
+       end if
+
+       if(.not.single_block) then
+          f_cursor => f
+          do while(associated(f_cursor))
+            if(associated(f_cursor % array)) then
+              deallocate(f_cursor % array)
+            end if
+   
+            f_cursor => f_cursor % next
+          end do
+       else
+          if(associated(f % array)) then
+             deallocate(f % array)
+          end if
+       end if
+
+   end subroutine mpas_deallocate_scratch_field1d_char!}}}
+
 
    subroutine mpas_deallocate_field0d_integer(f)!{{{
        type (field0dInteger), pointer :: f
