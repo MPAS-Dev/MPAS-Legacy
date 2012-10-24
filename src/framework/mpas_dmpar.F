@@ -2827,6 +2827,12 @@ subroutine mpas_dmpar_get_exch_list(haloLayer, ownedListField, neededListField, 
 
       logical :: comm_list_found
 
+      do i = 1, 1
+        if(field % dimSizes(i) <= 0) then
+          return
+        end if
+      end do
+
       dminfo => field % block % domain % dminfo
 
       if(present(haloLayersIn)) then
@@ -3100,6 +3106,12 @@ subroutine mpas_dmpar_get_exch_list(haloLayer, ownedListField, neededListField, 
       integer, dimension(:), pointer :: haloLayers
 
       logical :: comm_list_found
+
+      do i = 1, 2
+        if(field % dimSizes(i) <= 0) then
+          return
+        end if
+      end do
 
       dminfo => field % block % domain % dminfo
 
@@ -3375,6 +3387,12 @@ subroutine mpas_dmpar_get_exch_list(haloLayer, ownedListField, neededListField, 
       integer, dimension(:), pointer :: haloLayers
 
       logical :: comm_list_found
+
+      do i = 1, 3
+        if(field % dimSizes(i) <= 0) then
+          return
+        end if
+      end do
 
       dminfo => field % block % domain % dminfo
 
@@ -3657,6 +3675,12 @@ subroutine mpas_dmpar_get_exch_list(haloLayer, ownedListField, neededListField, 
 
       logical :: comm_list_found
 
+      do i = 1, 1
+        if(field % dimSizes(i) <= 0) then
+          return
+        end if
+      end do
+
       dminfo => field % block % domain % dminfo
 
       if(present(haloLayersIn)) then
@@ -3928,7 +3952,13 @@ subroutine mpas_dmpar_get_exch_list(haloLayer, ownedListField, neededListField, 
       integer, dimension(:), pointer :: haloLayers
 
       logical :: comm_list_found
-      
+
+      do i = 1, 2
+        if(field % dimSizes(i) <= 0) then
+          return
+        end if
+      end do
+
       dminfo => field % block % domain % dminfo
 
       if(present(haloLayersIn)) then
@@ -4205,6 +4235,12 @@ subroutine mpas_dmpar_get_exch_list(haloLayer, ownedListField, neededListField, 
       integer, dimension(:), pointer :: haloLayers
 
       logical :: comm_list_found
+
+      do i = 1, 3
+        if(field % dimSizes(i) <= 0) then
+          return
+        end if
+      end do
 
       dminfo => field % block % domain % dminfo
 

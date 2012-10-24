@@ -366,6 +366,7 @@ module mpas_io
          if (present(ierr)) ierr = MPAS_IO_ERR_PIO
          deallocate(new_dimlist_node % dimhandle)
          deallocate(new_dimlist_node)
+         write(0,*) 'WARNING: Dimension ', trim(dimname), ' not in input file.'
          dimsize = -1
          return
       end if
@@ -551,6 +552,7 @@ module mpas_io
             if (present(ierr)) ierr = MPAS_IO_ERR_PIO
             deallocate(new_fieldlist_node % fieldhandle)
             deallocate(new_fieldlist_node)
+            write(0,*) 'WARNING: Variable ', trim(fieldname), ' not in input file.'
             return
          end if
 !write(0,*) 'Inquired about variable ID', new_fieldlist_node % fieldhandle % fieldid
