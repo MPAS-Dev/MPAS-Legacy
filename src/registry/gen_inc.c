@@ -1119,6 +1119,9 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
    {
      var_list_ptr = group_ptr->vlist;
      var_list_ptr = var_list_ptr->next;
+
+     if (!var_list_ptr) break;
+
      var_ptr = var_list_ptr->var;
      
      int ntime_levs = 1;
