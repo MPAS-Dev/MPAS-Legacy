@@ -149,17 +149,19 @@ module ocn_time_integration_rk4
         block => domain % blocklist
         do while (associated(block))
 
-           ! mrp 111206 put ocn_wtop call at top for ALE
-           call ocn_wtop(block % provis, block % provis, block % mesh)
-
            if (.not.config_implicit_vertical_mix) then
               call ocn_vmix_coefs(block % mesh, block % provis, block % diagnostics, err)
            end if
-           call ocn_tend_h(block % tend, block % provis, block % mesh)
+
+           ! advection of u uses u, while advection of h and tracers use uTransport.
+           call ocn_wtop(block % mesh, block % provis % h % array, block % provis % h_edge % array, &
+              block % provis % u % array, block % provis % wTop % array, err)
            call ocn_tend_u(block % tend, block % provis, block % diagnostics, block % mesh)
 
-           ! mrp 110718 filter btr mode out of u_tend
-           ! still got h perturbations with just this alone.  Try to set uBtr=0 after full u computation
+           call ocn_wtop(block % mesh, block % provis % h % array, block % provis % h_edge % array, &
+              block % provis % uTransport % array, block % provis % wTop % array, err)
+           call ocn_tend_h(block % tend, block % provis, block % mesh)
+
            if (config_rk_filter_btr_mode) then
                call ocn_filter_btr_mode_tend_u(block % tend, block % provis, block % mesh)
            endif
@@ -273,6 +275,15 @@ module ocn_time_integration_rk4
         call mpas_timer_start("RK4-implicit vert mix")
         block => domain % blocklist
         do while(associated(block))
+
+          ! Call ocean diagnostic solve in preparation for vertical mixing.  Note 
+          ! it is called again after vertical mixing, because u and tracers change.
+          ! For Richardson vertical mixing, only rho, h_edge, and ke_edge need to 
+          ! be computed.  For kpp, more variables may be needed.  Either way, this
+          ! could be made more efficient by only computing what is needed for the
+          ! implicit vmix routine that follows. mrp 121023.
+          call ocn_diagnostic_solve(dt, block % state % time_levs(2) % state, block % mesh)
+
           call ocn_vmix_implicit(dt, block % mesh, block % diagnostics, block % state % time_levs(2) % state, err)
           block => block % next
         end do

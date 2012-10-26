@@ -86,9 +86,9 @@ module ocn_time_integration_split
       type (dm_info) :: dminfo
       integer :: iCell, i,k,j, iEdge, cell1, cell2, split_explicit_step, split, &
                  eoe, oldBtrSubcycleTime, newBtrSubcycleTime, uPerpTime, BtrCorIter, &
-                 n_bcl_iter(config_n_ts_iter)
+                 n_bcl_iter(config_n_ts_iter), stage1_tend_time
       type (block_type), pointer :: block
-      real (kind=RKIND) :: uhSum, hSum, flux, sshEdge, &
+      real (kind=RKIND) :: uhSum, hSum, flux, sshEdge, hEdge1, &
                  CoriolisTerm, uCorr, temp, temp_h, coef, FBtr_coeff, sshCell1, sshCell2
       integer :: num_tracers, ucorr_coef, err
       real (kind=RKIND), dimension(:,:), pointer :: &
@@ -117,6 +117,9 @@ module ocn_time_integration_split
                ! The baroclinic velocity needs be recomputed at the beginning of a 
                ! timestep because the implicit vertical mixing is conducted on the
                ! total u.  We keep uBtr from the previous timestep.
+               ! Note that uBcl may now include a barotropic component, because the 
+               ! weights h have changed.  That is OK, because the GBtrForcing variable
+               ! subtracts out the barotropic component from the baroclinic.
                  block % state % time_levs(1) % state % uBcl % array(k,iEdge) &
                = block % state % time_levs(1) % state % u    % array(k,iEdge) &
                - block % state % time_levs(1) % state % uBtr % array(  iEdge)
@@ -181,10 +184,22 @@ module ocn_time_integration_split
 
          block => domain % blocklist
          do while (associated(block))
+
+            stage1_tend_time = min(split_explicit_step,2)
+
             if (.not.config_implicit_vertical_mix) then
-               call ocn_vmix_coefs(block % mesh, block % state % time_levs(2) % state, block % diagnostics, err)
+               call ocn_vmix_coefs(block % mesh, block % state % time_levs(stage1_tend_time) % state, block % diagnostics, err)
             end if
-            call ocn_tend_u(block % tend, block % state % time_levs(2) % state, block % diagnostics, block % mesh)
+
+           ! compute wTop.  Use u (rather than uTransport) for momentum advection.
+           ! Use the most recent time level available.
+           call ocn_wtop(block % mesh, block % state % time_levs(stage1_tend_time) % state % h % array, &
+              block % state % time_levs(stage1_tend_time) % state % h_edge % array, &
+              block % state % time_levs(stage1_tend_time) % state % u % array, &
+              block % state % time_levs(stage1_tend_time) % state % wTop % array, err)
+
+            call ocn_tend_u(block % tend, block % state % time_levs(stage1_tend_time) % state, block % diagnostics, block % mesh)
+
             block => block % next
          end do
 
@@ -246,6 +261,7 @@ module ocn_time_integration_split
                      = 0.5*( &
                        block % state % time_levs(1) % state % uBcl % array(k,iEdge) &
                      + uTemp(k) - dt * block % state % time_levs(1) % state % GBtrForcing % array(iEdge))
+
                   enddo
  
                enddo ! iEdge
@@ -767,7 +783,13 @@ module ocn_time_integration_split
          ! dwj: 02/22/12 splitting thickness and tracer tendency computations and halo updates to allow monotonic advection.
          block => domain % blocklist
          do while (associated(block))
-            call ocn_wtop(block % state % time_levs(1) % state,block % state % time_levs(2) % state, block % mesh)
+
+            ! compute wTop.  Use uTransport for advection of h and tracers.
+            ! Use time level 1 values of h and h_edge because h has not yet been computed for time level 2.
+            call ocn_wtop(block % mesh, block % state % time_levs(1) % state % h % array, &
+               block % state % time_levs(1) % state % h_edge % array, &
+               block % state % time_levs(2) % state % uTransport % array, &
+               block % state % time_levs(2) % state % wTop % array, err)
 
             call ocn_tend_h(block % tend, block % state % time_levs(2) % state, block % mesh)
             block => block % next
@@ -921,7 +943,17 @@ module ocn_time_integration_split
         call mpas_timer_start("se implicit vert mix")
         block => domain % blocklist
         do while(associated(block))
+
+          ! Call ocean diagnostic solve in preparation for vertical mixing.  Note 
+          ! it is called again after vertical mixing, because u and tracers change.
+          ! For Richardson vertical mixing, only rho, h_edge, and ke_edge need to 
+          ! be computed.  For kpp, more variables may be needed.  Either way, this
+          ! could be made more efficient by only computing what is needed for the
+          ! implicit vmix routine that follows. mrp 121023.
+          call ocn_diagnostic_solve(dt, block % state % time_levs(2) % state, block % mesh)
+
           call ocn_vmix_implicit(dt, block % mesh, block % diagnostics, block % state % time_levs(2) % state, err)
+
           block => block % next
         end do
 
@@ -958,6 +990,12 @@ module ocn_time_integration_split
             block % state % time_levs(2) % state % uTransport % array(:,:) &
           = block % state % time_levs(2) % state % u % array(:,:) &
           + block % state % time_levs(2) % state % uBolusGM % array(:,:)
+
+!!!!!!!!!!!!!!!!!!!!!!!!!! mrp
+         ! Recompute wTop with all updated information.  The wTop in stage 3 used 
+         ! the previous h and u before implicit vertical mixing.
+!!!!!!
+! remove:         call ocn_wtop(block % state % time_levs(2) % state,block % state % time_levs(2) % state, block % mesh)
 
          call mpas_reconstruct(block % mesh, block % state % time_levs(2) % state % u % array,          &
                           block % state % time_levs(2) % state % uReconstructX % array,            &

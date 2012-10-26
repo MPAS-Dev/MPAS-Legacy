@@ -854,12 +854,42 @@ contains
 !>  This routine computes the vertical velocity in the top layer for the ocean
 !
 !-----------------------------------------------------------------------
-   subroutine ocn_wtop(s1,s2, grid)!{{{
-      implicit none
+   subroutine ocn_wtop(grid,h,h_edge,u,wTop, err)!{{{
 
-      type (state_type), intent(inout) :: s1 !< Input/Output: State 1 information
-      type (state_type), intent(inout) :: s2 !< Input/Output: State 2 information
-      type (mesh_type), intent(in) :: grid !< Input: Grid information
+      !-----------------------------------------------------------------
+      !
+      ! input variables
+      !
+      !-----------------------------------------------------------------
+
+      type (mesh_type), intent(in) :: &
+         grid          !< Input: grid information
+
+      real (kind=RKIND), dimension(:,:), intent(in) :: &
+         h    !< Input: thickness
+
+      real (kind=RKIND), dimension(:,:), intent(in) :: &
+         h_edge     !< Input: h interpolated to an edge
+
+      real (kind=RKIND), dimension(:,:), intent(in) :: &
+         u     !< Input: velocity
+
+      !-----------------------------------------------------------------
+      !
+      ! output variables
+      !
+      !-----------------------------------------------------------------
+
+      real (kind=RKIND), dimension(:,:), intent(out) :: &
+         wTop     !< Output: vertical transport at top edge
+
+      integer, intent(out) :: err !< Output: error flag
+
+      !-----------------------------------------------------------------
+      !
+      ! local variables
+      !
+      !-----------------------------------------------------------------
 
       integer :: iEdge, iCell, iVertex, k, cell1, cell2, vertex1, vertex2, eoe, i, j, cov
       real (kind=RKIND) :: flux, vorticity_abs, h_vertex, workpv, rho0Inv, hSum, invAreaCell
@@ -869,7 +899,6 @@ contains
 
       real (kind=RKIND), dimension(:), pointer :: &
         dvEdge, areaCell, zstarWeight
-      real (kind=RKIND), dimension(:,:), pointer :: uTransport,h,wTop, h_edge
       real (kind=RKIND), dimension(:), allocatable:: div_hu, h_tend_col
       real (kind=RKIND) :: div_hu_btr
 
@@ -880,10 +909,7 @@ contains
         maxLevelCell, maxLevelEdgeTop, maxLevelEdgeBot, &
         maxLevelVertexBot,  maxLevelVertexTop
 
-      h           => s1 % h % array
-      h_edge      => s1 % h_edge % array
-      uTransport  => s2 % uTransport % array
-      wTop        => s2 % wTop % array
+      err = 0
 
       nEdgesOnCell      => grid % nEdgesOnCell % array
       areaCell          => grid % areaCell % array
@@ -923,7 +949,7 @@ contains
           iEdge = edgesOnCell(i, iCell)
 
           do k = 1, maxLevelEdgeBot(iEdge)
-            flux = uTransport(k, iEdge) * dvEdge(iEdge) * h_edge(k, iEdge)
+            flux = u(k, iEdge) * dvEdge(iEdge) * h_edge(k, iEdge)
             flux = edgeSignOnCell(i, iCell) * flux * invAreaCell
             div_hu(k) = div_hu(k) - flux
             div_hu_btr = div_hu_btr - flux

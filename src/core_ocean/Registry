@@ -206,21 +206,21 @@ var persistent real refBottomDepthTopOfCell ( nVertLevelsP1 ) 0 - refBottomDepth
 var persistent real hZLevel ( nVertLevels ) 0 iro hZLevel mesh - -
 var persistent real zstarWeight ( nVertLevels ) 0 - zstarWeight mesh - -
 
-% Boundary conditions: read from input, saved in restart and written to output
-var persistent integer boundaryEdge ( nVertLevels nEdges ) 0 iro boundaryEdge mesh - -
-var persistent integer boundaryVertex ( nVertLevels nVertices ) 0 iro boundaryVertex mesh - -
-var persistent integer boundaryCell ( nVertLevels nCells ) 0 iro boundaryCell mesh - -
+% Boundary conditions and masks
+var persistent integer boundaryEdge ( nVertLevels nEdges ) 0 - boundaryEdge mesh - -
+var persistent integer boundaryVertex ( nVertLevels nVertices ) 0 - boundaryVertex mesh - -
+var persistent integer boundaryCell ( nVertLevels nCells ) 0 - boundaryCell mesh - -
 var persistent integer edgeMask ( nVertLevels nEdges ) 0 o edgeMask mesh - -
 var persistent integer vertexMask ( nVertLevels nVertices ) 0 o vertexMask mesh - -
 var persistent integer cellMask ( nVertLevels nCells ) 0 o cellMask mesh - -
-var persistent real    u_src ( nVertLevels nEdges ) 0 iro u_src mesh - -
-var persistent real    temperatureRestore ( nCells ) 0 iro temperatureRestore mesh - -
-var persistent real    salinityRestore ( nCells ) 0 iro salinityRestore mesh - -
 
-% Monthly forcing variables.  Change to iro when monthly forcing is used.
-var persistent real    windStressMonthly ( nMonths nEdges ) 0 - windStressMonthly mesh - -
-var persistent real    temperatureRestoreMonthly ( nMonths nCells ) 0 - temperatureRestoreMonthly mesh - -
-var persistent real    salinityRestoreMonthly ( nMonths nCells ) 0 - salinityRestoreMonthly mesh - -
+% Forcing variables.  
+var persistent real    u_src ( nVertLevels nEdges ) 0 ir u_src mesh - -
+var persistent real    temperatureRestore ( nCells ) 0 ir temperatureRestore mesh - -
+var persistent real    salinityRestore ( nCells ) 0 ir salinityRestore mesh - -
+var persistent real    windStressMonthly ( nMonths nEdges ) 0 ir windStressMonthly mesh - -
+var persistent real    temperatureRestoreMonthly ( nMonths nCells ) 0 ir temperatureRestoreMonthly mesh - -
+var persistent real    salinityRestoreMonthly ( nMonths nCells ) 0 ir salinityRestoreMonthly mesh - -
 
 % Prognostic variables: read from input, saved in restart, and written to output
 var persistent real    u ( nVertLevels nEdges Time ) 2 ir u state - -
@@ -239,7 +239,7 @@ var persistent real    tend_salinity ( nVertLevels nCells Time ) 1 - salinity te
 var persistent real    tend_tracer1 ( nVertLevels nCells Time ) 1 - tracer1 tend tracers testing
 
 % state variables for Split Explicit timesplitting
-var persistent real   uBtr ( nEdges Time )         2 -  uBtr state - -
+var persistent real   uBtr ( nEdges Time )         2 ir uBtr state - -
 var persistent real   ssh ( nCells Time )          2 o  ssh state - - 
 var persistent real   uBtrSubcycle ( nEdges Time ) 2 -  uBtrSubcycle state - -
 var persistent real   sshSubcycle ( nCells Time )  2 -  sshSubcycle state - - 
@@ -248,7 +248,7 @@ var persistent real   GBtrForcing ( nEdges Time )  2 -  GBtrForcing state - -
 var persistent real   uBcl ( nVertLevels nEdges Time )  2 - uBcl state - - 
 
 % Diagnostic fields: only written to output
-var persistent real    zMid ( nVertLevels nCells Time ) 2 io zMid state - -
+var persistent real    zMid ( nVertLevels nCells Time ) 2 - zMid state - -
 var persistent real    v ( nVertLevels nEdges Time ) 2 - v state - -
 var persistent real    uTransport ( nVertLevels nEdges Time ) 2 - uTransport state - -
 var persistent real    uBolusGM ( nVertLevels nEdges Time ) 2 - uBolusGM state - -

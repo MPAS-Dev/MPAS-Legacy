@@ -114,7 +114,7 @@ module mpas_core
          call ocn_init_h_zstar(domain)
       endif
 
-      call ocn_init_split_timestep(domain)
+      if (.not.config_do_restart) call ocn_init_split_timestep(domain)
 
       write (0,'(a,a10)'), ' Vertical grid type is: ',config_vert_grid_type
 
@@ -264,8 +264,6 @@ module mpas_core
         block % state % time_levs(1) % state % uTransport % array(:,:) &
       = block % state % time_levs(1) % state % u % array(:,:) &
       + block % state % time_levs(1) % state % uBolusGM % array(:,:)
-
-      call ocn_wtop(block % state % time_levs(1) % state,block % state % time_levs(1) % state, mesh)
 
       call ocn_compute_mesh_scaling(mesh)
  
@@ -715,7 +713,7 @@ module mpas_core
             enddo
 
             if (.not. consistentSSH) then
-               write(0,*) 'Warning: SSH is not consisntent'
+               write(0,*) 'Warning: SSH is not consistent. Most likely, initial h does not match bottomDepth.'
             end if
          endif
 
