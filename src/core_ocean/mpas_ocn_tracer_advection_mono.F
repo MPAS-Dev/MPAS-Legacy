@@ -207,8 +207,6 @@ module mpas_ocn_tracer_advection_mono
           end do ! i loop over nAdvCellsForEdge
         end do ! iEdge loop
 
-        call mpas_dmpar_exch_halo_field(high_order_horiz_flux_field)
-
         !  low order upwind vertical flux (monotonic and diffused)
         !  Remove low order flux from the high order flux.
         !  Store left over high order flux in high_order_vert_flux array.
@@ -266,8 +264,8 @@ module mpas_ocn_tracer_advection_mono
               upwind_tendency(k,iCell) = upwind_tendency(k,iCell) + edgeSignOncell(i, iCell) * flux_upwind * invAreaCell1
 
               ! Accumulate remaining high order fluxes
-              flux_outgoing(k,iCell) = flux_outgoing(k,iCell) + edgeSignOnCell(i, iCell) * high_order_horiz_flux(k, iEdge) * invAreaCell1
-              flux_incoming(k,iCell) = flux_incoming(k,iCell) - edgeSignOnCell(i, iCell) * high_order_horiz_flux(k, iEdge) * invAreaCell1
+              flux_outgoing(k,iCell) = flux_outgoing(k,iCell) + min(0.0_RKIND, edgeSignOnCell(i, iCell) * high_order_horiz_flux(k, iEdge)) * invAreaCell1
+              flux_incoming(k,iCell) = flux_incoming(k,iCell) + max(0.0_RKIND, edgeSignOnCell(i, iCell) * high_order_horiz_flux(k, iEdge)) * invAreaCell1
             end do
           end do
         end do

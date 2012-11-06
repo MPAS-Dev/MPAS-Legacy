@@ -116,7 +116,7 @@ contains
       integer :: iCell, iVertex
       integer :: nVertices, nVertLevels, nCells, nEdges, nEdgesSolve, vertexDegree
 
-      integer, dimension(:), pointer :: maxLevelEdgeTop, maxLevelVertexBot, &
+      integer, dimension(:), pointer :: maxLevelEdgeTop, maxLevelVertexTop, &
             maxLevelCell, nEdgesOnCell
       integer, dimension(:,:), pointer :: cellsOnEdge, verticesOnEdge, edgeMask, edgesOnVertex, edgesOnCell, edgeSignOnVertex, edgeSignOnCell
 
@@ -141,7 +141,7 @@ contains
       vertexDegree = grid % vertexDegree
 
       maxLevelEdgeTop => grid % maxLevelEdgeTop % array
-      maxLevelVertexBot => grid % maxLevelVertexBot % array
+      maxLevelVertexTop => grid % maxLevelVertexTop % array
       maxLevelCell => grid % maxLevelCell % array
       cellsOnEdge => grid % cellsOnEdge % array
       verticesOnEdge => grid % verticesOnEdge % array
@@ -188,7 +188,7 @@ contains
          invAreaTri1 = 1.0 / areaTriangle(iVertex)
          do i = 1, vertexDegree
             iEdge = edgesOnVertex(i, iVertex)
-            do k = 1, maxLevelVertexBot(iVertex)
+            do k = 1, maxLevelVertexTop(iVertex)
                delsq_vorticity(k, iVertex) = delsq_vorticity(k, iVertex) + edgeSignOnVertex(i, iVertex) * dcEdge(iEdge) * delsq_u(k, iEdge) * invAreaTri1
             end do
          end do

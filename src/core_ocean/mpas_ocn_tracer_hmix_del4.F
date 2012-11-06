@@ -193,7 +193,7 @@ contains
                 
               flux = tracer_turb_flux * invdcEdge
 
-              tend(iTracer, k, iCell) = tend(iTracer, k, iCell) + edgeSignOnCell(i, iCell) * invAreaCell1
+              tend(iTracer, k, iCell) = tend(iTracer, k, iCell) + edgeSignOnCell(i, iCell) * flux * invAreaCell1
             end do
           end do
         end do

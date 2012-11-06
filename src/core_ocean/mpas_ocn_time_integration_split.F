@@ -991,12 +991,6 @@ module ocn_time_integration_split
           = block % state % time_levs(2) % state % u % array(:,:) &
           + block % state % time_levs(2) % state % uBolusGM % array(:,:)
 
-!!!!!!!!!!!!!!!!!!!!!!!!!! mrp
-         ! Recompute wTop with all updated information.  The wTop in stage 3 used 
-         ! the previous h and u before implicit vertical mixing.
-!!!!!!
-! remove:         call ocn_wtop(block % state % time_levs(2) % state,block % state % time_levs(2) % state, block % mesh)
-
          call mpas_reconstruct(block % mesh, block % state % time_levs(2) % state % u % array,          &
                           block % state % time_levs(2) % state % uReconstructX % array,            &
                           block % state % time_levs(2) % state % uReconstructY % array,            &
