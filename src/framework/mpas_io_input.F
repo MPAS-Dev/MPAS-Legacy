@@ -516,7 +516,7 @@ module mpas_io_input
       integer :: ierr
 
 
-      call MPAS_readStream(input_obj % io_stream, 1, ierr)
+      call MPAS_readStream(input_obj % io_stream, input_obj % time, ierr)
 
 
    end subroutine mpas_read_and_distribute_fields!}}}
