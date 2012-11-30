@@ -913,9 +913,12 @@ module mpas_io
 
       type (fieldlist_type), pointer :: field_cursor
       integer :: pio_type
-      integer :: ndims, pd
-      integer :: i, i1, i2, i3, i4, i5, indx
-      integer, dimension(:), pointer :: dimlist, compdof
+      integer :: ndims
+      integer (kind=PIO_OFFSET) :: pd, indx
+      integer :: i 
+      integer (kind=PIO_OFFSET) :: i1, i2, i3, i4, i5
+      integer, dimension(:), pointer :: dimlist
+      integer (kind=PIO_OFFSET), dimension(:), pointer :: compdof
       type (decomplist_type), pointer :: decomp_cursor, new_decomp
 
 !      write(0,*) 'Called MPAS_io_set_var_indices()'
@@ -1053,11 +1056,11 @@ module mpas_io
       do i=1,ndims-1
          dimlist(i) = field_cursor % fieldhandle % dims(i) % dimsize
          new_decomp % decomphandle % dims(i) = dimlist(i)
-         pd = pd * dimlist(i)
+         pd = pd * int(dimlist(i),PIO_OFFSET)
       end do
       new_decomp % decomphandle % dims(ndims) = field_cursor % fieldhandle % dims(ndims) % dimsize
       dimlist(ndims) = size(indices)
-      pd = pd * dimlist(ndims)
+      pd = pd * int(dimlist(ndims),PIO_OFFSET)
 
       allocate(compdof(pd)) 
 
@@ -1069,10 +1072,10 @@ module mpas_io
          do i2=1,dimlist(2)
          do i1=1,dimlist(1)
             compdof(indx) = i1 &
-                          + (i2-1)*dimlist(1) &
-                          + (i3-1)*dimlist(2)*dimlist(1) &
-                          + (i4-1)*dimlist(3)*dimlist(2)*dimlist(1) &
-                          + (indices(i5)-1)*dimlist(4)*dimlist(3)*dimlist(2)*dimlist(1)
+                          + (i2-1)*int(dimlist(1),PIO_OFFSET) &
+                          + (i3-1)*int(dimlist(2),PIO_OFFSET)*int(dimlist(1),PIO_OFFSET) &
+                          + (i4-1)*int(dimlist(3),PIO_OFFSET)*int(dimlist(2),PIO_OFFSET)*int(dimlist(1),PIO_OFFSET) &
+                          + int(indices(i5)-1,PIO_OFFSET)*int(dimlist(4),PIO_OFFSET)*int(dimlist(3),PIO_OFFSET)*int(dimlist(2),PIO_OFFSET)*int(dimlist(1),PIO_OFFSET)
             indx = indx + 1
          end do
          end do
@@ -1085,9 +1088,9 @@ module mpas_io
          do i2=1,dimlist(2)
          do i1=1,dimlist(1)
             compdof(indx) = i1 &
-                          + (i2-1)*dimlist(1) &
-                          + (i3-1)*dimlist(2)*dimlist(1) &
-                          + (indices(i4)-1)*dimlist(3)*dimlist(2)*dimlist(1)
+                          + (i2-1)*int(dimlist(1),PIO_OFFSET) &
+                          + (i3-1)*int(dimlist(2),PIO_OFFSET)*int(dimlist(1),PIO_OFFSET) &
+                          + int(indices(i4)-1,PIO_OFFSET)*int(dimlist(3),PIO_OFFSET)*int(dimlist(2),PIO_OFFSET)*int(dimlist(1),PIO_OFFSET)
             indx = indx + 1
          end do
          end do
@@ -1097,7 +1100,7 @@ module mpas_io
          do i3=1,dimlist(3)
          do i2=1,dimlist(2)
          do i1=1,dimlist(1)
-            compdof(indx) = i1 + (i2-1)*dimlist(1) + (indices(i3)-1)*dimlist(2)*dimlist(1)
+            compdof(indx) = i1 + (i2-1)*int(dimlist(1),PIO_OFFSET) + int(indices(i3)-1,PIO_OFFSET)*int(dimlist(2),PIO_OFFSET)*int(dimlist(1),PIO_OFFSET)
             indx = indx + 1
          end do
          end do
@@ -1105,13 +1108,13 @@ module mpas_io
       else if (ndims == 2) then
          do i2=1,dimlist(2)
          do i1=1,dimlist(1)
-            compdof(indx) = i1 + (indices(i2)-1)*dimlist(1)
+            compdof(indx) = i1 + int(indices(i2)-1,PIO_OFFSET)*int(dimlist(1),PIO_OFFSET)
             indx = indx + 1
          end do
          end do
       else if (ndims == 1) then
          do i1=1,dimlist(1)
-            compdof(indx) = indices(i1)
+            compdof(indx) = int(indices(i1),PIO_OFFSET)
             indx = indx + 1
          end do
       end if
