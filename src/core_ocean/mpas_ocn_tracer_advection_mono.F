@@ -199,7 +199,7 @@ module mpas_ocn_tracer_advection_mono
             iCell = advCellsForEdge(i,iEdge)
             do k = 1, maxLevelCell(iCell)
               tracer_weight = lowOrderAdvectionMask(k, iEdge) * adv_coefs_2nd(i,iEdge) & 
-                            + highOrderAdvectionMask(k, iEdge) * (adv_coefs(i,iEdge) + coef_3rd_order*sign(1.,uh(k,iEdge))*adv_coefs_3rd(i,iEdge))
+                            + highOrderAdvectionMask(k, iEdge) * (adv_coefs(i,iEdge) + coef_3rd_order*sign(1.0_RKIND,uh(k,iEdge))*adv_coefs_3rd(i,iEdge))
 
               tracer_weight = uh(k,iEdge)*tracer_weight
               high_order_horiz_flux(k,iEdge) = high_order_horiz_flux(k,iEdge) + tracer_weight* tracer_cur(k,iCell)
@@ -214,8 +214,8 @@ module mpas_ocn_tracer_advection_mono
         do iCell = 1, nCells
           do k = 2, maxLevelCell(iCell)
             ! dwj 02/03/12 Ocean and Atmosphere are different in vertical
-!           flux_upwind = max(0.,w(k,iCell))*tracer_cur(k-1,iCell) + min(0.,w(k,iCell))*tracer_cur(k,iCell)
-            flux_upwind = min(0.,w(k,iCell))*tracer_cur(k-1,iCell) + max(0.,w(k,iCell))*tracer_cur(k,iCell)
+!           flux_upwind = max(0.0_RKIND,w(k,iCell))*tracer_cur(k-1,iCell) + min(0.0_RKIND,w(k,iCell))*tracer_cur(k,iCell)
+            flux_upwind = min(0.0_RKIND,w(k,iCell))*tracer_cur(k-1,iCell) + max(0.0_RKIND,w(k,iCell))*tracer_cur(k,iCell)
             upwind_tendency(k-1,iCell) = upwind_tendency(k-1,iCell) + flux_upwind
             upwind_tendency(k  ,iCell) = upwind_tendency(k  ,iCell) - flux_upwind
             high_order_vert_flux(k,iCell) = high_order_vert_flux(k,iCell) - flux_upwind
@@ -227,8 +227,8 @@ module mpas_ocn_tracer_advection_mono
           !           it is negative
           do k = 1, maxLevelCell(iCell)
             ! dwj 02/03/12 Ocean and Atmosphere are different in vertical
-!           flux_incoming (k,iCell) = -(min(0.,high_order_vert_flux(k+1,iCell))-max(0.,high_order_vert_flux(k,iCell)))
-!           flux_outgoing(k,iCell) = -(max(0.,high_order_vert_flux(k+1,iCell))-min(0.,high_order_vert_flux(k,iCell)))
+!           flux_incoming (k,iCell) = -(min(0.0_RKIND,high_order_vert_flux(k+1,iCell))-max(0.0_RKIND,high_order_vert_flux(k,iCell)))
+!           flux_outgoing(k,iCell) = -(max(0.0_RKIND,high_order_vert_flux(k+1,iCell))-min(0.0_RKIND,high_order_vert_flux(k,iCell)))
 
             flux_incoming (k, iCell) = max(0.0_RKIND, high_order_vert_flux(k+1, iCell)) - min(0.0_RKIND, high_order_vert_flux(k, iCell))
             flux_outgoing(k, iCell) = min(0.0_RKIND, high_order_vert_flux(k+1, iCell)) - max(0.0_RKIND, high_order_vert_flux(k, iCell))
@@ -247,7 +247,7 @@ module mpas_ocn_tracer_advection_mono
           invAreaCell2 = 1.0 / areaCell(cell2)
 
           do k = 1, maxLevelEdgeTop(iEdge)
-            flux_upwind = dvEdge(iEdge) * (max(0.,uh(k,iEdge))*tracer_cur(k,cell1) + min(0.,uh(k,iEdge))*tracer_cur(k,cell2))
+            flux_upwind = dvEdge(iEdge) * (max(0.0_RKIND,uh(k,iEdge))*tracer_cur(k,cell1) + min(0.0_RKIND,uh(k,iEdge))*tracer_cur(k,cell2))
             high_order_horiz_flux(k,iEdge) = high_order_horiz_flux(k,iEdge) - flux_upwind
           end do ! k loop
         end do ! iEdge loop
@@ -280,10 +280,10 @@ module mpas_ocn_tracer_advection_mono
             tracer_upwind_new = (tracer_cur(k,iCell)*h(k,iCell) + dt*upwind_tendency(k,iCell)) * inv_h_new(k,iCell)
            
             scale_factor = (tracer_max(k,iCell)-tracer_upwind_new)/(tracer_max_new-tracer_upwind_new+eps)
-            flux_incoming(k,iCell) = min( 1.0, max( 0.0, scale_factor) )
+            flux_incoming(k,iCell) = min( 1.0_RKIND, max( 0.0_RKIND, scale_factor) )
 
             scale_factor = (tracer_upwind_new-tracer_min(k,iCell))/(tracer_upwind_new-tracer_min_new+eps)
-            flux_outgoing(k,iCell) = min( 1.0, max( 0.0, scale_factor) )
+            flux_outgoing(k,iCell) = min( 1.0_RKIND, max( 0.0_RKIND, scale_factor) )
           end do ! k loop
         end do ! iCell loop
 
@@ -293,8 +293,8 @@ module mpas_ocn_tracer_advection_mono
           cell2 = cellsOnEdge(2,iEdge)
           do k = 1, maxLevelEdgeTop(iEdge)
             flux = high_order_horiz_flux(k,iEdge)
-            flux = max(0.,flux) * min(flux_outgoing(k,cell1), flux_incoming(k,cell2)) &
-                 + min(0.,flux) * min(flux_incoming(k,cell1), flux_outgoing(k,cell2))
+            flux = max(0.0_RKIND,flux) * min(flux_outgoing(k,cell1), flux_incoming(k,cell2)) &
+                 + min(0.0_RKIND,flux) * min(flux_incoming(k,cell1), flux_outgoing(k,cell2))
             high_order_horiz_flux(k,iEdge) = flux
           end do ! k loop
         end do ! iEdge loop
@@ -304,10 +304,10 @@ module mpas_ocn_tracer_advection_mono
           do k = 2, maxLevelCell(iCell)
             flux =  high_order_vert_flux(k,iCell)
             ! dwj 02/03/12 Ocean and Atmosphere are different in vertical.
-!           flux = max(0.,flux) * min(flux_outgoing(k-1,iCell), flux_incoming(k  ,iCell)) &
-!                + min(0.,flux) * min(flux_outgoing(k  ,iCell), flux_incoming(k-1,iCell))
-            flux = max(0.,flux) * min(flux_outgoing(k  ,iCell), flux_incoming(k-1,iCell)) &
-                 + min(0.,flux) * min(flux_outgoing(k-1,iCell), flux_incoming(k  ,iCell))
+!           flux = max(0.0_RKIND,flux) * min(flux_outgoing(k-1,iCell), flux_incoming(k  ,iCell)) &
+!                + min(0.0_RKIND,flux) * min(flux_outgoing(k  ,iCell), flux_incoming(k-1,iCell))
+            flux = max(0.0_RKIND,flux) * min(flux_outgoing(k  ,iCell), flux_incoming(k-1,iCell)) &
+                 + min(0.0_RKIND,flux) * min(flux_outgoing(k-1,iCell), flux_incoming(k  ,iCell))
             high_order_vert_flux(k,iCell) = flux
           end do ! k loop
         end do ! iCell loop

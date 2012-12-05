@@ -116,6 +116,9 @@ module mpas_timekeeping
 
       character (len=*), intent(in) :: calendar 
 
+#ifdef MPAS_CESM
+      TheCalendar = defaultCal % Type % caltype - 1
+#else
       if (trim(calendar) == 'gregorian') then
          TheCalendar = MPAS_GREGORIAN
          call ESMF_Initialize(defaultCalendar=ESMF_CAL_GREGORIAN)
@@ -128,6 +131,7 @@ module mpas_timekeeping
       else
          write(0,*) 'ERROR: mpas_timekeeping_init: Invalid calendar type'
       end if
+#endif
 
    end subroutine mpas_timekeeping_init
 
@@ -136,7 +140,9 @@ module mpas_timekeeping
 
       implicit none
 
+#ifndef MPAS_CESM      
       call ESMF_Finalize()
+#endif
 
    end subroutine mpas_timekeeping_finalize
 

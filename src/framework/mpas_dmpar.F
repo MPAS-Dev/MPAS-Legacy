@@ -98,7 +98,9 @@ include 'mpif.h'
       write(0,'(a,i5,a,i5,a)') 'task ', mpi_rank, ' of ', mpi_size, &
         ' is running'
 
+#ifndef MPAS_CESM
       call open_streams(dminfo % my_proc_id)
+#endif
 
       dminfo % info = MPI_INFO_NULL
 #else

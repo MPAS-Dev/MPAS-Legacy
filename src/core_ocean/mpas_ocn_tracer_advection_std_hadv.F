@@ -91,7 +91,7 @@ module mpas_ocn_tracer_advection_std_hadv
               iCell = advCellsForEdge(i,iEdge)
               do k=1,grid % nVertLevels
               tracer_weight = lowOrderAdvectionMask(k, iEdge) * adv_coefs_2nd(i,iEdge) & 
-                            + highOrderAdvectionMask(k, iEdge) * (adv_coefs(i,iEdge) + coef_3rd_order*sign(1.,uh(k,iEdge))*adv_coefs_3rd(i,iEdge))
+                            + highOrderAdvectionMask(k, iEdge) * (adv_coefs(i,iEdge) + coef_3rd_order*sign(1.0_RKIND,uh(k,iEdge))*adv_coefs_3rd(i,iEdge))
                 do iTracer=1,num_tracers
                   flux_arr(iTracer,k) = flux_arr(iTracer,k) + tracer_weight* tracers(iTracer,k,iCell)
                 end do

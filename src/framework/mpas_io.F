@@ -176,21 +176,21 @@ module mpas_io
       type (fieldlist_type), pointer :: next => null()
    end type fieldlist_type
 
-   type (iosystem_desc_t), private, save :: pio_iosystem
+   type (iosystem_desc_t), pointer, private, save :: pio_iosystem
    type (decomplist_type), pointer, private :: decomp_list => null()
    type (dm_info), private :: local_dminfo
 
 
    contains
 
-
-   subroutine MPAS_io_init(dminfo, io_task_count, io_task_stride, ierr)
+   subroutine MPAS_io_init(dminfo, io_task_count, io_task_stride, io_system, ierr)
 
       implicit none
 
       type (dm_info), intent(in) :: dminfo
       integer, intent(in) :: io_task_count
       integer, intent(in) :: io_task_stride
+      type (iosystem_desc_t), optional, pointer :: io_system
       integer, intent(out), optional :: ierr
 
 !      write(0,*) 'Called MPAS_io_init()'
@@ -198,16 +198,21 @@ module mpas_io
 
       local_dminfo = dminfo
 
+      if(present(io_system)) then
+        pio_iosystem => io_system
+      else
 !write(0,*) 'MGD PIO_init'
-      call PIO_init(local_dminfo % my_proc_id, &     ! comp_rank
-                    local_dminfo % comm,       &     ! comp_comm
-                    io_task_count,             &     ! num_iotasks
-                    0,                         &     ! num_aggregator
-                    io_task_stride,            &     ! stride
-                    PIO_rearr_box,             &     ! rearr
-                    pio_iosystem)                    ! iosystem
-
-      call pio_seterrorhandling(pio_iosystem, PIO_BCAST_ERROR)
+        allocate(pio_iosystem)
+        call PIO_init(local_dminfo % my_proc_id, &     ! comp_rank
+                      local_dminfo % comm,       &     ! comp_comm
+                      io_task_count,             &     ! num_iotasks
+                      0,                         &     ! num_aggregator
+                      io_task_stride,            &     ! stride
+                      PIO_rearr_box,             &     ! rearr
+                      pio_iosystem)                    ! iosystem
+  
+        call pio_seterrorhandling(pio_iosystem, PIO_BCAST_ERROR)
+      end if
 
    end subroutine MPAS_io_init
 
@@ -931,8 +936,6 @@ module mpas_io
       end if
 
 !      write(0,*) 'Assigning ', size(indices), ' indices for ', trim(fieldname)
-
-
       !  
       ! Check whether the field has been defined
       !
@@ -1047,7 +1050,7 @@ module mpas_io
          pio_type = PIO_int
       else if (field_cursor % fieldhandle % field_type == MPAS_IO_CHAR) then
          pio_type = PIO_char
-!!!!!!!! PIO DOES NOT SUPPORT LOGICAL !!!!!!!!
+ !!!!!!! PIO DOES NOT SUPPORT LOGICAL !!!!!!!!
       end if
 
       allocate(dimlist(ndims))
@@ -3388,10 +3391,11 @@ module mpas_io
    end subroutine MPAS_io_close
 
 
-   subroutine MPAS_io_finalize(ierr)
+   subroutine MPAS_io_finalize(io_system, ierr)
 
       implicit none
 
+      type (iosystem_desc_t), optional, pointer :: io_system
       integer, intent(out), optional :: ierr
 
       integer :: pio_ierr
@@ -3414,10 +3418,13 @@ module mpas_io
       end do
 
 !write(0,*) 'MGD PIO_finalize'
-      call PIO_finalize(pio_iosystem, pio_ierr)
-      if (pio_ierr /= PIO_noerr) then
-         if (present(ierr)) ierr = MPAS_IO_ERR_PIO
-         return
+      if(.not.present(io_system)) then
+        call PIO_finalize(pio_iosystem, pio_ierr)
+        if (pio_ierr /= PIO_noerr) then
+           if (present(ierr)) ierr = MPAS_IO_ERR_PIO
+           return
+        end if
+        deallocate(pio_iosystem)
       end if
 
    end subroutine MPAS_io_finalize

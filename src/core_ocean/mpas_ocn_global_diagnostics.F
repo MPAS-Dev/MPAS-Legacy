@@ -421,27 +421,27 @@ module ocn_global_diagnostics
       ! write out the data to files
       if (dminfo % my_proc_id == IO_NODE) then
          fileID = getFreeUnit()
-         open(fileID,file='stats_min.txt',ACCESS='append')
+         open(fileID,file='stats_min.txt',STATUS='UNKNOWN', POSITION='append')
             write (fileID,'(100es24.14)') mins(1:nVariables)
          close (fileID)
-         open(fileID,file='stats_max.txt',ACCESS='append')
+         open(fileID,file='stats_max.txt',STATUS='UNKNOWN', POSITION='append')
             write (fileID,'(100es24.14)') maxes(1:nVariables)
          close (fileID)
-         open(fileID,file='stats_sum.txt',ACCESS='append')
+         open(fileID,file='stats_sum.txt',STATUS='UNKNOWN', POSITION='append')
             write (fileID,'(100es24.14)') sums(1:nVariables)
          close (fileID)
-         open(fileID,file='stats_avg.txt',ACCESS='append')
+         open(fileID,file='stats_avg.txt',STATUS='UNKNOWN', POSITION='append')
             write (fileID,'(100es24.14)') averages(1:nVariables)
          close (fileID)
-         open(fileID,file='stats_time.txt',ACCESS='append')
+         open(fileID,file='stats_time.txt',STATUS='UNKNOWN', POSITION='append')
             write (fileID,'(i10,10x,a,100es24.14)') timeIndex, &
                state % xtime % scalar, dt, &
                CFLNumberGlobal
          close (fileID)
-         open(fileID,file='stats_colmin.txt',ACCESS='append')
+         open(fileID,file='stats_colmin.txt',STATUS='UNKNOWN', POSITION='append')
             write (fileID,'(100es24.14)') verticalSumMins(1:nVariables)
          close (fileID)
-         open(fileID,file='stats_colmax.txt',ACCESS='append')
+         open(fileID,file='stats_colmax.txt',STATUS='UNKNOWN', POSITION='append')
             write (fileID,'(100es24.14)') verticalSumMaxes(1:nVariables)
          close (fileID)
       end if

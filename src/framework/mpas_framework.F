@@ -13,7 +13,7 @@ module mpas_framework
    contains
 
    
-   subroutine mpas_framework_init(dminfo, domain, mpi_comm)
+   subroutine mpas_framework_init(dminfo, domain, mpi_comm, nml_filename, io_system)
 
       implicit none
 
@@ -21,13 +21,16 @@ module mpas_framework
       type (domain_type), pointer :: domain
       integer, intent(in), optional :: mpi_comm
 
+      character (len=*), optional :: nml_filename
+      type (iosystem_desc_t), optional, pointer :: io_system
+
       integer :: pio_num_iotasks
       integer :: pio_stride
 
       allocate(dminfo)
       call mpas_dmpar_init(dminfo, mpi_comm)
 
-      call mpas_read_namelist(dminfo)
+      call mpas_read_namelist(dminfo, nml_filename)
 
       call mpas_allocate_domain(domain, dminfo)
       
@@ -38,19 +41,20 @@ module mpas_framework
       if (pio_num_iotasks == 0) then
          pio_num_iotasks = domain % dminfo % nprocs
       end if
-      call MPAS_io_init(dminfo, pio_num_iotasks, pio_stride)
+      call MPAS_io_init(dminfo, pio_num_iotasks, pio_stride, io_system)
 
    end subroutine mpas_framework_init
 
    
-   subroutine mpas_framework_finalize(dminfo, domain)
+   subroutine mpas_framework_finalize(dminfo, domain, io_system)
   
       implicit none
 
       type (dm_info), pointer :: dminfo
       type (domain_type), pointer :: domain
+      type (iosystem_desc_t), optional, pointer :: io_system
 
-      call MPAS_io_finalize()
+      call MPAS_io_finalize(io_system)
 
       call mpas_deallocate_domain(domain)
 

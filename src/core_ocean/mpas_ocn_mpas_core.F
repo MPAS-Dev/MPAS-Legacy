@@ -116,7 +116,7 @@ module mpas_core
 
       if (.not.config_do_restart) call ocn_init_split_timestep(domain)
 
-      write (0,'(a,a10)'), ' Vertical grid type is: ',config_vert_grid_type
+      write (0,'(a,a10)') ' Vertical grid type is: ',config_vert_grid_type
 
       if (config_vert_grid_type.ne.'isopycnal'.and. &
           config_vert_grid_type.ne.'zlevel'.and. &
@@ -127,7 +127,7 @@ module mpas_core
          call mpas_dmpar_abort(dminfo)
       endif
 
-      write (0,'(a,a10)'), ' Pressure type is: ',config_pressure_type
+      write (0,'(a,a10)') ' Pressure type is: ',config_pressure_type
       if (config_pressure_type.ne.'pressure'.and. &
           config_pressure_type.ne.'MontgomeryPotential') then
          write (0,*) ' Incorrect choice of config_pressure_type.'

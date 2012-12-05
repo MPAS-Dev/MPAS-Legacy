@@ -11,7 +11,7 @@ module ocn_time_average
     subroutine ocn_time_average_init(state)!{{{
         type (state_type), intent(inout) :: state
 
-        real, pointer :: nAccumulate
+        real (kind=RKIND), pointer :: nAccumulate
 
         real (kind=RKIND), dimension(:), pointer :: acc_ssh, acc_sshVar
         real (kind=RKIND), dimension(:,:), pointer :: acc_uReconstructZonal, acc_uReconstructMeridional, acc_uReconstructZonalVar, acc_uReconstructMeridionalVar
@@ -45,7 +45,7 @@ module ocn_time_average
         type (state_type), intent(inout) :: state
         type (state_type), intent(in) :: old_state
 
-        real, pointer :: nAccumulate, old_nAccumulate
+        real (kind=RKIND), pointer :: nAccumulate, old_nAccumulate
 
         real (kind=RKIND), dimension(:), pointer :: ssh
         real (kind=RKIND), dimension(:,:), pointer :: uReconstructZonal, uReconstructMeridional, u
@@ -99,7 +99,7 @@ module ocn_time_average
     subroutine ocn_time_average_normalize(state)!{{{
         type (state_type), intent(inout) :: state
 
-        real, pointer :: nAccumulate
+        real (kind=RKIND), pointer :: nAccumulate
 
         real (kind=RKIND), dimension(:), pointer :: acc_ssh, acc_sshVar
         real (kind=RKIND), dimension(:,:), pointer :: acc_uReconstructZonal, acc_uReconstructMeridional, acc_uReconstructZonalVar, acc_uReconstructMeridionalVar

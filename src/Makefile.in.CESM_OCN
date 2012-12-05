@@ -1,0 +1,32 @@
+include $(CASEROOT)/Macros
+RM = rm -f
+CPP = cpp -C -P -traditional
+FC=$(MPIFC)
+CC=$(MPICC)
+NETCDF=$(NETCDF_PATH)
+PNETCDF=$(PNETCDF_PATH)
+PIO=$(EXEROOT)/pio
+FILE_OFFSET = -DOFFSET64BIT
+CPPFLAGS += $(MODEL_FORMULATION) $(FILE_OFFSET) $(ZOLTAN_DEFINE) -DMPAS_CESM -D_MPI# -DUNDERSCORE
+CPPINCLUDES += -I$(EXEROOT)/ocn/source/inc -I$(NETCDF)/include -I$(PIO) -I$(PNETCDF)/include
+FCINCLUDES += -I$(EXEROOT)/ocn/source/inc -I$(EXEROOT)/csm_share -I$(EXEROOT)/gptl -I$(NETCDF)/include -I$(PIO) -I$(PNETCDF)/include
+LIBS += -L$(PIO) -L$(PNETCDF)/lib -L$(NETCDF)/lib -lpio -lpnetcdf -lnetcdf
+
+all:
+	@echo $(CPPINCLUDES)
+	@echo $(FCINCLUDES)
+	( $(MAKE) mpas RM="$(RM)" CPP="$(CPP)" NETCDF="$(NETCDF)" PNETCDF="$(PNETCDF)" \
+	  PIO="$(PIO)" FC="$(FC)" CC="$(CC)" SFC="$(SFC)" SCC="$(SCC)" \
+	  CPPFLAGS="$(CPPFLAGS)" CPPINCLUDES="$(CPPINCLUDES)" FCINCLUDES="$(FCINCLUDES)" )
+
+mpas: reg_includes externals frame ops dycore drver
+	ar ru lib$(CORE).a framework/*.o
+	ar ru lib$(CORE).a operators/*.o
+	ar ru lib$(CORE).a core_$(CORE)/*.o
+	ar ru lib$(CORE).a $(CORE)_cesm_driver/*.o
+
+externals: 
+
+drver:  reg_includes externals frame ops dycore
+	( cd $(CORE)_cesm_driver; $(MAKE) CPPFLAGS="$(CPPFLAGS)" CPPINCLUDES="$(CPPINCLUDES)" all ) 
+

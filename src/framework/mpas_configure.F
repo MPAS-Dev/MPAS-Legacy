@@ -7,11 +7,12 @@ module mpas_configure
    contains
 
 
-   subroutine mpas_read_namelist(dminfo)
+   subroutine mpas_read_namelist(dminfo, nml_filename)
 
       implicit none
 
       type (dm_info), intent(in) :: dminfo
+      character (len=*), optional :: nml_filename
 
       integer :: funit, ierr
 
@@ -23,8 +24,13 @@ module mpas_configure
 #include "config_set_defaults.inc"
 
       if (dminfo % my_proc_id == IO_NODE) then
-         write(0,*) 'Reading namelist.input'
-         open(funit,file='namelist.input',status='old',form='formatted')
+         if (present(nml_filename)) then
+            write(0,*) 'Reading ', trim(nml_filename)
+            open(funit,file=trim(nml_filename),status='old',form='formatted')
+         else
+            write(0,*) 'Reading namelist.input'
+            open(funit,file='namelist.input',status='old',form='formatted')
+         end if
 
 #include "config_namelist_reads.inc"
          close(funit)

@@ -14,6 +14,7 @@ namelist logical   sw_model config_initial_stats       false
 namelist logical   sw_model config_prescribe_velocity  false
 namelist logical   sw_model config_prescribe_thickness false
 namelist integer   sw_model config_num_halos           3
+namelist integer   sw_model config_ncouple_per_day     1
 namelist character io       config_input_name          grid.nc
 namelist character io       config_output_name         output.nc
 namelist character io       config_restart_name        restart.nc
@@ -239,7 +240,7 @@ var persistent real    tend_salinity ( nVertLevels nCells Time ) 1 - salinity te
 var persistent real    tend_tracer1 ( nVertLevels nCells Time ) 1 - tracer1 tend tracers testing
 
 % state variables for Split Explicit timesplitting
-var persistent real   uBtr ( nEdges Time )         2 ir uBtr state - -
+var persistent real   uBtr ( nEdges Time )         2 r uBtr state - -
 var persistent real   ssh ( nCells Time )          2 o  ssh state - - 
 var persistent real   uBtrSubcycle ( nEdges Time ) 2 -  uBtrSubcycle state - -
 var persistent real   sshSubcycle ( nCells Time )  2 -  sshSubcycle state - - 

@@ -85,6 +85,8 @@ module ocn_time_integration
       real (kind=RKIND), intent(in) :: dt
       character(len=*), intent(in) :: timeStamp
 
+      real (kind=RKIND) :: nanCheck
+
       type (dm_info) :: dminfo
       type (block_type), pointer :: block
 
@@ -98,7 +100,9 @@ module ocn_time_integration
      do while (associated(block))
         block % state % time_levs(2) % state % xtime % scalar = timeStamp
 
-        if (isNaN(sum(block % state % time_levs(2) % state % u % array))) then
+        nanCheck = sum(block % state % time_levs(2) % state % u % array)
+
+        if (nanCheck /= nanCheck) then
            write(0,*) 'Abort: NaN detected'
            call mpas_dmpar_abort(dminfo)
         endif
