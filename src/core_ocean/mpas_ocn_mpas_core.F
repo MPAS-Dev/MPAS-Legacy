@@ -184,11 +184,19 @@ module mpas_core
 
       type (MPAS_Time_Type) :: startTime, stopTime, alarmStartTime
       type (MPAS_TimeInterval_type) :: runDuration, timeStep, alarmTimeStep
+      character(len=StrKIND) :: restartTimeStamp
       integer :: ierr
 
-      call mpas_set_time(curr_time=startTime, dateTimeString=config_start_time, ierr=ierr)
-      call mpas_set_timeInterval(timeStep, dt=dt, ierr=ierr)
+      if(config_start_time == 'file') then
+        open(22,file='restart_timestamp',form='formatted',status='old')
+        read(22,*) restartTimeStamp
+        close(22)
+        call mpas_set_time(curr_time=startTime, dateTimeString=restartTimeStamp, ierr=ierr)
+      else
+        call mpas_set_time(curr_time=startTime, dateTimeString=config_start_time, ierr=ierr)
+      end if
 
+      call mpas_set_timeInterval(timeStep, dt=dt, ierr=ierr)
       if (trim(config_run_duration) /= "none") then
          call mpas_set_timeInterval(runDuration, timeString=config_run_duration, ierr=ierr)
          call mpas_create_clock(clock, startTime=startTime, timeStep=timeStep, runDuration=runDuration, ierr=ierr)

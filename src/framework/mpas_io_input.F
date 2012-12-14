@@ -94,7 +94,7 @@ module mpas_io_input
       type (graph) :: partial_global_graph_info
 
       type (MPAS_Time_type) :: startTime
-      character(len=StrKIND) :: timeStamp
+      character(len=StrKIND) :: timeStamp, restartTimeStamp
       character(len=StrKIND) :: filename
 
       integer :: nHalos
@@ -103,9 +103,18 @@ module mpas_io_input
 
       if (config_do_restart) then
         ! this get followed by set is to ensure that the time is in standard format
-        call mpas_set_time(curr_time=startTime, dateTimeString=config_start_time)
-        call mpas_get_time(curr_time=startTime, dateTimeString=timeStamp)
+        if(trim(config_start_time) == 'file') then
+          open(22,file='restart_timestamp',form='formatted',status='old')
+          read(22,*) restartTimeStamp
+          close(22)
 
+        else
+          restartTimeStamp = config_start_time
+        end if
+
+        write(0,*) 'RestartTimeStamp ', trim(restartTimeStamp)
+        call mpas_set_time(curr_time=startTime, dateTimeString=restartTimeStamp)
+        call mpas_get_time(curr_time=startTime, dateTimeString=timeStamp)
         call mpas_insert_string_suffix(trim(config_restart_name), timeStamp, filename)
 
         input_obj % filename = trim(filename)
@@ -256,11 +265,17 @@ module mpas_io_input
         ! If doing a restart, we need to decide which time slice to read from the 
         !   restart file
         !
-        input_obj % time = MPAS_seekStream(input_obj % io_stream, config_start_time, MPAS_STREAM_EXACT_TIME, timeStamp, ierr)
+        input_obj % time = MPAS_seekStream(input_obj % io_stream, restartTimeStamp, MPAS_STREAM_EXACT_TIME, timeStamp, ierr)
         if (ierr == MPAS_IO_ERR) then
-          write(0,*) 'Error: restart file '//trim(filename)//' did not contain time '//trim(config_start_time)
+          write(0,*) 'Error: restart file '//trim(filename)//' did not contain time '//trim(restartTimeStamp)
           call mpas_dmpar_abort(domain % dminfo)
         end if
+
+!       input_obj % time = MPAS_seekStream(input_obj % io_stream, config_start_time, MPAS_STREAM_EXACT_TIME, timeStamp, ierr)
+!       if (ierr == MPAS_IO_ERR) then
+!         write(0,*) 'Error: restart file '//trim(filename)//' did not contain time '//trim(config_start_time)
+!         call mpas_dmpar_abort(domain % dminfo)
+!       end if
 !write(0,*) 'MGD DEBUGGING time = ', input_obj % time
         write(0,*) 'Restarting model from time ', trim(timeStamp)
       end if
