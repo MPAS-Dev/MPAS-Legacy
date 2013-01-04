@@ -195,7 +195,14 @@ intel-nersc:
 
 CPPINCLUDES = -I../inc -I$(NETCDF)/include -I$(PIO) -I$(PNETCDF)/include
 FCINCLUDES = -I../inc -I$(NETCDF)/include -I$(PIO) -I$(PNETCDF)/include
-LIBS = -L$(PIO) -L$(PNETCDF)/lib -L$(NETCDF)/lib -lpio -lpnetcdf -lnetcdf
+LIBS = -L$(PIO) -L$(PNETCDF)/lib -L$(NETCDF)/lib -lpio -lpnetcdf
+
+NCLIB = -lnetcdf
+NCLIBF = -lnetcdff
+ifneq ($(wildcard $(NETCDF)/lib/libnetcdff.*), ) # CHECK FOR NETCDF4
+	LIBS += $(NCLIBF)
+endif # CHECK FOR NETCDF4
+LIBS += $(NCLIB)
 
 RM = rm -f
 CPP = cpp -C -P -traditional
@@ -277,9 +284,6 @@ else
 	TAU_MESSAGE="TAU Hooks are off."
 endif
 
-ifneq ($(wildcard $(NETCDF)/lib/libnetcdff.*), ) # CHECK FOR NETCDF4
-	LIBS += -lnetcdff
-endif # CHECK FOR NETCDF4
 
 ####################################################
 # Section for adding external libraries and includes
