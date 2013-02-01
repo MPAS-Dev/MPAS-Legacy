@@ -121,7 +121,6 @@ contains
       !-----------------------------------------------------------------
 
       err = 0
-      if((.not.constViscOn) .and. (.not.constDiffOn)) return
 
       vertViscTopOfEdge => d % vertViscTopOfEdge % array
       vertDiffTopOfCell => d % vertDiffTopOfCell % array
@@ -185,7 +184,7 @@ contains
 
       if(.not.constViscOn) return
 
-      vertViscTopOfEdge = constVisc
+      vertViscTopOfEdge = vertViscTopOfEdge + constVisc
 
    !--------------------------------------------------------------------
 
@@ -241,7 +240,7 @@ contains
 
       if(.not.constDiffOn) return
 
-      vertDiffTopOfCell = constDiff
+      vertDiffTopOfCell = vertDiffTopOfCell + constDiff
 
    !--------------------------------------------------------------------
 
@@ -279,18 +278,20 @@ contains
 
       err = 0
 
-      constViscOn = .false.
-      constDiffOn = .false.
+      constViscOn = config_use_const_visc
+      constDiffOn = config_use_const_diff
+      constVisc = config_vert_visc
+      constDiff = config_vert_diff
 
-      if (config_vert_visc_type.eq.'const') then
-          constViscOn = .true.
-          constVisc = config_vert_visc
-      endif
+!     if (config_vert_visc_type.eq.'const') then
+!         constViscOn = .true.
+!         constVisc = config_vert_visc
+!     endif
 
-      if (config_vert_diff_type.eq.'const') then
-          constDiffOn = .true.
-          constDiff = config_vert_diff
-      endif
+!     if (config_vert_diff_type.eq.'const') then
+!         constDiffOn = .true.
+!         constDiff = config_vert_diff
+!     endif
 
 
    !--------------------------------------------------------------------

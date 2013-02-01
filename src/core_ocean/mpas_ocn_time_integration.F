@@ -121,14 +121,14 @@ module ocn_time_integration
       rk4On = .false.
       splitOn = .false.
 
-      if (trim(config_time_integration) == 'RK4') then
+      if (trim(config_time_integrator) == 'RK4') then
           rk4On = .true.
-      elseif (trim(config_time_integration) == 'split_explicit' &
-          .or.trim(config_time_integration) == 'unsplit_explicit') then
+      elseif (trim(config_time_integrator) == 'split_explicit' &
+          .or.trim(config_time_integrator) == 'unsplit_explicit') then
           splitOn = .true.
       else
           err = 1
-          write(*,*) 'Incorrect choice for config_time_integration:', trim(config_time_integration)
+          write(*,*) 'Incorrect choice for config_time_integrator:', trim(config_time_integrator)
           write(*,*) '   choices are: RK4, split_explicit, unsplit_explicit'
       endif
 

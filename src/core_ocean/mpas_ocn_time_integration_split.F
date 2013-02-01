@@ -209,9 +209,9 @@ module ocn_time_integration_split
          do j=1,n_bcl_iter(split_explicit_step)
 
             ! Use this G coefficient to avoid an if statement within the iEdge loop.
-            if (trim(config_time_integration) == 'unsplit_explicit') then
+            if (trim(config_time_integrator) == 'unsplit_explicit') then
                split = 0
-            elseif (trim(config_time_integration) == 'split_explicit') then
+            elseif (trim(config_time_integrator) == 'split_explicit') then
                split = 1
             endif
 
@@ -294,7 +294,7 @@ module ocn_time_integration_split
          oldBtrSubcycleTime = 1
          newBtrSubcycleTime = 2
 
-         if (trim(config_time_integration) == 'unsplit_explicit') then
+         if (trim(config_time_integrator) == 'unsplit_explicit') then
 
             block => domain % blocklist
             do while (associated(block))
@@ -321,7 +321,7 @@ module ocn_time_integration_split
                block => block % next
             end do  ! block
 
-         elseif (trim(config_time_integration) == 'split_explicit') then
+         elseif (trim(config_time_integrator) == 'split_explicit') then
 
             ! Initialize variables for barotropic subcycling
             block => domain % blocklist

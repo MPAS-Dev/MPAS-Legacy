@@ -44,6 +44,7 @@ module ocn_vel_pressure_grad
    !
    !--------------------------------------------------------------------
 
+   logical :: pgradOn
    real (kind=RKIND) :: rho0Inv, grho0Inv
 
 
@@ -112,6 +113,8 @@ contains
       real (kind=RKIND) :: invdcEdge
 
       err = 0
+
+      if(.not.pgradOn) return
 
       nEdgesSolve = grid % nEdgesSolve
       maxLevelEdgeTop => grid % maxLevelEdgeTop % array
@@ -186,13 +189,17 @@ contains
 
       err = 0
 
-      if (config_pressure_type.eq.'MontgomeryPotential') then
+      pgradOn = .true.
+
+      if (config_pressure_gradient_type.eq.'MontgomeryPotential') then
         rho0Inv = 1.0
         grho0Inv = 0.0
       else 
         rho0Inv = 1.0/config_rho0
         grho0Inv = gravity/config_rho0
       end if
+
+      if(config_disable_u_pgrad) pgradOn = .false.
 
 
 

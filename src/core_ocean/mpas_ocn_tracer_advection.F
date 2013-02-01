@@ -32,6 +32,7 @@ module mpas_ocn_tracer_advection
              mpas_ocn_tracer_advection_coefficients, &
              mpas_ocn_tracer_advection_tend
 
+   logical :: tracerAdvOn
    logical :: monotonicOn
 
    contains
@@ -251,6 +252,8 @@ module mpas_ocn_tracer_advection
       type (mesh_type), intent(in) :: grid !< Input: grid information
       real (kind=RKIND), dimension(:,:), intent(in) :: tend_h !< Input: Thickness tendency information
 
+      if(.not. tracerAdvOn) return
+
       if(monotonicOn) then
          call mpas_ocn_tracer_advection_mono_tend(tracers, uh, w, h, verticalCellSize, dt, grid, tend_h, tend)
       else
@@ -278,6 +281,10 @@ module mpas_ocn_tracer_advection
       integer :: err_tmp
 
       err = 0
+
+      tracerAdvOn = .true.
+
+      if(config_disable_tr_adv) tracerAdvOn = .false.
 
       call mpas_ocn_tracer_advection_std_init(err_tmp)
       call mpas_ocn_tracer_advection_mono_init(err_tmp)

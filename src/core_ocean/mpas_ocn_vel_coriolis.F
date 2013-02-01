@@ -43,6 +43,7 @@ module ocn_vel_coriolis
    !
    !--------------------------------------------------------------------
 
+   logical :: coriolisOn
 
 !***********************************************************************
 
@@ -116,6 +117,8 @@ contains
 
       err = 0
 
+      if(.not.coriolisOn) return
+
       maxLevelEdgeTop => grid % maxLevelEdgeTop % array
       nEdgesOnEdge => grid % nEdgesOnEdge % array
       cellsOnEdge => grid % cellsOnEdge % array
@@ -180,6 +183,10 @@ contains
       integer, intent(out) :: err !< Output: error flag
 
       err = 0
+
+      coriolisOn = .true.
+
+      if(config_disable_u_coriolis) coriolisOn = .false.
 
    !--------------------------------------------------------------------
 

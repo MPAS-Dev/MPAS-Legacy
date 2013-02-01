@@ -13,10 +13,14 @@ module mpas_core
 
    use ocn_monthly_forcing
 
+   use ocn_thick_hadv
+   use ocn_thick_vadv
+
    use ocn_vel_pressure_grad
    use ocn_vel_vadv
    use ocn_vel_hmix
    use ocn_vel_forcing
+   use ocn_vel_coriolis
 
    use ocn_tracer_hadv
    use ocn_tracer_vadv
@@ -64,9 +68,16 @@ module mpas_core
       ! Initialize submodules before initializing blocks.
       call ocn_timestep_init(err)
 
-      call ocn_vel_pressure_grad_init(err_tmp)
+      call ocn_thick_hadv_init(err_tmp)
       err = ior(err, err_tmp)
 
+      call ocn_thick_vadv_init(err_tmp)
+      err = ior(err, err_tmp)
+
+      call ocn_vel_coriolis_init(err_tmp)
+      err = ior(err, err_tmp)
+      call ocn_vel_pressure_grad_init(err_tmp)
+      err = ior(err, err_tmp)
       call ocn_vel_vadv_init(err_tmp)
       err = ior(err, err_tmp)
       call ocn_vel_hmix_init(err_tmp)
@@ -106,38 +117,38 @@ module mpas_core
 
       if (.not. config_do_restart) call setup_sw_test_case(domain)
 
-      if (config_vert_grid_type.ne.'isopycnal') call ocn_init_vert_coord(domain)
+      if (config_vert_coord_movement.ne.'isopycnal') call ocn_init_vert_coord(domain)
 
       call ocn_compute_max_level(domain)
 
-      if (config_enforce_zstar_at_restart) then
-         call ocn_init_h_zstar(domain)
-      endif
-
       if (.not.config_do_restart) call ocn_init_split_timestep(domain)
 
-      write (0,'(a,a10)') ' Vertical grid type is: ',config_vert_grid_type
+      write (0,'(a,a10)') ' Vertical coordinate movement is: ',config_vert_coord_movement
 
-      if (config_vert_grid_type.ne.'isopycnal'.and. &
-          config_vert_grid_type.ne.'zlevel'.and. &
-          config_vert_grid_type.ne.'zstar1'.and. &
-          config_vert_grid_type.ne.'zstar'.and. &
-          config_vert_grid_type.ne.'zstarWeights') then
-         write (0,*) ' Incorrect choice of config_vert_grid_type.'
+      if (config_vert_coord_movement.ne.'isopycnal'.and. &
+          config_vert_coord_movement.ne.'fixed'.and. &
+          config_vert_coord_movement.ne.'uniform_stretching'.and. &
+          config_vert_coord_movement.ne.'user_specified') then
+         write (0,*) ' Incorrect choice of config_vert_coord_movement.'
          call mpas_dmpar_abort(dminfo)
       endif
 
-      write (0,'(a,a10)') ' Pressure type is: ',config_pressure_type
-      if (config_pressure_type.ne.'pressure'.and. &
-          config_pressure_type.ne.'MontgomeryPotential') then
-         write (0,*) ' Incorrect choice of config_pressure_type.'
+      write (0,'(a,a)') ' Pressure type is: ',trim(config_pressure_gradient_type)
+      if (config_pressure_gradient_type.ne.'pressure_and_zmid'.and. &
+          config_pressure_gradient_type.ne.'MontgomeryPotential') then
+         write (0,*) ' Incorrect choice of config_pressure_gradient_type.'
          call mpas_dmpar_abort(dminfo)
       endif
+
+      if(config_vert_coord_movement .ne. 'isopycnal' .and. config_pressure_gradient_type .eq. 'MontgomeryPotential') then
+         write (0,*) ' Incorrect combination of config_vert_coord_movement and config_pressure_gradient_type'
+         call mpas_dmpar_abort(dminfo)
+      end if
 
       if (config_filter_btr_mode.and. &
-          config_vert_grid_type.ne.'zlevel')then
+          config_vert_coord_movement.ne.'fixed')then
          write (0,*) 'filter_btr_mode has only been tested with'// &
-            ' config_vert_grid_type=zlevel.'
+            ' config_vert_coord_movement=fixed.'
          call mpas_dmpar_abort(dminfo)
       endif
 
@@ -162,7 +173,7 @@ module mpas_core
    ! input arguement into mpas_init.  Ask about that later.  For now, there will be
    ! no initial statistics write.
    
-      if (config_initial_stats) then
+      if (config_write_stats_on_startup) then
           call mpas_timer_start("global diagnostics", .false., globalDiagTimer)
           call ocn_compute_global_diagnostics(domain, 1 , 0, dt)
           call mpas_timer_stop("global diagnostics", globalDiagTimer)
@@ -230,11 +241,11 @@ module mpas_core
       !TODO: use this code if we desire to convert config_stats_interval to alarms 
       !(must also change config_stats_interval type to character) 
       ! set stats alarm, if necessary
-      !if (trim(config_stats_interval) /= "none") then      
-      !   call mpas_set_timeInterval(alarmTimeStep, timeString=config_stats_interval, ierr=ierr)
-      !   alarmStartTime = startTime + alarmTimeStep
-      !   call mpas_add_clock_alarm(clock, statsAlarmID, alarmStartTime, alarmTimeStep, ierr=ierr)
-      !end if
+      if (trim(config_stats_interval) /= "none") then      
+         call mpas_set_timeInterval(alarmTimeStep, timeString=config_stats_interval, ierr=ierr)
+         alarmStartTime = startTime + alarmTimeStep
+         call mpas_add_clock_alarm(clock, statsAlarmID, alarmStartTime, alarmTimeStep, ierr=ierr)
+      end if
 
       call mpas_get_time(curr_time=startTime, dateTimeString=startTimeStamp, ierr=ierr)
 
@@ -514,30 +525,31 @@ module mpas_core
    
       call ocn_timestep(domain, dt, timeStamp)
 
-      if (config_stats_interval > 0) then
-          if (mod(itimestep, config_stats_interval) == 0) then
-             call mpas_timer_start("global diagnostics", .false., globalDiagTimer)
-             call ocn_compute_global_diagnostics(domain, 2, itimestep, dt);
-             call mpas_timer_stop("global diagnostics", globalDiagTimer)
-          end if
-      end if
+      !if (config_stats_interval > 0) then
+      !    if (mod(itimestep, config_stats_interval) == 0) then
+      !       call mpas_timer_start("global diagnostics", .false., globalDiagTimer)
+      !       call ocn_compute_global_diagnostics(domain, 2, itimestep, dt);
+      !       call mpas_timer_stop("global diagnostics", globalDiagTimer)
+      !    end if
+      !end if
 
       !TODO: replace the above code block with this if we desire to convert config_stats_interval to use alarms
-      !if (mpas_is_alarm_ringing(clock, statsAlarmID, ierr=ierr)) then
-      !   call mpas_reset_clock_alarm(clock, statsAlarmID, ierr=ierr)
+      if (mpas_is_alarm_ringing(clock, statsAlarmID, ierr=ierr)) then
+         call mpas_reset_clock_alarm(clock, statsAlarmID, ierr=ierr)
 
-      !   block_ptr => domain % blocklist
-      !   if (associated(block_ptr % next)) then
-      !      write(0,*) 'Error: computeGlobalDiagnostics assumes ',&
-      !                 'that there is only one block per processor.'
-      !   end if
+!        block_ptr => domain % blocklist
+!        if (associated(block_ptr % next)) then
+!           write(0,*) 'Error: computeGlobalDiagnostics assumes ',&
+!                      'that there is only one block per processor.'
+!        end if
    
-      !   call mpas_timer_start("global diagnostics")
-      !   call ocn_compute_global_diagnostics(domain % dminfo, &
-      !            block_ptr % state % time_levs(2) % state, block_ptr % mesh, &
-      !            timeStamp, dt)
-      !   call mpas_timer_stop("global diagnostics")
-      !end if
+         call mpas_timer_start("global diagnostics")
+         call ocn_compute_global_diagnostics(domain, 2, itimestep, dt);
+      !  call ocn_compute_global_diagnostics(domain % dminfo, &
+      !           block_ptr % state % time_levs(2) % state, block_ptr % mesh, &
+      !           timeStamp, dt)
+         call mpas_timer_stop("global diagnostics")
+      end if
 
    end subroutine mpas_timestep!}}}
 
@@ -561,7 +573,7 @@ module mpas_core
 
       integer, dimension(:), pointer :: maxLevelCell
       real (kind=RKIND), dimension(:), pointer :: refBottomDepth, &
-         refBottomDepthTopOfCell, zstarWeight, hZLevel, bottomDepth
+         refBottomDepthTopOfCell, vertCoordMovementWeights, hZLevel, bottomDepth
       real (kind=RKIND), dimension(:), allocatable :: minBottomDepth, minBottomDepthMid, zMidZLevel
          
       real (kind=RKIND), dimension(:,:), pointer :: h
@@ -578,7 +590,7 @@ module mpas_core
          refBottomDepth => block % mesh % refBottomDepth % array
          refBottomDepthTopOfCell => block % mesh % refBottomDepthTopOfCell % array
          bottomDepth => block % mesh % bottomDepth % array
-         zstarWeight => block % mesh % zstarWeight % array
+         vertCoordMovementWeights => block % mesh % vertCoordMovementWeights % array
          hZLevel => block % mesh % hZLevel % array
          maxLevelCell => block % mesh % maxLevelCell % array
 
@@ -602,27 +614,16 @@ module mpas_core
             refBottomDepthTopOfCell(k+1) = refBottomDepth(k)
          end do
 
-         ! Initialization of zstarWeights.  This determines how SSH perturbations
+         ! Initialization of vertCoordMovementWeights. This determines how SSH perturbations
          ! are distributed throughout the column.
-         if (config_vert_grid_type.eq.'zlevel') then
+         if (config_vert_coord_movement.eq.'fixed') then
 
-           zstarWeight = 0.0
-           zstarWeight(1) = 1.0
+           vertCoordMovementWeights = 0.0
+           vertCoordMovementWeights(1) = 1.0
 
-         elseif (config_vert_grid_type.eq.'zstar') then
+         elseif (config_vert_coord_movement.eq.'uniform_stretching') then
 
-            zstarWeight = 1.0
-
-         elseif (config_vert_grid_type.eq.'zstarWeights') then
-
-           ! This is a test with other weights, just to make sure zstar functions
-           ! using variable weights.
-   
-           zstarWeight = 0.0
-           zstarWeight(1:5) = 1.0
-           do k=1,10
-              zstarWeight(5+k) = 1.0-k*0.1
-           end do
+            vertCoordMovementWeights = 1.0
 
          endif
 
@@ -776,13 +777,13 @@ module mpas_core
 
          ! Compute barotropic velocity at first timestep
          ! This is only done upon start-up.
-         if (trim(config_time_integration) == 'unsplit_explicit') then
+         if (trim(config_time_integrator) == 'unsplit_explicit') then
             block % state % time_levs(1) % state % uBtr % array(:) = 0.0
 
               block % state % time_levs(1) % state % uBcl % array(:,:) &
             = block % state % time_levs(1) % state % u % array(:,:) 
 
-         elseif (trim(config_time_integration) == 'split_explicit') then
+         elseif (trim(config_time_integrator) == 'split_explicit') then
 
             if (config_filter_btr_mode) then
                do iCell=1,block % mesh % nCells
@@ -851,64 +852,6 @@ module mpas_core
 
    end subroutine ocn_init_split_timestep!}}}
 
-   subroutine ocn_init_h_zstar(domain)!{{{
-   ! If changing from zlevel to zstar, compute h based on zstar weights,
-   ! where SSH is distributed through the layers.  We only change h.
-   ! We do not remap the tracer variables, so this breaks total global 
-   ! conservation.
-
-      use mpas_grid_types
-      use mpas_configure
-
-      implicit none
-
-      type (domain_type), intent(inout) :: domain
-
-      type (block_type), pointer :: block
-
-      integer :: i, iCell, iEdge, iVertex, k, nVertLevels
-      integer, dimension(:), pointer :: maxLevelCell
-
-      real (kind=RKIND) :: hSum, sumZstarWeights
-      real (kind=RKIND), dimension(:), pointer :: hZLevel, zstarWeight, &
-         refBottomDepth
-      real (kind=RKIND), dimension(:,:), pointer :: h
-
-      ! Initialize z-level grid variables from h, read in from input file.
-      block => domain % blocklist
-      do while (associated(block))
-
-         h          => block % state % time_levs(1) % state % h % array
-         nVertLevels = block % mesh % nVertLevels
-         hZLevel => block % mesh % hZLevel % array
-         maxLevelCell => block % mesh % maxLevelCell % array
-         zstarWeight => block % mesh % zstarWeight % array
-         refBottomDepth => block % mesh % refBottomDepth % array
-
-         do iCell=1,block % mesh % nCells
-            ! Compute the total column thickness, hSum, and the sum of zstar weights.
-            hSum = 0.0
-            sumZstarWeights = 0.0
-            do k = 1,maxLevelCell(iCell)
-               hSum = hSum + h(k,iCell) 
-               sumZstarWeights = sumZstarWeights + zstarWeight(k)
-            enddo
-
-            ! h_k = h_k^{zlevel} + zeta * W_k/sum(W_k)
-            ! where zeta is SSH and W_k are weights
-            do k = 1,maxLevelCell(iCell)
-               h(k,iCell) = hZLevel(k) &
-                 + (hSum - refBottomDepth(maxLevelCell(iCell))) &
-                  * zstarWeight(k)/sumZstarWeights
-            enddo
-
-         enddo
-
-      block => block % next
-      end do
-
-   end subroutine ocn_init_h_zstar!}}}
-
 subroutine ocn_compute_max_level(domain)!{{{
 ! Initialize maxLevel and bouncary grid variables.
 
@@ -959,7 +902,7 @@ subroutine ocn_compute_max_level(domain)!{{{
 
       ! for z-grids, maxLevelCell should be in input state
       ! Isopycnal grid uses all vertical cells
-      if (config_vert_grid_type.eq.'isopycnal') then
+      if (config_vert_coord_movement.eq.'isopycnal') then
          maxLevelCell(1:nCells) = nVertLevels
       endif
       maxLevelCell(nCells+1) = 0

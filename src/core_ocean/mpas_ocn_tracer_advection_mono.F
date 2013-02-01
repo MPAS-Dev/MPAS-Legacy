@@ -147,7 +147,7 @@ module mpas_ocn_tracer_advection_mono
             upwind_tendency(k, iCell) = 0.0
 
             !tracer_new is supposed to be the "new" tracer state. This allows bounds checks.
-            if (config_check_monotonicity) then
+            if (config_check_tracer_monotonicity) then
               tracer_new(k,iCell) = 0.0
             end if
           end do ! k loop
@@ -320,7 +320,7 @@ module mpas_ocn_tracer_advection_mono
             do k = 1, maxLevelEdgeTop(iEdge)
               tend(iTracer, k, iCell) = tend(iTracer, k, iCell) + edgeSignOnCell(i, iCell) * high_order_horiz_flux(k, iEdge) * invAreaCell1
 
-              if(config_check_monotonicity) then
+              if(config_check_tracer_monotonicity) then
                 tracer_new(k, iCell) = tracer_new(k, iCell) + edgeSignOnCell(i, iCell) * high_order_horiz_flux(k, iEdge) * invAreaCell1
               end if
             end do
@@ -332,7 +332,7 @@ module mpas_ocn_tracer_advection_mono
           do k = 1,maxLevelCell(iCell)
             tend(iTracer, k, iCell) = tend(iTracer, k, iCell) + (high_order_vert_flux(k+1, iCell) - high_order_vert_flux(k, iCell)) + upwind_tendency(k,iCell)
 
-            if (config_check_monotonicity) then
+            if (config_check_tracer_monotonicity) then
               !tracer_new holds a tendency for now. Only for a check on monotonicity
               tracer_new(k, iCell) = tracer_new(k, iCell) + (high_order_vert_flux(k+1, iCell) - high_order_vert_flux(k, iCell)) + upwind_tendency(k,iCell)
 
@@ -342,7 +342,7 @@ module mpas_ocn_tracer_advection_mono
           end do ! k loop
         end do ! iCell loop
 
-        if (config_check_monotonicity) then
+        if (config_check_tracer_monotonicity) then
           !build min and max bounds on old and new tracer for check on monotonicity.
           do iCell = 1, nCellsSolve
             do k = 1, maxLevelCell(iCell)

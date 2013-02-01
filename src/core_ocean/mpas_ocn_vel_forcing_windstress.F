@@ -168,6 +168,8 @@ contains
 
       windStressOn = .true.
 
+      if(config_disable_u_windstress) windStressOn = .false.
+
       err = 0
 
    !--------------------------------------------------------------------

@@ -124,7 +124,6 @@ contains
       !-----------------------------------------------------------------
 
       err = 0
-      if((.not.richViscOn) .and. (.not.richDiffOn)) return
 
       indexT = s%index_temperature
       indexS = s%index_salinity
@@ -222,13 +221,12 @@ contains
 
       maxLevelEdgeTop => grid % maxLevelEdgeTop % array
 
-      vertViscTopOfEdge = 0.0
       do iEdge = 1,nEdges
          do k = 2,maxLevelEdgeTop(iEdge)
             ! mrp 110324 efficiency note: this if is inside iEdge and k loops.
             ! Perhaps there is a more efficient way to do this.
             if (RiTopOfEdge(k,iEdge)>0.0) then
-               vertViscTopOfEdge(k,iEdge) = config_bkrd_vert_visc &
+               vertViscTopOfEdge(k,iEdge) = vertViscTopOfEdge(k, iEdge) + config_bkrd_vert_visc &
                   + config_rich_mix / (1.0 + 5.0*RiTopOfEdge(k,iEdge))**2
             ! maltrud do limiting of coefficient--should not be necessary
             ! also probably better logic could be found
@@ -248,8 +246,7 @@ contains
                else
                   ! for Ri<0 and explicit vertical mix, 
                   ! use maximum diffusion allowed by CFL criterion
-                  vertViscTopOfEdge(k,iEdge) = &
-                      ((h_edge(k-1,iEdge)+h_edge(k,iEdge))/2.0)**2/config_dt/4.0
+                  vertViscTopOfEdge(k,iEdge) = vertViscTopOfEdge(k,iEdge) + ((h_edge(k-1,iEdge)+h_edge(k,iEdge))/2.0)**2/config_dt/4.0
                end if
             end if
          end do
@@ -326,14 +323,13 @@ contains
 
       maxLevelCell => grid % maxLevelCell % array
 
-      vertDiffTopOfCell = 0.0
       coef = -gravity/config_rho0/2.0
       do iCell = 1,nCells
          do k = 2,maxLevelCell(iCell)
             ! mrp 110324 efficiency note: this if is inside iCell and k loops.
             ! Perhaps there is a more efficient way to do this.
             if (RiTopOfCell(k,iCell)>0.0) then
-               vertDiffTopOfCell(k,iCell) = config_bkrd_vert_diff &
+               vertDiffTopOfCell(k,iCell) = vertDiffTopOfCell(k, iCell) + config_bkrd_vert_diff &
                   + (config_bkrd_vert_visc & 
                      + config_rich_mix / (1.0 + 5.0*RiTopOfCell(k,iCell))**2) &
                   / (1.0 + 5.0*RiTopOfCell(k,iCell))
@@ -355,8 +351,7 @@ contains
                else
                   ! for Ri<0 and explicit vertical mix, 
                   ! use maximum diffusion allowed by CFL criterion
-                  vertDiffTopOfCell(k,iCell) = &
-                     ((h(k-1,iCell)+h(k,iCell))/2.0)**2/config_dt/4.0
+                  vertDiffTopOfCell(k,iCell) = vertDiffTopOfCell(k, iCell) + ((h(k-1,iCell)+h(k,iCell))/2.0)**2/config_dt/4.0
                end if
             end if
          end do
@@ -573,16 +568,16 @@ contains
 
       err = 0
 
-      richViscOn = .false.
-      richDiffOn = .false.
+      richViscOn = config_use_rich_visc
+      richDiffOn = config_use_rich_diff
 
-      if (config_vert_visc_type.eq.'rich') then
-          richViscOn = .true.
-      endif
+!     if (config_vert_visc_type.eq.'rich') then
+!         richViscOn = .true.
+!     endif
 
-      if (config_vert_diff_type.eq.'rich') then
-          richDiffOn = .true.
-      endif
+!     if (config_vert_diff_type.eq.'rich') then
+!         richDiffOn = .true.
+!     endif
 
 
    !--------------------------------------------------------------------

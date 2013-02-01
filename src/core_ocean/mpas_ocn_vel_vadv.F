@@ -183,9 +183,11 @@ contains
       err = 0
       velVadvOn = .false.
 
-      if (config_vert_grid_type.ne.'isopycnal') then
+      if (config_vert_coord_movement.ne.'isopycnal') then
           velVadvOn = .true.
       end if
+
+      if(config_disable_u_vadv) velVadvOn = .false.
 
    !--------------------------------------------------------------------
 

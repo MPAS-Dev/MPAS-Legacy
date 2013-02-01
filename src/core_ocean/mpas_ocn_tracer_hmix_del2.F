@@ -216,6 +216,8 @@ contains
           eddyDiff2 = config_h_tracer_eddy_diff2
       endif
 
+      if(.not.config_use_tracer_del2) del2on = .false.
+
    !--------------------------------------------------------------------
 
    end subroutine ocn_tracer_hmix_del2_init!}}}

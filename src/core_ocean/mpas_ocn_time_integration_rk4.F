@@ -162,7 +162,7 @@ module ocn_time_integration_rk4
               block % provis % uTransport % array, block % provis % wTop % array, err)
            call ocn_tend_h(block % tend, block % provis, block % mesh)
 
-           if (config_rk_filter_btr_mode) then
+           if (config_filter_btr_mode) then
                call ocn_filter_btr_mode_tend_u(block % tend, block % provis, block % mesh)
            endif
 

@@ -172,7 +172,7 @@ contains
       err = 0
       vadvOn = .false.
 
-      if (config_vert_grid_type.ne.'isopycnal') then
+      if (config_vert_coord_movement.ne.'isopycnal') then
           vadvOn = .true.
           call ocn_tracer_vadv_stencil_init(err1)
           call ocn_tracer_vadv_spline_init(err2)

@@ -238,6 +238,8 @@ contains
           eddyDiff4 = config_h_tracer_eddy_diff4
       endif
 
+      if(.not.config_use_tracer_del4) del4on = .false.
+
    !--------------------------------------------------------------------
 
    end subroutine ocn_tracer_hmix_del4_init!}}}

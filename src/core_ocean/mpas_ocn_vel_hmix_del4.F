@@ -272,6 +272,8 @@ contains
 
    endif
 
+   if(.not.config_use_mom_del4) hmixDel4On = .false.
+
    !--------------------------------------------------------------------
 
    end subroutine ocn_vel_hmix_del4_init!}}}

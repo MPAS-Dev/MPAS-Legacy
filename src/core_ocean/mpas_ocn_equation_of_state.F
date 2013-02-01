@@ -158,7 +158,7 @@ contains
       linearEos = .false.
       jmEos = .false.
 
-      if(config_vert_grid_type.ne.'isopycnal') then
+      if(config_vert_coord_movement.ne.'isopycnal') then
           eosON = .true.
 
           if (config_eos_type.eq.'linear') then

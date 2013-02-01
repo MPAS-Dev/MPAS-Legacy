@@ -47,6 +47,7 @@ module ocn_tracer_hmix
    !
    !--------------------------------------------------------------------
 
+   logical :: tracerHmixOn
    type (timer_node), pointer :: del2Timer, del4Timer
 
 
@@ -122,6 +123,8 @@ contains
       !
       !-----------------------------------------------------------------
 
+      if(.not.tracerHmixOn) return
+
       call mpas_timer_start("del2", .false., del2Timer)
       call ocn_tracer_hmix_del2_tend(grid, h_edge, tracers, tend, err1)
       call mpas_timer_stop("del2", del2Timer)
@@ -165,6 +168,9 @@ contains
 
       integer :: err1, err2
 
+      tracerHmixOn = .true.
+
+      if(config_disable_tr_hmix) tracerHmixOn = .false.
       call ocn_tracer_hmix_del2_init(err1)
       call ocn_tracer_hmix_del4_init(err2)
 

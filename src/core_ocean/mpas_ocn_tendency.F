@@ -80,7 +80,6 @@ module ocn_tendency
    !
    !--------------------------------------------------------------------
 
-   integer :: hadv2nd, hadv3rd, hadv4th
    integer :: ke_cell_flag, ke_vertex_flag
    real (kind=RKIND) ::  coef_3rd_order, fCoef
 
@@ -125,6 +124,8 @@ contains
       ! height tendency: start accumulating tendency terms
       !
       tend_h = 0.0
+
+      if(config_disable_h_all_tend) return
 
       !
       ! height tendency: horizontal advection term -\nabla\cdot ( hu)
@@ -206,6 +207,8 @@ contains
       ! mrp 110516 efficiency: could remove next line and have first tend_u operation not be additive
       tend_u(:,:) = 0.0
 
+      if(config_disable_u_all_tend) return
+
       !
       ! velocity tendency: nonlinear Coriolis term and grad of kinetic energy
       !
@@ -225,7 +228,7 @@ contains
       ! velocity tendency: pressure gradient
       !
       call mpas_timer_start("pressure grad", .false., velPgradTimer)
-      if (config_pressure_type.eq.'MontgomeryPotential') then
+      if (config_pressure_gradient_type.eq.'MontgomeryPotential') then
           call ocn_vel_pressure_grad_tend(grid, MontPot,  zMid, rho, tend_u, err)
       else
           call ocn_vel_pressure_grad_tend(grid, pressure, zMid, rho, tend_u, err)
@@ -303,6 +306,13 @@ contains
       tend_tr     => tend % tracers % array
       tend_h      => tend % h % array
 
+      !
+      ! initialize tracer tendency (RHS of tracer equation) to zero.
+      !
+      tend_tr(:,:,:) = 0.0
+
+      if(config_disable_tr_all_tend) return
+
       allocate(uh(grid % nVertLevels, grid % nEdges+1))
       !
       ! QC Comment (3/15/12): need to make sure that uTransport is the right
@@ -312,11 +322,6 @@ contains
             uh(k, iEdge) = uTransport(k, iEdge) * h_edge(k, iEdge)
          end do
       end do
-
-      !
-      ! initialize tracer tendency (RHS of tracer equation) to zero.
-      !
-      tend_tr(:,:,:) = 0.0
 
       !
       ! tracer tendency: horizontal advection term -div( h \phi u)
@@ -494,80 +499,13 @@ contains
       h_edge = -1.0e34
       coef_3rd_order = config_coef_3rd_order
 
-      do iEdge=1,nEdges*hadv2nd
+      do iEdge=1,nEdges
          cell1 = cellsOnEdge(1,iEdge)
          cell2 = cellsOnEdge(2,iEdge)
          do k=1,maxLevelEdgeTop(iEdge)
             h_edge(k,iEdge) = 0.5 * (h(k,cell1) + h(k,cell2))
          end do
       end do
-
-      do iEdge=1,nEdges*hadv3rd
-         cell1 = cellsOnEdge(1,iEdge)
-         cell2 = cellsOnEdge(2,iEdge)
-
-         do k=1,maxLevelEdgeTop(iEdge)
-
-            d2fdx2_cell1 = 0.0
-            d2fdx2_cell2 = 0.0
-
-            boundaryMask = abs(transfer(.not.(boundaryCell(k,cell1) == 0 .and. boundaryCell(k,cell2) == 0), boundaryMask))
-
-            d2fdx2_cell1 = deriv_two(1,1,iEdge) * h(k,cell1) * boundaryMask
-            d2fdx2_cell2 = deriv_two(1,2,iEdge) * h(k,cell2) * boundaryMask
-
-            !-- all edges of cell 1
-            do i=1, nEdgesOnCell(cell1) * boundaryMask
-               d2fdx2_cell1 = d2fdx2_cell1 + &
-               deriv_two(i+1,1,iEdge) * h(k,grid % CellsOnCell % array (i,cell1))
-            end do
-
-            !-- all edges of cell 2
-            do i=1, nEdgesOnCell(cell2) * boundaryMask
-               d2fdx2_cell2 = d2fdx2_cell2 + &
-               deriv_two(i+1,2,iEdge) * h(k,grid % CellsOnCell % array (i,cell2))
-            end do
-
-            velMask = 2*(abs(transfer(u(k,iEdge) <= 0, velMask))) - 1
-
-            h_edge(k,iEdge) = 0.5*(h(k,cell1) + h(k,cell2)) - (dcEdge(iEdge) **2) * (d2fdx2_cell1 + d2fdx2_cell2) / 12.          &
-                            + velMask * (dcEdge(iEdge) **2) * coef_3rd_order*(d2fdx2_cell1 - d2fdx2_cell2) / 12.
-
-         end do   ! do k
-      end do         ! do iEdge
-
-      do iEdge=1,nEdges*hadv4th
-         cell1 = cellsOnEdge(1,iEdge)
-         cell2 = cellsOnEdge(2,iEdge)
-
-         do k=1,maxLevelEdgeTop(iEdge)
-
-            d2fdx2_cell1 = 0.0
-            d2fdx2_cell2 = 0.0
-
-            boundaryMask = abs(transfer(.not.(boundaryCell(k,cell1) == 0 .and. boundaryCell(k,cell2) == 0), boundaryMask))
-
-            d2fdx2_cell1 = deriv_two(1,1,iEdge) * h(k,cell1) * boundaryMask
-            d2fdx2_cell2 = deriv_two(1,2,iEdge) * h(k,cell2) * boundaryMask
-
-            !-- all edges of cell 1
-            do i=1, nEdgesOnCell(cell1) * boundaryMask
-               d2fdx2_cell1 = d2fdx2_cell1 + &
-               deriv_two(i+1,1,iEdge) * h(k,grid % CellsOnCell % array (i,cell1))
-            end do
-
-            !-- all edges of cell 2
-            do i=1, nEdgesOnCell(cell2) * boundaryMask
-               d2fdx2_cell2 = d2fdx2_cell2 + &
-               deriv_two(i+1,2,iEdge) * h(k,grid % CellsOnCell % array (i,cell2))
-            end do
-
-            h_edge(k,iEdge) =   &
-                 0.5*(h(k,cell1) + h(k,cell2))      &
-                    -(dcEdge(iEdge) **2) * (d2fdx2_cell1 + d2fdx2_cell2) / 12.
-
-         end do   ! do k
-      end do         ! do iEdge
 
       !
       ! set the velocity and height at dummy address
@@ -746,7 +684,7 @@ contains
       !
       ! For an isopycnal model, density should remain constant.
       ! For zlevel, calculate in-situ density
-      if (config_vert_grid_type.ne.'isopycnal') then
+      if (config_vert_coord_movement.ne.'isopycnal') then
          call mpas_timer_start("equation of state", .false., diagEOSTimer)
          call ocn_equation_of_state_rho(s, grid, 0, 'relative', err)
       ! mrp 110324 In order to visualize rhoDisplaced, include the following
@@ -759,7 +697,7 @@ contains
       ! This section must be after computing rho
       !
       ! dwj: 10/25/2011 - Need to explore isopycnal vs zlevel flags
-      if (config_pressure_type.eq.'MontgomeryPotential') then
+      if (config_pressure_gradient_type.eq.'MontgomeryPotential') then
 
         ! For Isopycnal model.
         ! Compute pressure at top of each layer, and then
@@ -898,7 +836,7 @@ contains
 
 
       real (kind=RKIND), dimension(:), pointer :: &
-        dvEdge, areaCell, zstarWeight
+        dvEdge, areaCell, vertCoordMovementWeights
       real (kind=RKIND), dimension(:), allocatable:: div_hu, h_tend_col
       real (kind=RKIND) :: div_hu_btr
 
@@ -919,14 +857,14 @@ contains
       maxLevelCell      => grid % maxLevelCell % array
       maxLevelEdgeBot   => grid % maxLevelEdgeBot % array
       dvEdge            => grid % dvEdge % array
-      zstarWeight       => grid % zstarWeight % array
+      vertCoordMovementWeights => grid % vertCoordMovementWeights % array
 
       nCells      = grid % nCells
       nEdges      = grid % nEdges
       nVertLevels = grid % nVertLevels
 
 
-      if (config_vert_grid_type.eq.'isopycnal') then
+      if (config_vert_coord_movement.eq.'isopycnal') then
         ! set vertical velocity to zero in isopycnal case
         wTop=0.0_RKIND
         return
@@ -957,8 +895,8 @@ contains
         end do
 
         do k = 1, maxLevelCell(iCell)
-           h_tend_col(k) = - zstarWeight(k) * h(k, iCell) * div_hu_btr
-           hSum = hSum + zstarWeight(k) * h(k, iCell)
+           h_tend_col(k) = - vertCoordMovementWeights(k) * h(k, iCell) * div_hu_btr
+           hSum = hSum + vertCoordMovementWeights(k) * h(k, iCell)
         end do
 
         if(hSum > 0.0) then
@@ -1173,27 +1111,6 @@ contains
 
         coef_3rd_order = 0.
 
-        if (config_thickness_adv_order == 2) then
-            hadv2nd = 1
-            hadv3rd = 0
-            hadv4th = 0
-        else if (config_thickness_adv_order == 3) then
-            hadv2nd = 0
-            hadv3rd = 1
-            hadv4th = 0
-
-            if(config_monotonic) then
-                coef_3rd_order = 0.25
-            else
-                coef_3rd_order = 1.0
-            endif
-        else if (config_thickness_adv_order == 4) then
-            hadv2nd = 0
-            hadv3rd = 0
-            hadv4th = 1
-        end if
-
-
         if(config_include_KE_vertex) then
             ke_vertex_flag = 1
             ke_cell_flag = 0
@@ -1202,11 +1119,11 @@ contains
             ke_cell_flag = 1
         endif
 
-        if (trim(config_time_integration) == 'RK4') then
+        if (trim(config_time_integrator) == 'RK4') then
             ! for RK4, PV is really PV = (eta+f)/h
             fCoef = 1
-        elseif (trim(config_time_integration) == 'split_explicit' &
-          .or.trim(config_time_integration) == 'unsplit_explicit') then
+        elseif (trim(config_time_integrator) == 'split_explicit' &
+          .or.trim(config_time_integrator) == 'unsplit_explicit') then
             ! for split explicit, PV is eta/h because f is added separately to the momentum forcing.
             ! mrp temp, new should be:
             fCoef = 0

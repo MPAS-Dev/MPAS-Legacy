@@ -41,7 +41,8 @@ module ocn_thick_hadv
    ! Private module variables
    !
    !--------------------------------------------------------------------
-
+   
+   logical :: thickHadvOn
 
 !***********************************************************************
 
@@ -120,6 +121,8 @@ contains
 
       err = 0
 
+      if(.not.thickHadvOn) return
+
       nEdges = grid % nEdges
       nCells = grid % nCells
       nVertLevels = grid % nVertLevels
@@ -174,6 +177,10 @@ contains
       !-----------------------------------------------------------------
 
       integer, intent(out) :: err !< Output: error flag
+
+      thickHadvOn = .true.
+
+      if(config_disable_h_hadv) thickHadvOn = .false.
 
       err = 0
 

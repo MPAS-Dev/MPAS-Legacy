@@ -42,6 +42,7 @@ module ocn_thick_vadv
    !
    !--------------------------------------------------------------------
 
+   logical :: thickVadvOn
 
 !***********************************************************************
 
@@ -111,6 +112,8 @@ contains
 
       err = 0
 
+      if(.not.thickVadvOn) return
+
       maxLevelCell      => grid % maxLevelCell % array
 
       nCells = grid % nCells
@@ -151,6 +154,10 @@ contains
       !-----------------------------------------------------------------
 
       integer, intent(out) :: err !< Output: error flag
+
+      thickVadvOn = .true.
+
+      if(config_disable_h_vadv) thickVadvOn = .false.
       
       err = 0
 

@@ -213,6 +213,8 @@ contains
       endif
    endif
 
+   if(.not.config_use_mom_del2) hmixDel2On = .false.
+
 
    !--------------------------------------------------------------------
 

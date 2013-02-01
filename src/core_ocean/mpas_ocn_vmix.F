@@ -15,6 +15,7 @@
 
 module ocn_vmix
 
+   use mpas_kind_types
    use mpas_grid_types
    use mpas_configure
    use mpas_timer
@@ -56,6 +57,7 @@ module ocn_vmix
    !
    !--------------------------------------------------------------------
 
+   logical :: velVmixOn, tracerVmixOn
    logical :: explicitOn, implicitOn
 
 !***********************************************************************
@@ -122,6 +124,9 @@ contains
       !-----------------------------------------------------------------
 
       err = 0
+
+      d % vertViscTopOfEdge % array = 0.0_RKIND
+      d % vertDiffTopOfCell % array = 0.0_RKIND
 
       call ocn_vmix_coefs_const_build(grid, s, d, err1)
       call ocn_vmix_coefs_tanh_build(grid, s, d, err2)
@@ -198,6 +203,7 @@ contains
 
       err = 0
 
+      if(.not.velVmixOn) return
       if(implicitOn) return
 
       nEdgessolve = grid % nEdgesSolve
@@ -299,6 +305,7 @@ contains
 
       err = 0
 
+      if(.not.velVmixOn) return
       if(explicitOn) return
 
       nEdges = grid % nEdges
@@ -425,6 +432,7 @@ contains
 
       err = 0
 
+      if(.not.tracerVmixOn) return
       if(implicitOn) return
 
       nCellsSolve = grid % nCellsSolve
@@ -530,6 +538,7 @@ contains
 
       err = 0
 
+      if(.not.tracerVmixOn) return
       if(explicitOn) return
 
       nCells = grid % nCells
@@ -662,6 +671,9 @@ contains
 
       err = 0
 
+      velVmixOn = .true.
+      tracerVmixOn = .true.
+
       explicitOn = .true.
       implicitOn = .false.
 
@@ -669,6 +681,9 @@ contains
           explicitOn = .false.
           implicitOn = .true.
       end if
+
+      if(config_disable_u_vmix) velVmixOn = .false.
+      if(config_disable_tr_vmix) tracerVmixOn = .false.
 
       call ocn_vmix_coefs_const_init(err1)
       call ocn_vmix_coefs_tanh_init(err2)

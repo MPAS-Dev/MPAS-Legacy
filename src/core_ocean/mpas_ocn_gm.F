@@ -30,7 +30,7 @@ module ocn_gm
 
 contains
 
-   subroutine ocn_gm_compute_uBolus(s, grid)
+   subroutine ocn_gm_compute_uBolus(s, grid)!{{{
       implicit none
       type(state_type), intent(inout)        :: s
       type(mesh_type), intent(in)            :: grid
@@ -50,7 +50,7 @@ contains
 
       call ocn_gm_compute_hEddyFlux(s, grid)
 
-      if (config_vert_grid_type .EQ. 'isopycnal') then
+      if (config_vert_coord_movement .EQ. 'isopycnal') then
 
          do iEdge = 1, nEdges
             do k = 1, maxLevelEdgeTop(iEdge)
@@ -65,10 +65,9 @@ contains
 
       end if
 
-   end subroutine ocn_gm_compute_uBolus
+   end subroutine ocn_gm_compute_uBolus!}}}
 
-
-   subroutine ocn_gm_compute_hEddyFlux(s, grid)
+   subroutine ocn_gm_compute_hEddyFlux(s, grid)!{{{
       implicit none
       type(state_type), intent(inout)     :: s
       type(mesh_type), intent(in)         :: grid
@@ -90,7 +89,7 @@ contains
 
       hEddyFlux(:,:) = 0.0
 
-      if (config_vert_grid_type .EQ. 'isopycnal') then
+      if (config_vert_coord_movement .EQ. 'isopycnal') then
             do iEdge = 1,nEdges
                cell1 = cellsOnEdge(1,iEdge)
                cell2 = cellsOnEdge(2,iEdge)
@@ -104,11 +103,9 @@ contains
 
       end if
                   
-   end subroutine ocn_gm_compute_hEddyFlux
+   end subroutine ocn_gm_compute_hEddyFlux!}}}
 
-
-
-   subroutine ocn_get_h_kappa(s, grid)
+   subroutine ocn_get_h_kappa(s, grid)!{{{
 
       type (state_type), intent(inout) :: s
       type (mesh_type), intent(in) :: grid
@@ -121,10 +118,9 @@ contains
       h_kappa(:,:) = config_h_kappa
 
 
-   end subroutine ocn_get_h_kappa
+   end subroutine ocn_get_h_kappa!}}}
 
-
-   subroutine ocn_get_h_kappa_q(s, grid)
+   subroutine ocn_get_h_kappa_q(s, grid)!{{{
 
       type (state_type), intent(inout) :: s
       type (mesh_type), intent(in) :: grid
@@ -137,6 +133,6 @@ contains
       h_kappa_q(:,:) = config_h_kappa_q
 
 
-   end subroutine ocn_get_h_kappa_q
+   end subroutine ocn_get_h_kappa_q!}}}
 
 end module ocn_gm

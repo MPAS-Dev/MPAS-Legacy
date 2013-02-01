@@ -115,7 +115,6 @@ contains
       !-----------------------------------------------------------------
 
       err = 0
-      if((.not.tanhViscOn) .and. (.not.tanhDiffOn)) return
 
       vertViscTopOfEdge => d % vertViscTopOfEdge % array
       vertDiffTopOfCell => d % vertDiffTopOfCell % array
@@ -189,9 +188,8 @@ contains
       ! refBottomDepth is used here for simplicity.  Using zMid and h, which 
       ! vary in time, would give the exact location of the top, but it
       ! would only change the diffusion value very slightly.
-      vertViscTopOfEdge = 0.0
       do k=2,nVertLevels
-         vertViscTopOfEdge(k,:) = -(config_max_visc_tanh-config_min_visc_tanh)/2.0 &
+         vertViscTopOfEdge(k,:) = vertViscTopOfEdge(k,:)-(config_max_visc_tanh-config_min_visc_tanh)/2.0 &
             *tanh((refBottomDepth(k-1)+config_ZMid_tanh) &
                   /config_zWidth_tanh) &
             + (config_max_visc_tanh+config_min_visc_tanh)/2
@@ -262,9 +260,8 @@ contains
       ! refBottomDepth is used here for simplicity.  Using zMid and h, which 
       ! vary in time, would give the exact location of the top, but it
       ! would only change the diffusion value very slightly.
-      vertDiffTopOfCell = 0.0
       do k=2,nVertLevels
-         vertDiffTopOfCell(k,:) = -(config_max_diff_tanh-config_min_diff_tanh)/2.0 &
+         vertDiffTopOfCell(k,:) = vertDiffTopOfCell(k,:)-(config_max_diff_tanh-config_min_diff_tanh)/2.0 &
             *tanh((refBottomDepth(k-1)+config_ZMid_tanh) &
                   /config_zWidth_tanh) &
             + (config_max_diff_tanh+config_min_diff_tanh)/2
@@ -305,16 +302,16 @@ contains
 
       err = 0
 
-      tanhViscOn = .false.
-      tanhDiffOn = .false.
+      tanhViscOn = config_use_tanh_visc
+      tanhDiffOn = config_use_tanh_diff
 
-      if (config_vert_visc_type.eq.'tanh') then
-          tanhViscOn = .true.
-      endif
+!     if (config_vert_visc_type.eq.'tanh') then
+!         tanhViscOn = .true.
+!     endif
 
-      if (config_vert_diff_type.eq.'tanh') then
-          tanhDiffOn = .true.
-      endif
+!     if (config_vert_diff_type.eq.'tanh') then
+!         tanhDiffOn = .true.
+!     endif
 
    !--------------------------------------------------------------------
 
