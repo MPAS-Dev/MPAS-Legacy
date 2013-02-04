@@ -86,7 +86,7 @@
 	config_use_rich_diff = .true.
 	config_bkrd_vert_visc = 1.0e-4
 	config_bkrd_vert_diff = 1.0e-5
-	config_rich_mix = 50.0
+	config_rich_mix = 0.005
 /
 &vmix_tanh
 	config_use_tanh_visc = .false.
