@@ -121,6 +121,13 @@
 &eos
 	config_eos_type = 'jm'
 /
+&eos_linear
+        config_eos_linear_alpha = 2.55e-1
+        config_eos_linear_beta =  7.64e-1
+        config_eos_linear_Tref =  19.0
+        config_eos_linear_Sref =  35.0
+        config_eos_linear_rhoref =  1025.022
+/
 &split_explicit_ts
 	config_n_ts_iter = 2
 	config_n_bcl_iter_beg = 1

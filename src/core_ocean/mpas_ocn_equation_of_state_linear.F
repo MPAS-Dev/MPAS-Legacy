@@ -82,27 +82,21 @@ contains
       integer, intent(in) :: indexT, indexS
       integer, intent(out) :: err
 
-      real (kind=RKIND), parameter :: rho_ref = 1025.022 ! kg / m^3
-      real (kind=RKIND), parameter :: alpha =  2.55e-1 ! kg / m^3 / K (dT/dRho)
-      real (kind=RKIND), parameter :: beta = 7.64e-1 ! kg / m^3 / psu (dS/dRho)
-      real (kind=RKIND), parameter :: T_ref = 19.0 ! K
-      real (kind=RKIND), parameter :: S_ref = 35.0 ! psu
-      real (kind=RKIND), parameter :: rho_prime_ref = rho_ref + alpha * T_ref - beta * S_ref
-
       integer, dimension(:), pointer :: maxLevelCell
       integer :: nCells, iCell, k
       type (dm_info) :: dminfo
 
-      maxLevelCell      => grid % maxLevelCell % array
-      nCells      = grid % nCells
+      maxLevelCell  => grid % maxLevelCell % array
+      nCells        =  grid % nCells
 
       err = 0
 
       do iCell=1,nCells
          do k=1,maxLevelCell(iCell)
             ! Linear equation of state
-            ! rho = rho_ref - alpha * (T - T_ref) + beta * (S - S_ref)
-            rho(k,iCell) = rho_prime_ref - alpha*tracers(indexT,k,iCell) + beta*tracers(indexS,k,iCell)
+            rho(k,iCell) =  config_eos_linear_rhoref &
+                  - config_eos_linear_alpha * (tracers(indexT,k,iCell)-config_eos_linear_Tref) &
+                  + config_eos_linear_beta  * (tracers(indexS,k,iCell)-config_eos_linear_Sref)
          end do
       end do
 
