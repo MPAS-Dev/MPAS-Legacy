@@ -718,35 +718,37 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
                var_list_ptr3 = var_list_ptr3->next;
             }
 
-            fortprintf(fd, "      allocate(%s %% %s %% array(%i, ", group_ptr->name, var_ptr2->super_array, i);
-            dimlist_ptr = var_ptr2->dimlist;
-            if (!strncmp(dimlist_ptr->dim->name_in_file, "nCells", 1024) ||
-                !strncmp(dimlist_ptr->dim->name_in_file, "nEdges", 1024) ||
-                !strncmp(dimlist_ptr->dim->name_in_file, "nVertices", 1024))
-               if (!dimlist_ptr->dim->namelist_defined) fortprintf(fd, "%s + 1", dimlist_ptr->dim->name_in_code);
-               else fortprintf(fd, "%s + 1", dimlist_ptr->dim->name_in_file);
-            else
-               if (dimlist_ptr->dim->namelist_defined) fortprintf(fd, "%s", dimlist_ptr->dim->name_in_file);
-               else fortprintf(fd, "%s", dimlist_ptr->dim->name_in_code);
-            dimlist_ptr = dimlist_ptr->next;
-            while (dimlist_ptr) {
+			if(var_ptr2->persistence == PERSISTENT){
+               fortprintf(fd, "      allocate(%s %% %s %% array(%i, ", group_ptr->name, var_ptr2->super_array, i);
+               dimlist_ptr = var_ptr2->dimlist;
                if (!strncmp(dimlist_ptr->dim->name_in_file, "nCells", 1024) ||
                    !strncmp(dimlist_ptr->dim->name_in_file, "nEdges", 1024) ||
                    !strncmp(dimlist_ptr->dim->name_in_file, "nVertices", 1024))
-                  if (!dimlist_ptr->dim->namelist_defined) fortprintf(fd, ", %s + 1", dimlist_ptr->dim->name_in_code);
-                  else fortprintf(fd, ", %s + 1", dimlist_ptr->dim->name_in_file);
+                  if (!dimlist_ptr->dim->namelist_defined) fortprintf(fd, "%s + 1", dimlist_ptr->dim->name_in_code);
+                  else fortprintf(fd, "%s + 1", dimlist_ptr->dim->name_in_file);
                else
-                  if (dimlist_ptr->dim->namelist_defined) fortprintf(fd, ", %s", dimlist_ptr->dim->name_in_file);
-                  else fortprintf(fd, ", %s", dimlist_ptr->dim->name_in_code);
+                  if (dimlist_ptr->dim->namelist_defined) fortprintf(fd, "%s", dimlist_ptr->dim->name_in_file);
+                  else fortprintf(fd, "%s", dimlist_ptr->dim->name_in_code);
                dimlist_ptr = dimlist_ptr->next;
-            }
-            fortprintf(fd, "))\n");
-            if (var_ptr->vtype == INTEGER)
-               fortprintf(fd, "      %s %% %s %% array = 0\n", group_ptr->name, var_ptr2->super_array ); /* initialize field to zero */
-            else if (var_ptr->vtype == REAL)
-               fortprintf(fd, "      %s %% %s %% array = 0.0\n", group_ptr->name, var_ptr2->super_array ); /* initialize field to zero */
-            else if (var_ptr->vtype == CHARACTER)
-               fortprintf(fd, "      %s %% %s %% array = \'\'\n", group_ptr->name, var_ptr2->super_array ); /* initialize field to zero */
+               while (dimlist_ptr) {
+                  if (!strncmp(dimlist_ptr->dim->name_in_file, "nCells", 1024) ||
+                      !strncmp(dimlist_ptr->dim->name_in_file, "nEdges", 1024) ||
+                      !strncmp(dimlist_ptr->dim->name_in_file, "nVertices", 1024))
+                     if (!dimlist_ptr->dim->namelist_defined) fortprintf(fd, ", %s + 1", dimlist_ptr->dim->name_in_code);
+                     else fortprintf(fd, ", %s + 1", dimlist_ptr->dim->name_in_file);
+                  else
+                     if (dimlist_ptr->dim->namelist_defined) fortprintf(fd, ", %s", dimlist_ptr->dim->name_in_file);
+                     else fortprintf(fd, ", %s", dimlist_ptr->dim->name_in_code);
+                  dimlist_ptr = dimlist_ptr->next;
+               }
+               fortprintf(fd, "))\n");
+               if (var_ptr->vtype == INTEGER)
+                  fortprintf(fd, "      %s %% %s %% array = 0\n", group_ptr->name, var_ptr2->super_array ); /* initialize field to zero */
+               else if (var_ptr->vtype == REAL)
+                  fortprintf(fd, "      %s %% %s %% array = 0.0\n", group_ptr->name, var_ptr2->super_array ); /* initialize field to zero */
+               else if (var_ptr->vtype == CHARACTER)
+                  fortprintf(fd, "      %s %% %s %% array = \'\'\n", group_ptr->name, var_ptr2->super_array ); /* initialize field to zero */
+			}
 
             fortprintf(fd, "      %s %% %s %% dimSizes(1) = %i\n", group_ptr->name, var_ptr2->super_array, i);
             fortprintf(fd, "      %s %% %s %% dimNames(1) = \'num_%s\'\n", group_ptr->name, var_ptr2->super_array, var_ptr2->super_array);
@@ -757,8 +759,14 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
                    !strncmp(dimlist_ptr->dim->name_in_file, "nEdges", 1024) ||
                    !strncmp(dimlist_ptr->dim->name_in_file, "nVertices", 1024))
                   if (!dimlist_ptr->dim->namelist_defined) {
-                     fortprintf(fd, "      %s %% %s %% dimSizes(%i) = %s\n", group_ptr->name, var_ptr2->super_array, i, dimlist_ptr->dim->name_in_code);
-                     fortprintf(fd, "      %s %% %s %% dimNames(%i) = \'%s\'\n", group_ptr->name, var_ptr2->super_array, i, dimlist_ptr->dim->name_in_file);
+					 if (var_ptr2->persistence == PERSISTENT){
+                        fortprintf(fd, "      %s %% %s %% dimSizes(%i) = %s\n", group_ptr->name, var_ptr2->super_array, i, dimlist_ptr->dim->name_in_code);
+                        fortprintf(fd, "      %s %% %s %% dimNames(%i) = \'%s\'\n", group_ptr->name, var_ptr2->super_array, i, dimlist_ptr->dim->name_in_file);
+					 } 
+					 else {
+                        fortprintf(fd, "      %s %% %s %% dimSizes(%i) = %s+1\n", group_ptr->name, var_ptr2->super_array, i, dimlist_ptr->dim->name_in_code);
+                        fortprintf(fd, "      %s %% %s %% dimNames(%i) = \'%s\'\n", group_ptr->name, var_ptr2->super_array, i, dimlist_ptr->dim->name_in_file);
+					 }
                   }
                   else {
                      fortprintf(fd, "      %s %% %s %% dimSizes(%i) = %s\n", group_ptr->name, var_ptr2->super_array, i, dimlist_ptr->dim->name_in_file);
@@ -814,7 +822,6 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
             fortprintf(fd, "      %s %% %s %% isSuperArray = .false.\n", group_ptr->name, var_ptr->name_in_code);
             if (var_ptr->ndims > 0) {
 	  		  if(var_ptr->persistence == SCRATCH){
-				  fortprintf(fd, "      ! SCRATCH VARIABLE\n");
 				  fortprintf(fd, "      nullify(%s %% %s %% array)\n", group_ptr->name, var_ptr->name_in_code); 
 			  } else if(var_ptr->persistence == PERSISTENT){
                fortprintf(fd, "      allocate(%s %% %s %% array(", group_ptr->name, var_ptr->name_in_code);
@@ -855,8 +862,14 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
                       !strncmp(dimlist_ptr->dim->name_in_file, "nEdges", 1024) ||
                       !strncmp(dimlist_ptr->dim->name_in_file, "nVertices", 1024))
                      if (!dimlist_ptr->dim->namelist_defined) {
-                        fortprintf(fd, "      %s %% %s %% dimSizes(%i) = %s\n", group_ptr->name, var_ptr->name_in_code, i, dimlist_ptr->dim->name_in_code); 
-                        fortprintf(fd, "      %s %% %s %% dimNames(%i) = \'%s\'\n", group_ptr->name, var_ptr->name_in_code, i, dimlist_ptr->dim->name_in_file); 
+						if(var_ptr->persistence == PERSISTENT){
+                          fortprintf(fd, "      %s %% %s %% dimSizes(%i) = %s\n", group_ptr->name, var_ptr->name_in_code, i, dimlist_ptr->dim->name_in_code); 
+                          fortprintf(fd, "      %s %% %s %% dimNames(%i) = \'%s\'\n", group_ptr->name, var_ptr->name_in_code, i, dimlist_ptr->dim->name_in_file); 
+						}
+						else {
+                          fortprintf(fd, "      %s %% %s %% dimSizes(%i) = %s+1\n", group_ptr->name, var_ptr->name_in_code, i, dimlist_ptr->dim->name_in_code); 
+                          fortprintf(fd, "      %s %% %s %% dimNames(%i) = \'%s\'\n", group_ptr->name, var_ptr->name_in_code, i, dimlist_ptr->dim->name_in_file); 
+						}
                      }
                      else {
                         fortprintf(fd, "      %s %% %s %% dimSizes(%i) = %s\n", group_ptr->name, var_ptr->name_in_code, i, dimlist_ptr->dim->name_in_file); 
@@ -999,10 +1012,12 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
                fortprintf(fd, "      dest %% %s %% scalar = src %% %s %% scalar\n", var_ptr2->super_array, var_ptr2->super_array);
          }
          else {
+			if (var_ptr->persistence == PERSISTENT){
             if (var_ptr->ndims > 0) 
                fortprintf(fd, "      dest %% %s %% array = src %% %s %% array\n", var_ptr->name_in_code, var_ptr->name_in_code);
             else
                fortprintf(fd, "      dest %% %s %% scalar = src %% %s %% scalar\n", var_ptr->name_in_code, var_ptr->name_in_code);
+			}
             var_list_ptr = var_list_ptr->next;
          }
       }
