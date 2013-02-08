@@ -20,6 +20,64 @@ module mpas_grid_types
       logical :: output
    end type io_info
 
+   ! Derived type for storing fields
+   type field5DReal
+  
+      ! Back-pointer to the containing block
+      type (block_type), pointer :: block
+
+      ! Raw array holding field data on this block
+      real (kind=RKIND), dimension(:,:,:,:,:), pointer :: array
+
+      ! Information used by the I/O layer
+      type (io_info), pointer :: ioinfo       ! to be removed later
+      character (len=StrKIND) :: fieldName
+      character (len=StrKIND), dimension(:), pointer :: constituentNames => null()
+      character (len=StrKIND), dimension(5) :: dimNames
+      integer, dimension(5) :: dimSizes
+      logical :: hasTimeDimension
+      logical :: isSuperArray
+      type (att_list_type), pointer :: attList => null()     
+
+      ! Pointers to the prev and next blocks for this field on this task
+      type (field5DReal), pointer :: prev, next
+
+      ! Halo communication lists
+      type (mpas_multihalo_exchange_list), pointer :: sendList
+      type (mpas_multihalo_exchange_list), pointer :: recvList
+      type (mpas_multihalo_exchange_list), pointer :: copyList
+   end type field5DReal
+
+
+   ! Derived type for storing fields
+   type field4DReal
+  
+      ! Back-pointer to the containing block
+      type (block_type), pointer :: block
+
+      ! Raw array holding field data on this block
+      real (kind=RKIND), dimension(:,:,:,:), pointer :: array
+
+      ! Information used by the I/O layer
+      type (io_info), pointer :: ioinfo       ! to be removed later
+      character (len=StrKIND) :: fieldName
+      character (len=StrKIND), dimension(:), pointer :: constituentNames => null()
+      character (len=StrKIND), dimension(4) :: dimNames
+      integer, dimension(4) :: dimSizes
+      logical :: hasTimeDimension
+      logical :: isSuperArray
+      type (att_list_type), pointer :: attList => null()     
+
+      ! Pointers to the prev and next blocks for this field on this task
+      type (field4DReal), pointer :: prev, next
+
+      ! Halo communication lists
+      type (mpas_multihalo_exchange_list), pointer :: sendList
+      type (mpas_multihalo_exchange_list), pointer :: recvList
+      type (mpas_multihalo_exchange_list), pointer :: copyList
+   end type field4DReal
+
+
 
    ! Derived type for storing fields
    type field3DReal
@@ -370,6 +428,8 @@ module mpas_grid_types
      module procedure mpas_allocate_scratch_field1d_real
      module procedure mpas_allocate_scratch_field2d_real
      module procedure mpas_allocate_scratch_field3d_real
+     module procedure mpas_allocate_scratch_field4d_real
+     module procedure mpas_allocate_scratch_field5d_real
      module procedure mpas_allocate_scratch_field1d_char
    end interface
 
@@ -380,6 +440,8 @@ module mpas_grid_types
      module procedure mpas_deallocate_scratch_field1d_real
      module procedure mpas_deallocate_scratch_field2d_real
      module procedure mpas_deallocate_scratch_field3d_real
+     module procedure mpas_deallocate_scratch_field4d_real
+     module procedure mpas_deallocate_scratch_field5d_real
      module procedure mpas_deallocate_scratch_field1d_char
    end interface
 
@@ -392,6 +454,8 @@ module mpas_grid_types
      module procedure mpas_deallocate_field1d_real
      module procedure mpas_deallocate_field2d_real
      module procedure mpas_deallocate_field3d_real
+     module procedure mpas_deallocate_field4d_real
+     module procedure mpas_deallocate_field5d_real
      module procedure mpas_deallocate_field0d_char
      module procedure mpas_deallocate_field1d_char
    end interface
@@ -632,6 +696,62 @@ module mpas_grid_types
 
    end subroutine mpas_allocate_scratch_field3d_real!}}}
 
+   subroutine mpas_allocate_scratch_field4d_real(f, single_block_in)!{{{
+       type (field4dReal), pointer :: f
+       logical, intent(in), optional :: single_block_in
+       logical :: single_block
+       type (field4dReal), pointer :: f_cursor
+
+       if(present(single_block_in)) then
+          single_block = single_block_in
+       else
+          single_block = .false.
+       end if
+
+       if(.not. single_block) then
+          f_cursor => f
+          do while(associated(f_cursor))
+             if(.not.associated(f_cursor % array)) then
+                allocate(f_cursor % array(f_cursor % dimSizes(1), f_cursor % dimSizes(2), f_cursor % dimSizes(3), f_cursor % dimSizes(4)))
+             end if
+             f_cursor => f_cursor % next
+          end do
+       else
+          if(.not.associated(f % array)) then
+            allocate(f % array(f % dimSizes(1), f % dimSizes(2), f % dimSizes(3), f % dimSizes(4)))
+          end if
+       end if
+
+   end subroutine mpas_allocate_scratch_field4d_real!}}}
+
+   subroutine mpas_allocate_scratch_field5d_real(f, single_block_in)!{{{
+       type (field5dReal), pointer :: f
+       logical, intent(in), optional :: single_block_in
+       logical :: single_block
+       type (field5dReal), pointer :: f_cursor
+
+       if(present(single_block_in)) then
+          single_block = single_block_in
+       else
+          single_block = .false.
+       end if
+
+       if(.not. single_block) then
+          f_cursor => f
+          do while(associated(f_cursor))
+             if(.not.associated(f_cursor % array)) then
+                allocate(f_cursor % array(f_cursor % dimSizes(1), f_cursor % dimSizes(2), f_cursor % dimSizes(3), f_cursor % dimSizes(4), f_cursor % dimSizes(5)))
+             end if
+             f_cursor => f_cursor % next
+          end do
+       else
+          if(.not.associated(f % array)) then
+            allocate(f % array(f % dimSizes(1), f % dimSizes(2), f % dimSizes(3), f % dimSizes(4), f % dimSizes(5)))
+          end if
+       end if
+
+   end subroutine mpas_allocate_scratch_field5d_real!}}}
+
    subroutine mpas_allocate_scratch_field1d_char(f, single_block_in)!{{{
        type (field1dChar), pointer :: f
        logical, intent(in), optional :: single_block_in
@@ -833,6 +953,64 @@ module mpas_grid_types
        end if
 
    end subroutine mpas_deallocate_scratch_field3d_real!}}}
+
+   subroutine mpas_deallocate_scratch_field4d_real(f, single_block_in)!{{{
+       type (field4dReal), pointer :: f
+       logical, intent(in), optional :: single_block_in
+       logical :: single_block
+       type (field4dReal), pointer :: f_cursor
+
+       if(present(single_block_in)) then
+          single_block = single_block_in
+       else
+          single_block = .false.
+       end if
+
+       if(.not.single_block) then
+          f_cursor => f
+          do while(associated(f_cursor))
+            if(associated(f_cursor % array)) then
+              deallocate(f_cursor % array)
+            end if
+   
+            f_cursor => f_cursor % next
+          end do
+       else
+          if(associated(f % array)) then
+             deallocate(f % array)
+          end if
+       end if
+
+   end subroutine mpas_deallocate_scratch_field4d_real!}}}
+
+   subroutine mpas_deallocate_scratch_field5d_real(f, single_block_in)!{{{
+       type (field5dReal), pointer :: f
+       logical, intent(in), optional :: single_block_in
+       logical :: single_block
+       type (field5dReal), pointer :: f_cursor
+
+       if(present(single_block_in)) then
+          single_block = single_block_in
+       else
+          single_block = .false.
+       end if
+
+       if(.not.single_block) then
+          f_cursor => f
+          do while(associated(f_cursor))
+            if(associated(f_cursor % array)) then
+              deallocate(f_cursor % array)
+            end if
+   
+            f_cursor => f_cursor % next
+          end do
+       else
+          if(associated(f % array)) then
+             deallocate(f % array)
+          end if
+       end if
+
+   end subroutine mpas_deallocate_scratch_field5d_real!}}}
 
    subroutine mpas_deallocate_scratch_field1d_char(f, single_block_in)!{{{
        type (field1dChar), pointer :: f
@@ -1072,6 +1250,60 @@ module mpas_grid_types
        end do
 
    end subroutine mpas_deallocate_field3d_real!}}}
+
+   subroutine mpas_deallocate_field4d_real(f)!{{{
+       type (field4dReal), pointer :: f
+       type (field4dReal), pointer :: f_cursor
+
+       f_cursor => f
+       do while(associated(f_cursor))
+         if(associated(f % next)) then
+           f => f % next
+         else
+           nullify(f)
+         end if
+
+         if(associated(f_cursor % ioinfo)) then
+           deallocate(f_cursor % ioinfo)
+         end if
+
+         if(associated(f_cursor % array)) then
+           deallocate(f_cursor % array)
+         end if
+
+         deallocate(f_cursor)
+
+         f_cursor => f
+       end do
+
+   end subroutine mpas_deallocate_field4d_real!}}}
+
+   subroutine mpas_deallocate_field5d_real(f)!{{{
+       type (field5dReal), pointer :: f
+       type (field5dReal), pointer :: f_cursor
+
+       f_cursor => f
+       do while(associated(f_cursor))
+         if(associated(f % next)) then
+           f => f % next
+         else
+           nullify(f)
+         end if
+
+         if(associated(f_cursor % ioinfo)) then
+           deallocate(f_cursor % ioinfo)
+         end if
+
+         if(associated(f_cursor % array)) then
+           deallocate(f_cursor % array)
+         end if
+
+         deallocate(f_cursor)
+
+         f_cursor => f
+       end do
+
+   end subroutine mpas_deallocate_field5d_real!}}}
 
    subroutine mpas_deallocate_field0d_char(f)!{{{
        type (field0dChar), pointer :: f

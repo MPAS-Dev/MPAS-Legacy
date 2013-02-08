@@ -19,6 +19,8 @@ module mpas_io_streams
       type (field1dReal), pointer :: real1dField => null()
       type (field2dReal), pointer :: real2dField => null()
       type (field3dReal), pointer :: real3dField => null()
+      type (field4dReal), pointer :: real4dField => null()
+      type (field5dReal), pointer :: real5dField => null()
       type (field0dChar), pointer :: char0dField => null()
       type (field1dChar), pointer :: char1dField => null()
       type (field_list_type), pointer :: next => null()
@@ -44,6 +46,8 @@ module mpas_io_streams
       module procedure MPAS_streamAddField_1dReal
       module procedure MPAS_streamAddField_2dReal
       module procedure MPAS_streamAddField_3dReal
+      module procedure MPAS_streamAddField_4dReal
+      module procedure MPAS_streamAddField_5dReal
       module procedure MPAS_streamAddField_0dChar
    end interface MPAS_streamAddField
 
@@ -82,8 +86,10 @@ module mpas_io_streams
                          FIELD_1D_REAL  =  6, &
                          FIELD_2D_REAL  =  7, &
                          FIELD_3D_REAL  =  8, &
-                         FIELD_0D_CHAR  =  9, &
-                         FIELD_1D_CHAR  =  10
+                         FIELD_4D_REAL  =  9, &
+                         FIELD_5D_REAL  =  10, &
+                         FIELD_0D_CHAR  =  11, &
+                         FIELD_1D_CHAR  =  12
 
    private mergeArrays
 
@@ -996,6 +1002,208 @@ contains
    end subroutine MPAS_streamAddField_3dReal
 
 
+   subroutine MPAS_streamAddField_4dReal(stream, field, ierr)
+
+      implicit none
+
+      type (MPAS_Stream_type), intent(inout) :: stream
+      type (field4DReal), intent(in), target :: field
+      integer, intent(out), optional :: ierr
+
+      integer :: io_err
+      integer :: i
+      integer :: idim
+      integer :: totalDimSize, globalDimSize
+      logical :: isDecomposed
+      integer :: ndims
+      type (field4dReal), pointer :: field_ptr
+      character (len=StrKIND), dimension(5) :: dimNames
+      character (len=StrKIND), dimension(:), pointer :: dimNamesInq
+      integer, dimension(:), pointer :: indices
+      type (field_list_type), pointer :: field_list_cursor
+      type (field_list_type), pointer :: new_field_list_node
+      logical :: any_success
+      logical, dimension(:), pointer :: isAvailable
+
+      if (present(ierr)) ierr = MPAS_STREAM_NOERR
+
+      !
+      ! Sanity checks
+      !
+      if (.not. stream % isInitialized) then
+         if (present(ierr)) ierr = MPAS_STREAM_NOT_INITIALIZED
+         return
+      end if
+
+!write(0,*) '... Adding field '//trim(field % fieldName)//' to stream'
+
+      ndims = size(field % dimSizes)
+
+!write(0,*) '... field has ', ndims, ' dimensions'
+
+      ! 
+      ! Determine whether the field is decomposed, the indices that are owned by this task's blocks,
+      !    and the total number of outer-indices owned by this task
+      ! 
+#include "add_field_indices.inc"
+
+      
+      any_success = .false.
+      if (field % isSuperArray) then
+!write(0,*) '^^^^^^^^^^^^^^^^^^^^^^^^^^^ we are adding a super-array'
+         allocate(isAvailable(size(field % constituentNames)))
+         isAvailable(:) = .false.
+         do i=1,size(field % constituentNames)
+            call MPAS_streamAddField_generic(stream, trim(field % constituentNames(i)), MPAS_IO_DOUBLE, field % dimNames(2:ndims), &
+                                             field % dimSizes(2:ndims), field % hasTimeDimension, isDecomposed, totalDimSize, globalDimSize, &
+                                             indices, io_err)
+            if (io_err == MPAS_STREAM_NOERR) then
+               isAvailable(i) = .true.
+               any_success = .true.
+            end if
+         end do
+      else
+         nullify(isAvailable)
+         call MPAS_streamAddField_generic(stream, trim(field % fieldName), MPAS_IO_DOUBLE, field % dimNames, field % dimSizes, &
+                                          field % hasTimeDimension, isDecomposed, totalDimSize, globalDimSize, indices, io_err)
+         if (io_err == MPAS_STREAM_NOERR) then
+            any_success = .true.
+         end if
+      end if
+
+      deallocate(indices)
+      if (.not. any_success) then
+          if (present(ierr)) ierr = MPAS_IO_ERR
+          return
+      end if
+
+      if (field % isSuperArray) then
+         do i=1,size(field % constituentNames)
+            call put_get_field_atts(stream % fileHandle, stream % ioDirection, trim(field % constituentNames(i)), field % attList)
+         end do
+      else
+         call put_get_field_atts(stream % fileHandle, stream % ioDirection, trim(field % fieldname), field % attList)
+      end if
+
+
+      !
+      ! Set field pointer and type in fieldList
+      !
+      new_field_list_node => stream % fieldList
+      do while (associated(new_field_list_node % next))
+         new_field_list_node => new_field_list_node % next
+      end do
+      new_field_list_node % field_type = FIELD_4D_REAL
+      new_field_list_node % real4dField => field
+      new_field_list_node % isAvailable => isAvailable
+
+!write(0,*) '... done adding field'
+!write(0,*) 'DEBUGGING : Finished adding 4d real field '//trim(field % fieldName)
+
+   end subroutine MPAS_streamAddField_4dReal
+
+
+   subroutine MPAS_streamAddField_5dReal(stream, field, ierr)
+
+      implicit none
+
+      type (MPAS_Stream_type), intent(inout) :: stream
+      type (field5DReal), intent(in), target :: field
+      integer, intent(out), optional :: ierr
+
+      integer :: io_err
+      integer :: i
+      integer :: idim
+      integer :: totalDimSize, globalDimSize
+      logical :: isDecomposed
+      integer :: ndims
+      type (field5dReal), pointer :: field_ptr
+      character (len=StrKIND), dimension(5) :: dimNames
+      character (len=StrKIND), dimension(:), pointer :: dimNamesInq
+      integer, dimension(:), pointer :: indices
+      type (field_list_type), pointer :: field_list_cursor
+      type (field_list_type), pointer :: new_field_list_node
+      logical :: any_success
+      logical, dimension(:), pointer :: isAvailable
+
+      if (present(ierr)) ierr = MPAS_STREAM_NOERR
+
+      !
+      ! Sanity checks
+      !
+      if (.not. stream % isInitialized) then
+         if (present(ierr)) ierr = MPAS_STREAM_NOT_INITIALIZED
+         return
+      end if
+
+!write(0,*) '... Adding field '//trim(field % fieldName)//' to stream'
+
+      ndims = size(field % dimSizes)
+
+!write(0,*) '... field has ', ndims, ' dimensions'
+
+      ! 
+      ! Determine whether the field is decomposed, the indices that are owned by this task's blocks,
+      !    and the total number of outer-indices owned by this task
+      ! 
+#include "add_field_indices.inc"
+
+      
+      any_success = .false.
+      if (field % isSuperArray) then
+!write(0,*) '^^^^^^^^^^^^^^^^^^^^^^^^^^^ we are adding a super-array'
+         allocate(isAvailable(size(field % constituentNames)))
+         isAvailable(:) = .false.
+         do i=1,size(field % constituentNames)
+            call MPAS_streamAddField_generic(stream, trim(field % constituentNames(i)), MPAS_IO_DOUBLE, field % dimNames(2:ndims), &
+                                             field % dimSizes(2:ndims), field % hasTimeDimension, isDecomposed, totalDimSize, globalDimSize, &
+                                             indices, io_err)
+            if (io_err == MPAS_STREAM_NOERR) then
+               isAvailable(i) = .true.
+               any_success = .true.
+            end if
+         end do
+      else
+         nullify(isAvailable)
+         call MPAS_streamAddField_generic(stream, trim(field % fieldName), MPAS_IO_DOUBLE, field % dimNames, field % dimSizes, &
+                                          field % hasTimeDimension, isDecomposed, totalDimSize, globalDimSize, indices, io_err)
+         if (io_err == MPAS_STREAM_NOERR) then
+            any_success = .true.
+         end if
+      end if
+
+      deallocate(indices)
+      if (.not. any_success) then
+          if (present(ierr)) ierr = MPAS_IO_ERR
+          return
+      end if
+
+      if (field % isSuperArray) then
+         do i=1,size(field % constituentNames)
+            call put_get_field_atts(stream % fileHandle, stream % ioDirection, trim(field % constituentNames(i)), field % attList)
+         end do
+      else
+         call put_get_field_atts(stream % fileHandle, stream % ioDirection, trim(field % fieldname), field % attList)
+      end if
+
+
+      !
+      ! Set field pointer and type in fieldList
+      !
+      new_field_list_node => stream % fieldList
+      do while (associated(new_field_list_node % next))
+         new_field_list_node => new_field_list_node % next
+      end do
+      new_field_list_node % field_type = FIELD_5D_REAL
+      new_field_list_node % real5dField => field
+      new_field_list_node % isAvailable => isAvailable
+
+!write(0,*) '... done adding field'
+!write(0,*) 'DEBUGGING : Finished adding 3d real field '//trim(field % fieldName)
+
+   end subroutine MPAS_streamAddField_5dReal
+
+
    subroutine MPAS_streamAddField_0dChar(stream, field, ierr)
 
       implicit none
@@ -1313,6 +1521,8 @@ contains
       type (field1dReal), pointer :: field_1dreal_ptr
       type (field2dReal), pointer :: field_2dreal_ptr
       type (field3dReal), pointer :: field_3dreal_ptr
+      type (field4dReal), pointer :: field_4dreal_ptr
+      type (field5dReal), pointer :: field_5dreal_ptr
       type (field0dChar), pointer :: field_0dchar_ptr
       type (field1dChar), pointer :: field_1dchar_ptr
       type (field_list_type), pointer :: field_cursor
@@ -1324,6 +1534,8 @@ contains
       real (kind=RKIND), dimension(:),     pointer :: real1d_temp
       real (kind=RKIND), dimension(:,:),   pointer :: real2d_temp
       real (kind=RKIND), dimension(:,:,:), pointer :: real3d_temp
+      real (kind=RKIND), dimension(:,:,:,:), pointer :: real4d_temp
+      real (kind=RKIND), dimension(:,:,:,:,:), pointer :: real5d_temp
 
       if (present(ierr)) ierr = MPAS_STREAM_NOERR
 
@@ -1876,6 +2088,184 @@ contains
             else
                deallocate(real3d_temp)
             end if
+         else if (field_cursor % field_type == FIELD_4D_REAL) then
+
+!write(0,*) 'DEBUGGING : *************** '//trim(field_cursor % real3dField % fieldName)
+!write(0,*) 'DEBUGGING : reading a 4d real array'
+            if (field_cursor % real4dField % isSuperArray) then
+!write(0,*) 'DEBUGGING : reading a 4d real super-array'
+               ncons = size(field_cursor % real4dField % constituentNames)
+               allocate(real3d_temp(field_cursor % real4dField % dimSizes(2), &
+                                    field_cursor % real4dField % dimSizes(3), &
+                                    field_cursor % totalDimSize))
+            else
+               ncons = 1
+               allocate(real4d_temp(field_cursor % real4dField % dimSizes(1), &
+                                    field_cursor % real4dField % dimSizes(2), &
+                                    field_cursor % real4dField % dimSizes(3), &
+                                    field_cursor % totalDimSize))
+            end if
+
+            do j=1,ncons
+               if (field_cursor % real4dField % isSuperArray) then
+                  if (.not. field_cursor % isAvailable(j)) cycle
+!write(0,*) 'DEBUGGING : calling get_var for a constitutent'
+                  call MPAS_io_get_var(stream % fileHandle, field_cursor % real4dField % constituentNames(j), real3d_temp, io_err)
+               else
+                  call MPAS_io_get_var(stream % fileHandle, field_cursor % real4dField % fieldName, real4d_temp, io_err)
+               end if
+               call MPAS_io_err_mesg(io_err, .false.)
+               if (io_err /= MPAS_IO_NOERR) then
+                   if (present(ierr)) ierr = MPAS_IO_ERR
+                   if (field_cursor % real4dField % isSuperArray) then
+                      deallocate(real3d_temp)
+                   else
+                      deallocate(real4d_temp)
+                   end if
+                   return
+               end if
+   
+               if (field_cursor % isDecomposed) then
+                  ! Distribute field to multiple blocks
+                  field_4dreal_ptr => field_cursor % real4dField
+                  i = 1
+                  do while (associated(field_4dreal_ptr))
+                     if (trim(field_4dreal_ptr % dimNames(4)) == 'nCells') then
+                        ownedSize = field_4dreal_ptr % block % mesh % nCellsSolve
+                     else if (trim(field_4dreal_ptr % dimNames(4)) == 'nEdges') then
+                        ownedSize = field_4dreal_ptr % block % mesh % nEdgesSolve
+                     else if (trim(field_4dreal_ptr % dimNames(4)) == 'nVertices') then
+                        ownedSize = field_4dreal_ptr % block % mesh % nVerticesSolve
+                     else
+                        ownedSize = field_4dreal_ptr % dimSizes(4)
+                     end if
+
+                     if (field_cursor % real4dField % isSuperArray) then
+!write(0,*) 'DEBUGGING : copying the temporary array'
+                        field_4dreal_ptr % array(j, :,:,1:ownedSize) = real3d_temp(:,:,i:i+ownedSize-1)
+                     else
+                        field_4dreal_ptr % array(:,:,:,1:ownedSize) = real4d_temp(:,:,:,i:i+ownedSize-1)
+                     end if
+                     i = i + ownedSize
+                     field_4dreal_ptr => field_4dreal_ptr % next
+                  end do
+
+               else
+   
+                  if (field_cursor % real3dField % isSuperArray) then
+                     call mpas_dmpar_bcast_reals(field_cursor % real4dField % block % domain % dminfo, size(real3d_temp), real3d_temp(:,1,1))
+                     field_4dreal_ptr => field_cursor % real4dField
+                     do while (associated(field_4dreal_ptr))
+                        field_4dreal_ptr % array(j,:,:,:) = real3d_temp(:,:,:)
+                        field_4dreal_ptr => field_4dreal_ptr % next
+                     end do
+                  else
+                     call mpas_dmpar_bcast_reals(field_cursor % real4dField % block % domain % dminfo, size(real4d_temp), real4d_temp(:,1,1,1))
+                     field_4dreal_ptr => field_cursor % real4dField
+                     do while (associated(field_4dreal_ptr))
+                        field_4dreal_ptr % array(:,:,:,:) = real4d_temp(:,:,:,:)
+                        field_4dreal_ptr => field_4dreal_ptr % next
+                     end do
+                  end if
+               end if
+            end do
+
+            if (field_cursor % real4dField % isSuperArray) then
+               deallocate(real3d_temp)
+            else
+               deallocate(real4d_temp)
+            end if
+
+         else if (field_cursor % field_type == FIELD_5D_REAL) then
+
+!write(0,*) 'DEBUGGING : *************** '//trim(field_cursor % real3dField % fieldName)
+!write(0,*) 'DEBUGGING : reading a 4d real array'
+            if (field_cursor % real5dField % isSuperArray) then
+!write(0,*) 'DEBUGGING : reading a 4d real super-array'
+               ncons = size(field_cursor % real5dField % constituentNames)
+               allocate(real4d_temp(field_cursor % real5dField % dimSizes(2), &
+                                    field_cursor % real5dField % dimSizes(3), &
+                                    field_cursor % real5dField % dimSizes(4), &
+                                    field_cursor % totalDimSize))
+            else
+               ncons = 1
+               allocate(real5d_temp(field_cursor % real5dField % dimSizes(1), &
+                                    field_cursor % real5dField % dimSizes(2), &
+                                    field_cursor % real5dField % dimSizes(3), &
+                                    field_cursor % real5dField % dimSizes(4), &
+                                    field_cursor % totalDimSize))
+            end if
+
+            do j=1,ncons
+               if (field_cursor % real5dField % isSuperArray) then
+                  if (.not. field_cursor % isAvailable(j)) cycle
+!write(0,*) 'DEBUGGING : calling get_var for a constitutent'
+                  call MPAS_io_get_var(stream % fileHandle, field_cursor % real5dField % constituentNames(j), real4d_temp, io_err)
+               else
+                  call MPAS_io_get_var(stream % fileHandle, field_cursor % real5dField % fieldName, real5d_temp, io_err)
+               end if
+               call MPAS_io_err_mesg(io_err, .false.)
+               if (io_err /= MPAS_IO_NOERR) then
+                   if (present(ierr)) ierr = MPAS_IO_ERR
+                   if (field_cursor % real5dField % isSuperArray) then
+                      deallocate(real4d_temp)
+                   else
+                      deallocate(real5d_temp)
+                   end if
+                   return
+               end if
+   
+               if (field_cursor % isDecomposed) then
+                  ! Distribute field to multiple blocks
+                  field_5dreal_ptr => field_cursor % real5dField
+                  i = 1
+                  do while (associated(field_5dreal_ptr))
+                     if (trim(field_5dreal_ptr % dimNames(5)) == 'nCells') then
+                        ownedSize = field_5dreal_ptr % block % mesh % nCellsSolve
+                     else if (trim(field_5dreal_ptr % dimNames(5)) == 'nEdges') then
+                        ownedSize = field_5dreal_ptr % block % mesh % nEdgesSolve
+                     else if (trim(field_5dreal_ptr % dimNames(5)) == 'nVertices') then
+                        ownedSize = field_5dreal_ptr % block % mesh % nVerticesSolve
+                     else
+                        ownedSize = field_5dreal_ptr % dimSizes(5)
+                     end if
+
+                     if (field_cursor % real5dField % isSuperArray) then
+!write(0,*) 'DEBUGGING : copying the temporary array'
+                        field_5dreal_ptr % array(j,:,:,:,1:ownedSize) = real4d_temp(:,:,:,i:i+ownedSize-1)
+                     else
+                        field_5dreal_ptr % array(:,:,:,:,1:ownedSize) = real5d_temp(:,:,:,:,i:i+ownedSize-1)
+                     end if
+                     i = i + ownedSize
+                     field_5dreal_ptr => field_5dreal_ptr % next
+                  end do
+
+               else
+   
+                  if (field_cursor % real5dField % isSuperArray) then
+                     call mpas_dmpar_bcast_reals(field_cursor % real5dField % block % domain % dminfo, size(real4d_temp), real4d_temp(:,1,1,1))
+                     field_5dreal_ptr => field_cursor % real5dField
+                     do while (associated(field_5dreal_ptr))
+                        field_5dreal_ptr % array(j,:,:,:,:) = real4d_temp(:,:,:,:)
+                        field_5dreal_ptr => field_5dreal_ptr % next
+                     end do
+                  else
+                     call mpas_dmpar_bcast_reals(field_cursor % real5dField % block % domain % dminfo, size(real5d_temp), real5d_temp(:,1,1,1,1))
+                     field_5dreal_ptr => field_cursor % real5dField
+                     do while (associated(field_5dreal_ptr))
+                        field_5dreal_ptr % array(:,:,:,:,:) = real5d_temp(:,:,:,:,:)
+                        field_5dreal_ptr => field_5dreal_ptr % next
+                     end do
+                  end if
+               end if
+            end do
+
+            if (field_cursor % real5dField % isSuperArray) then
+               deallocate(real4d_temp)
+            else
+               deallocate(real5d_temp)
+            end if
+
 
          else if (field_cursor % field_type == FIELD_0D_CHAR) then
 

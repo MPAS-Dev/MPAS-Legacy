@@ -77,6 +77,7 @@ module mpas_io
       module procedure MPAS_io_get_var_real2d
       module procedure MPAS_io_get_var_real3d
       module procedure MPAS_io_get_var_real4d
+      module procedure MPAS_io_get_var_real5d
       module procedure MPAS_io_get_var_char0d
    end interface MPAS_io_get_var
 
@@ -91,6 +92,7 @@ module mpas_io
       module procedure MPAS_io_put_var_real2d
       module procedure MPAS_io_put_var_real3d
       module procedure MPAS_io_put_var_real4d
+      module procedure MPAS_io_put_var_real5d
       module procedure MPAS_io_put_var_char0d
    end interface MPAS_io_put_var
 
@@ -1146,7 +1148,7 @@ module mpas_io
 
 
    subroutine MPAS_io_get_var_generic(handle, fieldname, intVal, intArray1d, intArray2d, intArray3d, intArray4d, &
-                                                        realVal, realArray1d, realArray2d, realArray3d, realArray4d, &
+                                                        realVal, realArray1d, realArray2d, realArray3d, realArray4d, realArray5d, &
                                                         charVal, ierr)
 
       implicit none
@@ -1163,6 +1165,7 @@ module mpas_io
       real (kind=RKIND), dimension(:,:), intent(out), optional :: realArray2d
       real (kind=RKIND), dimension(:,:,:), intent(out), optional :: realArray3d
       real (kind=RKIND), dimension(:,:,:,:), intent(out), optional :: realArray4d
+      real (kind=RKIND), dimension(:,:,:,:,:), intent(out), optional :: realArray5d
       character (len=*), intent(out), optional :: charVal
       integer, intent(out), optional :: ierr
 
@@ -1263,6 +1266,10 @@ module mpas_io
 !         write (0,*) '  value is real4'
          call PIO_read_darray(handle % pio_file, field_cursor % fieldhandle % field_desc, field_cursor % fieldhandle % decomp % pio_iodesc, &
                               realArray4d, pio_ierr)
+      else if (present(realArray5d)) then
+!         write (0,*) '  value is real5'
+         call PIO_read_darray(handle % pio_file, field_cursor % fieldhandle % field_desc, field_cursor % fieldhandle % decomp % pio_iodesc, &
+                              realArray5d, pio_ierr)
       else if (present(intArray1d)) then
 !         write (0,*) '  value is int1'
          call PIO_read_darray(handle % pio_file, field_cursor % fieldhandle % field_desc, field_cursor % fieldhandle % decomp % pio_iodesc, &
@@ -1492,6 +1499,26 @@ module mpas_io
    end subroutine MPAS_io_get_var_real4d
 
 
+   subroutine MPAS_io_get_var_real5d(handle, fieldname, array, ierr)
+
+      implicit none
+
+      type (MPAS_IO_Handle_type), intent(inout) :: handle
+      character (len=*), intent(in) :: fieldname
+      real (kind=RKIND), dimension(:,:,:,:,:), intent(out) :: array
+      integer, intent(out), optional :: ierr
+
+      integer :: pio_ierr
+      type (fieldlist_type), pointer :: field_cursor
+
+!      write(0,*) 'Called MPAS_io_get_var_real5d()'
+      if (present(ierr)) ierr = MPAS_IO_NOERR
+
+      call MPAS_io_get_var_generic(handle, fieldname, realArray5d=array, ierr=ierr)
+
+   end subroutine MPAS_io_get_var_real5d
+
+
    subroutine MPAS_io_get_var_char0d(handle, fieldname, val, ierr)
 
       implicit none
@@ -1513,7 +1540,7 @@ module mpas_io
 
 
    subroutine MPAS_io_put_var_generic(handle, fieldname, intVal, intArray1d, intArray2d, intArray3d, intArray4d, &
-                                                        realVal, realArray1d, realArray2d, realArray3d, realArray4d, &
+                                                        realVal, realArray1d, realArray2d, realArray3d, realArray4d, realArray5d, &
                                                         charVal, ierr)
 
       implicit none
@@ -1530,6 +1557,7 @@ module mpas_io
       real (kind=RKIND), dimension(:,:), intent(in), optional :: realArray2d
       real (kind=RKIND), dimension(:,:,:), intent(in), optional :: realArray3d
       real (kind=RKIND), dimension(:,:,:,:), intent(in), optional :: realArray4d
+      real (kind=RKIND), dimension(:,:,:,:,:), intent(in), optional :: realArray5d
       character (len=*), intent(in), optional :: charVal
       integer, intent(out), optional :: ierr
 
@@ -1629,6 +1657,9 @@ module mpas_io
       else if (present(realArray4d)) then
          call PIO_write_darray(handle % pio_file, field_cursor % fieldhandle % field_desc, field_cursor % fieldhandle % decomp % pio_iodesc, &
                                realArray4d, pio_ierr)
+      else if (present(realArray5d)) then
+         call PIO_write_darray(handle % pio_file, field_cursor % fieldhandle % field_desc, field_cursor % fieldhandle % decomp % pio_iodesc, &
+                               realArray5d, pio_ierr)
       else if (present(intArray1d)) then
          call PIO_write_darray(handle % pio_file, field_cursor % fieldhandle % field_desc, field_cursor % fieldhandle % decomp % pio_iodesc, &
                                intArray1d, pio_ierr)
@@ -1850,6 +1881,26 @@ module mpas_io
       call MPAS_io_put_var_generic(handle, fieldname, realArray4d=array, ierr=ierr)
 
    end subroutine MPAS_io_put_var_real4d
+
+
+   subroutine MPAS_io_put_var_real5d(handle, fieldname, array, ierr)
+
+      implicit none
+
+      type (MPAS_IO_Handle_type), intent(inout) :: handle
+      character (len=*), intent(in) :: fieldname
+      real (kind=RKIND), dimension(:,:,:,:,:), intent(in) :: array
+      integer, intent(out), optional :: ierr
+
+      integer :: pio_ierr
+      type (fieldlist_type), pointer :: field_cursor
+
+!      write(0,*) 'Called MPAS_io_put_var_real5d()'
+      if (present(ierr)) ierr = MPAS_IO_NOERR
+
+      call MPAS_io_put_var_generic(handle, fieldname, realArray5d=array, ierr=ierr)
+
+   end subroutine MPAS_io_put_var_real5d
 
 
    subroutine MPAS_io_put_var_char0d(handle, fieldname, val, ierr)
