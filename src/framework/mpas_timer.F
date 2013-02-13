@@ -269,7 +269,7 @@
               timer_ptr%avg_time = 0.0d0
               percent = 0.0d0
             else
-              timer_ptr%avg_time = timer_ptr%avg_time/timer_ptr%calls
+              timer_ptr%avg_time = timer_ptr%total_time/timer_ptr%calls
               percent = timer_ptr%total_time/total_ptr%total_time
             endif
 
