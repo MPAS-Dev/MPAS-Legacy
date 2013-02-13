@@ -261,11 +261,11 @@ contains
 
    hmixDel4On = .false.
 
-   if ( config_h_mom_eddy_visc4 > 0.0 ) then
+   if ( config_mom_del4 > 0.0 ) then
       hmixDel4On = .true.
-      eddyVisc4 = config_h_mom_eddy_visc4
+      eddyVisc4 = config_mom_del4
       if (config_visc_vorticity_term) then
-         viscVortCoef = config_visc_vorticity_visc4_scale
+         viscVortCoef = config_vorticity_del4_scale
       else
          viscVortCoef = 0.0
       endif

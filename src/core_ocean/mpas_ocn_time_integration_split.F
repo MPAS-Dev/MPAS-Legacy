@@ -24,6 +24,7 @@ module ocn_time_integration_split
    use mpas_timer
 
    use ocn_tendency
+   use ocn_diagnostics
 
    use ocn_equation_of_state
    use ocn_vmix
@@ -167,7 +168,7 @@ module ocn_time_integration_split
 
          call mpas_timer_start("se halo diag", .false., timer_halo_diagnostic)
          call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(2) % state % Vor_edge)
-         if (config_h_mom_eddy_visc4 > 0.0) then
+         if (config_mom_del4 > 0.0) then
            call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(2) % state % divergence)
            call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(2) % state % vorticity)
          end if
@@ -802,7 +803,7 @@ module ocn_time_integration_split
 
          block => domain % blocklist
          do while (associated(block))
-            call ocn_tend_scalar(block % tend, block % state % time_levs(2) % state, block % diagnostics, block % mesh, dt)
+            call ocn_tend_tracer(block % tend, block % state % time_levs(2) % state, block % diagnostics, block % mesh, dt)
 
             block => block % next
          end do

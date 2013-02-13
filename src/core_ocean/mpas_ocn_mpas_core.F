@@ -10,6 +10,7 @@ module mpas_core
    use ocn_test_cases
    use ocn_time_integration
    use ocn_tendency
+   use ocn_diagnostics
 
    use ocn_monthly_forcing
 
@@ -101,6 +102,8 @@ module mpas_core
       err = ior(err, err_tmp)
 
       call ocn_tendency_init(err_tmp)
+      err = ior(err,err_tmp)
+      call ocn_diagnostics_init(err_tmp)
       err = ior(err,err_tmp)
 
       call mpas_ocn_tracer_advection_init(err_tmp)
@@ -1023,7 +1026,7 @@ end subroutine ocn_compute_max_level!}}}
       meshScalingDel2(:) = 1.0
       meshScalingDel4(:) = 1.0
       meshScaling(:)     = 1.0
-      if (config_h_ScaleWithMesh) then
+      if (config_hmix_ScaleWithMesh) then
          do iEdge=1,mesh%nEdges
             cell1 = mesh % cellsOnEdge % array(1,iEdge)
             cell2 = mesh % cellsOnEdge % array(2,iEdge)

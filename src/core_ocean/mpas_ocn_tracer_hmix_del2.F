@@ -211,9 +211,9 @@ contains
 
       del2on = .false.
 
-      if ( config_h_tracer_eddy_diff2 > 0.0 ) then
+      if ( config_tracer_del2 > 0.0 ) then
           del2On = .true.
-          eddyDiff2 = config_h_tracer_eddy_diff2
+          eddyDiff2 = config_tracer_del2
       endif
 
       if(.not.config_use_tracer_del2) del2on = .false.

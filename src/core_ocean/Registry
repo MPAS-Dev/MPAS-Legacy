@@ -4,57 +4,55 @@
 namelist logical   time_management config_do_restart          .false.
 namelist character time_management config_start_time          '0000-01-01_00:00:00'
 namelist character time_management config_stop_time           'none'
-namelist character time_management config_run_duration        'none'
+namelist character time_management config_run_duration        '0_06:00:00'
 namelist character time_management config_calendar_type       '360day'
-namelist integer   time_management config_ncouple_per_day       1
 
 namelist character io       config_input_name          'grid.nc'
 namelist character io       config_output_name         'output.nc'
 namelist character io       config_restart_name        'restart.nc'
-namelist character io       config_restart_interval    'none'
-namelist character io       config_output_interval     '24:00:00'
-namelist character io       config_stats_interval      '24:00:00'
-namelist logical   io       config_write_stats_on_startup   .false.
+namelist character io       config_restart_interval    '0_06:00:00'
+namelist character io       config_output_interval     '0_06:00:00'
+namelist character io       config_stats_interval      '0_01:00:00'
+namelist logical   io       config_write_stats_on_startup   .true.
 namelist logical   io       config_write_output_on_startup  .true.
-namelist integer   io       config_frames_per_outfile  0
+namelist integer   io       config_frames_per_outfile  1000
 namelist integer   io       config_pio_num_iotasks     0 
 namelist integer   io       config_pio_stride          1
 
-namelist real      time_integration config_dt                  172.8
-namelist character time_integration config_time_integrator    'RK4'
+namelist real      time_integration config_dt                  3000.0
+namelist character time_integration config_time_integrator    'split_explicit'
 
-namelist integer   grid config_num_halos           3
-namelist logical   grid config_enforce_grid_on_restart .false.
-namelist character grid config_vert_coord_movement      'isopycnal'
-namelist character grid config_alter_ICs_for_pbcs 'zlevel_pbcs_off'
-namelist real      grid config_min_pbc_fraction  0.10
-namelist logical   grid config_check_ssh_consistency .true.
+namelist integer   grid config_num_halos                3
+namelist character grid config_vert_coord_movement      'uniform_stretching'
+namelist character grid config_alter_ICs_for_pbcs       'zlevel_pbcs_off'
+namelist real      grid config_min_pbc_fraction         0.10
+namelist logical   grid config_check_ssh_consistency    .true.
 
 namelist character decomposition config_block_decomp_file_prefix  'graph.info.part.'
 namelist integer   decomposition config_number_of_blocks          0
 namelist logical   decomposition config_explicit_proc_decomp      .false.
 namelist character decomposition config_proc_decomp_file_prefix   'graph.info.part.'
 
-namelist logical   hmix          config_h_ScaleWithMesh     .false.
+namelist logical   hmix          config_hmix_ScaleWithMesh  .false.
 namelist logical   hmix          config_visc_vorticity_term .true.
 namelist real      hmix          config_apvm_scale_factor      0.0
 
-namelist logical   hmix_del2     config_use_mom_del2     .true.
-namelist logical   hmix_del2     config_use_tracer_del2     .true.
-namelist real      hmix_del2     config_h_mom_eddy_visc2     0.0
-namelist real      hmix_del2     config_h_tracer_eddy_diff2  0.0
-namelist real      hmix_del2     config_visc_vorticity_visc2_scale 1.0
+namelist logical   hmix_del2     config_use_mom_del2        .false.
+namelist logical   hmix_del2     config_use_tracer_del2     .false.
+namelist real      hmix_del2     config_mom_del2             0.0
+namelist real      hmix_del2     config_tracer_del2          0.0
+namelist real      hmix_del2     config_vorticity_del2_scale 1.0
 
-namelist logical   hmix_del4     config_use_mom_del4     .true.
-namelist logical   hmix_del4     config_use_tracer_del4     .true.
-namelist real      hmix_del4     config_h_mom_eddy_visc4     0.0
-namelist real      hmix_del4     config_h_tracer_eddy_diff4  0.0
-namelist real      hmix_del4     config_visc_vorticity_visc4_scale 1.0
+namelist logical   hmix_del4     config_use_mom_del4        .true.
+namelist logical   hmix_del4     config_use_tracer_del4     .false.
+namelist real      hmix_del4     config_mom_del4             5.0e13
+namelist real      hmix_del4     config_tracer_del4          0.0
+namelist real      hmix_del4     config_vorticity_del4_scale 1.0
 
-namelist logical   hmix_Leith    config_use_Leith_del2         .false.
-namelist real      hmix_Leith    config_Leith_parameter        0.0
-namelist real      hmix_Leith    config_Leith_dx               0.0
-namelist real      hmix_Leith    config_Leith_visc2_max      1000000.0
+namelist logical   hmix_Leith    config_use_Leith_del2      .false.
+namelist real      hmix_Leith    config_Leith_parameter      1.0
+namelist real      hmix_Leith    config_Leith_dx             15000.0
+namelist real      hmix_Leith    config_Leith_visc2_max      2.5e3
 
 namelist real      standard_GM     config_h_kappa              0.0
 namelist real      standard_GM     config_h_kappa_q            0.0
@@ -66,8 +64,8 @@ namelist logical   vmix     config_implicit_vertical_mix  .true.
 namelist real      vmix     config_convective_visc      1.0
 namelist real      vmix     config_convective_diff      1.0
 
-namelist logical   vmix_const   config_use_const_visc   .true.
-namelist logical   vmix_const   config_use_const_diff   .true.
+namelist logical   vmix_const   config_use_const_visc   .false.
+namelist logical   vmix_const   config_use_const_diff   .false.
 namelist real      vmix_const   config_vert_visc        2.5e-4
 namelist real      vmix_const   config_vert_diff        2.5e-5
 
@@ -77,8 +75,8 @@ namelist real      vmix_rich    config_bkrd_vert_visc   1.0e-4
 namelist real      vmix_rich    config_bkrd_vert_diff   1.0e-5
 namelist real      vmix_rich    config_rich_mix         0.005
 
-namelist logical   vmix_tanh    config_use_tanh_visc    .true.
-namelist logical   vmix_tanh    config_use_tanh_diff    .true.
+namelist logical   vmix_tanh    config_use_tanh_visc    .false.
+namelist logical   vmix_tanh    config_use_tanh_diff    .false.
 namelist real      vmix_tanh    config_max_visc_tanh    2.5e-1
 namelist real      vmix_tanh    config_min_visc_tanh    1.0e-4
 namelist real      vmix_tanh    config_max_diff_tanh    2.5e-2
@@ -92,17 +90,17 @@ namelist real      forcing   config_restoreT_timescale  90.0
 namelist real      forcing   config_restoreS_timescale  90.0
 
 namelist character advection config_vert_tracer_adv     'stencil'
-namelist integer   advection config_vert_tracer_adv_order  4
-namelist integer   advection config_horiz_tracer_adv_order 2
+namelist integer   advection config_vert_tracer_adv_order  3
+namelist integer   advection config_horiz_tracer_adv_order 3
 namelist real      advection config_coef_3rd_order      0.25
-namelist logical   advection config_monotonic           .false.
+namelist logical   advection config_monotonic           .true.
 
 namelist real      bottom_drag config_bottom_drag_coeff    1.0e-3
 
 namelist character pressure_gradient     config_pressure_gradient_type       'pressure_and_zmid'
 namelist real      pressure_gradient     config_rho0                1014.65
 
-namelist character eos       config_eos_type            'linear'
+namelist character eos       config_eos_type            'jm'
 
 namelist real      eos_linear config_eos_linear_alpha    2.55e-1
 namelist real      eos_linear config_eos_linear_beta     7.64e-1
@@ -111,7 +109,7 @@ namelist real      eos_linear config_eos_linear_Sref     35.0
 namelist real      eos_linear config_eos_linear_rhoref   1025.022
 
 namelist integer   split_explicit_ts config_n_ts_iter     2
-namelist integer   split_explicit_ts config_n_bcl_iter_beg   2
+namelist integer   split_explicit_ts config_n_bcl_iter_beg   1
 namelist integer   split_explicit_ts config_n_bcl_iter_mid   2
 namelist integer   split_explicit_ts config_n_bcl_iter_end   2
 namelist integer   split_explicit_ts config_n_btr_subcycles  20
@@ -333,7 +331,9 @@ var persistent real    uSrcReconstructMeridional ( nVertLevels nCells Time ) 2 o
 var persistent real    MontPot ( nVertLevels nCells Time ) 2 - MontPot state - -
 var persistent real    pressure ( nVertLevels nCells Time ) 2 - pressure state - -
 var persistent real    wTop ( nVertLevelsP1 nCells Time ) 2 - wTop state - -
+var persistent real    vertVelocityTop ( nVertLevelsP1 nCells Time ) 2 - vertVelocityTop state - -
 var persistent real    rhoDisplaced ( nVertLevels nCells Time ) 2 - rhoDisplaced state - -
+var persistent real    BruntVaisalaFreqTop ( nVertLevels nCells Time ) 2 o BruntVaisalaFreqTop state - -
 var persistent real    viscosity ( nVertLevels nEdges Time ) 2 o viscosity state - -
 
 % Other diagnostic variables: neither read nor written to any files
@@ -366,6 +366,7 @@ var persistent real    acc_uReconstructZonalVar ( nVertLevels nCells Time ) 2 o 
 var persistent real    acc_uReconstructMeridionalVar ( nVertLevels nCells Time ) 2 o acc_uReconstructMeridionalVar state - -
 var persistent real    acc_u ( nVertLevels nEdges Time ) 2 o acc_u state - -
 var persistent real    acc_uVar ( nVertLevels nEdges Time ) 2 o acc_uVar state - -
+var persistent real    acc_vertVelocityTop ( nVertLevelsP1 nCells Time ) 2 o acc_vertVelocityTop state - -
 
 % Sign fields, for openmp and bit reproducibility without branching statements.
 var persistent integer edgeSignOnCell ( maxEdges nCells ) 0 - edgeSignOnCell mesh - -

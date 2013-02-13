@@ -216,7 +216,7 @@ contains
       hmixLeithOn = .true.
 
       if (config_visc_vorticity_term) then
-         viscVortCoef = config_visc_vorticity_visc2_scale
+         viscVortCoef = config_vorticity_del2_scale
       else
          viscVortCoef = 0.0
       endif

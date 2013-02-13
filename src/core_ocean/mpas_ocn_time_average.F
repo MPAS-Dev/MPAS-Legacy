@@ -15,7 +15,7 @@ module ocn_time_average
 
         real (kind=RKIND), dimension(:), pointer :: acc_ssh, acc_sshVar
         real (kind=RKIND), dimension(:,:), pointer :: acc_uReconstructZonal, acc_uReconstructMeridional, acc_uReconstructZonalVar, acc_uReconstructMeridionalVar
-        real (kind=RKIND), dimension(:,:), pointer :: acc_u, acc_uVar
+        real (kind=RKIND), dimension(:,:), pointer :: acc_u, acc_uVar, acc_vertVelocityTop
 
         nAccumulate => state % nAccumulate % scalar
 
@@ -27,6 +27,7 @@ module ocn_time_average
         acc_uReconstructMeridionalVar => state % acc_uReconstructMeridionalVar % array
         acc_u => state % acc_u % array
         acc_uVar => state % acc_uVar % array
+        acc_vertVelocityTop => state % acc_vertVelocityTop % array
 
         nAccumulate = 0
 
@@ -38,6 +39,7 @@ module ocn_time_average
         acc_uReconstructMeridionalVar = 0.0
         acc_u = 0.0
         acc_uVar = 0.0
+        acc_vertVelocityTop = 0.0
 
     end subroutine ocn_time_average_init!}}}
 
@@ -48,13 +50,13 @@ module ocn_time_average
         real (kind=RKIND), pointer :: nAccumulate, old_nAccumulate
 
         real (kind=RKIND), dimension(:), pointer :: ssh
-        real (kind=RKIND), dimension(:,:), pointer :: uReconstructZonal, uReconstructMeridional, u
+        real (kind=RKIND), dimension(:,:), pointer :: uReconstructZonal, uReconstructMeridional, u, vertVelocityTop
 
-        real (kind=RKIND), dimension(:,:), pointer :: acc_u, acc_uVar
+        real (kind=RKIND), dimension(:,:), pointer :: acc_u, acc_uVar, acc_vertVelocityTop
         real (kind=RKIND), dimension(:,:), pointer :: acc_uReconstructZonal, acc_uReconstructMeridional, acc_uReconstructZonalVar, acc_uReconstructMeridionalVar
         real (kind=RKIND), dimension(:), pointer :: acc_ssh, acc_sshVar
 
-        real (kind=RKIND), dimension(:,:), pointer :: old_acc_u, old_acc_uVar
+        real (kind=RKIND), dimension(:,:), pointer :: old_acc_u, old_acc_uVar, old_acc_vertVelocityTop
         real (kind=RKIND), dimension(:,:), pointer :: old_acc_uReconstructZonal, old_acc_uReconstructMeridional, old_acc_uReconstructZonalVar, old_acc_uReconstructMeridionalVar
         real (kind=RKIND), dimension(:), pointer :: old_acc_ssh, old_acc_sshVar
 
@@ -65,6 +67,7 @@ module ocn_time_average
         uReconstructZonal => state % uReconstructZonal % array
         uReconstructMeridional => state % uReconstructMeridional % array
         u => state % u % array
+        vertVelocityTop => state % vertVelocityTop % array
 
         acc_ssh => state % acc_ssh % array
         acc_sshVar => state % acc_sshVar % array
@@ -74,6 +77,7 @@ module ocn_time_average
         acc_uReconstructMeridionalVar => state % acc_uReconstructMeridionalVar % array
         acc_u => state % acc_u % array
         acc_uVar => state % acc_uVar % array
+        acc_vertVelocityTop => state % acc_vertVelocityTop % array
 
         old_acc_ssh => old_state % acc_ssh % array
         old_acc_sshVar => old_state % acc_sshVar % array
@@ -83,6 +87,7 @@ module ocn_time_average
         old_acc_uReconstructMeridionalVar => old_state % acc_uReconstructMeridionalVar % array
         old_acc_u => old_state % acc_u % array
         old_acc_uVar => old_state % acc_uVar % array
+        old_acc_vertVelocityTop => old_state % acc_vertVelocityTop % array
 
         acc_ssh = old_acc_ssh + ssh
         acc_sshVar = old_acc_sshVar + ssh**2
@@ -92,6 +97,7 @@ module ocn_time_average
         acc_uReconstructMeridionalVar = old_acc_uReconstructMeridionalVar + uReconstructMeridional**2
         acc_u = old_acc_u + u
         acc_uVar = old_acc_uVar + u**2
+        acc_vertVelocityTop = old_acc_vertVelocityTop + vertVelocityTop
 
         nAccumulate = old_nAccumulate + 1
     end subroutine ocn_time_average_accumulate!}}}
@@ -103,7 +109,7 @@ module ocn_time_average
 
         real (kind=RKIND), dimension(:), pointer :: acc_ssh, acc_sshVar
         real (kind=RKIND), dimension(:,:), pointer :: acc_uReconstructZonal, acc_uReconstructMeridional, acc_uReconstructZonalVar, acc_uReconstructMeridionalVar
-        real (kind=RKIND), dimension(:,:), pointer :: acc_u, acc_uVar
+        real (kind=RKIND), dimension(:,:), pointer :: acc_u, acc_uVar, acc_vertVelocityTop
 
         nAccumulate => state % nAccumulate  % scalar
 
@@ -115,6 +121,7 @@ module ocn_time_average
         acc_uReconstructMeridionalVar => state % acc_uReconstructMeridionalVar % array
         acc_u => state % acc_u % array
         acc_uVar => state % acc_uVar % array
+        acc_vertVelocityTop => state % acc_vertVelocityTop % array
 
         if(nAccumulate > 0) then
           acc_ssh = acc_ssh / nAccumulate
@@ -125,6 +132,7 @@ module ocn_time_average
           acc_uReconstructMeridionalVar = acc_uReconstructMeridionalVar / nAccumulate
           acc_u = acc_u / nAccumulate
           acc_uVar = acc_uVar / nAccumulate
+          acc_vertVelocityTop = acc_vertVelocityTop / nAccumulate
         end if
     end subroutine ocn_time_average_normalize!}}}
 

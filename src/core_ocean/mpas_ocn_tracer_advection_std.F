@@ -51,7 +51,7 @@ module mpas_ocn_tracer_advection_std
    ! Input: s - current model state
    !        grid - grid metadata
    !
-   ! Output: tend - computed scalar tendencies
+   ! Output: tend - computed tracer tendencies
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
 
       real (kind=RKIND), dimension(:,:,:), intent(inout) :: tend !< Input/Output: Tracer tendency

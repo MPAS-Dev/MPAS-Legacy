@@ -4,19 +4,18 @@
 	config_stop_time = 'none'
 	config_run_duration = '0_06:00:00'
 	config_calendar_type = '360day'
-	config_ncouple_per_day = 1
 /
 &io
 	config_input_name = 'grid.nc'
 	config_output_name = 'output.nc'
 	config_restart_name = 'restart.nc'
-	config_restart_interval = '0_03:00:00'
+	config_restart_interval = '0_06:00:00'
 	config_output_interval = '0_06:00:00'
-	config_stats_interval = '00_00:00:01'
-	config_write_stats_on_startup = .false.
-	config_write_output_on_startup = .false.
-	config_frames_per_outfile = 0
-	config_pio_num_iotasks = 0 
+	config_stats_interval = '0_01:00:00'
+	config_write_stats_on_startup = .true.
+	config_write_output_on_startup = .true.
+	config_frames_per_outfile = 1000
+	config_pio_num_iotasks = 0
 	config_pio_stride = 1
 /
 &time_integration
@@ -25,7 +24,6 @@
 /
 &grid
 	config_num_halos = 3
-	config_enforce_grid_on_restart = .false.
 	config_vert_coord_movement = 'uniform_stretching'
 	config_alter_ICs_for_pbcs = 'zlevel_pbcs_off'
 	config_min_pbc_fraction = 0.10
@@ -38,23 +36,23 @@
 	config_proc_decomp_file_prefix = 'graph.info.part.'
 /
 &hmix
-	config_h_ScaleWithMesh = .true.
+	config_hmix_ScaleWithMesh = .false.
 	config_visc_vorticity_term = .true.
 	config_apvm_scale_factor = 0.0
 /
 &hmix_del2
 	config_use_mom_del2 = .false.
 	config_use_tracer_del2 = .false.
-	config_h_mom_eddy_visc2 = 0.0
-	config_h_tracer_eddy_diff2 = 0.0
-	config_visc_vorticity_visc2_scale = 1.0
+	config_mom_del2 = 0.0
+	config_tracer_del2 = 0.0
+	config_vorticity_del2_scale = 1.0
 /
 &hmix_del4
 	config_use_mom_del4 = .true.
 	config_use_tracer_del4 = .false.
-	config_h_mom_eddy_visc4 = 5.0e13
-	config_h_tracer_eddy_diff4 = 0.0
-	config_visc_vorticity_visc4_scale = 1.0
+	config_mom_del4 = 5.0e13
+	config_tracer_del4 = 0.0
+	config_vorticity_del4_scale = 1.0
 /
 &hmix_Leith
 	config_use_Leith_del2 = .false.
@@ -122,11 +120,11 @@
 	config_eos_type = 'jm'
 /
 &eos_linear
-        config_eos_linear_alpha = 2.55e-1
-        config_eos_linear_beta =  7.64e-1
-        config_eos_linear_Tref =  19.0
-        config_eos_linear_Sref =  35.0
-        config_eos_linear_rhoref =  1025.022
+	config_eos_linear_alpha = 2.55e-1
+	config_eos_linear_beta = 7.64e-1
+	config_eos_linear_Tref = 19.0
+	config_eos_linear_Sref = 35.0
+	config_eos_linear_rhoref = 1025.022
 /
 &split_explicit_ts
 	config_n_ts_iter = 2
@@ -143,12 +141,12 @@
 	config_btr_solve_SSH2 = .false.
 /
 &sw_model
-        config_test_case = 0
+	config_test_case = 0
 /
 &debug
 	config_check_zlevel_consistency = .false.
 	config_filter_btr_mode = .false.
-	config_prescribe_velocity  = .false.
+	config_prescribe_velocity = .false.
 	config_prescribe_thickness = .false.
 	config_include_KE_vertex = .false.
 	config_check_tracer_monotonicity = .false.

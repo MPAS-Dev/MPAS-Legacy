@@ -201,13 +201,12 @@ contains
 
    hmixDel2On = .false.
 
-   if ( config_h_mom_eddy_visc2 > 0.0 ) then
+   if ( config_mom_del2 > 0.0 ) then
       hmixDel2On = .true.
-      eddyVisc2 = config_h_mom_eddy_visc2
-
+      eddyVisc2 = config_mom_del2
 
       if (config_visc_vorticity_term) then
-         viscVortCoef = config_visc_vorticity_visc2_scale
+         viscVortCoef = config_vorticity_del2_scale
       else
          viscVortCoef = 0.0
       endif

@@ -22,6 +22,7 @@ module ocn_time_integration_rk4
    use mpas_timer
 
    use ocn_tendency
+   use ocn_diagnostics
 
    use ocn_equation_of_state
    use ocn_vmix
@@ -137,7 +138,7 @@ module ocn_time_integration_rk4
 
         call mpas_timer_start("RK4-diagnostic halo update")
         call mpas_dmpar_exch_halo_field(domain % blocklist % provis % Vor_edge)
-        if (config_h_mom_eddy_visc4 > 0.0) then
+        if (config_mom_del4 > 0.0) then
            call mpas_dmpar_exch_halo_field(domain % blocklist % provis % divergence)
            call mpas_dmpar_exch_halo_field(domain % blocklist % provis % vorticity)
         end if
@@ -166,7 +167,7 @@ module ocn_time_integration_rk4
                call ocn_filter_btr_mode_tend_u(block % tend, block % provis, block % mesh)
            endif
 
-           call ocn_tend_scalar(block % tend, block % provis, block % diagnostics, block % mesh, dt)
+           call ocn_tend_tracer(block % tend, block % provis, block % diagnostics, block % mesh, dt)
            block => block % next
         end do
         call mpas_timer_stop("RK4-tendency computations")
@@ -254,7 +255,7 @@ module ocn_time_integration_rk4
       call mpas_timer_stop("RK4-main loop")
 
       !
-      !  A little clean up at the end: decouple new scalar fields and compute diagnostics for new state
+      !  A little clean up at the end: rescale tracer fields and compute diagnostics for new state
       !
       call mpas_timer_start("RK4-cleaup phase")
 

@@ -233,9 +233,9 @@ contains
       err = 0
       del4on = .false.
 
-      if ( config_h_tracer_eddy_diff4 > 0.0 ) then
+      if ( config_tracer_del4 > 0.0 ) then
           del4On = .true.
-          eddyDiff4 = config_h_tracer_eddy_diff4
+          eddyDiff4 = config_tracer_del4
       endif
 
       if(.not.config_use_tracer_del4) del4on = .false.
