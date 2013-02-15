@@ -165,7 +165,7 @@ module mpas_block_decomp
            allocate(block_id(blocks_per_proc))
            allocate(block_start(blocks_per_proc))
            allocate(block_count(blocks_per_proc))
-   
+
            do i = 1, blocks_per_proc
              block_start = 0
              block_count = 0
@@ -436,11 +436,11 @@ module mpas_block_decomp
        end if
      else
        blocks_per_proc = 0
-       do i = 1, total_blocks
+       do i = 0, total_blocks-1
          call mpas_get_owning_proc(dminfo, i, owning_proc)
          if(owning_proc == proc_number) then
            call mpas_get_local_block_id(dminfo, i, local_block_id)
-           blocks_per_proc = max(blocks_per_proc, local_block_id)
+           blocks_per_proc = max(blocks_per_proc, local_block_id+1)
          end if
        end do
      end if
