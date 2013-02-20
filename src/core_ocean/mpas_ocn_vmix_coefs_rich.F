@@ -228,26 +228,14 @@ contains
             if (RiTopOfEdge(k,iEdge)>0.0) then
                vertViscTopOfEdge(k,iEdge) = vertViscTopOfEdge(k, iEdge) + config_bkrd_vert_visc &
                   + config_rich_mix / (1.0 + 5.0*RiTopOfEdge(k,iEdge))**2
-            ! maltrud do limiting of coefficient--should not be necessary
-            ! also probably better logic could be found
+               ! maltrud do limiting of coefficient--should not be necessary
+               ! also probably better logic could be found
                if (vertViscTopOfEdge(k,iEdge) > config_convective_visc) then
-                   if( config_implicit_vertical_mix) then
-                      vertViscTopOfEdge(k,iEdge) = config_convective_visc
-                   else
-                      vertViscTopOfEdge(k,iEdge) = &
-                      ((h_edge(k-1,iEdge)+h_edge(k,iEdge))/2.0)**2/config_dt/4.0
-                   end if
+                  vertViscTopOfEdge(k,iEdge) = config_convective_visc
                end if
             else
-               ! mrp 110324 efficiency note: this if is inside iCell and k loops.
-               if (config_implicit_vertical_mix) then
-                  ! for Ri<0 and implicit mix, use convective diffusion
-                  vertViscTopOfEdge(k,iEdge) = config_convective_visc
-               else
-                  ! for Ri<0 and explicit vertical mix, 
-                  ! use maximum diffusion allowed by CFL criterion
-                  vertViscTopOfEdge(k,iEdge) = vertViscTopOfEdge(k,iEdge) + ((h_edge(k-1,iEdge)+h_edge(k,iEdge))/2.0)**2/config_dt/4.0
-               end if
+               ! for Ri<0 use the convective value for the viscosity
+               vertViscTopOfEdge(k,iEdge) = config_convective_visc
             end if
          end do
       end do
@@ -336,23 +324,11 @@ contains
             ! maltrud do limiting of coefficient--should not be necessary
             ! also probably better logic could be found
                if (vertDiffTopOfCell(k,iCell) > config_convective_diff) then
-                  if (config_implicit_vertical_mix) then
-                     vertDiffTopOfCell(k,iCell) = config_convective_diff
-                  else
-                     vertDiffTopOfCell(k,iCell) = &
-                        ((h(k-1,iCell)+h(k,iCell))/2.0)**2/config_dt/4.0
-                  end if
+                  vertDiffTopOfCell(k,iCell) = config_convective_diff
                end if
              else
-               ! mrp 110324 efficiency note: this if is inside iCell and k loops.
-               if (config_implicit_vertical_mix) then
-                  ! for Ri<0 and implicit mix, use convective diffusion
-                  vertDiffTopOfCell(k,iCell) = config_convective_diff
-               else
-                  ! for Ri<0 and explicit vertical mix, 
-                  ! use maximum diffusion allowed by CFL criterion
-                  vertDiffTopOfCell(k,iCell) = vertDiffTopOfCell(k, iCell) + ((h(k-1,iCell)+h(k,iCell))/2.0)**2/config_dt/4.0
-               end if
+               ! for Ri<0 use the convective value for the diffusion
+               vertDiffTopOfCell(k,iCell) = config_convective_diff
             end if
          end do
       end do

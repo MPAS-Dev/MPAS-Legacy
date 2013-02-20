@@ -44,8 +44,6 @@ module ocn_vmix
               tridiagonal_solve_mult
 
    public :: ocn_vmix_coefs, &
-             ocn_vel_vmix_tend_explicit, &
-             ocn_tracer_vmix_tend_explicit, &
              ocn_vel_vmix_tend_implicit, &
              ocn_tracer_vmix_tend_implicit, &
              ocn_vmix_init, &
@@ -58,7 +56,6 @@ module ocn_vmix
    !--------------------------------------------------------------------
 
    logical :: velVmixOn, tracerVmixOn
-   logical :: explicitOn, implicitOn
 
 !***********************************************************************
 
@@ -140,100 +137,6 @@ contains
 
 !***********************************************************************
 !
-!  routine ocn_vel_vmix_tendExplict
-!
-!> \brief   Computes tendencies for explict momentum vertical mixing
-!> \author  Doug Jacobsen
-!> \date    19 September 2011
-!> \version SVN:$Id$
-!> \details 
-!>  This routine computes the tendencies for explicit vertical mixing for momentum
-!>  using computed coefficients.
-!
-!-----------------------------------------------------------------------
-
-   subroutine ocn_vel_vmix_tend_explicit(grid, u, h_edge, vertViscTopOfEdge, tend, err)!{{{
-
-      !-----------------------------------------------------------------
-      !
-      ! input variables
-      !
-      !-----------------------------------------------------------------
-
-      type (mesh_type), intent(in) :: &
-         grid          !< Input: grid information
-
-      real (kind=RKIND), dimension(:,:), intent(in) :: &
-         u             !< Input: velocity
-
-      real (kind=RKIND), dimension(:,:), intent(in) :: &
-         h_edge        !< Input: thickness at edge
-
-      real (kind=RKIND), dimension(:,:), intent(in) :: &
-         vertViscTopOfEdge !< Input: vertical mixing coefficients
-
-      !-----------------------------------------------------------------
-      !
-      ! input/output variables
-      !
-      !-----------------------------------------------------------------
-
-      real (kind=RKIND), dimension(:,:), intent(inout) :: &
-         tend          !< Input/Output: tendency information
-
-      !-----------------------------------------------------------------
-      !
-      ! output variables
-      !
-      !-----------------------------------------------------------------
-
-      integer, intent(out) :: err !< Output: error flag
-
-      !-----------------------------------------------------------------
-      !
-      ! local variables
-      !
-      !-----------------------------------------------------------------
-
-      integer :: iEdge, nEdgesSolve, k, nVertLevels
-
-      integer, dimension(:), pointer :: maxLevelEdgeTop
-
-      real (kind=RKIND), dimension(:), allocatable :: fluxVertTop
-
-      err = 0
-
-      if(.not.velVmixOn) return
-      if(implicitOn) return
-
-      nEdgessolve = grid % nEdgesSolve
-      nVertLevels = grid % nVertLevels
-      maxLevelEdgeTop => grid % maxLevelEdgeTop % array
-
-      allocate(fluxVertTop(nVertLevels+1))
-      fluxVertTop(1) = 0.0
-      do iEdge=1,nEdgesSolve
-         do k=2,maxLevelEdgeTop(iEdge)
-           fluxVertTop(k) = vertViscTopOfEdge(k,iEdge) &
-              * ( u(k-1,iEdge) - u(k,iEdge) ) &
-              * 2 / (h_edge(k-1,iEdge) + h_edge(k,iEdge))
-         enddo
-         fluxVertTop(maxLevelEdgeTop(iEdge)+1) = 0.0
-
-         do k=1,maxLevelEdgeTop(iEdge)
-           tend(k,iEdge) = tend(k,iEdge) &
-             + (fluxVertTop(k) - fluxVertTop(k+1)) &
-             / h_edge(k,iEdge)
-         enddo
-
-      end do
-      deallocate(fluxVertTop)
-   !--------------------------------------------------------------------
-
-   end subroutine ocn_vel_vmix_tend_explicit!}}}
-
-!***********************************************************************
-!
 !  routine ocn_vel_vmix_tend_implicit
 !
 !> \brief   Computes tendencies for implicit momentum vertical mixing
@@ -306,7 +209,6 @@ contains
       err = 0
 
       if(.not.velVmixOn) return
-      if(explicitOn) return
 
       nEdges = grid % nEdges
       nVertLevels = grid % nVertLevels
@@ -366,111 +268,6 @@ contains
    !--------------------------------------------------------------------
 
    end subroutine ocn_vel_vmix_tend_implicit!}}}
-
-!***********************************************************************
-!
-!  routine ocn_tracer_vmix_tendExplict
-!
-!> \brief   Computes tendencies for explict tracer vertical mixing
-!> \author  Doug Jacobsen
-!> \date    19 September 2011
-!> \version SVN:$Id$
-!> \details 
-!>  This routine computes the tendencies for explicit vertical mixing for
-!>  tracers using computed coefficients.
-!
-!-----------------------------------------------------------------------
-
-   subroutine ocn_tracer_vmix_tend_explicit(grid, h, vertDiffTopOfCell, tracers, tend, err)!{{{
-
-      !-----------------------------------------------------------------
-      !
-      ! input variables
-      !
-      !-----------------------------------------------------------------
-
-      type (mesh_type), intent(in) :: &
-         grid          !< Input: grid information
-
-      real (kind=RKIND), dimension(:,:), intent(in) :: &
-         h        !< Input: thickness at cell center
-
-      real (kind=RKIND), dimension(:,:), intent(in) :: &
-         vertDiffTopOfCell !< Input: vertical mixing coefficients
-
-      real (kind=RKIND), dimension(:,:,:), intent(in) :: &
-         tracers             !< Input: tracers
-
-      !-----------------------------------------------------------------
-      !
-      ! input/output variables
-      !
-      !-----------------------------------------------------------------
-
-      real (kind=RKIND), dimension(:,:,:), intent(inout) :: &
-         tend          !< Input/Output: tendency information
-
-      !-----------------------------------------------------------------
-      !
-      ! output variables
-      !
-      !-----------------------------------------------------------------
-
-      integer, intent(out) :: err !< Output: error flag
-
-      !-----------------------------------------------------------------
-      !
-      ! local variables
-      !
-      !-----------------------------------------------------------------
-
-      integer :: iCell, nCellsSolve, k, iTracer, num_tracers, nVertLevels
-
-      integer, dimension(:), pointer :: maxLevelCell
-
-      real (kind=RKIND), dimension(:,:), allocatable :: fluxVertTop
-
-      err = 0
-
-      if(.not.tracerVmixOn) return
-      if(implicitOn) return
-
-      nCellsSolve = grid % nCellsSolve
-      nVertLevels = grid % nVertLevels
-      num_tracers = size(tracers, dim=1)
-
-      maxLevelCell => grid % maxLevelCell % array
-
-      allocate(fluxVertTop(num_tracers,nVertLevels+1))
-      fluxVertTop(:,1) = 0.0
-      do iCell=1,nCellsSolve 
-
-         do k=2,maxLevelCell(iCell)
-           do iTracer=1,num_tracers
-             ! compute \kappa_v d\phi/dz
-             fluxVertTop(iTracer,k) = vertDiffTopOfCell(k,iCell) &
-                * (   tracers(iTracer,k-1,iCell)    &
-                    - tracers(iTracer,k  ,iCell) )  &
-                * 2 / (h(k-1,iCell) + h(k,iCell))
-
-           enddo
-         enddo
-         fluxVertTop(:,maxLevelCell(iCell)+1) = 0.0
-
-         do k=1,maxLevelCell(iCell)
-           do iTracer=1,num_tracers
-             ! This is h d/dz( fluxVertTop) but h and dz cancel, so 
-             ! reduces to delta( fluxVertTop)
-             tend(iTracer,k,iCell) = tend(iTracer,k,iCell) &
-               + fluxVertTop(iTracer,k) - fluxVertTop(iTracer,k+1)
-           enddo
-         enddo
-
-      enddo ! iCell loop
-      deallocate(fluxVertTop)
-   !--------------------------------------------------------------------
-
-   end subroutine ocn_tracer_vmix_tend_explicit!}}}
 
 !***********************************************************************
 !
@@ -539,7 +336,6 @@ contains
       err = 0
 
       if(.not.tracerVmixOn) return
-      if(explicitOn) return
 
       nCells = grid % nCells
       nVertLevels = grid % nVertLevels
@@ -649,8 +445,7 @@ contains
 !> \version SVN:$Id$
 !> \details 
 !>  This routine initializes a variety of quantities related to 
-!>  vertical mixing in the ocean. This primarily determines if
-!>  explicit or implicit vertical mixing is to be used.
+!>  vertical mixing in the ocean. 
 !
 !-----------------------------------------------------------------------
 
@@ -673,14 +468,6 @@ contains
 
       velVmixOn = .true.
       tracerVmixOn = .true.
-
-      explicitOn = .true.
-      implicitOn = .false.
-
-      if(config_implicit_vertical_mix) then
-          explicitOn = .false.
-          implicitOn = .true.
-      end if
 
       if(config_disable_u_vmix) velVmixOn = .false.
       if(config_disable_tr_vmix) tracerVmixOn = .false.

@@ -60,7 +60,6 @@ namelist real      standard_GM     config_h_kappa_q            0.0
 namelist logical   Rayleigh_damping     config_Rayleigh_friction    .false.
 namelist real      Rayleigh_damping     config_Rayleigh_damping_coeff 0.0
 
-namelist logical   vmix     config_implicit_vertical_mix  .true.
 namelist real      vmix     config_convective_visc      1.0
 namelist real      vmix     config_convective_diff      1.0
 

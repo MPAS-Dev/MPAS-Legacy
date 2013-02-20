@@ -18,7 +18,6 @@ module ocn_vel_forcing
    use mpas_configure
 
    use ocn_vel_forcing_windstress
-   use ocn_vel_forcing_bottomdrag
    use ocn_vel_forcing_rayleigh
 
    implicit none
@@ -115,7 +114,7 @@ contains
       !
       !-----------------------------------------------------------------
 
-      integer :: err1, err2, err3
+      integer :: err1, err2
 
       !-----------------------------------------------------------------
       !
@@ -126,11 +125,9 @@ contains
       !-----------------------------------------------------------------
 
       call ocn_vel_forcing_windstress_tend(grid, u_src, h_edge, tend, err1)
-      call ocn_vel_forcing_bottomdrag_tend(grid, u, ke_edge, h_edge, tend, err2)
-      call ocn_vel_forcing_rayleigh_tend(grid, u, tend, err3)
+      call ocn_vel_forcing_rayleigh_tend(grid, u, tend, err2)
 
       err = ior(err1, err2)
-      err = ior(err, err3)
 
    !--------------------------------------------------------------------
 
@@ -164,14 +161,12 @@ contains
 
       integer, intent(out) :: err !< Output: error flag
 
-      integer :: err1, err2, err3
+      integer :: err1, err2
 
       call ocn_vel_forcing_windstress_init(err1)
-      call ocn_vel_forcing_bottomdrag_init(err2)
-      call ocn_vel_forcing_rayleigh_init(err3)
+      call ocn_vel_forcing_rayleigh_init(err2)
 
       err = ior(err1, err2)
-      err = ior(err, err3)
 
    !--------------------------------------------------------------------
 

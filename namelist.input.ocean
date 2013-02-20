@@ -69,7 +69,6 @@
 	config_Rayleigh_damping_coeff = 0.0
 /
 &vmix
-	config_implicit_vertical_mix = .true.
 	config_convective_visc = 1.0
 	config_convective_diff = 1.0
 /

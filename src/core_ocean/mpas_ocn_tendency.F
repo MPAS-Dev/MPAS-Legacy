@@ -41,8 +41,8 @@ module ocn_tendency
    save
 
    type (timer_node), pointer :: thickHadvTimer, thickVadvTimer
-   type (timer_node), pointer :: velCorTimer, velVadvTimer, velPgradTimer, velHmixTimer, velForceTimer, velExpVmixTimer
-   type (timer_node), pointer :: tracerHadvTimer, tracerVadvTimer, tracerHmixTimer, tracerExpVmixTimer, tracerRestoringTimer
+   type (timer_node), pointer :: velCorTimer, velVadvTimer, velPgradTimer, velHmixTimer, velForceTimer
+   type (timer_node), pointer :: tracerHadvTimer, tracerVadvTimer, tracerHmixTimer, tracerRestoringTimer
 
    !--------------------------------------------------------------------
    !
@@ -240,11 +240,6 @@ contains
       !
       ! velocity tendency: vertical mixing d/dz( nu_v du/dz))
       !
-      if (.not.config_implicit_vertical_mix) then
-          call mpas_timer_start("explicit vmix", .false., velExpVmixTimer)
-          call ocn_vel_vmix_tend_explicit(grid, u, h_edge, vertvisctopofedge, tend_u, err)
-          call mpas_timer_stop("explicit vmix", velExpVmixTimer)
-      endif
       call mpas_timer_stop("ocn_tend_u")
 
    end subroutine ocn_tend_u!}}}
@@ -333,16 +328,6 @@ contains
 !                   maxval(tracers(3,1,1:nCells))
 ! mrp 110516 printing end
 
-      !
-      ! tracer tendency: vertical diffusion h d/dz( \kappa_v d\phi/dz)
-      !
-      if (.not.config_implicit_vertical_mix) then
-         call mpas_timer_start("explicit vmix", .false., tracerExpVmixTimer)
-
-         call ocn_tracer_vmix_tend_explicit(grid, h, vertdifftopofcell, tracers, tend_tr, err)
-
-         call mpas_timer_stop("explicit vmix", tracerExpVmixTimer)
-      endif
 
 ! mrp 110516 printing
 !print *, 'tend_tr 2',minval(tend_tr(3,1,1:nCells)),&

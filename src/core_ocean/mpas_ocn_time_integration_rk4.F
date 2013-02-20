@@ -149,11 +149,6 @@ module ocn_time_integration_rk4
         call mpas_timer_start("RK4-tendency computations")
         block => domain % blocklist
         do while (associated(block))
-
-           if (.not.config_implicit_vertical_mix) then
-              call ocn_vmix_coefs(block % mesh, block % provis, block % diagnostics, err)
-           end if
-
            ! advection of u uses u, while advection of h and tracers use uTransport.
            call ocn_wtop(block % mesh, block % provis % h % array, block % provis % h_edge % array, &
               block % provis % u % array, block % provis % wTop % array, err)
@@ -271,35 +266,32 @@ module ocn_time_integration_rk4
         block => block % next
       end do
 
+      call mpas_timer_start("RK4-implicit vert mix")
+      block => domain % blocklist
+      do while(associated(block))
 
-      if (config_implicit_vertical_mix) then
-        call mpas_timer_start("RK4-implicit vert mix")
-        block => domain % blocklist
-        do while(associated(block))
+        ! Call ocean diagnostic solve in preparation for vertical mixing.  Note 
+        ! it is called again after vertical mixing, because u and tracers change.
+        ! For Richardson vertical mixing, only rho, h_edge, and ke_edge need to 
+        ! be computed.  For kpp, more variables may be needed.  Either way, this
+        ! could be made more efficient by only computing what is needed for the
+        ! implicit vmix routine that follows. mrp 121023.
+        call ocn_diagnostic_solve(dt, block % state % time_levs(2) % state, block % mesh)
 
-          ! Call ocean diagnostic solve in preparation for vertical mixing.  Note 
-          ! it is called again after vertical mixing, because u and tracers change.
-          ! For Richardson vertical mixing, only rho, h_edge, and ke_edge need to 
-          ! be computed.  For kpp, more variables may be needed.  Either way, this
-          ! could be made more efficient by only computing what is needed for the
-          ! implicit vmix routine that follows. mrp 121023.
-          call ocn_diagnostic_solve(dt, block % state % time_levs(2) % state, block % mesh)
+        call ocn_vmix_implicit(dt, block % mesh, block % diagnostics, block % state % time_levs(2) % state, err)
+        block => block % next
+      end do
 
-          call ocn_vmix_implicit(dt, block % mesh, block % diagnostics, block % state % time_levs(2) % state, err)
-          block => block % next
-        end do
+      ! Update halo on u and tracers, which were just updated for implicit vertical mixing.  If not done, 
+      ! this leads to lack of volume conservation.  It is required because halo updates in RK4 are only
+      ! conducted on tendencies, not on the velocity and tracer fields.  So this update is required to 
+      ! communicate the change due to implicit vertical mixing across the boundary.
+      call mpas_timer_start("RK4-implicit vert mix halos")
+      call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(2) % state % u)
+      call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(2) % state % tracers)
+      call mpas_timer_stop("RK4-implicit vert mix halos")
 
-        ! Update halo on u and tracers, which were just updated for implicit vertical mixing.  If not done, 
-        ! this leads to lack of volume conservation.  It is required because halo updates in RK4 are only
-        ! conducted on tendencies, not on the velocity and tracer fields.  So this update is required to 
-        ! communicate the change due to implicit vertical mixing across the boundary.
-        call mpas_timer_start("RK4-implicit vert mix halos")
-        call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(2) % state % u)
-        call mpas_dmpar_exch_halo_field(domain % blocklist % state % time_levs(2) % state % tracers)
-        call mpas_timer_stop("RK4-implicit vert mix halos")
-
-        call mpas_timer_stop("RK4-implicit vert mix")
-      end if
+      call mpas_timer_stop("RK4-implicit vert mix")
 
       block => domain % blocklist
       do while (associated(block))
