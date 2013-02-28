@@ -108,7 +108,7 @@ var persistent real    areaTriangle ( nVertices ) 0 io areaTriangle mesh - -
 
 var persistent real    edgeNormalVectors ( R3 nEdges ) 0 io edgeNormalVectors mesh - -
 var persistent real    localVerticalUnitVectors ( R3 nCells ) 0 io localVerticalUnitVectors mesh - -
-var persistent real    cellTangentPlane ( R3 TWO nEdges ) 0 io cellTangentPlane mesh - -
+var persistent real    cellTangentPlane ( R3 TWO nCells ) 0 io cellTangentPlane mesh - -
 
 var persistent integer cellsOnCell ( maxEdges nCells ) 0 io cellsOnCell mesh - -
 var persistent integer verticesOnCell ( maxEdges nCells ) 0 io verticesOnCell mesh - -
