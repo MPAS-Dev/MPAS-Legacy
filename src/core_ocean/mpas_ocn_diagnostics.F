@@ -97,7 +97,7 @@ contains
       real (kind=RKIND), dimension(:), allocatable:: pTop, div_hu
 
       real (kind=RKIND), dimension(:), pointer :: &
-        bottomDepth, fVertex, dvEdge, dcEdge, areaCell, areaTriangle, ssh
+        bottomDepth, fVertex, dvEdge, dcEdge, areaCell, areaTriangle, ssh, seaSurfacePressure
       real (kind=RKIND), dimension(:,:), pointer :: &
         weightsOnEdge, kiteAreasOnVertex, h_edge, h, u, v, pressure,&
         circulation, vorticity, ke, ke_edge, MontPot, wTop, zMid, &
@@ -158,6 +158,8 @@ contains
       maxLevelVertexBot => grid % maxLevelVertexBot % array
       kiteIndexOnCell => grid % kiteIndexOnCell % array
       verticesOnCell => grid % verticesOnCell % array
+
+      seaSurfacePressure => grid % seaSurfacePressure % array
                   
       nCells      = grid % nCells
       nEdges      = grid % nEdges
@@ -422,9 +424,10 @@ contains
       else
 
         do iCell=1,nCells
-           ! pressure for generalized coordinates
-           ! assume atmospheric pressure at the surface is zero for now.
-           pressure(1,iCell) = rho(1,iCell)*gravity &
+           ! Pressure for generalized coordinates.
+           ! Pressure at top surface may be due to atmospheric pressure
+           ! or an ice-shelf depression. 
+           pressure(1,iCell) = seaSurfacePressure(iCell) + rho(1,iCell)*gravity &
               * 0.5*h(1,iCell)
 
            do k=2,maxLevelCell(iCell)

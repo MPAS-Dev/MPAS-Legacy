@@ -126,7 +126,7 @@ module mpas_core
 
       if (.not.config_do_restart) call ocn_init_split_timestep(domain)
 
-      write (0,'(a,a10)') ' Vertical coordinate movement is: ',config_vert_coord_movement
+      write (0,'(a,a)') ' Vertical coordinate movement is: ',trim(config_vert_coord_movement)
 
       if (config_vert_coord_movement.ne.'isopycnal'.and. &
           config_vert_coord_movement.ne.'fixed'.and. &

@@ -371,3 +371,6 @@ var persistent real    acc_vertVelocityTop ( nVertLevelsP1 nCells Time ) 2 o acc
 var persistent integer edgeSignOnCell ( maxEdges nCells ) 0 - edgeSignOnCell mesh - -
 var persistent integer edgeSignOnVertex ( maxEdges nVertices ) 0 - edgeSignOnVertex mesh - -
 var persistent integer kiteIndexOnCell ( maxEdges nCells ) 0 - kiteIndexOnCell mesh - -
+
+% Sea surface pressure, for coupling
+var persistent real    seaSurfacePressure ( nCells Time ) 0 ir seaSurfacePressure mesh - -
