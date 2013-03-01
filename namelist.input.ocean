@@ -139,9 +139,6 @@
 	config_btr_gam3_uWt2 = 1.0
 	config_btr_solve_SSH2 = .false.
 /
-&sw_model
-	config_test_case = 0
-/
 &debug
 	config_check_zlevel_consistency = .false.
 	config_filter_btr_mode = .false.

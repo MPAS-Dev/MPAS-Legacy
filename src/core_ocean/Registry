@@ -120,8 +120,6 @@ namelist real      split_explicit_ts config_btr_gam2_SSHWt1  1.0
 namelist real      split_explicit_ts config_btr_gam3_uWt2    1.0
 namelist logical   split_explicit_ts config_btr_solve_SSH2   .false.
 
-namelist integer   sw_model config_test_case           0
-
 namelist logical   debug config_check_zlevel_consistency .false.
 namelist logical   debug config_filter_btr_mode .false.
 namelist logical   debug config_prescribe_velocity  .false.

@@ -1,7 +1,6 @@
 .SUFFIXES: .F .o
 
 OBJS = mpas_ocn_mpas_core.o \
-       mpas_ocn_test_cases.o \
        mpas_ocn_advection.o \
        mpas_ocn_thick_hadv.o \
        mpas_ocn_thick_vadv.o \
@@ -62,8 +61,6 @@ all: core_hyd
 
 core_hyd: $(OBJS)
 	ar -ru libdycore.a $(OBJS)
-
-mpas_ocn_test_cases.o:
 
 mpas_ocn_advection.o:
 
@@ -173,8 +170,7 @@ mpas_ocn_equation_of_state_linear.o:
 
 mpas_ocn_monthly_forcing.o:
 
-mpas_ocn_mpas_core.o: mpas_ocn_test_cases.o \
-                      mpas_ocn_advection.o \
+mpas_ocn_mpas_core.o: mpas_ocn_advection.o \
                       mpas_ocn_thick_hadv.o \
                       mpas_ocn_gm.o \
                       mpas_ocn_thick_vadv.o \

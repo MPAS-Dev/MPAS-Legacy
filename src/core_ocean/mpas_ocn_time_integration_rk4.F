@@ -196,10 +196,6 @@ module ocn_time_integration_rk4
                  end do
 
               end do
-              if (config_test_case == 1) then    ! For case 1, wind field should be fixed
-                 block % provis % u % array(:,:) = block % state % time_levs(1) % state % u % array(:,:)
-              end if
-
               if (config_prescribe_velocity) then
                  block % provis % u % array(:,:) = block % state % time_levs(1) % state % u % array(:,:)
               end if
@@ -295,10 +291,6 @@ module ocn_time_integration_rk4
 
       block => domain % blocklist
       do while (associated(block))
-         if (config_test_case == 1) then    ! For case 1, wind field should be fixed
-            block % state % time_levs(2) % state % u % array(:,:) = block % state % time_levs(1) % state % u % array(:,:)
-         end if
-
          if (config_prescribe_velocity) then
             block % state % time_levs(2) % state % u % array(:,:) = block % state % time_levs(1) % state % u % array(:,:)
          end if

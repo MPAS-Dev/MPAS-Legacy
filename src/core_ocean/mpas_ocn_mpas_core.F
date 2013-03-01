@@ -7,7 +7,6 @@ module mpas_core
    use mpas_timer
 
    use ocn_global_diagnostics
-   use ocn_test_cases
    use ocn_time_integration
    use ocn_tendency
    use ocn_diagnostics
@@ -117,8 +116,6 @@ module mpas_core
       if(err.eq.1) then
           call mpas_dmpar_abort(dminfo)
       endif
-
-      if (.not. config_do_restart) call setup_sw_test_case(domain)
 
       if (config_vert_coord_movement.ne.'isopycnal') call ocn_init_vert_coord(domain)
 
