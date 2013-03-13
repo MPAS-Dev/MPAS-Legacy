@@ -1248,7 +1248,10 @@ module mpas_io
             pio_ierr = PIO_get_var(handle % pio_file, field_cursor % fieldhandle % fieldid, start2, count2, tempchar)
             charVal(1:count2(1)) = tempchar(1)(1:count2(1))
          else
-            pio_ierr = PIO_get_var(handle % pio_file, field_cursor % fieldhandle % field_desc, charVal)
+            start1(1) = 1
+            count1(1) = field_cursor % fieldhandle % dims(1) % dimsize
+            pio_ierr = PIO_get_var(handle % pio_file, field_cursor % fieldhandle % fieldid, start1, count1, tempchar)
+            charVal(1:count1(1)) = tempchar(1)(1:count1(1))
          end if
       else if (present(realArray1d)) then
 !         write (0,*) '  value is real1'
@@ -1643,7 +1646,9 @@ module mpas_io
             count2(1) = field_cursor % fieldhandle % dims(1) % dimsize
             pio_ierr = PIO_put_var(handle % pio_file, field_cursor % fieldhandle % fieldid, start2, count2, (/charVal/))
          else
-            pio_ierr = PIO_put_var(handle % pio_file, field_cursor % fieldhandle % field_desc, charVal)
+            start1(1) = 1
+            count1(1) = field_cursor % fieldhandle % dims(1) % dimsize
+            pio_ierr = PIO_put_var(handle % pio_file, field_cursor % fieldhandle % fieldid, start1, count1, (/charVal/))
          end if
       else if (present(realArray1d)) then
          call PIO_write_darray(handle % pio_file, field_cursor % fieldhandle % field_desc, field_cursor % fieldhandle % decomp % pio_iodesc, &
