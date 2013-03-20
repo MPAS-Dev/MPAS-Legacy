@@ -169,16 +169,10 @@ module mpas_core
          block => block % next
       end do
 
-   ! mrp 100316 In order for this to work, we need to pass domain % dminfo as an 
-   ! input arguement into mpas_init.  Ask about that later.  For now, there will be
-   ! no initial statistics write.
-   
       if (config_write_stats_on_startup) then
           call mpas_timer_start("global diagnostics", .false., globalDiagTimer)
           call ocn_compute_global_diagnostics(domain, 1 , 0, dt)
           call mpas_timer_stop("global diagnostics", globalDiagTimer)
-!         call mpas_output_state_init(output_obj, domain, "OUTPUT")
-!         call ocn_write_output_frame(output_obj, output_frame, domain)
       endif
 
       current_outfile_frames = 0
@@ -296,7 +290,6 @@ module mpas_core
                        block % state % time_levs(1) % state % uReconstructMeridional % array    &
                       )
 
-!TDR
       call mpas_reconstruct(mesh, mesh % u_src % array,                  &
                        block % state % time_levs(1) % state % uSrcReconstructX % array,            &
                        block % state % time_levs(1) % state % uSrcReconstructY % array,            &
@@ -304,18 +297,12 @@ module mpas_core
                        block % state % time_levs(1) % state % uSrcReconstructZonal % array,        &
                        block % state % time_levs(1) % state % uSrcReconstructMeridional % array    &
                       )
-!TDR
 
-      ! initialize velocities and tracers on land to be -1e34
-      ! The reconstructed velocity on land will have values not exactly
-      ! -1e34 due to the interpolation of reconstruction.
+      ! initialize velocities and tracers on land to be zero.
 
       block % mesh % areaCell % array(block % mesh % nCells+1) = -1.0e34
 
       do iEdge=1,block % mesh % nEdges
-         ! mrp 101115 note: in order to include flux boundary conditions, the following
-         ! line will need to change.  Right now, set boundary edges between land and 
-         ! water to have zero velocity.
          block % state % time_levs(1) % state % u % array( &
              block % mesh % maxLevelEdgeTop % array(iEdge)+1 &
             :block % mesh % maxLevelEdgeBot % array(iEdge), iEdge) = 0.0
@@ -323,15 +310,11 @@ module mpas_core
          block % state % time_levs(1) % state % u % array( &
              block % mesh % maxLevelEdgeBot % array(iEdge)+1: &
              block % mesh % nVertLevels,iEdge) = 0.0
-! mrp changed to 0
-!             block % mesh % nVertLevels,iEdge) = -1e34
       end do
       do iCell=1,block % mesh % nCells
          block % state % time_levs(1) % state % tracers % array( &
             :, block % mesh % maxLevelCell % array(iCell)+1 &
               :block % mesh % nVertLevels,iCell) =  0.0
-! mrp changed to 0
-!              :block % mesh % nVertLevels,iCell) =  -1e34
       end do
 
       do i=2,nTimeLevs
@@ -598,11 +581,6 @@ module mpas_core
          nVertLevels = block % mesh % nVertLevels
          num_tracers = size(tracers, dim=1)
 
-         ! mrp 120208 right now hZLevel is in the grid.nc file.
-         ! We would like to transition to using refBottomDepth
-         ! as the defining variable instead, and will transition soon.
-         ! When the transition is done, hZLevel can be removed from
-         ! registry and the following four lines deleted.
          refBottomDepth(1) = hZLevel(1)
          do k = 2,nVertLevels
             refBottomDepth(k) = refBottomDepth(k-1) + hZLevel(k)

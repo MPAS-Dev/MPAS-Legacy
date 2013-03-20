@@ -150,8 +150,6 @@ contains
             depthTop(k+1) = depthTop(k) +     h(k,iCell)
          enddo
 
-         ! mrp 110201 efficiency note: push tracer loop down
-         ! into spline subroutines to improve efficiency
          do iTracer=1,num_tracers
 
             ! Place data in arrays to avoid creating new temporary arrays for every 

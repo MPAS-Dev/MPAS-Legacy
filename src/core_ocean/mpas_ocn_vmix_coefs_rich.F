@@ -223,13 +223,11 @@ contains
 
       do iEdge = 1,nEdges
          do k = 2,maxLevelEdgeTop(iEdge)
-            ! mrp 110324 efficiency note: this if is inside iEdge and k loops.
+            ! efficiency note: these if statements are inside iEdge and k loops.
             ! Perhaps there is a more efficient way to do this.
             if (RiTopOfEdge(k,iEdge)>0.0) then
                vertViscTopOfEdge(k,iEdge) = vertViscTopOfEdge(k, iEdge) + config_bkrd_vert_visc &
                   + config_rich_mix / (1.0 + 5.0*RiTopOfEdge(k,iEdge))**2
-               ! maltrud do limiting of coefficient--should not be necessary
-               ! also probably better logic could be found
                if (vertViscTopOfEdge(k,iEdge) > config_convective_visc) then
                   vertViscTopOfEdge(k,iEdge) = config_convective_visc
                end if
@@ -314,15 +312,13 @@ contains
       coef = -gravity/config_rho0/2.0
       do iCell = 1,nCells
          do k = 2,maxLevelCell(iCell)
-            ! mrp 110324 efficiency note: this if is inside iCell and k loops.
+            ! efficiency note: these if statements are inside iEdge and k loops.
             ! Perhaps there is a more efficient way to do this.
             if (RiTopOfCell(k,iCell)>0.0) then
                vertDiffTopOfCell(k,iCell) = vertDiffTopOfCell(k, iCell) + config_bkrd_vert_diff &
                   + (config_bkrd_vert_visc & 
                      + config_rich_mix / (1.0 + 5.0*RiTopOfCell(k,iCell))**2) &
                   / (1.0 + 5.0*RiTopOfCell(k,iCell))
-            ! maltrud do limiting of coefficient--should not be necessary
-            ! also probably better logic could be found
                if (vertDiffTopOfCell(k,iCell) > config_convective_diff) then
                   vertDiffTopOfCell(k,iCell) = config_convective_diff
                end if
@@ -431,16 +427,6 @@ contains
       allocate( &
          drhoTopOfCell(nVertLevels+1,nCells+1), drhoTopOfEdge(nVertLevels+1,nEdges), &
          du2TopOfCell(nVertLevels+1,nCells+1), du2TopOfEdge(nVertLevels+1,nEdges))
-
-      ! compute density of parcel displaced to next deeper z-level,
-      ! in state % rhoDisplaced
-!maltrud make sure rho is current--check this for redundancy
-!     call OcnEquationOfStateRho(grid, 'relative', 0, indexT, indexS, &
-!              tracers, rho, err) 
-      ! mrp 110324 In order to visualize rhoDisplaced, include the following
-!     call OcnEquationOfStateRho(grid, 'relative', 1, indexT, indexS, &
-!              tracers, rhoDisplaced, err) 
-
 
       ! drhoTopOfCell(k) = $\rho^*_{k-1}-\rho^*_k$
       drhoTopOfCell = 0.0

@@ -176,8 +176,6 @@ contains
       ! Compute height on cell edges at velocity locations
       !   Namelist options control the order of accuracy of the reconstructed h_edge value
       !
-      ! mrp 101115 note: in order to include flux boundary conditions, we will need to 
-      ! assign h_edge for maxLevelEdgeTop:maxLevelEdgeBot in the following section
 
       ! initialize h_edge to avoid divide by zero and NaN problems.
       h_edge = -1.0e34
@@ -244,13 +242,10 @@ contains
          ! Compute v (tangential) velocities
          do i=1,nEdgesOnEdge(iEdge)
             eoe = edgesOnEdge(i,iEdge)
-            ! mrp 101115 note: in order to include flux boundary conditions,
-            ! the following loop may need to change to maxLevelEdgeBot
             do k = 1,maxLevelEdgeTop(iEdge) 
                v(k,iEdge) = v(k,iEdge) + weightsOnEdge(i,iEdge) * u(k, eoe)
             end do
          end do
-
       end do
 
       !
@@ -290,8 +285,6 @@ contains
       !
       ! Compute ke on cell edges at velocity locations for quadratic bottom drag. 
       !
-      ! mrp 101025 efficiency note: we could get rid of ke_edge completely by 
-      ! using sqrt(u(k,iEdge)**2 + v(k,iEdge)**2) in its place elsewhere.
       do iEdge=1,nEdges
          cell1 = cellsOnEdge(1,iEdge)
          cell2 = cellsOnEdge(2,iEdge)
@@ -393,7 +386,6 @@ contains
       ! Pressure
       ! This section must be after computing rho
       !
-      ! dwj: 10/25/2011 - Need to explore isopycnal vs zlevel flags
       if (config_pressure_gradient_type.eq.'MontgomeryPotential') then
 
         ! For Isopycnal model.
@@ -484,7 +476,6 @@ contains
       if (config_h_kappa .GE. epsilon(0D0)) then
          call ocn_gm_compute_uBolus(s,grid)
       else
-         ! mrp efficiency note: if uBolusGM is guaranteed to be zero, this can be removed.
          uBolusGM = 0.0
       end if
 
@@ -644,10 +635,7 @@ contains
       type (state_type), intent(inout) :: s !< Input/Output: State information
       type (mesh_type), intent(in) :: grid !< Input: Grid information
 
-! mrp 110512 I just split compute_tend into compute_tend_u and compute_tend_h.
-!  Some of these variables can be removed, but at a later time.
       integer :: iEdge, cell1, cell2, eoe, i, j, k
-
       integer :: nEdgesSolve
       real (kind=RKIND), dimension(:), pointer :: fEdge
       real (kind=RKIND), dimension(:,:), pointer :: weightsOnEdge, u, uBcl
@@ -827,15 +815,13 @@ contains
         endif
 
         if (trim(config_time_integrator) == 'RK4') then
-            ! for RK4, PV is really PV = (eta+f)/h
+            ! For RK4, PV includes f: PV = (eta+f)/h.
             fCoef = 1
         elseif (trim(config_time_integrator) == 'split_explicit' &
           .or.trim(config_time_integrator) == 'unsplit_explicit') then
-            ! for split explicit, PV is eta/h because f is added separately to the momentum forcing.
-            ! mrp temp, new should be:
+            ! For split explicit, PV is eta/h because the Coriolis term 
+            ! is added separately to the momentum tendencies.
             fCoef = 0
-            ! old, for testing:
-            !         fCoef = 1
         end if
 
     end subroutine ocn_diagnostics_init!}}}

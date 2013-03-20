@@ -187,7 +187,6 @@ contains
       !
       ! velocity tendency: start accumulating tendency terms
       !
-      ! mrp 110516 efficiency: could remove next line and have first tend_u operation not be additive
       tend_u(:,:) = 0.0
 
       if(config_disable_u_all_tend) return
@@ -230,8 +229,6 @@ contains
       !
       ! velocity tendency: forcing and bottom drag
       !
-      ! mrp 101115 note: in order to include flux boundary conditions, we will need to 
-      ! know the bottom edge with nonzero velocity and place the drag there.
 
       call mpas_timer_start("forcings", .false., velForceTimer)
       call ocn_vel_forcing_tend(grid, u, u_src, ke_edge, h_edge, tend_u, err)
@@ -304,10 +301,6 @@ contains
       !
       ! tracer tendency: horizontal advection term -div( h \phi u)
       !
-      ! mrp 101115 note: in order to include flux boundary conditions, we will need to 
-      ! assign h_edge for maxLevelEdgeTop:maxLevelEdgeBot in the compute_solve_diagnostics
-      ! and then change maxLevelEdgeTop to maxLevelEdgeBot in the following section.
-      ! tracer_edge at the boundary will also need to be defined for flux boundaries.
 
       ! Monotonoic Advection, or standard advection
       call mpas_timer_start("adv", .false., tracerHadvTimer)
@@ -321,19 +314,6 @@ contains
       call ocn_tracer_hmix_tend(grid, h_edge, tracers, tend_tr, err)
       call mpas_timer_stop("hmix", tracerHmixTimer)
 
-! mrp 110516 printing
-!print *, 'tend_tr 1',minval(tend_tr(3,1,1:nCells)),&
-!                   maxval(tend_tr(3,1,1:nCells))
-!print *, 'tracer  1',minval(tracers(3,1,1:nCells)),&
-!                   maxval(tracers(3,1,1:nCells))
-! mrp 110516 printing end
-
-
-! mrp 110516 printing
-!print *, 'tend_tr 2',minval(tend_tr(3,1,1:nCells)),&
-!                   maxval(tend_tr(3,1,1:nCells))
-! mrp 110516 printing end
-
       !
       ! add restoring to T and S in top model layer
       !
@@ -343,7 +323,6 @@ contains
 
       call mpas_timer_stop("restoring", tracerRestoringTimer)
 
- 10   format(2i8,10e20.10)
       call mpas_timer_stop("ocn_tend_tracer")
 
       deallocate(uh)

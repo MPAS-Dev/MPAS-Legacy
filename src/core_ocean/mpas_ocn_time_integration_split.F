@@ -420,7 +420,6 @@ module ocn_time_integration_split
                 ! config_btr_gam1_uWt1=  1     flux = uBtrNew*H
                 ! config_btr_gam1_uWt1=0.5     flux = 1/2*(uBtrNew+uBtrOld)*H
                 ! config_btr_gam1_uWt1=  0     flux = uBtrOld*H
-                ! mrp 120201 efficiency: could we combine the following edge and cell loops?
 
                 do iCell = 1, block % mesh % nCells
                   do i = 1, block % mesh % nEdgesOnCell % array(iCell)
@@ -560,7 +559,6 @@ module ocn_time_integration_split
                   ! config_btr_gam3_uWt2=  1     flux = uBtrNew*H
                   ! config_btr_gam3_uWt2=0.5     flux = 1/2*(uBtrNew+uBtrOld)*H
                   ! config_btr_gam3_uWt2=  0     flux = uBtrOld*H
-                  ! mrp 120201 efficiency: could we combine the following edge and cell loops?
 
                   do iCell = 1, block % mesh % nCells
                     do i = 1, block % mesh % nEdgesOnCell % array(iCell)
@@ -771,13 +769,8 @@ module ocn_time_integration_split
          !
          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-         !TDR: it seems almost trivial to hold off on doing T, S and rho updates until the 
-         !TDR: dycore time step is complete. we might want to take this opportunity to clean-up
-         !TDR: Stage3 in order to faciliate the testing of not doing tracer updates after this code is committed to trunk.
-         !TDR: at this point, I am suggesting just pushing some of this code into subroutines. 
-         !TDR: see comments farther down
-
-         ! dwj: 02/22/12 splitting thickness and tracer tendency computations and halo updates to allow monotonic advection.
+         ! Thickness tendency computations and thickness halo updates are completed before tracer 
+         ! tendency computations to allow monotonic advection.
          block => domain % blocklist
          do while (associated(block))
 
@@ -818,9 +811,6 @@ module ocn_time_integration_split
             !
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             if (split_explicit_step < config_n_ts_iter) then
-
-            !TDR: should we move this code into a subroutine called "compute_intermediate_value_at_midtime"
-            !TDR: this could be within a contains statement in this routine
 
                ! Only need T & S for earlier iterations,
                ! then all the tracers needed the last time through.
@@ -872,8 +862,8 @@ module ocn_time_integration_split
 
                end do ! iEdge
 
-               ! mrp 110512  I really only need this to compute h_edge, density, pressure, and SSH
-               ! I can par this down later.
+               ! Efficiency note: We really only need this to compute h_edge, density, pressure, and SSH 
+               ! in this diagnostics solve.
                call ocn_diagnostic_solve(dt, block % state % time_levs(2) % state, block % mesh)
 
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -882,9 +872,6 @@ module ocn_time_integration_split
             !
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             elseif (split_explicit_step == config_n_ts_iter) then
-
-            !TDR: should we move this code into a subroutine called "compute_final_values_at_nplus1"?
-            !TDR: this could be within a contains statement in this routine
 
                do iCell=1,block % mesh % nCells
                   do k=1,block % mesh % maxLevelCell % array(iCell)
@@ -945,7 +932,7 @@ module ocn_time_integration_split
         ! For Richardson vertical mixing, only rho, h_edge, and ke_edge need to 
         ! be computed.  For kpp, more variables may be needed.  Either way, this
         ! could be made more efficient by only computing what is needed for the
-        ! implicit vmix routine that follows. mrp 121023.
+        ! implicit vmix routine that follows.
         call ocn_diagnostic_solve(dt, block % state % time_levs(2) % state, block % mesh)
 
         call ocn_vmix_implicit(dt, block % mesh, block % diagnostics, block % state % time_levs(2) % state, err)
@@ -990,7 +977,6 @@ module ocn_time_integration_split
                           block % state % time_levs(2) % state % uReconstructMeridional % array    &
                          )
 
-!TDR
          call mpas_reconstruct(block % mesh, block % mesh % u_src % array,          &
                           block % state % time_levs(2) % state % uSrcReconstructX % array,            &
                           block % state % time_levs(2) % state % uSrcReconstructY % array,            &
@@ -998,7 +984,6 @@ module ocn_time_integration_split
                           block % state % time_levs(2) % state % uSrcReconstructZonal % array,        &
                           block % state % time_levs(2) % state % uSrcReconstructMeridional % array    &
                          )
-!TDR
 
          call ocn_time_average_accumulate(block % state % time_levs(2) % state, block % state % time_levs(1) % state)
 
