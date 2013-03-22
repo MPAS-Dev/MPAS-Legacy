@@ -10,7 +10,6 @@ else
 
 all: mpas
 
-
 mpas: reg_includes externals frame ops dycore drver
 	$(LINKER) $(LDFLAGS) -o $(CORE)_model.exe driver/*.o -L. -ldycore -lops -lframework $(LIBS) -I./external/esmf_time_f90 -L./external/esmf_time_f90 -lesmf_time
 
@@ -23,7 +22,7 @@ endif
 
 reg_includes: 
 	( cd registry; $(MAKE) CC="$(SCC)" )
-	( cd inc; $(CPP) ../core_$(CORE)/Registry | ../registry/parse > Registry.processed)
+	( cd inc; $(CPP) ../core_$(CORE)/Registry.xml | ../registry/parse > Registry.processed)
 
 frame: reg_includes externals
 	( cd framework; $(MAKE) CPPFLAGS="$(CPPFLAGS)" CPPINCLUDES="$(CPPINCLUDES)" all ) 

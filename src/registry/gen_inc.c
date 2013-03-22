@@ -1161,7 +1161,10 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
             for(i=1; i<=ntime_levs; i++) 
             {
 				fortprintf(fd, "         if(associated(next) .and. associated(prev)) then\n");	
-				fortprintf(fd, "           call mpas_create_%s_links(b %% %s %% time_levs(%i) %% %s, prev = prev %% %s %% time_levs(%i) %% %s, next = next %% %s %% time_levs(%i) %% %s)\n", group_ptr->name, group_ptr->name, i, group_ptr->name, i, group_ptr->name, group_ptr->name, i, group_ptr->name);
+//				fortprintf(fd, "           call mpas_create_%s_links(b %% %s %% time_levs(%i) %% %s, prev = prev %% %s %% time_levs(%i) %% %s, next = next %% %s %% time_levs(%i) %% %s)\n", group_ptr->name, group_ptr->name, i, group_ptr->name, i, group_ptr->name, group_ptr->name, i, group_ptr->name);
+				fortprintf(fd, "           call mpas_create_%s_links(b %% %s %% time_levs(%i) %% %s, ", group_ptr->name, group_ptr->name, i, group_ptr->name, i);
+				fortprintf(fd, " prev = prev %% %s %% time_levs(%i) %% %s,", group_ptr->name, i, group_ptr->name);
+				fortprintf(fd, " next = next %% %s %% time_levs(%i) %% %s)\n", group_ptr->name, i, group_ptr->name);
 				fortprintf(fd, "         else if(associated(next)) then\n");	
 				fortprintf(fd, "           call mpas_create_%s_links(b %% %s %% time_levs(%i) %% %s, next = next %% %s %% time_levs(%i) %% %s)\n", group_ptr->name, group_ptr->name, i, group_ptr->name, group_ptr->name, i, group_ptr->name);
 				fortprintf(fd, "         else if(associated(prev)) then\n");	
@@ -1389,7 +1392,7 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
 void gen_reads(struct group_list * groups, struct variable * vars, struct dimension * dims)
 {
    struct variable * var_ptr;
-   struct variable_list * var_list_ptr;
+   struct variable_list * var_list_ptr, *var_list_ptr2;
    struct dimension * dim_ptr;
    struct dimension_list * dimlist_ptr, * lastdim;
    struct group_list * group_ptr;
@@ -2119,8 +2122,10 @@ void gen_reads(struct group_list * groups, struct variable * vars, struct dimens
 /*            fortprintf(fd, "         write(0,*) \'adding input field %s\'\n", var_ptr->super_array); */
             fortprintf(fd, "         call MPAS_streamAddField(input_obj %% io_stream, %s %% %s, nferr)\n", struct_deref, var_ptr->super_array);
             while (var_list_ptr && strncmp(super_array, var_list_ptr->var->super_array, 1024) == 0) {
+			   var_list_ptr2 = var_list_ptr;
                var_list_ptr = var_list_ptr->next;
             }
+			var_list_ptr = var_list_ptr2;
          }
          else {
             fortprintf(fd, "      if ((%s %% %s %% ioinfo %% input .and. input_obj %% stream == STREAM_INPUT) .or. &\n", struct_deref, var_ptr->name_in_code);
@@ -2176,8 +2181,10 @@ void gen_reads(struct group_list * groups, struct variable * vars, struct dimens
 /*                     fortprintf(fd, "         write(0,*) \'exchange halo for %s\'\n", var_ptr->super_array); */
                      fortprintf(fd, "         call mpas_dmpar_exch_halo_field(%s %% %s)\n", struct_deref, var_ptr->super_array);
                      while (var_list_ptr && strncmp(super_array, var_list_ptr->var->super_array, 1024) == 0) {
+						var_list_ptr2 = var_list_ptr;
                         var_list_ptr = var_list_ptr->next;
                      }
+					 var_list_ptr = var_list_ptr2;
                   }
                   else {
                      fortprintf(fd, "      if ((%s %% %s %% ioinfo %% input .and. input_obj %% stream == STREAM_INPUT) .or. &\n", struct_deref, var_ptr->name_in_code);
@@ -2383,7 +2390,7 @@ void gen_reads(struct group_list * groups, struct variable * vars, struct dimens
 void gen_writes(struct group_list * groups, struct variable * vars, struct dimension * dims, struct namelist * namelists)
 {
    struct variable * var_ptr;
-   struct variable_list * var_list_ptr;
+   struct variable_list * var_list_ptr, *var_list_ptr2;
    struct dimension * dim_ptr;
    struct dimension_list * dimlist_ptr, * lastdim;
    struct group_list * group_ptr;
@@ -2565,8 +2572,10 @@ void gen_writes(struct group_list * groups, struct variable * vars, struct dimen
             memcpy(super_array, var_ptr->super_array, 1024);
             fortprintf(fd, "         call MPAS_streamAddField(output_obj %% io_stream, %s %% %s, ierr)\n", struct_deref, super_array);
             while (var_list_ptr && strncmp(super_array, var_list_ptr->var->super_array, 1024) == 0) {
+			   var_list_ptr2 = var_list_ptr;
                var_list_ptr = var_list_ptr->next;
             }
+			var_list_ptr = var_list_ptr2;
          }
          else {
             fortprintf(fd, "      if ((%s %% %s %% ioinfo %% output .and. output_obj %% stream == OUTPUT) .or. &\n", struct_deref, var_ptr->name_in_code);
