@@ -37,6 +37,7 @@ module mpas_grid_types
       integer, dimension(5) :: dimSizes
       logical :: hasTimeDimension
       logical :: isSuperArray
+      logical :: isPersistent
       type (att_list_type), pointer :: attList => null()     
 
       ! Pointers to the prev and next blocks for this field on this task
@@ -66,6 +67,7 @@ module mpas_grid_types
       integer, dimension(4) :: dimSizes
       logical :: hasTimeDimension
       logical :: isSuperArray
+      logical :: isPersistent
       type (att_list_type), pointer :: attList => null()     
 
       ! Pointers to the prev and next blocks for this field on this task
@@ -96,6 +98,7 @@ module mpas_grid_types
       integer, dimension(3) :: dimSizes
       logical :: hasTimeDimension
       logical :: isSuperArray
+      logical :: isPersistent
       type (att_list_type), pointer :: attList => null()     
 
       ! Pointers to the prev and next blocks for this field on this task
@@ -125,6 +128,7 @@ module mpas_grid_types
       integer, dimension(2) :: dimSizes
       logical :: hasTimeDimension
       logical :: isSuperArray
+      logical :: isPersistent
       type (att_list_type), pointer :: attList => null()     
 
       ! Pointers to the prev and next blocks for this field on this task
@@ -154,6 +158,7 @@ module mpas_grid_types
       integer, dimension(1) :: dimSizes
       logical :: hasTimeDimension
       logical :: isSuperArray
+      logical :: isPersistent
       type (att_list_type), pointer :: attList => null()     
 
       ! Pointers to the prev and next blocks for this field on this task
@@ -210,6 +215,7 @@ module mpas_grid_types
       integer, dimension(3) :: dimSizes
       logical :: hasTimeDimension
       logical :: isSuperArray
+      logical :: isPersistent
       type (att_list_type), pointer :: attList => null()     
 
       ! Pointers to the prev and next blocks for this field on this task
@@ -239,6 +245,7 @@ module mpas_grid_types
       integer, dimension(2) :: dimSizes
       logical :: hasTimeDimension
       logical :: isSuperArray
+      logical :: isPersistent
       type (att_list_type), pointer :: attList => null()     
 
       ! Pointers to the prev and next blocks for this field on this task
@@ -268,6 +275,7 @@ module mpas_grid_types
       integer, dimension(1) :: dimSizes
       logical :: hasTimeDimension
       logical :: isSuperArray
+      logical :: isPersistent
       type (att_list_type), pointer :: attList => null()     
 
       ! Pointers to the prev and next blocks for this field on this task
@@ -324,6 +332,7 @@ module mpas_grid_types
       integer, dimension(1) :: dimSizes
       logical :: hasTimeDimension
       logical :: isSuperArray
+      logical :: isPersistent
       type (att_list_type), pointer :: attList => null()     
 
       ! Pointers to the prev and next blocks for this field on this task
@@ -534,6 +543,10 @@ module mpas_grid_types
        logical :: single_block
        type (field1dInteger), pointer :: f_cursor
 
+       if(f % isPersistent) then
+          return
+       end if
+
        if(present(single_block_in)) then
           single_block = single_block_in
        else
@@ -561,6 +574,10 @@ module mpas_grid_types
        logical, intent(in), optional :: single_block_in
        logical :: single_block
        type (field2dInteger), pointer :: f_cursor
+
+       if(f % isPersistent) then
+          return
+       end if
 
        if(present(single_block_in)) then
           single_block = single_block_in
@@ -590,6 +607,10 @@ module mpas_grid_types
        logical :: single_block
        type (field3dInteger), pointer :: f_cursor
 
+       if(f % isPersistent) then
+          return
+       end if
+
        if(present(single_block_in)) then
           single_block = single_block_in
        else
@@ -617,6 +638,10 @@ module mpas_grid_types
        logical, intent(in), optional :: single_block_in
        logical :: single_block
        type (field1dReal), pointer :: f_cursor
+
+       if(f % isPersistent) then
+          return
+       end if
 
        if(present(single_block_in)) then
           single_block = single_block_in
@@ -646,6 +671,10 @@ module mpas_grid_types
        logical :: single_block
        type (field2dReal), pointer :: f_cursor
 
+       if(f % isPersistent) then
+          return
+       end if
+
        if(present(single_block_in)) then
           single_block = single_block_in
        else
@@ -673,6 +702,10 @@ module mpas_grid_types
        logical, intent(in), optional :: single_block_in
        logical :: single_block
        type (field3dReal), pointer :: f_cursor
+
+       if(f % isPersistent) then
+          return
+       end if
 
        if(present(single_block_in)) then
           single_block = single_block_in
@@ -702,6 +735,10 @@ module mpas_grid_types
        logical :: single_block
        type (field4dReal), pointer :: f_cursor
 
+       if(f % isPersistent) then
+          return
+       end if
+
        if(present(single_block_in)) then
           single_block = single_block_in
        else
@@ -729,6 +766,10 @@ module mpas_grid_types
        logical, intent(in), optional :: single_block_in
        logical :: single_block
        type (field5dReal), pointer :: f_cursor
+
+       if(f % isPersistent) then
+          return
+       end if
 
        if(present(single_block_in)) then
           single_block = single_block_in
@@ -758,6 +799,10 @@ module mpas_grid_types
        logical :: single_block
        type (field1dChar), pointer :: f_cursor
 
+       if(f % isPersistent) then
+          return
+       end if
+
        if(present(single_block_in)) then
           single_block = single_block_in
        else
@@ -785,6 +830,10 @@ module mpas_grid_types
        logical, intent(in), optional :: single_block_in
        logical :: single_block
        type (field1dInteger), pointer :: f_cursor
+
+       if(f % isPersistent) then
+          return
+       end if
 
        if(present(single_block_in)) then
           single_block = single_block_in
@@ -815,6 +864,10 @@ module mpas_grid_types
        logical :: single_block
        type (field2dInteger), pointer :: f_cursor
 
+       if(f % isPersistent) then
+          return
+       end if
+
        if(present(single_block_in)) then
           single_block = single_block_in
        else
@@ -843,6 +896,10 @@ module mpas_grid_types
        logical, intent(in), optional :: single_block_in
        logical :: single_block
        type (field3dInteger), pointer :: f_cursor
+
+       if(f % isPersistent) then
+          return
+       end if
 
        if(present(single_block_in)) then
           single_block = single_block_in
@@ -873,6 +930,10 @@ module mpas_grid_types
        logical :: single_block
        type (field1dReal), pointer :: f_cursor
 
+       if(f % isPersistent) then
+          return
+       end if
+
        if(present(single_block_in)) then
           single_block = single_block_in
        else
@@ -901,6 +962,10 @@ module mpas_grid_types
        logical, intent(in), optional :: single_block_in
        logical :: single_block
        type (field2dReal), pointer :: f_cursor
+
+       if(f % isPersistent) then
+          return
+       end if
 
        if(present(single_block_in)) then
           single_block = single_block_in
@@ -931,6 +996,10 @@ module mpas_grid_types
        logical :: single_block
        type (field3dReal), pointer :: f_cursor
 
+       if(f % isPersistent) then
+          return
+       end if
+
        if(present(single_block_in)) then
           single_block = single_block_in
        else
@@ -959,6 +1028,10 @@ module mpas_grid_types
        logical, intent(in), optional :: single_block_in
        logical :: single_block
        type (field4dReal), pointer :: f_cursor
+
+       if(f % isPersistent) then
+          return
+       end if
 
        if(present(single_block_in)) then
           single_block = single_block_in
@@ -989,6 +1062,10 @@ module mpas_grid_types
        logical :: single_block
        type (field5dReal), pointer :: f_cursor
 
+       if(f % isPersistent) then
+          return
+       end if
+
        if(present(single_block_in)) then
           single_block = single_block_in
        else
@@ -1017,6 +1094,10 @@ module mpas_grid_types
        logical, intent(in), optional :: single_block_in
        logical :: single_block
        type (field1dChar), pointer :: f_cursor
+
+       if(f % isPersistent) then
+          return
+       end if
 
        if(present(single_block_in)) then
           single_block = single_block_in

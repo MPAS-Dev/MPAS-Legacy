@@ -822,8 +822,10 @@ void gen_field_defs(struct group_list * groups, struct variable * vars, struct d
             fortprintf(fd, "      %s %% %s %% isSuperArray = .false.\n", group_ptr->name, var_ptr->name_in_code);
             if (var_ptr->ndims > 0) {
 	  		  if(var_ptr->persistence == SCRATCH){
+				  fortprintf(fd, "      %s %% %s %% isPersistent = .false.\n", group_ptr->name, var_ptr->name_in_code);
 				  fortprintf(fd, "      nullify(%s %% %s %% array)\n", group_ptr->name, var_ptr->name_in_code); 
 			  } else if(var_ptr->persistence == PERSISTENT){
+				  fortprintf(fd, "      %s %% %s %% isPersistent = .true.\n", group_ptr->name, var_ptr->name_in_code);
                fortprintf(fd, "      allocate(%s %% %s %% array(", group_ptr->name, var_ptr->name_in_code);
                dimlist_ptr = var_ptr->dimlist;
                if (!strncmp(dimlist_ptr->dim->name_in_file, "nCells", 1024) ||
