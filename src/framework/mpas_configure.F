@@ -1,3 +1,14 @@
+!-----------------------------------------------------------------------
+!  mpas_configure
+!
+!> \brief MPAS Configuration routines.
+!> \author Michael Duda, Doug Jacobsen
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This module will contain all namelist parameter definitions, as well as the routine which reads them from the namelist file.
+!
+!-----------------------------------------------------------------------
 module mpas_configure
 
    use mpas_dmpar
@@ -6,13 +17,23 @@ module mpas_configure
 
    contains
 
-
+!-----------------------------------------------------------------------
+!  routine mpas_read_namelist
+!
+!> \brief MPAS read namelist routine
+!> \author Michael Duda, Doug Jacobsen
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine reads and broadcasts the namelist file. 
+!
+!-----------------------------------------------------------------------
    subroutine mpas_read_namelist(dminfo, nml_filename)
 
       implicit none
 
-      type (dm_info), intent(in) :: dminfo
-      character (len=*), optional :: nml_filename
+      type (dm_info), intent(in) :: dminfo !< Input: Domain information
+      character (len=*), optional :: nml_filename !< Input - Optional: Namelist filename. Defaults to namelist.input
 
       integer :: funit, ierr
 

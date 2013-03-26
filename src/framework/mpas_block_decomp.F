@@ -1,3 +1,16 @@
+!***********************************************************************
+!
+!  mpas_block_decomp
+!
+!> \brief   This module contains routines related to the block decomposition.
+!> \author  Doug Jacobsen
+!> \date    03/26/13
+!> \version SVN:$Id$
+!> \details 
+!>   This module is repsonsible for reading the decomposition files, and determining which elements should live within which blocks.
+!>   It also provides interfaces to find out how blocks map to processors.
+!
+!-----------------------------------------------------------------------
 module mpas_block_decomp
 
    use mpas_dmpar
@@ -23,6 +36,18 @@ module mpas_block_decomp
 
    contains
 
+!***********************************************************************
+!
+!  routine mpas_block_decomp_cells_for_proc
+!
+!> \brief   Determines list of cells for a specific processor
+!> \author  Doug Jacobsen
+!> \date    03/26/13
+!> \version SVN:$Id$
+!> \details 
+!>  This routine determines a list of cells for each processor, and what blocks the live in.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_block_decomp_cells_for_proc(dminfo, partial_global_graph_info, local_cell_list, block_id, block_start, block_count)!{{{
 
       use mpas_configure
@@ -226,15 +251,30 @@ module mpas_block_decomp
 
    end subroutine mpas_block_decomp_cells_for_proc!}}}
 
+!***********************************************************************
+!
+!  routine mpas_block_decomp_partitioned_edge_list
+!
+!> \brief   Partitions list of edges for a processor
+!> \author  Doug Jacobsen
+!> \date    03/26/13
+!> \version SVN:$Id$
+!> \details 
+!>  This routine partitions a list of edges for each processor, based on a list of owned cells.
+!>  Output edge list has 0-Halo edges first, followed by halo edges.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_block_decomp_partitioned_edge_list(nCells, cellIDList, maxCells, nEdges, cellsOnEdge, edgeIDList, ghostEdgeStart)!{{{
 
       implicit none
 
-      integer, intent(in) :: nCells, maxCells, nEdges
-      integer, dimension(nCells), intent(in) :: cellIDList
-      integer, dimension(maxCells, nEdges), intent(in) :: cellsOnEdge
-      integer, dimension(nEdges), intent(inout) :: edgeIDList
-      integer, intent(inout) :: ghostEdgeStart
+      integer, intent(in) :: nCells !< Input: Number of owned cells
+      integer, intent(in) :: maxCells !< Input: Maximum number of cells on an edge
+      integer, intent(in) :: nEdges !< Input: Number of edges
+      integer, dimension(nCells), intent(in) :: cellIDList !< Input: List of owned cell IDs
+      integer, dimension(maxCells, nEdges), intent(in) :: cellsOnEdge !< Input: Connectivity of cells on edges.
+      integer, dimension(nEdges), intent(inout) :: edgeIDList !< Input/Output: List of edge IDs
+      integer, intent(inout) :: ghostEdgeStart !< Input/Output: Index to beginning of edge halo
 
       integer :: i, j, lastEdge
       integer, dimension(nEdges) :: edgeIDListLocal
@@ -281,15 +321,28 @@ module mpas_block_decomp
 
    end subroutine mpas_block_decomp_partitioned_edge_list!}}}
 
+!***********************************************************************
+!
+!  routine mpas_block_decomp_all_edges_in_block
+!
+!> \brief   Determines all edges in a block.
+!> \author  Doug Jacobsen
+!> \date    03/26/13
+!> \version SVN:$Id$
+!> \details 
+!>  This routine creates a list of all edges that are in a block, based on a list of owned cells.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_block_decomp_all_edges_in_block(maxEdges, nCells, nEdgesOnCell, edgesOnCell, nEdges, edgeList)!{{{
 
       implicit none
 
-      integer, intent(in) :: maxEdges, nCells
-      integer, dimension(nCells), intent(in) :: nEdgesOnCell
-      integer, dimension(maxEdges, nCells), intent(in) :: edgesOnCell
-      integer, intent(out) :: nEdges
-      integer, dimension(:), pointer :: edgeList
+      integer, intent(in) :: maxEdges !< Input: Maximum number of edges on cell
+      integer, intent(in) :: nCells !< Input: Number of owned cells
+      integer, dimension(nCells), intent(in) :: nEdgesOnCell !< Input: Number of edges on each cell
+      integer, dimension(maxEdges, nCells), intent(in) :: edgesOnCell !< Input: ID of edges that border each cell
+      integer, intent(out) :: nEdges !< Output: Number of edges in block
+      integer, dimension(:), pointer :: edgeList !< Output: List of edges in block
 
       integer :: i, j, k
       type (hashtable) :: h
@@ -334,13 +387,25 @@ module mpas_block_decomp
 
    end subroutine mpas_block_decomp_all_edges_in_block!}}}
 
+!***********************************************************************
+!
+!  routine mpas_block_decomp_add_halo
+!
+!> \brief   Add halo to block
+!> \author  Doug Jacobsen
+!> \date    03/26/13
+!> \version SVN:$Id$
+!> \details 
+!>  This routine adds a halo layer to the block.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_block_decomp_add_halo(dminfo, local_graph_info, local_graph_with_halo)!{{{
 
       implicit none
 
-      type (dm_info), intent(in) :: dminfo
-      type (graph), intent(in) :: local_graph_info
-      type (graph), intent(out) :: local_graph_with_halo
+      type (dm_info), intent(in) :: dminfo !< Input: Domain information
+      type (graph), intent(in) :: local_graph_info !< Input: Local graph structure for a block
+      type (graph), intent(out) :: local_graph_with_halo !< Output: Local graph structure for a block, with an extra halo
 
       integer :: i, j, k
       type (hashtable) :: h
@@ -408,6 +473,18 @@ module mpas_block_decomp
 
    end subroutine mpas_block_decomp_add_halo!}}}
 
+!***********************************************************************
+!
+!  routine mpas_get_blocks_per_proc
+!
+!> \brief   Determine number of blocks per processor
+!> \author  Doug Jacobsen
+!> \date    03/26/13
+!> \version SVN:$Id$
+!> \details 
+!>  This routine returns the number of blocks a specific processor owns.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_get_blocks_per_proc(dminfo, proc_number, blocks_per_proc)!{{{
      type(dm_info), intent(in) :: dminfo !< Input: Domain Information
      integer, intent(in) :: proc_number !< Input: Processor number
@@ -447,6 +524,18 @@ module mpas_block_decomp
 
    end subroutine mpas_get_blocks_per_proc!}}}
 
+!***********************************************************************
+!
+!  routine mpas_get_local_block_id
+!
+!> \brief   Determine the local ID of a block
+!> \author  Doug Jacobsen
+!> \date    03/26/13
+!> \version SVN:$Id$
+!> \details 
+!>  This routine returns the local block ID on the owning processor.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_get_local_block_id(dminfo, global_block_number, local_block_number)!{{{
      type(dm_info), intent(in) :: dminfo !< Input: Domain Information
      integer, intent(in) :: global_block_number !< Input: Global block id from 0 to config_number_of_blocks-1
@@ -473,6 +562,18 @@ module mpas_block_decomp
      end if
    end subroutine mpas_get_local_block_id!}}}
 
+!***********************************************************************
+!
+!  routine mpas_get_owning_proc
+!
+!> \brief   Determine the owning processor ID for a specific block.
+!> \author  Doug Jacobsen
+!> \date    03/26/13
+!> \version SVN:$Id$
+!> \details 
+!>  This routine returns the ID of the processor that owns a specific block.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_get_owning_proc(dminfo, global_block_number, owning_proc)!{{{
      type(dm_info), intent(in) :: dminfo !< Input: Domain Information
      integer, intent(in) :: global_block_number !< Input: Global block id from 0 to config_number_of_blocks-1
@@ -499,13 +600,25 @@ module mpas_block_decomp
      end if
    end subroutine mpas_get_owning_proc!}}}
 
+!***********************************************************************
+!
+!  routine mpas_build_block_proc_list
+!
+!> \brief   Build list of blocks per processor
+!> \author  Doug Jacobsen
+!> \date    03/26/13
+!> \version SVN:$Id$
+!> \details 
+!>  This routine builds the mapping of blocks to processors. Most useful when using an explicit decomposition.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_build_block_proc_list(dminfo)!{{{
 
      use mpas_configure
 
      implicit none
 
-     type(dm_info), intent(in) :: dminfo
+     type(dm_info), intent(in) :: dminfo !< Input: Domain information
 
      integer :: iounit, istatus, i, owning_proc
      character (len=StrKIND) :: filename
@@ -556,6 +669,18 @@ module mpas_block_decomp
 
    end subroutine mpas_build_block_proc_list!}}}
 
+!***********************************************************************
+!
+!  routine mpas_finish_block_proc_list
+!
+!> \brief   Destroy list of blocks per processor
+!> \author  Doug Jacobsen
+!> \date    03/26/13
+!> \version SVN:$Id$
+!> \details 
+!>  This routine destroys the mapping of blocks to processors.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_finish_block_proc_list()!{{{
      if(.not.explicitDecomp) return
      deallocate(block_proc_list)

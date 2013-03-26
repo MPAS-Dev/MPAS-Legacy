@@ -1,3 +1,14 @@
+!-----------------------------------------------------------------------
+!  mpas_dmpar
+!
+!> \brief MPAS Communication Routines
+!> \author Michael Duda, Doug Jacobsen
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This module contains all communication routines. All MPI calls should be made in this module.
+!
+!-----------------------------------------------------------------------
 module mpas_dmpar
 
    use mpas_dmpar_types
@@ -80,12 +91,24 @@ include 'mpif.h'
 
    contains
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_init
+!
+!> \brief MPAS dmpar initialization routine.
+!> \author Michael Duda, Doug Jacobsen
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine initializes dmpar. It calls MPI_Init (if required), and setups up the communicators.
+!>  It also setups of the domain information structure.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_init(dminfo, mpi_comm)!{{{
 
       implicit none
 
-      type (dm_info), intent(inout) :: dminfo
-      integer, intent(in), optional :: mpi_comm     ! Optional: externally-supplied MPI communicator
+      type (dm_info), intent(inout) :: dminfo !< Input/Output: Domain information
+      integer, intent(in), optional :: mpi_comm !< Input - Optional: externally-supplied MPI communicator
 
 #ifdef _MPI
       integer :: mpi_rank, mpi_size
@@ -124,11 +147,22 @@ include 'mpif.h'
 
    end subroutine mpas_dmpar_init!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_finalize
+!
+!> \brief MPAS dmpar finalization routine.
+!> \author Michael Duda, Doug Jacobsen
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine finalizes dmpar. It calls MPI_Finalize (if required).
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_finalize(dminfo)!{{{
 
       implicit none
 
-      type (dm_info), intent(inout) :: dminfo
+      type (dm_info), intent(inout) :: dminfo !< Input/Output: Domain information.
 
 #ifdef _MPI
       integer :: mpi_ierr
@@ -140,11 +174,22 @@ include 'mpif.h'
 
    end subroutine mpas_dmpar_finalize!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_abort
+!
+!> \brief MPAS dmpar abort routine.
+!> \author Michael Duda, Doug Jacobsen
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine aborts MPI. A call to it kills the model through the use of MPI_Abort.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_abort(dminfo)!{{{
 
       implicit none
 
-      type (dm_info), intent(in) :: dminfo
+      type (dm_info), intent(in) :: dminfo !< Input: Domain information
 
 #ifdef _MPI
       integer :: mpi_ierr, mpi_errcode
@@ -156,11 +201,22 @@ include 'mpif.h'
 
    end subroutine mpas_dmpar_abort!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_global_abort
+!
+!> \brief MPAS dmpar global abort routine.
+!> \author Michael Duda
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine aborts MPI. A call to it kills the model through the use of MPI_Abort on the world communicator, and outputs a message.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_global_abort(mesg)!{{{
 
       implicit none
 
-      character (len=*), intent(in) :: mesg
+      character (len=*), intent(in) :: mesg !< Input: Abort message
 
 #ifdef _MPI
       integer :: mpi_ierr, mpi_errcode
@@ -174,12 +230,23 @@ include 'mpif.h'
 
    end subroutine mpas_dmpar_global_abort!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_bcast_int
+!
+!> \brief MPAS dmpar broadcast integer routine.
+!> \author Michael Duda
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine broadcasts an integer to all processors in the communicator.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_bcast_int(dminfo, i)!{{{
 
       implicit none
 
-      type (dm_info), intent(in) :: dminfo
-      integer, intent(inout) :: i
+      type (dm_info), intent(in) :: dminfo !< Input: Domain information
+      integer, intent(inout) :: i !< Input/Output: Integer to broadcast
 
 #ifdef _MPI
       integer :: mpi_ierr
@@ -189,13 +256,24 @@ include 'mpif.h'
 
    end subroutine mpas_dmpar_bcast_int!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_bcast_ints
+!
+!> \brief MPAS dmpar broadcast integers routine.
+!> \author Michael Duda
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine broadcasts an array of integers to all processors in the communicator.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_bcast_ints(dminfo, n, iarray)!{{{
 
       implicit none
 
-      type (dm_info), intent(in) :: dminfo
-      integer, intent(in) :: n
-      integer, dimension(n), intent(inout) :: iarray
+      type (dm_info), intent(in) :: dminfo !< Input: Domain information
+      integer, intent(in) :: n !< Input: Length of array
+      integer, dimension(n), intent(inout) :: iarray !< Input/Output: Array of integers
 
 #ifdef _MPI
       integer :: mpi_ierr
@@ -205,12 +283,23 @@ include 'mpif.h'
 
    end subroutine mpas_dmpar_bcast_ints!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_bcast_real
+!
+!> \brief MPAS dmpar broadcast real routine.
+!> \author Michael Duda
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine broadcasts a real to all processors in the communicator.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_bcast_real(dminfo, r)!{{{
 
       implicit none
 
-      type (dm_info), intent(in) :: dminfo
-      real (kind=RKIND), intent(inout) :: r
+      type (dm_info), intent(in) :: dminfo !< Input: Domain information
+      real (kind=RKIND), intent(inout) :: r !< Input/Output: Real to be broadcast
 
 #ifdef _MPI
       integer :: mpi_ierr
@@ -220,13 +309,24 @@ include 'mpif.h'
 
    end subroutine mpas_dmpar_bcast_real!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_bcast_reals
+!
+!> \brief MPAS dmpar broadcast reals routine.
+!> \author Michael Duda
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine broadcasts an array of reals to all processors in the communicator.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_bcast_reals(dminfo, n, rarray)!{{{
 
       implicit none
 
-      type (dm_info), intent(in) :: dminfo
-      integer, intent(in) :: n
-      real (kind=RKIND), dimension(n), intent(inout) :: rarray
+      type (dm_info), intent(in) :: dminfo !< Input: Domain information
+      integer, intent(in) :: n !< Input: Length of array
+      real (kind=RKIND), dimension(n), intent(inout) :: rarray !< Input/Output: Array of reals to be broadcast
 
 #ifdef _MPI
       integer :: mpi_ierr
@@ -236,12 +336,23 @@ include 'mpif.h'
 
    end subroutine mpas_dmpar_bcast_reals!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_bcast_logical
+!
+!> \brief MPAS dmpar broadcast logical routine.
+!> \author Michael Duda
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine broadcasts a logical to all processors in the communicator.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_bcast_logical(dminfo, l)!{{{
 
       implicit none
 
-      type (dm_info), intent(in) :: dminfo
-      logical, intent(inout) :: l
+      type (dm_info), intent(in) :: dminfo !< Input: Domain information
+      logical, intent(inout) :: l !< Input/Output: Logical to be broadcast
 
 #ifdef _MPI
       integer :: mpi_ierr
@@ -266,12 +377,23 @@ include 'mpif.h'
 
    end subroutine mpas_dmpar_bcast_logical!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_bcast_char
+!
+!> \brief MPAS dmpar broadcast character routine.
+!> \author Michael Duda
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine broadcasts a character to all processors in the communicator.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_bcast_char(dminfo, c)!{{{
 
       implicit none
 
-      type (dm_info), intent(in) :: dminfo
-      character (len=*), intent(inout) :: c
+      type (dm_info), intent(in) :: dminfo !< Input: Domain information
+      character (len=*), intent(inout) :: c !< Input/Output: Character to be broadcast
 
 #ifdef _MPI
       integer :: mpi_ierr
@@ -281,13 +403,24 @@ include 'mpif.h'
 
    end subroutine mpas_dmpar_bcast_char!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_sum_int
+!
+!> \brief MPAS dmpar sum integers routine.
+!> \author Michael Duda
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine sums (Allreduce) integer values across all processors in a communicator.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_sum_int(dminfo, i, isum)!{{{
 
       implicit none
 
-      type (dm_info), intent(in) :: dminfo
-      integer, intent(in) :: i
-      integer, intent(out) :: isum
+      type (dm_info), intent(in) :: dminfo !< Input: Domain information
+      integer, intent(in) :: i !< Input: Integer value input
+      integer, intent(out) :: isum !< Output: Integer sum for output
 
       integer :: mpi_ierr
 
@@ -299,13 +432,24 @@ include 'mpif.h'
 
    end subroutine mpas_dmpar_sum_int!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_sum_real
+!
+!> \brief MPAS dmpar sum real routine.
+!> \author Michael Duda
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine sums (Allreduce) real values across all processors in a communicator.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_sum_real(dminfo, r, rsum)!{{{
 
       implicit none
 
-      type (dm_info), intent(in) :: dminfo
-      real(kind=RKIND), intent(in) :: r
-      real(kind=RKIND), intent(out) :: rsum
+      type (dm_info), intent(in) :: dminfo !< Input: Domain information
+      real(kind=RKIND), intent(in) :: r !< Input: Real values to be summed
+      real(kind=RKIND), intent(out) :: rsum  !< Output: Sum of reals for output
 
       integer :: mpi_ierr
 
@@ -317,13 +461,24 @@ include 'mpif.h'
 
    end subroutine mpas_dmpar_sum_real!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_min_int
+!
+!> \brief MPAS dmpar minimum integer routine.
+!> \author Michael Duda
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine returns the minimum integer value across all processors in a communicator.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_min_int(dminfo, i, imin)!{{{
 
       implicit none
 
-      type (dm_info), intent(in) :: dminfo
-      integer, intent(in) :: i
-      integer, intent(out) :: imin
+      type (dm_info), intent(in) :: dminfo !< Input: Domain information
+      integer, intent(in) :: i !< Input: Integer value
+      integer, intent(out) :: imin !< Output: Minimum integer value
 
       integer :: mpi_ierr
 
@@ -335,13 +490,24 @@ include 'mpif.h'
 
    end subroutine mpas_dmpar_min_int!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_min_real
+!
+!> \brief MPAS dmpar minimum real routine.
+!> \author Michael Duda
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine returns the minimum real value across all processors in a communicator.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_min_real(dminfo, r, rmin)!{{{
 
       implicit none
 
-      type (dm_info), intent(in) :: dminfo
-      real(kind=RKIND), intent(in) :: r
-      real(kind=RKIND), intent(out) :: rmin
+      type (dm_info), intent(in) :: dminfo !< Input: Domain information
+      real(kind=RKIND), intent(in) :: r !< Input: Real value
+      real(kind=RKIND), intent(out) :: rmin !< Output: Minimum of real value
 
       integer :: mpi_ierr
 
@@ -353,13 +519,24 @@ include 'mpif.h'
 
    end subroutine mpas_dmpar_min_real!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_max_int
+!
+!> \brief MPAS dmpar maximum integer routine.
+!> \author Michael Duda
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine returns the maximum integer value across all processors in a communicator.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_max_int(dminfo, i, imax)!{{{
 
       implicit none
 
-      type (dm_info), intent(in) :: dminfo
-      integer, intent(in) :: i
-      integer, intent(out) :: imax
+      type (dm_info), intent(in) :: dminfo !< Input: Domain information
+      integer, intent(in) :: i !< Input: Integer value
+      integer, intent(out) :: imax !< Output: Maximum of integer values
       
       integer :: mpi_ierr 
       
@@ -371,13 +548,24 @@ include 'mpif.h'
 
    end subroutine mpas_dmpar_max_int!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_max_real
+!
+!> \brief MPAS dmpar maximum real routine.
+!> \author Michael Duda
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine returns the maximum real value across all processors in a communicator.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_max_real(dminfo, r, rmax)!{{{
 
       implicit none
 
-      type (dm_info), intent(in) :: dminfo
-      real(kind=RKIND), intent(in) :: r
-      real(kind=RKIND), intent(out) :: rmax
+      type (dm_info), intent(in) :: dminfo !< Input: Domain information
+      real(kind=RKIND), intent(in) :: r !< Input: Real value
+      real(kind=RKIND), intent(out) :: rmax !< Output: Maximum of real values
 
       integer :: mpi_ierr
 
@@ -389,14 +577,25 @@ include 'mpif.h'
 
    end subroutine mpas_dmpar_max_real!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_sum_int_array
+!
+!> \brief MPAS dmpar integer array sum routine.
+!> \author Michael Duda
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine computes the sum of a set of integer arrays across all processors in a communicator.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_sum_int_array(dminfo, nElements, inArray, outArray)!{{{
 
       implicit none
    
-      type (dm_info), intent(in) :: dminfo
-      integer, intent(in) :: nElements
-      integer, dimension(nElements), intent(in) :: inArray
-      integer, dimension(nElements), intent(out) :: outArray
+      type (dm_info), intent(in) :: dminfo !< Input: Domain information
+      integer, intent(in) :: nElements !< Input: Length of arrays
+      integer, dimension(nElements), intent(in) :: inArray !< Input: Processor specific array to sum
+      integer, dimension(nElements), intent(out) :: outArray !< Output: Sum of arrays
       
       integer :: mpi_ierr
 
@@ -408,14 +607,25 @@ include 'mpif.h'
 
    end subroutine mpas_dmpar_sum_int_array!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_min_int_array
+!
+!> \brief MPAS dmpar integer array minimum routine.
+!> \author Michael Duda
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine computes an array of minimum values for each index across all processors in a communicator, from some input arrays.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_min_int_array(dminfo, nElements, inArray, outArray)!{{{
    
       implicit none
       
-      type (dm_info), intent(in) :: dminfo
-      integer, intent(in) :: nElements
-      integer, dimension(nElements), intent(in) :: inArray
-      integer, dimension(nElements), intent(out) :: outArray
+      type (dm_info), intent(in) :: dminfo !< Input: Domain information
+      integer, intent(in) :: nElements !< Input: Array size
+      integer, dimension(nElements), intent(in) :: inArray !< Input: Input array of integers
+      integer, dimension(nElements), intent(out) :: outArray !< Output: Array of minimum integers
 
       integer :: mpi_ierr
 
@@ -427,14 +637,25 @@ include 'mpif.h'
 
    end subroutine mpas_dmpar_min_int_array!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_min_int_array
+!
+!> \brief MPAS dmpar integer array maximum routine.
+!> \author Michael Duda
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine computes an array of maximum values for each index across all processors in a communicator, from some input arrays.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_max_int_array(dminfo, nElements, inArray, outArray)!{{{
 
       implicit none
 
-      type (dm_info), intent(in) :: dminfo
-      integer, intent(in) :: nElements
-      integer, dimension(nElements), intent(in) :: inArray
-      integer, dimension(nElements), intent(out) :: outArray
+      type (dm_info), intent(in) :: dminfo !< Input: Domain information
+      integer, intent(in) :: nElements !< Input: Length of arrays
+      integer, dimension(nElements), intent(in) :: inArray !< Input: Array of integers
+      integer, dimension(nElements), intent(out) :: outArray !< Output: Array of maximum integers
 
       integer :: mpi_ierr
 
@@ -446,14 +667,25 @@ include 'mpif.h'
 
    end subroutine mpas_dmpar_max_int_array!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_sum_real_array
+!
+!> \brief MPAS dmpar real array sum routine.
+!> \author Michael Duda
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine computes the sum array of real values  across all processors in a communicator, from some input arrays.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_sum_real_array(dminfo, nElements, inArray, outArray)!{{{
 
       implicit none
 
-      type (dm_info), intent(in) :: dminfo
-      integer, intent(in) :: nElements
-      real(kind=RKIND), dimension(nElements), intent(in) :: inArray
-      real(kind=RKIND), dimension(nElements), intent(out) :: outArray
+      type (dm_info), intent(in) :: dminfo !< Input: Domain information
+      integer, intent(in) :: nElements !< Input: Length of arrays
+      real(kind=RKIND), dimension(nElements), intent(in) :: inArray !< Input: Array of reals
+      real(kind=RKIND), dimension(nElements), intent(out) :: outArray !< Output: Array of real sums
 
       integer :: mpi_ierr
 
@@ -465,14 +697,25 @@ include 'mpif.h'
 
    end subroutine mpas_dmpar_sum_real_array!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_min_real_array
+!
+!> \brief MPAS dmpar real array minimum routine.
+!> \author Michael Duda
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine computes the minimum array of real values  across all processors in a communicator, from some input arrays.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_min_real_array(dminfo, nElements, inArray, outArray)!{{{
 
       implicit none
 
-      type (dm_info), intent(in) :: dminfo
-      integer, intent(in) :: nElements
-      real(kind=RKIND), dimension(nElements), intent(in) :: inArray
-      real(kind=RKIND), dimension(nElements), intent(out) :: outArray
+      type (dm_info), intent(in) :: dminfo !< Input: Domain information
+      integer, intent(in) :: nElements !< Input: Length of arrays
+      real(kind=RKIND), dimension(nElements), intent(in) :: inArray !< Input: Array of reals
+      real(kind=RKIND), dimension(nElements), intent(out) :: outArray !< Input: Array of minimum reals
 
       integer :: mpi_ierr
 
@@ -484,14 +727,25 @@ include 'mpif.h'
 
    end subroutine mpas_dmpar_min_real_array!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_max_real_array
+!
+!> \brief MPAS dmpar real array maximum routine.
+!> \author Michael Duda
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine computes the maximum array of real values  across all processors in a communicator, from some input arrays.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_max_real_array(dminfo, nElements, inArray, outArray)!{{{
 
       implicit none
 
-      type (dm_info), intent(in) :: dminfo
-      integer, intent(in) :: nElements
-      real(kind=RKIND), dimension(nElements), intent(in) :: inArray
-      real(kind=RKIND), dimension(nElements), intent(out) :: outArray
+      type (dm_info), intent(in) :: dminfo !< Input: Domain information
+      integer, intent(in) :: nElements !< Input: Length of arrays
+      real(kind=RKIND), dimension(nElements), intent(in) :: inArray !< Input: Array of reals
+      real(kind=RKIND), dimension(nElements), intent(out) :: outArray !< Output: Array of maximum reals
 
       integer :: mpi_ierr
 
@@ -503,15 +757,28 @@ include 'mpif.h'
 
    end subroutine mpas_dmpar_max_real_array!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_scatter_ints
+!
+!> \brief MPAS dmpar scatter integers routine
+!> \author Michael Duda
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine computes the maximum array of real values  across all processors in a communicator, from some input arrays.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_scatter_ints(dminfo, nprocs, noutlist, displs, counts, inlist, outlist)!{{{
 
       implicit none
 
-      type (dm_info), intent(in) :: dminfo
-      integer, intent(in) :: nprocs, noutlist
-      integer, dimension(nprocs), intent(in) :: displs, counts
-      integer, dimension(:), pointer :: inlist
-      integer, dimension(noutlist), intent(inout) :: outlist
+      type (dm_info), intent(in) :: dminfo !< Input: Domain information
+      integer, intent(in) :: nprocs !< Input: Number of processors
+      integer, intent(in) :: noutlist !< Input: Number integers to receive
+      integer, dimension(nprocs), intent(in) :: displs !< Input: Displacement in sending array
+      integer, dimension(nprocs), intent(in) :: counts !< Input: Number of integers to distribute
+      integer, dimension(:), pointer :: inlist !< Input: List of integers to send
+      integer, dimension(noutlist), intent(inout) :: outlist !< Output: List of received integers
 
 #ifdef _MPI
       integer :: mpi_ierr
@@ -521,15 +788,28 @@ include 'mpif.h'
 
    end subroutine mpas_dmpar_scatter_ints!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_get_index_range
+!
+!> \brief MPAS dmpar processor specific range of indices
+!> \author Michael Duda
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine divides a global range of indices among all processors, and returns the range of indices a specific processors is responsible for.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_get_index_range(dminfo, &!{{{
                                     global_start, global_end, &
                                     local_start, local_end)
 
       implicit none
 
-      type (dm_info), intent(in) :: dminfo
-      integer, intent(in) :: global_start, global_end
-      integer, intent(out) :: local_start, local_end
+      type (dm_info), intent(in) :: dminfo !< Input: Domain information
+      integer, intent(in) :: global_start !< Input: Starting index in global range
+      integer, intent(in) :: global_end !< Input: Ending index in global range
+      integer, intent(out) :: local_start !< Output: Starting index in local range
+      integer, intent(out) :: local_end !< Output: Ending index in local range
 
       local_start = nint(real(dminfo % my_proc_id) * real(global_end - global_start + 1) / real(dminfo % nprocs)) + 1
       local_end   = nint(real(dminfo % my_proc_id + 1) * real(global_end - global_start + 1) / real(dminfo % nprocs)) 
@@ -572,16 +852,27 @@ include 'mpif.h'
    
    end subroutine mpas_dmpar_compute_index_range!}}}
 
-   ! ----- NEW ROUTINES BELOW ----- !
-
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_get_exch_list
+!
+!> \brief MPAS dmpar exchange list builder
+!> \author Doug Jacobsen
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine builds exchange lists to communicated between the lists of owned and needed fields, over a given number of halos.
+!>  Exchange lists are built into the input fields.
+!
+!-----------------------------------------------------------------------
 subroutine mpas_dmpar_get_exch_list(haloLayer, ownedListField, neededListField, offsetListField, ownedLimitField)!{{{
 
       implicit none
 
-      integer, intent(in) :: haloLayer
-      type (field1dInteger), pointer :: ownedListField, neededListField
-      type (field0dInteger), pointer, optional :: offsetListField
-      type (field0dInteger), pointer, optional :: ownedLimitField
+      integer, intent(in) :: haloLayer !< Input: Halo layer to build exchange list for
+      type (field1dInteger), pointer :: ownedListField !< Input/Output: List of owned fields
+      type (field1dInteger), pointer :: neededListField !< Input/Output: List of needed fields
+      type (field0dInteger), pointer, optional :: offsetListField !< Input: Offsets for placement of received data into destination arrays
+      type (field0dInteger), pointer, optional :: ownedLimitField !< Input: List of limits in owned array
 
       type (dm_info), pointer :: dminfo
 
@@ -624,7 +915,7 @@ subroutine mpas_dmpar_get_exch_list(haloLayer, ownedListField, neededListField, 
       !
     
       ! For the neededListField:
-      !    similar to the owneListField...
+      !    similar to the ownedListField...
 
       dminfo => ownedListField % block % domain % dminfo
 
@@ -1122,14 +1413,25 @@ subroutine mpas_dmpar_get_exch_list(haloLayer, ownedListField, neededListField, 
 
    end subroutine mpas_dmpar_get_exch_list!}}}
 
-
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_alltoall_field1d_integer
+!
+!> \brief MPAS dmpar all-to-all 1D integer routine
+!> \author Doug Jacobsen
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine handles the all-to-all communication of an input field into an output field across all processors.
+!>  It requries exchange lists to be created prior to calling this routine.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_alltoall_field1d_integer(fieldIn, fieldout, haloLayersIn)!{{{
 
      implicit none
 
-     type (field1dInteger), pointer :: fieldIn
-     type (field1dInteger), pointer :: fieldOut
-     integer, dimension(:), pointer, optional :: haloLayersIn
+     type (field1dInteger), pointer :: fieldIn !< Input: Field to send
+     type (field1dInteger), pointer :: fieldOut !< Output: Field to receive
+     integer, dimension(:), pointer, optional :: haloLayersIn !< Input: Halo layers to communicated. Defaults to all.
 
      type (field1dInteger), pointer :: fieldInPtr, fieldOutPtr
      type (mpas_exchange_list), pointer :: exchListPtr, exchListPtr2
@@ -1403,13 +1705,25 @@ subroutine mpas_dmpar_get_exch_list(haloLayer, ownedListField, neededListField, 
 
    end subroutine mpas_dmpar_alltoall_field1d_integer!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_alltoall_field2d_integer
+!
+!> \brief MPAS dmpar all-to-all 2D integer routine
+!> \author Doug Jacobsen
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine handles the all-to-all communication of an input field into an output field across all processors.
+!>  It requries exchange lists to be created prior to calling this routine.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_alltoall_field2d_integer(fieldIn, fieldout, haloLayersIn)!{{{
 
      implicit none
 
-     type (field2dInteger), pointer :: fieldIn
-     type (field2dInteger), pointer :: fieldOut
-     integer, dimension(:), pointer, optional :: haloLayersIn
+     type (field2dInteger), pointer :: fieldIn !< Input: Field to communicate from
+     type (field2dInteger), pointer :: fieldOut !< Output: Field to receive into
+     integer, dimension(:), pointer, optional :: haloLayersIn !< Input: List of halo layers to communicate. Defaults to all
 
      type (field2dInteger), pointer :: fieldInPtr, fieldOutPtr
      type (mpas_exchange_list), pointer :: exchListPtr, exchListPtr2
@@ -1684,13 +1998,25 @@ subroutine mpas_dmpar_get_exch_list(haloLayer, ownedListField, neededListField, 
 
    end subroutine mpas_dmpar_alltoall_field2d_integer!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_alltoall_field3d_integer
+!
+!> \brief MPAS dmpar all-to-all 3D integer routine
+!> \author Doug Jacobsen
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine handles the all-to-all communication of an input field into an output field across all processors.
+!>  It requries exchange lists to be created prior to calling this routine.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_alltoall_field3d_integer(fieldIn, fieldout, haloLayersIn)!{{{
 
      implicit none
 
-     type (field3dInteger), pointer :: fieldIn
-     type (field3dInteger), pointer :: fieldOut
-     integer, dimension(:), pointer, optional :: haloLayersIn
+     type (field3dInteger), pointer :: fieldIn !< Input: Field to send from
+     type (field3dInteger), pointer :: fieldOut !< Output: Field to receive into
+     integer, dimension(:), pointer, optional :: haloLayersIn !< Input: List of halo layers to communicate. Defaults to all
 
      type (field3dInteger), pointer :: fieldInPtr, fieldOutPtr
      type (mpas_exchange_list), pointer :: exchListPtr, exchListPtr2
@@ -1972,13 +2298,25 @@ subroutine mpas_dmpar_get_exch_list(haloLayer, ownedListField, neededListField, 
 
    end subroutine mpas_dmpar_alltoall_field3d_integer!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_alltoall_field1d_real
+!
+!> \brief MPAS dmpar all-to-all 1D real routine
+!> \author Doug Jacobsen
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine handles the all-to-all communication of an input field into an output field across all processors.
+!>  It requries exchange lists to be created prior to calling this routine.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_alltoall_field1d_real(fieldIn, fieldout, haloLayersIn)!{{{
 
      implicit none
 
-     type (field1dReal), pointer :: fieldIn
-     type (field1dReal), pointer :: fieldOut
-     integer, dimension(:), pointer, optional :: haloLayersIn
+     type (field1dReal), pointer :: fieldIn !< Input: Field to send from
+     type (field1dReal), pointer :: fieldOut !< Output: Field to receive into
+     integer, dimension(:), pointer, optional :: haloLayersIn !< Input: List of halo layers to communicate. Defaults to all
 
      type (field1dReal), pointer :: fieldInPtr, fieldOutPtr
      type (mpas_exchange_list), pointer :: exchListPtr, exchListPtr2
@@ -2250,13 +2588,25 @@ subroutine mpas_dmpar_get_exch_list(haloLayer, ownedListField, neededListField, 
 
    end subroutine mpas_dmpar_alltoall_field1d_real!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_alltoall_field2d_real
+!
+!> \brief MPAS dmpar all-to-all 2D real routine
+!> \author Doug Jacobsen
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine handles the all-to-all communication of an input field into an output field across all processors.
+!>  It requries exchange lists to be created prior to calling this routine.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_alltoall_field2d_real(fieldIn, fieldout, haloLayersIn)!{{{
 
      implicit none
 
-     type (field2dReal), pointer :: fieldIn
-     type (field2dReal), pointer :: fieldOut
-     integer, dimension(:), pointer, optional :: haloLayersIn
+     type (field2dReal), pointer :: fieldIn !< Input: Field to send from
+     type (field2dReal), pointer :: fieldOut !< Output: Field to receive into
+     integer, dimension(:), pointer, optional :: haloLayersIn !< Input: List of halo layers to communicate. Defaults to all
 
      type (field2dReal), pointer :: fieldInPtr, fieldOutPtr
      type (mpas_exchange_list), pointer :: exchListPtr, exchListPtr2
@@ -2532,13 +2882,25 @@ subroutine mpas_dmpar_get_exch_list(haloLayer, ownedListField, neededListField, 
 
    end subroutine mpas_dmpar_alltoall_field2d_real!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_alltoall_field3d_real
+!
+!> \brief MPAS dmpar all-to-all 3D real routine
+!> \author Doug Jacobsen
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine handles the all-to-all communication of an input field into an output field across all processors.
+!>  It requries exchange lists to be created prior to calling this routine.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_alltoall_field3d_real(fieldIn, fieldout, haloLayersIn)!{{{
 
      implicit none
 
-     type (field3dReal), pointer :: fieldIn
-     type (field3dReal), pointer :: fieldOut
-     integer, dimension(:), pointer, optional :: haloLayersIn
+     type (field3dReal), pointer :: fieldIn !< Input: Field to send from
+     type (field3dReal), pointer :: fieldOut !< Output: Field to receive into
+     integer, dimension(:), pointer, optional :: haloLayersIn !< Input: List of halo layers to communicate. Defaults to all
 
      type (field3dReal), pointer :: fieldInPtr, fieldOutPtr
      type (mpas_exchange_list), pointer :: exchListPtr, exchListPtr2
@@ -2822,13 +3184,25 @@ subroutine mpas_dmpar_get_exch_list(haloLayer, ownedListField, neededListField, 
 
    end subroutine mpas_dmpar_alltoall_field3d_real!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_alltoall_field4d_real
+!
+!> \brief MPAS dmpar all-to-all 4D real routine
+!> \author Doug Jacobsen
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine handles the all-to-all communication of an input field into an output field across all processors.
+!>  It requries exchange lists to be created prior to calling this routine.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_alltoall_field4d_real(fieldIn, fieldout, haloLayersIn)!{{{
 
      implicit none
 
-     type (field4dReal), pointer :: fieldIn
-     type (field4dReal), pointer :: fieldOut
-     integer, dimension(:), pointer, optional :: haloLayersIn
+     type (field4dReal), pointer :: fieldIn !< Input: Field to send from
+     type (field4dReal), pointer :: fieldOut !< Output: Field to receive into
+     integer, dimension(:), pointer, optional :: haloLayersIn !< Input: List of halo layers to communicate. Defaults to all
 
      type (field4dReal), pointer :: fieldInPtr, fieldOutPtr
      type (mpas_exchange_list), pointer :: exchListPtr, exchListPtr2
@@ -3120,13 +3494,25 @@ subroutine mpas_dmpar_get_exch_list(haloLayer, ownedListField, neededListField, 
 
    end subroutine mpas_dmpar_alltoall_field4d_real!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_alltoall_field5d_real
+!
+!> \brief MPAS dmpar all-to-all 5D real routine
+!> \author Doug Jacobsen
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine handles the all-to-all communication of an input field into an output field across all processors.
+!>  It requries exchange lists to be created prior to calling this routine.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_alltoall_field5d_real(fieldIn, fieldout, haloLayersIn)!{{{
 
      implicit none
 
-     type (field5dReal), pointer :: fieldIn
-     type (field5dReal), pointer :: fieldOut
-     integer, dimension(:), pointer, optional :: haloLayersIn
+     type (field5dReal), pointer :: fieldIn !< Input: Field to send from
+     type (field5dReal), pointer :: fieldOut !< Output: Field to receive into
+     integer, dimension(:), pointer, optional :: haloLayersIn !< Input: List of halo layers to communicate. Defaults to all.
 
      type (field5dReal), pointer :: fieldInPtr, fieldOutPtr
      type (mpas_exchange_list), pointer :: exchListPtr, exchListPtr2
@@ -3424,14 +3810,24 @@ subroutine mpas_dmpar_get_exch_list(haloLayer, ownedListField, neededListField, 
 
    end subroutine mpas_dmpar_alltoall_field5d_real!}}}
 
-
-
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_exch_halo_field1d_integer
+!
+!> \brief MPAS dmpar halo exchange 1D integer field
+!> \author Doug Jacobsen
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine handles the halo exchange communication of an input field across all processors.
+!>  It requries exchange lists to be created prior to calling this routine.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_exch_halo_field1d_integer(field, haloLayersIn)!{{{
 
       implicit none
 
-      type (field1DInteger), pointer :: field
-      integer, dimension(:), intent(in), optional :: haloLayersIn
+      type (field1DInteger), pointer :: field !< Input: Field to communicate
+      integer, dimension(:), intent(in), optional :: haloLayersIn !< Input: List of halo layers to communicate. Defaults to all
 
       type (dm_info), pointer :: dminfo
       type (field1DInteger), pointer :: fieldCursor, fieldCursor2
@@ -3706,12 +4102,24 @@ subroutine mpas_dmpar_get_exch_list(haloLayer, ownedListField, neededListField, 
 
    end subroutine mpas_dmpar_exch_halo_field1d_integer!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_exch_halo_field2d_integer
+!
+!> \brief MPAS dmpar halo exchange 2D integer field
+!> \author Doug Jacobsen
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine handles the halo exchange communication of an input field across all processors.
+!>  It requries exchange lists to be created prior to calling this routine.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_exch_halo_field2d_integer(field, haloLayersIn)!{{{
 
       implicit none
 
-      type (field2DInteger), pointer :: field
-      integer, dimension(:), intent(in), optional :: haloLayersIn
+      type (field2DInteger), pointer :: field !< Input: Field to communicate
+      integer, dimension(:), intent(in), optional :: haloLayersIn !< Input: List of halo layers to communicate. Defaults to all
 
       type (dm_info), pointer :: dminfo
       type (field2DInteger), pointer :: fieldCursor, fieldCursor2
@@ -3987,12 +4395,24 @@ subroutine mpas_dmpar_get_exch_list(haloLayer, ownedListField, neededListField, 
 
    end subroutine mpas_dmpar_exch_halo_field2d_integer!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_exch_halo_field3d_integer
+!
+!> \brief MPAS dmpar halo exchange 3D integer field
+!> \author Doug Jacobsen
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine handles the halo exchange communication of an input field across all processors.
+!>  It requries exchange lists to be created prior to calling this routine.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_exch_halo_field3d_integer(field, haloLayersIn)!{{{
 
       implicit none
 
-      type (field3DInteger), pointer :: field
-      integer, dimension(:), intent(in), optional :: haloLayersIn
+      type (field3DInteger), pointer :: field !< Input: Field to communicate
+      integer, dimension(:), intent(in), optional :: haloLayersIn !< Input: List of halo layers to communicate. Defaults to all
 
       type (dm_info), pointer :: dminfo
       type (field3DInteger), pointer :: fieldCursor, fieldCursor2
@@ -4274,12 +4694,24 @@ subroutine mpas_dmpar_get_exch_list(haloLayer, ownedListField, neededListField, 
 
    end subroutine mpas_dmpar_exch_halo_field3d_integer!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_exch_halo_field1d_real
+!
+!> \brief MPAS dmpar halo exchange 1D real field
+!> \author Doug Jacobsen
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine handles the halo exchange communication of an input field across all processors.
+!>  It requries exchange lists to be created prior to calling this routine.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_exch_halo_field1d_real(field, haloLayersIn)!{{{
 
       implicit none
 
-      type (field1dReal), pointer :: field
-      integer, dimension(:), intent(in), optional :: haloLayersIn
+      type (field1dReal), pointer :: field !< Input: Field to communicate
+      integer, dimension(:), intent(in), optional :: haloLayersIn !< Input: List of halo layers to communicate. Defaults to all
 
       type (dm_info), pointer :: dminfo
       type (field1dReal), pointer :: fieldCursor, fieldCursor2
@@ -4552,12 +4984,24 @@ subroutine mpas_dmpar_get_exch_list(haloLayer, ownedListField, neededListField, 
 
    end subroutine mpas_dmpar_exch_halo_field1d_real!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_exch_halo_field2d_real
+!
+!> \brief MPAS dmpar halo exchange 2D real field
+!> \author Doug Jacobsen
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine handles the halo exchange communication of an input field across all processors.
+!>  It requries exchange lists to be created prior to calling this routine.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_exch_halo_field2d_real(field, haloLayersIn)!{{{
 
       implicit none
 
-      type (field2dReal), pointer :: field
-      integer, dimension(:), intent(in), optional :: haloLayersIn
+      type (field2dReal), pointer :: field !< Input: Field to communicate
+      integer, dimension(:), intent(in), optional :: haloLayersIn !< Input: List of halo layers to communicate. Defaults to all
 
       type (dm_info), pointer :: dminfo
       type (field2dReal), pointer :: fieldCursor, fieldCursor2
@@ -4835,12 +5279,24 @@ subroutine mpas_dmpar_get_exch_list(haloLayer, ownedListField, neededListField, 
 
    end subroutine mpas_dmpar_exch_halo_field2d_real!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_exch_halo_field3d_real
+!
+!> \brief MPAS dmpar halo exchange 3D real field
+!> \author Doug Jacobsen
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine handles the halo exchange communication of an input field across all processors.
+!>  It requries exchange lists to be created prior to calling this routine.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_exch_halo_field3d_real(field, haloLayersIn)!{{{
 
       implicit none
 
-      type (field3dReal), pointer :: field
-      integer, dimension(:), intent(in), optional :: haloLayersIn
+      type (field3dReal), pointer :: field !< Input: Field to communicate
+      integer, dimension(:), intent(in), optional :: haloLayersIn !< Input: List of halo layers to communicate. Defaults to all
 
       type (dm_info), pointer :: dminfo
       type (field3dReal), pointer :: fieldCursor, fieldCursor2
@@ -5122,12 +5578,24 @@ subroutine mpas_dmpar_get_exch_list(haloLayer, ownedListField, neededListField, 
 
    end subroutine mpas_dmpar_exch_halo_field3d_real!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_exch_halo_field4d_real
+!
+!> \brief MPAS dmpar halo exchange 4D real field
+!> \author Doug Jacobsen
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine handles the halo exchange communication of an input field across all processors.
+!>  It requries exchange lists to be created prior to calling this routine.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_exch_halo_field4d_real(field, haloLayersIn)!{{{
 
       implicit none
 
-      type (field4dReal), pointer :: field
-      integer, dimension(:), intent(in), optional :: haloLayersIn
+      type (field4dReal), pointer :: field !< Input: Field to communicate
+      integer, dimension(:), intent(in), optional :: haloLayersIn !< Input: List of halo layers to communicate. Defaults to all
 
       type (dm_info), pointer :: dminfo
       type (field4dReal), pointer :: fieldCursor, fieldCursor2
@@ -5417,12 +5885,24 @@ subroutine mpas_dmpar_get_exch_list(haloLayer, ownedListField, neededListField, 
 
    end subroutine mpas_dmpar_exch_halo_field4d_real!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_exch_halo_field5d_real
+!
+!> \brief MPAS dmpar halo exchange 5D real field
+!> \author Doug Jacobsen
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine handles the halo exchange communication of an input field across all processors.
+!>  It requries exchange lists to be created prior to calling this routine.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_exch_halo_field5d_real(field, haloLayersIn)!{{{
 
       implicit none
 
-      type (field5dReal), pointer :: field
-      integer, dimension(:), intent(in), optional :: haloLayersIn
+      type (field5dReal), pointer :: field !< Input: Field to communicate
+      integer, dimension(:), intent(in), optional :: haloLayersIn !< Input: List of halo layers to communicate. Defaults to all
 
       type (dm_info), pointer :: dminfo
       type (field5dReal), pointer :: fieldCursor, fieldCursor2
@@ -5718,9 +6198,20 @@ subroutine mpas_dmpar_get_exch_list(haloLayer, ownedListField, neededListField, 
 
    end subroutine mpas_dmpar_exch_halo_field5d_real!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_init_mulithalo_exchange_list
+!
+!> \brief MPAS dmpar initialize muiltihalo exchange list routine.
+!> \author Doug Jacobsen
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine initializes the multihalo exchange lists, based on a number of halo layers.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_init_mulithalo_exchange_list(exchList, nHalos)!{{{
-     type (mpas_multihalo_exchange_list), pointer :: exchList
-     integer, intent(in) :: nHalos
+     type (mpas_multihalo_exchange_list), pointer :: exchList !< Input: Exchange list to initialize
+     integer, intent(in) :: nHalos !< Input: Number of halo layers for exchange list
 
      integer :: i
 
@@ -5731,8 +6222,19 @@ subroutine mpas_dmpar_get_exch_list(haloLayer, ownedListField, neededListField, 
      end do
    end subroutine mpas_dmpar_init_mulithalo_exchange_list!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_destroy_mulithalo_exchange_list
+!
+!> \brief MPAS dmpar destroy muiltihalo exchange list routine.
+!> \author Doug Jacobsen
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine destroys the multihalo exchange lists.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_destroy_mulithalo_exchange_list(exchList)!{{{
-     type (mpas_multihalo_exchange_list), pointer :: exchList
+     type (mpas_multihalo_exchange_list), pointer :: exchList !< Input: Exchange list to destroy.
 
      integer :: nHalos
      integer :: i
@@ -5748,8 +6250,19 @@ subroutine mpas_dmpar_get_exch_list(haloLayer, ownedListField, neededListField, 
      nullify(exchList)
    end subroutine mpas_dmpar_destroy_mulithalo_exchange_list!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_destroy_communication_list
+!
+!> \brief MPAS dmpar destroy communication list routine.
+!> \author Doug Jacobsen
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine destroys a communication lists.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_destroy_communication_list(commList)!{{{
-     type (mpas_communication_list), pointer :: commList
+     type (mpas_communication_list), pointer :: commList !< Input: Communication list to destroy.
      type (mpas_communication_list), pointer :: commListPtr
 
      commListPtr => commList
@@ -5774,8 +6287,19 @@ subroutine mpas_dmpar_get_exch_list(haloLayer, ownedListField, neededListField, 
 
    end subroutine mpas_dmpar_destroy_communication_list!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_destroy_exchange_list
+!
+!> \brief MPAS dmpar destroy exchange list routine.
+!> \author Doug Jacobsen
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine destroys a exchange lists.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_destroy_exchange_list(exchList)!{{{
-     type (mpas_exchange_list), pointer :: exchList
+     type (mpas_exchange_list), pointer :: exchList !< Input: Exchange list to destroy
      type (mpas_exchange_list), pointer :: exchListPtr
 
      exchListPtr => exchList
@@ -5800,8 +6324,19 @@ subroutine mpas_dmpar_get_exch_list(haloLayer, ownedListField, neededListField, 
 
    end subroutine mpas_dmpar_destroy_exchange_list!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_copy_field1d_integer
+!
+!> \brief MPAS dmpar copy 1D integer field routine
+!> \author Doug Jacobsen
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine copies a 1D integer field throughout a block list.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_copy_field1d_integer(field)!{{{
-       type (field1dInteger), pointer :: field
+       type (field1dInteger), pointer :: field !< Input: Field to copy
        type (field1dInteger), pointer :: fieldCursor
 
        if(associated(field % next)) then
@@ -5813,8 +6348,19 @@ subroutine mpas_dmpar_get_exch_list(haloLayer, ownedListField, neededListField, 
        end if
    end subroutine mpas_dmpar_copy_field1d_integer!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_copy_field2d_integer
+!
+!> \brief MPAS dmpar copy 2D integer field routine
+!> \author Doug Jacobsen
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine copies a 2D integer field throughout a block list.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_copy_field2d_integer(field)!{{{
-       type (field2dInteger), pointer :: field
+       type (field2dInteger), pointer :: field !< Input: Field to copy
        type (field2dInteger), pointer :: fieldCursor
 
        if(associated(field % next)) then
@@ -5826,8 +6372,19 @@ subroutine mpas_dmpar_get_exch_list(haloLayer, ownedListField, neededListField, 
        end if
    end subroutine mpas_dmpar_copy_field2d_integer!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_copy_field3d_integer
+!
+!> \brief MPAS dmpar copy 3D integer field routine
+!> \author Doug Jacobsen
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine copies a 3D integer field throughout a block list.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_copy_field3d_integer(field)!{{{
-       type (field3dInteger), pointer :: field
+       type (field3dInteger), pointer :: field !< Input: Field to copy
        type (field3dInteger), pointer :: fieldCursor
 
        if(associated(field % next)) then
@@ -5839,8 +6396,19 @@ subroutine mpas_dmpar_get_exch_list(haloLayer, ownedListField, neededListField, 
        end if
    end subroutine mpas_dmpar_copy_field3d_integer!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_copy_field1d_real
+!
+!> \brief MPAS dmpar copy 1D real field routine
+!> \author Doug Jacobsen
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine copies a 1D real field throughout a block list.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_copy_field1d_real(field)!{{{
-       type (field1dReal), pointer :: field
+       type (field1dReal), pointer :: field !< Input: Field to copy
        type (field1dReal), pointer :: fieldCursor
 
 
@@ -5853,8 +6421,19 @@ subroutine mpas_dmpar_get_exch_list(haloLayer, ownedListField, neededListField, 
        end if
    end subroutine mpas_dmpar_copy_field1d_real!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_copy_field2d_real
+!
+!> \brief MPAS dmpar copy 2D real field routine
+!> \author Doug Jacobsen
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine copies a 2D real field throughout a block list.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_copy_field2d_real(field)!{{{
-       type (field2dReal), pointer :: field
+       type (field2dReal), pointer :: field !< Input: Field to copy
        type (field2dReal), pointer :: fieldCursor
 
        if(associated(field % next)) then
@@ -5866,8 +6445,19 @@ subroutine mpas_dmpar_get_exch_list(haloLayer, ownedListField, neededListField, 
        end if
    end subroutine mpas_dmpar_copy_field2d_real!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_copy_field3d_real
+!
+!> \brief MPAS dmpar copy 3D real field routine
+!> \author Doug Jacobsen
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine copies a 3D real field throughout a block list.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_copy_field3d_real(field)!{{{
-       type (field3dReal), pointer :: field
+       type (field3dReal), pointer :: field !< Input: Field to copy
        type (field3dReal), pointer :: fieldCursor
 
        if(associated(field % next)) then
@@ -5879,8 +6469,19 @@ subroutine mpas_dmpar_get_exch_list(haloLayer, ownedListField, neededListField, 
        end if
    end subroutine mpas_dmpar_copy_field3d_real!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_copy_field4d_real
+!
+!> \brief MPAS dmpar copy 4D real field routine
+!> \author Doug Jacobsen
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine copies a 4D real field throughout a block list.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_copy_field4d_real(field)!{{{
-       type (field4dReal), pointer :: field
+       type (field4dReal), pointer :: field !< Input: Field to copy
        type (field4dReal), pointer :: fieldCursor
 
        if(associated(field % next)) then
@@ -5892,8 +6493,19 @@ subroutine mpas_dmpar_get_exch_list(haloLayer, ownedListField, neededListField, 
        end if
    end subroutine mpas_dmpar_copy_field4d_real!}}}
 
+!-----------------------------------------------------------------------
+!  routine mpas_dmpar_copy_field5d_real
+!
+!> \brief MPAS dmpar copy 5D real field routine
+!> \author Doug Jacobsen
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine copies a 5D real field throughout a block list.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_dmpar_copy_field5d_real(field)!{{{
-       type (field5dReal), pointer :: field
+       type (field5dReal), pointer :: field !< Input: Field to copy
        type (field5dReal), pointer :: fieldCursor
 
        if(associated(field % next)) then

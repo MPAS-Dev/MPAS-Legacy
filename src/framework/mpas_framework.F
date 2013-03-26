@@ -1,3 +1,14 @@
+!-----------------------------------------------------------------------
+!  mpas_framework
+!
+!> \brief MPAS Framework routines
+!> \author Michael Duda, Doug Jacobsen
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This module contains all routines related to the general MPAS framework interface.
+!
+!-----------------------------------------------------------------------
 module mpas_framework
 
    use mpas_dmpar
@@ -12,8 +23,18 @@ module mpas_framework
 
    contains
 
-   
-   subroutine mpas_framework_init(dminfo, domain, mpi_comm, nml_filename, io_system)
+!-----------------------------------------------------------------------
+!  routine mpas_framework_init
+!
+!> \brief MPAS framework initialization routine.
+!> \author Michael Duda, Doug Jacobsen
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine initializes the MPAS framework. It calls routines related to initializing different parts of MPAS, that are housed within the framework.
+!
+!-----------------------------------------------------------------------
+   subroutine mpas_framework_init(dminfo, domain, mpi_comm, nml_filename, io_system)!{{{
 
       implicit none
 
@@ -43,10 +64,20 @@ module mpas_framework
       end if
       call MPAS_io_init(dminfo, pio_num_iotasks, pio_stride, io_system)
 
-   end subroutine mpas_framework_init
+   end subroutine mpas_framework_init!}}}
 
-   
-   subroutine mpas_framework_finalize(dminfo, domain, io_system)
+!-----------------------------------------------------------------------
+!  routine mpas_framework_finalize
+!
+!> \brief MPAS framework finalization routine.
+!> \author Michael Duda, Doug Jacobsen
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This routine finalizes the MPAS framework. It calls routines related to finalizing different parts of MPAS, that are housed within the framework.
+!
+!-----------------------------------------------------------------------  
+   subroutine mpas_framework_finalize(dminfo, domain, io_system)!{{{
   
       implicit none
 
@@ -62,6 +93,6 @@ module mpas_framework
 
       call mpas_timekeeping_finalize()
 
-   end subroutine mpas_framework_finalize
+   end subroutine mpas_framework_finalize!}}}
 
 end module mpas_framework

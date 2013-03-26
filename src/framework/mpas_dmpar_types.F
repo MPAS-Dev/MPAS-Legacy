@@ -1,3 +1,14 @@
+!-----------------------------------------------------------------------
+!  mpas_dmpar_types
+!
+!> \brief MPAS Communication Type Definitions
+!> \author Michael Duda, Doug Jacobsen
+!> \date   03/26/13
+!> \version SVN:$Id:$
+!> \details
+!>  This module defines all communication related derived data types
+!
+!-----------------------------------------------------------------------
 module mpas_dmpar_types
 
    use mpas_kind_types
