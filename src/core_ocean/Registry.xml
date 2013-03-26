@@ -920,16 +920,16 @@
 		<var name="bottomDepth" type="real" dimensions="nCells" streams="iro" units="m"
 		     description="Depth of the bottom of the ocean. Given as a positive distance from sea level."
 		/>
-		<var name="deriv_two" type="real" dimensions="maxEdges2 TWO nEdges" units=""
+		<var name="deriv_two" type="real" dimensions="maxEdges2 TWO nEdges" units="m^{-2}"
 		     description="Value of the second derivative of the polynomial used for reconstruction of cell center quantities at edges."
 		/>
-		<var name="adv_coefs" type="real" dimensions="nAdvectionCells nEdges" units=""
+		<var name="adv_coefs" type="real" dimensions="nAdvectionCells nEdges" units="m"
 		     description="Weighting coefficients used for reconstruction of cell center quantities at edges. Used in advection routines."
 		/>
-		<var name="adv_coefs_2nd" type="real" dimensions="nAdvectionCells nEdges" units=""
+		<var name="adv_coefs_2nd" type="real" dimensions="nAdvectionCells nEdges" units="m"
 		     description="Weighting coefficients used for reconstruction of cell center quantities at edges. Used in advection routines."
 		/>
-		<var name="adv_coefs_3rd" type="real" dimensions="nAdvectionCells nEdges" units=""
+		<var name="adv_coefs_3rd" type="real" dimensions="nAdvectionCells nEdges" units="m"
 			description="Wegihting coefficients used for reconstruction of cell center quantities at edges. Used in advection routines."
 		/>
 		<var name="advCellsForEdge" type="integer" dimensions="nAdvectionCells nEdges" units="unitless"
@@ -944,17 +944,17 @@
 		<var name="lowOrderAdvectionMask" type="integer" dimensions="nVertLevels nEdges" units="unitless"
 		     description="Mask for low order advection. Values are 1 if low order is used, and 0 if not."
 		/>
-		<var name="defc_a" type="real" dimensions="maxEdges nCells" units=""
+		<var name="defc_a" type="real" dimensions="maxEdges nCells" units="m^{-1}"
 		     description="Variable used with advection setup to compute advection coefficients. Deformation weight coefficients."
 		/>
-		<var name="defc_b" type="real" dimensions="maxEdges nCells" units=""
+		<var name="defc_b" type="real" dimensions="maxEdges nCells" units="m^{-1}"
 		     description="Variable used with advection setup to compute advection coefficients. Deformation weight coefficients."
 		/>
 		<var name="kdiff" type="real" dimensions="nVertLevels nCells Time" units=""
 			 description="{\color{red} TO BE REMOVED}"
 		/>
-		<var name="coeffs_reconstruct" type="real" dimensions="R3 maxEdges nCells" units=""
-			 description="{\color{red} TO BE REMOVED}"
+		<var name="coeffs_reconstruct" type="real" dimensions="R3 maxEdges nCells" units="unitless"
+			 description="Coefficients to reconstruct velocity vectors at cells centers."
 		/>
 		<var name="maxLevelCell" type="integer" dimensions="nCells" streams="iro" units="unitless"
 		     description="Index to the last active ocean cell in each column."
