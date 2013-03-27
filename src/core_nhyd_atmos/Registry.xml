@@ -48,6 +48,7 @@
                 <nml_option name="config_h_theta_eddy_visc2"         type="real"          default_value="0.0"/>
                 <nml_option name="config_h_theta_eddy_visc4"         type="real"          default_value="0.0"/>
                 <nml_option name="config_v_theta_eddy_visc2"         type="real"          default_value="0.0"/>
+                <nml_option name="config_visc4_2dsmag"               type="real"          default_value="0.0"/>
                 <nml_option name="config_number_of_sub_steps"        type="integer"       default_value="4"/>
                 <nml_option name="config_w_adv_order"                type="integer"       default_value="3"/>
                 <nml_option name="config_theta_adv_order"            type="integer"       default_value="3"/>
@@ -66,7 +67,7 @@
                 <nml_option name="config_smdiv"                      type="real"          default_value="0.1"/>
                 <nml_option name="config_newpx"                      type="logical"       default_value="false"/>
                 <nml_option name="config_apvm_upwinding"             type="real"          default_value="0.5"/>
-                <nml_option name="config_h_ScaleWithMesh"            type="logical"       default_value="false"/>
+                <nml_option name="config_h_ScaleWithMesh"            type="logical"       default_value="true"/>
                 <nml_option name="config_num_halos"                  type="integer"       default_value="2"/>
         </nml_record>
 
@@ -84,12 +85,13 @@
                 <nml_option name="config_frames_per_outfile"         type="integer"       default_value="0"/>
                 <nml_option name="config_pio_num_iotasks"            type="integer"       default_value="0"/>
                 <nml_option name="config_pio_stride"                 type="integer"       default_value="1"/>
+                <nml_option name="config_pio_format"                 type="character"     default_value="pnetcdf"/>
         </nml_record>
 
         <nml_record name="decomposition">
                 <nml_option name="config_block_decomp_file_prefix"   type="character"     default_value="graph.info.part."/>
                 <nml_option name="config_number_of_blocks"           type="integer"       default_value="0"/>
-                <nml_option name="config_explicit_proc_decomp"       type="logical"       default_value=".false."/>
+                <nml_option name="config_explicit_proc_decomp"       type="logical"       default_value="false"/>
                 <nml_option name="config_proc_decomp_file_prefix"    type="character"     default_value="graph.info.part."/>
         </nml_record>
 
@@ -320,10 +322,28 @@
                 <var name="rho_pp"                  type="real"     dimensions="nVertLevels nCells Time"/>
                 <var name="rho_p_save"              type="real"     dimensions="nVertLevels nCells Time"/>
 
-                <var name="kdiff"                   type="real"     dimensions="nVertLevels nCells Time"/>
+                <var name="kdiff"                   type="real"     dimensions="nVertLevels nCells Time"     streams="o"/>
 
                 <var name="surface_pressure"        type="real"     dimensions="nCells Time"                 streams="iro"/>
-                <var name="surface_temperature"     type="real"     dimensions="nCells Time"                 streams="o"/>
+
+                <var name="temperature_200hPa"     type="real"     dimensions="nCells Time"                 streams="o"/>
+                <var name="temperature_500hPa"     type="real"     dimensions="nCells Time"                 streams="o"/>
+                <var name="temperature_850hPa"     type="real"     dimensions="nCells Time"                 streams="o"/>
+                <var name="height_200hPa"          type="real"     dimensions="nCells Time"                 streams="o"/>
+                <var name="height_500hPa"          type="real"     dimensions="nCells Time"                 streams="o"/>
+                <var name="height_850hPa"          type="real"     dimensions="nCells Time"                 streams="o"/>
+                <var name="uzonal_200hPa"          type="real"     dimensions="nCells Time"                 streams="o"/>
+                <var name="uzonal_500hPa"          type="real"     dimensions="nCells Time"                 streams="o"/>
+                <var name="uzonal_850hPa"          type="real"     dimensions="nCells Time"                 streams="o"/>
+                <var name="umeridional_200hPa"     type="real"     dimensions="nCells Time"                 streams="o"/>
+                <var name="umeridional_500hPa"     type="real"     dimensions="nCells Time"                 streams="o"/>
+                <var name="umeridional_850hPa"     type="real"     dimensions="nCells Time"                 streams="o"/>
+                <var name="w_200hPa"               type="real"     dimensions="nCells Time"                 streams="o"/>
+                <var name="w_500hPa"               type="real"     dimensions="nCells Time"                 streams="o"/>
+                <var name="w_850hPa"               type="real"     dimensions="nCells Time"                 streams="o"/>
+                <var name="vorticity_200hPa"       type="real"     dimensions="nVertices Time"              streams="o"/>
+                <var name="vorticity_500hPa"       type="real"     dimensions="nVertices Time"              streams="o"/>
+                <var name="vorticity_850hPa"       type="real"     dimensions="nVertices Time"              streams="o"/>
         </var_struct>
 
         <var_struct name="tend" time_levs="1">
@@ -405,6 +425,7 @@
                 <nml_option name="config_eddy_scheme"                type="character"     default_value="off"/>
                 <nml_option name="config_lsm_scheme"                 type="character"     default_value="off"/>
                 <nml_option name="config_pbl_scheme"                 type="character"     default_value="off"/>
+                <nml_option name="config_gwdo_scheme"                type="character"     default_value="off"/>
                 <nml_option name="config_radt_cld_scheme"            type="character"     default_value="off"/>
                 <nml_option name="config_radt_lw_scheme"             type="character"     default_value="off"/>
                 <nml_option name="config_radt_sw_scheme"             type="character"     default_value="off"/>
@@ -447,6 +468,10 @@
                 <!-- graupelnc : accumulated grid-scale precipitation of graupel                                  (mm)  -->
                 <!-- graupelncv: time-step grid-scale precipitation of graupel                                    (mm)  -->
                 <!-- sr        : time-step ratio of frozen versus total grid-scale precipitation                   (-)  -->
+                <!-- precipw   : precipitable water                                                            (kg/m2) -->
+                <!-- refl10cm_max: maximum column reflectivity                                                   (dBz) -->
+
+                <var name="refl10cm_max"  type="real"     dimensions="nCells Time"                 streams="ro"/>
 
                 <var name="i_rainnc"      type="integer"  dimensions="nCells Time"                 streams="ro"/>
                 <var name="sr"            type="real"     dimensions="nCells Time"                 streams="ro"/>
@@ -458,6 +483,7 @@
                 <var name="snownc"        type="real"     dimensions="nCells Time"                 streams="ro"/>
                 <var name="graupelnc"     type="real"     dimensions="nCells Time"                 streams="ro"/>
 
+                <var name="precipw"       type="real"     dimensions="nCells Time"                 streams="o"/>
                 <var name="qsat"          type="real"     dimensions="nVertLevels nCells Time"     streams="o"/>
                 <var name="relhum"        type="real"     dimensions="nVertLevels nCells Time"     streams="o"/>
 
@@ -496,6 +522,12 @@
                 <var name="kpbl"          type="integer"  dimensions="nCells Time"                 streams="ro"/>
                 <var name="hpbl"          type="real"     dimensions="nCells Time"                 streams="ro"/>
                 <var name="exch_h"        type="real"     dimensions="nVertLevels nCells Time"     streams="o"/>
+
+                <!-- TEMPORARY: -->
+		<var name="kzh"                               type="real"     dimensions="nVertLevels nCells Time"     streams="o"/>
+		<var name="kzm"                               type="real"     dimensions="nVertLevels nCells Time"     streams="o"/>
+		<var name="kzq"                               type="real"     dimensions="nVertLevels nCells Time"     streams="o"/>
+
 
                 <!-- ================================================================================================== -->
                 <!-- ... PARAMETERIZATION OF SURFACE LAYER PROCESSES:                                                   -->
@@ -570,6 +602,25 @@
                 <var name="q2"            type="real"     dimensions="nCells Time"                 streams="ro"/>
                 <var name="t2m"           type="real"     dimensions="nCells Time"                 streams="ro"/>
                 <var name="th2m"          type="real"     dimensions="nCells Time"                 streams="ro"/>
+
+
+                <!-- ================================================================================================== -->
+                <!-- ... PARAMETERIZATION OF GRAVITY WAVE DRAG OVER OROGRAPHY:                                          -->
+                <!-- ================================================================================================== -->
+
+                <!--  dusfcg     : vertically-integrated gravity wave drag over orography u-stress           (Pa m s-1) -->
+                <!--  dvsfcg     : vertically-integrated gravity wave drag over orography v-stress           (Pa m s-1) -->
+                <!--  dtaux3d    : gravity wave drag over orography u-stress                                    (m s-1) -->
+                <!--  dtauy3d    : gravity wave drag over orography v-stress                                    (m s-1) -->
+
+		<var name="dusfcg"                            type="real"     dimensions="nCells Time"                 streams="ro"/>
+		<var name="dvsfcg"                            type="real"     dimensions="nCells Time"                 streams="ro"/>
+		<var name="dtaux3d"                           type="real"     dimensions="nVertLevels nCells Time"     streams="ro"/>
+		<var name="dtauy3d"                           type="real"     dimensions="nVertLevels nCells Time"     streams="ro"/>
+
+		<var name="rubldiff"                          type="real"     dimensions="nVertLevels nCells Time"     streams="ro"/>
+		<var name="rvbldiff"                          type="real"     dimensions="nVertLevels nCells Time"     streams="ro"/>
+
 
                 <!-- ================================================================================================== -->
                 <!-- ... PARAMETERIZATION OF SHORTWAVE RADIATION:                                                       -->
@@ -750,7 +801,6 @@
                 <!-- noahres        :residual of the noah land-surface scheme energy budget                     [W m-2] -->
                 <!-- potevp         :potential evaporation                                                      [W m-2] -->
                 <!-- qz0            :specific humidity at znt                                                 [kg kg-1] -->
-                <!-- rib            :??                                                                                 -->
                 <!-- sfc_albedo     :surface albedo                                                                 [-] -->
                 <!-- sfc_embck      :background emissivity                                                          [-] -->
                 <!-- sfc_emiss      :surface emissivity                                                             [-] -->
@@ -760,7 +810,8 @@
                 <!-- snopcx         :snow phase change heat flux                                                [W m-2] -->
                 <!-- snotime        :??                                                                                 -->
                 <!-- sstsk          : skin sea-surface temperature                                                  [K] -->
-                <!-- sstsk_diur     : skin sea-surface temperature difference                                       [K] -->
+                <!-- sstsk_dtc      : skin sea-surface temperature cooling                                          [K] -->
+                <!-- sstsk_dtw      : skin sea-surface temperature warming                                          [K] -->
                 <!-- thc            :thermal inertia                                               [Cal cm-1 K-1 s-0.5] -->
                 <!-- udrunoff       :sub-surface runoff                                                         [m s-1] -->
                 <!-- xicem          :ice mask from previous time-step                                               [-] -->
@@ -776,7 +827,6 @@
                 <var name="noahres"       type="real"     dimensions="nCells Time"                 streams="ro"/>
                 <var name="potevp"        type="real"     dimensions="nCells Time"                 streams="ro"/>
                 <var name="qz0"           type="real"     dimensions="nCells Time"                 streams="ro"/>
-                <var name="rib"           type="real"     dimensions="nCells Time"                 streams="ro"/>
                 <var name="sfc_albedo"    type="real"     dimensions="nCells Time"                 streams="ro"/>
                 <var name="sfc_emiss"     type="real"     dimensions="nCells Time"                 streams="ro"/>
                 <var name="sfc_emibck"    type="real"     dimensions="nCells Time"                 streams="ro"/>
@@ -786,7 +836,8 @@
                 <var name="snopcx"        type="real"     dimensions="nCells Time"                 streams="ro"/>
                 <var name="snotime"       type="real"     dimensions="nCells Time"                 streams="ro"/>
                 <var name="sstsk"         type="real"     dimensions="nCells Time"                 streams="ro"/>
-                <var name="sstsk_diur"    type="real"     dimensions="nCells Time"                 streams="ro"/>
+                <var name="sstsk_dtc"     type="real"     dimensions="nCells Time"                 streams="ro"/>
+                <var name="sstsk_dtw"     type="real"     dimensions="nCells Time"                 streams="ro"/>
                 <var name="thc"           type="real"     dimensions="nCells Time"                 streams="ro"/>
                 <var name="udrunoff"      type="real"     dimensions="nCells Time"                 streams="ro"/>
                 <var name="xicem"         type="real"     dimensions="nCells Time"                 streams="ro"/>
@@ -913,5 +964,31 @@
                 <var name="sh2o"        type="real"     dimensions="nSoilLevels nCells Time"     streams="iro"/>
                 <var name="smois"       type="real"     dimensions="nSoilLevels nCells Time"     streams="iro"/>
                 <var name="tslb"        type="real"     dimensions="nSoilLevels nCells Time"     streams="iro"/>
+
+                <!-- ================================================================================================== -->
+                <!-- ... PARAMETERIZATION OF GRAVITY WAVE DRAG OVER OROGRAPHY:                                          -->
+                <!-- ================================================================================================== -->
+
+                <!--  var2d      : orographic variance                                                             (m2) -->
+                <!--  con        : orographic convexity                                                            (m2) -->
+                <!--  oa1        : orographic direction asymmetry function                                          (-) -->
+                <!--  oa2        : orographic direction asymmetry function                                          (-) -->
+                <!--  oa3        : orographic direction asymmetry function                                          (-) -->
+                <!--  oa4        : orographic direction asymmetry function                                          (-) -->
+                <!--  ol1        : orographic direction asymmetry function                                          (-) -->
+                <!--  ol2        : orographic direction asymmetry function                                          (-) -->
+                <!--  ol3        : orographic direction asymmetry function                                          (-) -->
+                <!--  ol4        : orographic direction asymmetry function                                          (-) -->
+
+		<var name="var2d"                             type="real"     dimensions="nCells"                      streams="iro"/>
+		<var name="con"                               type="real"     dimensions="nCells"                      streams="iro"/>
+		<var name="oa1"                               type="real"     dimensions="nCells"                      streams="iro"/>
+		<var name="oa2"                               type="real"     dimensions="nCells"                      streams="iro"/>
+		<var name="oa3"                               type="real"     dimensions="nCells"                      streams="iro"/>
+		<var name="oa4"                               type="real"     dimensions="nCells"                      streams="iro"/>
+		<var name="ol1"                               type="real"     dimensions="nCells"                      streams="iro"/>
+		<var name="ol2"                               type="real"     dimensions="nCells"                      streams="iro"/>
+		<var name="ol3"                               type="real"     dimensions="nCells"                      streams="iro"/>
+		<var name="ol4"                               type="real"     dimensions="nCells"                      streams="iro"/>
         </var_struct>
 </registry>

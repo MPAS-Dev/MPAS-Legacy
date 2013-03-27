@@ -5,6 +5,7 @@
 
  use mpas_atmphys_driver_cloudiness
  use mpas_atmphys_driver_convection_deep
+ use mpas_atmphys_driver_gwdo
  use mpas_atmphys_driver_pbl
  use mpas_atmphys_driver_lsm
  use mpas_atmphys_driver_radiation_sw 
@@ -116,6 +117,14 @@
        call allocate_pbl
        call driver_pbl(block%sfc_input,block%diag_physics,block%tend_physics)
        call deallocate_pbl
+    endif
+
+    !call to gravity wave drag over orography scheme:
+    if(config_gwdo_scheme .ne. 'off') then
+       call allocate_gwdo
+       call driver_gwdo(itimestep,block%mesh,block%sfc_input,block%diag_physics, &
+                        block%tend_physics)
+       call deallocate_gwdo
     endif
 
     !call to convection scheme:

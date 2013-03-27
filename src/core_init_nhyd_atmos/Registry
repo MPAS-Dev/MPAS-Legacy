@@ -140,6 +140,17 @@ var persistent real    greenfrac   ( nMonths nCells ) 0 io greenfrac mesh - -
 var persistent real    shdmin      ( nCells ) 0 io shdmin mesh - -
 var persistent real    shdmax      ( nCells ) 0 io shdmax mesh - -
 var persistent real    albedo12m   ( nMonths nCells ) 0 io albedo12m mesh - -
+var persistent real    varsso      ( nCells ) 0 io varsso  mesh - -
+var persistent real    var2d       ( nCells ) 0 io var2d   mesh - -
+var persistent real    con         ( nCells ) 0 io con     mesh - -
+var persistent real    oa1         ( nCells ) 0 io oa1     mesh - -
+var persistent real    oa2         ( nCells ) 0 io oa2     mesh - -
+var persistent real    oa3         ( nCells ) 0 io oa3     mesh - -
+var persistent real    oa4         ( nCells ) 0 io oa4     mesh - -
+var persistent real    ol1         ( nCells ) 0 io ol1     mesh - -
+var persistent real    ol2         ( nCells ) 0 io ol2     mesh - -
+var persistent real    ol3         ( nCells ) 0 io ol3     mesh - -
+var persistent real    ol4         ( nCells ) 0 io ol4     mesh - -
 
 % description of the vertical grid structure
 
@@ -162,10 +173,10 @@ var persistent real    dss ( nVertLevels nCells ) 0 io dss mesh - -
 % Horizontally interpolated from first-guess data
 var persistent real    u_fg ( nFGLevels nEdges Time ) 1 - u fg - -
 var persistent real    v_fg ( nFGLevels nEdges Time ) 1 - v fg - -
-var persistent real    t_fg ( nFGLevels nCells Time ) 1 - t fg - -
-var persistent real    p_fg ( nFGLevels nCells Time ) 1 - p fg - -
-var persistent real    z_fg ( nFGLevels nCells Time ) 1 - z fg - -
-var persistent real    rh_fg ( nFGLevels nCells Time ) 1 - rh fg - -
+var persistent real    t_fg ( nFGLevels nCells Time ) 1 o t fg - -
+var persistent real    p_fg ( nFGLevels nCells Time ) 1 o p fg - -
+var persistent real    z_fg ( nFGLevels nCells Time ) 1 o z fg - -
+var persistent real    rh_fg ( nFGLevels nCells Time ) 1 o rh fg - -
 var persistent real    soilz_fg ( nCells Time ) 1 io soilz fg - -
 var persistent real    psfc_fg ( nCells Time ) 1 - psfc fg - -
 var persistent real    pmsl_fg ( nCells Time ) 1 - pmsl fg - -
@@ -216,6 +227,8 @@ var persistent real    t_init ( nVertLevels nCells ) 0 io t_init mesh - -
 var persistent real    qv_init ( nVertLevels ) 0 io qv_init mesh - -
 
 % Diagnostic fields: only written to output
+var persistent real    precipw ( nCells Time ) 1 o precipw diag_physics - -
+var persistent real    rh ( nVertLevels nCells Time ) 1 o rh diag - -
 var persistent real    rho ( nVertLevels nCells Time ) 1 o rho diag - -
 var persistent real    theta ( nVertLevels nCells Time ) 1 o theta diag - -
 var persistent real    v ( nVertLevels nEdges Time ) 1 o v diag - -

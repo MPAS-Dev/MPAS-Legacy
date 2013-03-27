@@ -6,6 +6,8 @@ endif
 ifeq ($(CORE),nhyd_atmos)
 COREDEF = -Dnon_hydrostatic_core 
 endif
+HYDROSTATIC = -Ddo_hydrostatic_pressure
+#HYDROSTATIC =
 
 dummy:
 	echo "****** make non-hydrostatic core ******"
@@ -17,16 +19,17 @@ OBJS_init = \
 OBJS = \
 	mpas_atmphys_driver_cloudiness.o      \
 	mpas_atmphys_driver_convection_deep.o \
+	mpas_atmphys_driver_gwdo.o            \
 	mpas_atmphys_driver_lsm.o             \
 	mpas_atmphys_driver_microphysics.o    \
 	mpas_atmphys_driver_radiation_lw.o    \
 	mpas_atmphys_driver_radiation_sw.o    \
 	mpas_atmphys_driver_sfclayer.o        \
 	mpas_atmphys_driver_pbl.o             \
+	mpas_atmphys_driver.o                 \
 	mpas_atmphys_camrad_init.o            \
 	mpas_atmphys_control.o                \
 	mpas_atmphys_date_time.o              \
-	mpas_atmphys_driver.o                 \
 	mpas_atmphys_init.o                   \
 	mpas_atmphys_landuse.o                \
 	mpas_atmphys_lsm_noahinit.o           \
@@ -72,6 +75,10 @@ mpas_atmphys_driver_convection_deep.o: \
 	mpas_atmphys_vars.o                 \
 	./physics_wrf/module_cu_kfeta.o     \
 	./physics_wrf/module_cu_tiedtke.o
+
+mpas_atmphys_driver_gwdo.o: \
+	mpas_atmphys_vars.o                 \
+	./physics_wrf/module_bl_gwdo.o
 
 mpas_atmphys_driver_lsm.o: \
 	mpas_atmphys_constants.o            \
@@ -203,6 +210,7 @@ mpas_atmphys_driver_microphysics.o: \
 
 mpas_atmphys_driver.o: \
 	mpas_atmphys_driver_convection_deep.o \
+	mpas_atmphys_driver_gwdo.o            \
 	mpas_atmphys_driver_pbl.o             \
 	mpas_atmphys_driver_radiation_lw.o    \
 	mpas_atmphys_driver_radiation_sw.o    \
@@ -225,5 +233,5 @@ clean:
 
 .F.o:
 	$(RM) $@ $*.mod
-	$(CPP) $(CPPFLAGS) $(COREDEF) $(CPPINCLUDES)  -DIWORDSIZE=4 -DRWORDSIZE=8 $< > $*.f90
+	$(CPP) $(CPPFLAGS) $(COREDEF) $(HYDROSTATIC) $(CPPINCLUDES)  -DIWORDSIZE=4 -DRWORDSIZE=8 $< > $*.f90
 	$(FC) $(FFLAGS) -c $*.f90 $(FCINCLUDES) -I../framework -I../operators -I./physics_wrf -I./physics_eaung -I../external/esmf_time_f90

@@ -1,4 +1,4 @@
-!=============================================================================================
+!==================================================================================================
  module mpas_atmphys_driver_sfclayer
  use mpas_grid_types
 
@@ -17,15 +17,17 @@
 
  integer,parameter,private:: isfflx   = 1        !=1 for surface heat and moisture fluxes.
  integer,parameter,private:: isftcflx = 0        !=0,(Charnock and Carlson-Boland).
- integer,parameter,private:: iz0tlnd  = 0        !=0,(Carlson-Boland)
+ integer,parameter,private:: iz0tlnd  = 0        !=0,(Carlson-Boland).
+ integer,parameter,private:: scm_force_flux = 0  !SCM surface forcing by surface fluxes.
+                                                 !0=no 1=yes (WRF single column model option only).
 
  integer,private:: i,j
 
  contains
 
-!=============================================================================================
+!==================================================================================================
  subroutine allocate_sfclayer
-!=============================================================================================
+!==================================================================================================
 
  if(.not.allocated(area_p)   ) allocate(area_p(ims:ime,jms:jme)   )
  if(.not.allocated(br_p)     ) allocate(br_p(ims:ime,jms:jme)     )
@@ -33,13 +35,15 @@
  if(.not.allocated(cda_p)    ) allocate(cda_p(ims:ime,jms:jme)    )
  if(.not.allocated(chs_p)    ) allocate(chs_p(ims:ime,jms:jme)    )
  if(.not.allocated(chs2_p)   ) allocate(chs2_p(ims:ime,jms:jme)   )
- if(.not.allocated(cpm_p)    ) allocate(cpm_p(ims:ime,jms:jme)    )
- if(.not.allocated(cqs2_p)   ) allocate(cqs2_p(ims:ime,jms:jme)   )
  if(.not.allocated(ck_p)     ) allocate(ck_p(ims:ime,jms:jme)     )
  if(.not.allocated(cka_p)    ) allocate(cka_p(ims:ime,jms:jme)    )
+ if(.not.allocated(cpm_p)    ) allocate(cpm_p(ims:ime,jms:jme)    )
+ if(.not.allocated(cqs2_p)   ) allocate(cqs2_p(ims:ime,jms:jme)   )
  if(.not.allocated(gz1oz0_p) ) allocate(gz1oz0_p(ims:ime,jms:jme) )
  if(.not.allocated(flhc_p)   ) allocate(flhc_p(ims:ime,jms:jme)   )
  if(.not.allocated(flqc_p)   ) allocate(flqc_p(ims:ime,jms:jme)   )
+ if(.not.allocated(fh_p)     ) allocate(fh_p(ims:ime,jms:jme)     )
+ if(.not.allocated(fm_p)     ) allocate(fm_p(ims:ime,jms:jme)     )
  if(.not.allocated(hfx_p)    ) allocate(hfx_p(ims:ime,jms:jme)    )
  if(.not.allocated(hpbl_p)   ) allocate(hpbl_p(ims:ime,jms:jme)   )
  if(.not.allocated(lh_p)     ) allocate(lh_p(ims:ime,jms:jme)     )
@@ -67,9 +71,9 @@
 
  end subroutine allocate_sfclayer
 
-!=============================================================================================
+!==================================================================================================
  subroutine deallocate_sfclayer
-!=============================================================================================
+!==================================================================================================
 
  if(allocated(area_p)   ) deallocate(area_p   )
  if(allocated(br_p)     ) deallocate(br_p     )
@@ -77,13 +81,15 @@
  if(allocated(cda_p)    ) deallocate(cda_p    )
  if(allocated(chs_p)    ) deallocate(chs_p    )
  if(allocated(chs2_p)   ) deallocate(chs2_p   )
- if(allocated(cpm_p)    ) deallocate(cpm_p    )
- if(allocated(cqs2_p)   ) deallocate(cqs2_p   )
  if(allocated(ck_p)     ) deallocate(ck_p     )
  if(allocated(cka_p)    ) deallocate(cka_p    )
+ if(allocated(cpm_p)    ) deallocate(cpm_p    )
+ if(allocated(cqs2_p)   ) deallocate(cqs2_p   )
  if(allocated(gz1oz0_p) ) deallocate(gz1oz0_p )
  if(allocated(flhc_p)   ) deallocate(flhc_p   )
  if(allocated(flqc_p)   ) deallocate(flqc_p   )
+ if(allocated(fh_p)     ) deallocate(fh_p     )
+ if(allocated(fm_p)     ) deallocate(fm_p     )
  if(allocated(hfx_p)    ) deallocate(hfx_p    )
  if(allocated(hpbl_p)   ) deallocate(hpbl_p   )
  if(allocated(lh_p)     ) deallocate(lh_p     )
@@ -111,16 +117,16 @@
 
  end subroutine deallocate_sfclayer
 
-!=============================================================================================
+!==================================================================================================
  subroutine sfclayer_from_MPAS(mesh,diag_physics,sfc_input)
-!=============================================================================================
+!==================================================================================================
 
 !input arguments:
  type(mesh_type),intent(in):: mesh
  type(sfc_input_type),intent(in):: sfc_input
  type(diag_physics_type),intent(inout):: diag_physics
 
-!---------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 
  do j = jts,jte
  do i = its,ite
@@ -135,59 +141,52 @@
     qfx_p(i,j)    = diag_physics % qfx    % array(i)
     qsfc_p(i,j)   = diag_physics % qsfc   % array(i) 
     mol_p(i,j)    = diag_physics % mol    % array(i) 
+    regime_p(i,j) = diag_physics % regime % array(i)
     ust_p(i,j)    = diag_physics % ust    % array(i)
-    ustm_p(i,j)   = diag_physics % ustm   % array(i)
     znt_p(i,j)    = diag_physics % znt    % array(i) 
     zol_p(i,j)    = diag_physics % zol    % array(i) 
     !output variables:
-    br_p(i,j)     = 0.
+    br_p(i,j)     = 0._RKIND
     cpm_p(i,j)    = cp
-    cd_p(i,j)     = 0.
-    cda_p(i,j)    = 0.
-    chs_p(i,j)    = 0.
-    chs2_p(i,j)   = 0.
-    ck_p(i,j)     = 0.
-    cka_p(i,j)    = 0.
-    cqs2_p(i,j)   = 0.
-    flhc_p(i,j)   = 0.
-    flqc_p(i,j)   = 0.
-    gz1oz0_p(i,j) = 0.
-    lh_p(i,j)     = 0.
-    psim_p(i,j)   = 0. 
-    psih_p(i,j)   = 0.
-    qgh_p(i,j)    = 0.
-    regime_p(i,j) = 0.
-    rmol_p(i,j)   = 0.
-    wspd_p(i,j)   = 0.
-    q2_p(i,j)     = 0.
-    t2m_p(i,j)    = 0.
-    th2m_p(i,j)   = 0.
-    u10_p(i,j)    = 0.
-    v10_p(i,j)    = 0.
+    chs_p(i,j)    = 0._RKIND
+    chs2_p(i,j)   = 0._RKIND
+    cqs2_p(i,j)   = 0._RKIND
+    flhc_p(i,j)   = 0._RKIND
+    flqc_p(i,j)   = 0._RKIND
+    fh_p(i,j)     = 0._RKIND
+    fm_p(i,j)     = 0._RKIND
+    gz1oz0_p(i,j) = 0._RKIND
+    lh_p(i,j)     = 0._RKIND
+    psim_p(i,j)   = 0._RKIND
+    psih_p(i,j)   = 0._RKIND
+    qgh_p(i,j)    = 0._RKIND
+    rmol_p(i,j)   = 0._RKIND
+    wspd_p(i,j)   = 0._RKIND
+    q2_p(i,j)     = 0._RKIND
+    t2m_p(i,j)    = 0._RKIND
+    th2m_p(i,j)   = 0._RKIND
+    u10_p(i,j)    = 0._RKIND
+    v10_p(i,j)    = 0._RKIND
  enddo
  enddo
 
  end subroutine sfclayer_from_MPAS
 
-!=============================================================================================
+!==================================================================================================
  subroutine sfclayer_to_MPAS(diag_physics)
-!=============================================================================================
+!==================================================================================================
 
 !inout arguments:
  type(diag_physics_type),intent(inout):: diag_physics
 
-!---------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 
  do j = jts,jte
  do i = its,ite
     diag_physics % br     % array(i) = br_p(i,j)
     diag_physics % cpm    % array(i) = cpm_p(i,j)
-    diag_physics % cd     % array(i) = cd_p(i,j)
-    diag_physics % cda    % array(i) = cda_p(i,j)
     diag_physics % chs    % array(i) = chs_p(i,j)
     diag_physics % chs2   % array(i) = chs2_p(i,j)
-    diag_physics % ck     % array(i) = ck_p(i,j)
-    diag_physics % cka    % array(i) = cka_p(i,j)
     diag_physics % cqs2   % array(i) = cqs2_p(i,j)
     diag_physics % flhc   % array(i) = flhc_p(i,j)
     diag_physics % flqc   % array(i) = flqc_p(i,j)
@@ -203,7 +202,6 @@
     diag_physics % regime % array(i) = regime_p(i,j)
     diag_physics % rmol   % array(i) = rmol_p(i,j)
     diag_physics % ust    % array(i) = ust_p(i,j)
-    diag_physics % ustm   % array(i) = ustm_p(i,j)
     diag_physics % wspd   % array(i) = wspd_p(i,j)
     diag_physics % zol    % array(i) = zol_p(i,j)
     diag_physics % znt    % array(i) = znt_p(i,j)
@@ -218,14 +216,14 @@
 
  end subroutine sfclayer_to_MPAS
 
-!=============================================================================================
+!==================================================================================================
  subroutine init_sfclayer
-!=============================================================================================
+!==================================================================================================
 
 !local variables:
  logical:: allowed_to_read
 
-!---------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
  write(0,*)
  write(0,*) '--- enter sfclayer_initialization:'
  sfclayer_select: select case (trim(sfclayer_scheme))
@@ -242,9 +240,9 @@
 
  end subroutine init_sfclayer
 
-!=============================================================================================
+!==================================================================================================
  subroutine driver_sfclayer(mesh,diag_physics,sfc_input)
-!=============================================================================================
+!==================================================================================================
 
 !input and inout arguments:
 !--------------------------
@@ -256,7 +254,7 @@
 !----------------
  real(kind=RKIND):: dx
 
-!---------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
  write(0,*)
  write(0,*) '--- enter subroutine driver_sfclayer:'
 
@@ -267,32 +265,67 @@
 
     case("monin_obukhov")
        dx = sqrt(maxval(mesh % areaCell % array))
+#if defined(do_hydrostatic_pressure)
+!... REARRANGED CALL USING HYDROSTATIC PRESSURE:
        call sfclay( &
-                   u3d      = u_p      , v3d     = v_p      , t3d      = t_p     , &
-                   qv3d     = qv_p     , p3d     = pres_p   , dz8w     = dz_p    , &
-                   cp       = cp       , g       = g        , rovcp    = rcp     , &
-                   R        = R_d      , xlv     = xlv      , psfc     = psfc_p  , &
-                   chs      = chs_p    , chs2    = chs2_p   , cqs2     = cqs2_p  , &
-                   cpm      = cpm_p    , znt     = znt_p    , ust      = ust_p   , &
-                   pblh     = hpbl_p   , mavail  = mavail_p , zol      = zol_p   , &
-                   mol      = mol_p    , regime  = regime_p , psim     = psim_p  , &
-                   psih     = psih_p   , xland   = xland_p  , hfx      = hfx_p   , &
-                   qfx      = qfx_p    , lh      = lh_p     , tsk      = tsk_p   , &
-                   flhc     = flhc_p   , flqc    = flqc_p   , qgh      = qgh_p   , &
-                   qsfc     = qsfc_p   , rmol    = rmol_p   , u10      = u10_p   , &
-                   v10      = v10_p    , th2     = th2m_p   , t2       = t2m_p   , &
-                   q2       = q2_p     , gz1oz0  = gz1oz0_p , wspd     = wspd_p  , &
-                   br       = br_p     , isfflx  = isfflx   , dx       = dx      , &
-                   svp1     = svp1     , svp2    = svp2     , svp3     = svp3    , &
-                   svpt0    = svpt0    , ep1     = ep_1     , ep2      = ep_2    , &
-                   karman   = karman   , eomeg   = eomeg    , stbolt   = stbolt  , &
-                   P1000mb  = P0       , ustm    = ustm_p   , ck       = ck_p    , &
-                   cka      = cka_p    , cd      = cd_p     , cda      = cda_p   , &
-                   isftcflx = isftcflx , iz0tlnd = iz0tlnd  , areaCell = area_p  , & 
+                   p3d      = pres_hyd_p , psfc     = psfc_p     , t3d      = t_p        , &
+                   u3d      = u_p        , v3d      = v_p        , qv3d     = qv_p       , &
+                   dz8w     = dz_p       , cp       = cp         , g        = g          , &
+                   rovcp    = rcp        , R        = R_d        , xlv      = xlv        , & 
+                   chs      = chs_p      , chs2     = chs2_p     , cqs2     = cqs2_p     , &
+                   cpm      = cpm_p      , znt      = znt_p      , ust      = ust_p      , &
+                   pblh     = hpbl_p     , mavail   = mavail_p   , zol      = zol_p      , &
+                   mol      = mol_p      , regime   = regime_p   , psim     = psim_p     , &
+                   psih     = psih_p     , fm       = fm_p       , fh       = fh_p       , &
+                   xland    = xland_p    , hfx      = hfx_p      , qfx      = qfx_p      , &
+                   lh       = lh_p       , tsk      = tsk_p      , flhc     = flhc_p     , &
+                   flqc     = flqc_p     , qgh      = qgh_p      , qsfc     = qsfc_p     , &
+                   rmol     = rmol_p     , u10      = u10_p      , v10      = v10_p      , &
+                   th2      = th2m_p     , t2       = t2m_p      , q2       = q2_p       , &
+                   gz1oz0   = gz1oz0_p   , wspd     = wspd_p     , br       = br_p       , &
+                   isfflx   = isfflx     , dx       = dx         , svp1     = svp1       , &
+                   svp2     = svp2       , svp3     = svp3       , svpt0    = svpt0      , &
+                   ep1      = ep_1       , ep2      = ep_2       , karman   = karman     , &
+                   eomeg    = eomeg      , stbolt   = stbolt     , P1000mb  = P0         , &
+                   areaCell = area_p     , ustm     = ustm_p     , ck       = ck_p       , & 
+                   cka      = cka_p      , cd       = cd_p       , cda      = cda_p      , & 
+                   isftcflx = isftcflx   , iz0tlnd  = iz0tlnd    ,                         &
+                   scm_force_flux = scm_force_flux               ,                         & 
                    ids = ids , ide = ide , jds = jds , jde = jde , kds = kds , kde = kde , &
                    ims = ims , ime = ime , jms = jms , jme = jme , kms = kms , kme = kme , &
                    its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte   &
                  )
+#else
+!... REARRANGED CALL:
+       call sfclay( &
+                   p3d      = pres_p     , psfc     = psfc_p     , t3d      = t_p        , &
+                   u3d      = u_p        , v3d      = v_p        , qv3d     = qv_p       , &
+                   dz8w     = dz_p       , cp       = cp         , g        = g          , &
+                   rovcp    = rcp        , R        = R_d        , xlv      = xlv        , & 
+                   chs      = chs_p      , chs2     = chs2_p     , cqs2     = cqs2_p     , &
+                   cpm      = cpm_p      , znt      = znt_p      , ust      = ust_p      , &
+                   pblh     = hpbl_p     , mavail   = mavail_p   , zol      = zol_p      , &
+                   mol      = mol_p      , regime   = regime_p   , psim     = psim_p     , &
+                   psih     = psih_p     , fm       = fm_p       , fh       = fh_p       , &
+                   xland    = xland_p    , hfx      = hfx_p      , qfx      = qfx_p      , &
+                   lh       = lh_p       , tsk      = tsk_p      , flhc     = flhc_p     , &
+                   flqc     = flqc_p     , qgh      = qgh_p      , qsfc     = qsfc_p     , &
+                   rmol     = rmol_p     , u10      = u10_p      , v10      = v10_p      , &
+                   th2      = th2m_p     , t2       = t2m_p      , q2       = q2_p       , &
+                   gz1oz0   = gz1oz0_p   , wspd     = wspd_p     , br       = br_p       , &
+                   isfflx   = isfflx     , dx       = dx         , svp1     = svp1       , &
+                   svp2     = svp2       , svp3     = svp3       , svpt0    = svpt0      , &
+                   ep1      = ep_1       , ep2      = ep_2       , karman   = karman     , &
+                   eomeg    = eomeg      , stbolt   = stbolt     , P1000mb  = P0         , &
+                   areaCell = area_p     , ustm     = ustm_p     , ck       = ck_p       , & 
+                   cka      = cka_p      , cd       = cd_p       , cda      = cda_p      , & 
+                   isftcflx = isftcflx   , iz0tlnd  = iz0tlnd    ,                         &
+                   scm_force_flux = scm_force_flux               ,                         & 
+                   ids = ids , ide = ide , jds = jds , jde = jde , kds = kds , kde = kde , &
+                   ims = ims , ime = ime , jms = jms , jme = jme , kms = kms , kme = kme , &
+                   its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte   &
+                 )
+#endif
         
     case default
 
@@ -305,6 +338,6 @@
 
  end subroutine driver_sfclayer
 
-!=============================================================================================
+!==================================================================================================
  end module mpas_atmphys_driver_sfclayer
-!=============================================================================================
+!==================================================================================================

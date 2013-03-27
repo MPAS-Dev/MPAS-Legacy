@@ -1,4 +1,4 @@
-!WRf:model_layer:physics
+!WRF:model_layer:physics
 !
 !
 !
@@ -19,15 +19,21 @@ contains
                   dz8w,psfc,                                                   &
                   znu,znw,mut,p_top,                                           &
                   znt,ust,hpbl,psim,psih,                                      &
-                  xland,hfx,qfx,gz1oz0,wspd,br,                                &
+                  xland,hfx,qfx,wspd,br,                                       &
                   dt,kpbl2d,                                                   &
                   exch_h,                                                      &
                   u10,v10,                                                     &
+                  ctopo,ctopo2,                                                &
                   ids,ide, jds,jde, kds,kde,                                   &
                   ims,ime, jms,jme, kms,kme,                                   &
                   its,ite, jts,jte, kts,kte,                                   &
                 !optional
-                  regime                                           )
+                  regime                                                       &
+#if defined(non_hydrostatic_core) || defined(hydrostatic_core)
+                !MPAS specific optional arguments for additional diagnostics:
+                  ,rho,kzhout,kzmout,kzqout                                    &
+#endif
+                 )
 !-------------------------------------------------------------------
       implicit none
 !-------------------------------------------------------------------
@@ -72,7 +78,6 @@ contains
 !-- xland	land mask (1 for land, 2 for water)
 !-- hfx		upward heat flux at the surface (w/m^2)
 !-- qfx		upward moisture flux at the surface (kg/m^2/s)
-!-- gz1oz0      log(z/z0) where z0 is roughness length
 !-- wspd        wind speed at lowest model level (m/s)
 !-- u10         u-wind speed at 10 m (m/s)
 !-- v10         v-wind speed at 10 m (m/s)
@@ -115,40 +120,39 @@ contains
 !
    real,     dimension( ims:ime, kms:kme, jms:jme )                          , &
              intent(in   )   ::                                          qv3d, &
-                                         			         qc3d, &
- 				                                         qi3d, &
-                                   		                          p3d, &
-            		                                                 pi3d, &
-		                      	                                 th3d, &
-		                                		          t3d, &
-				                                         dz8w
+                                                                         qc3d, &
+                                                                         qi3d, &
+                                                                          p3d, &
+                                                                         pi3d, &
+                                                                         th3d, &
+                                                                          t3d, &
+                                                                         dz8w
    real,     dimension( ims:ime, kms:kme, jms:jme )                          , &
              intent(in   )   ::                                          p3di
 !
    real,     dimension( ims:ime, kms:kme, jms:jme )                          , &
              intent(inout)   ::                                       rublten, &
-                                              			      rvblten, &
-                                               			     rthblten, &
-                                                 	             rqvblten, &
+                                                                      rvblten, &
+                                                                     rthblten, &
+                                                                     rqvblten, &
                                                                      rqcblten
 !
    real,     dimension( ims:ime, kms:kme, jms:jme )                          , &
              intent(inout)   ::                                        exch_h
    real,     dimension( ims:ime, jms:jme )                                   , &
-             intent(in   )   ::                                           u10, &
+             intent(inout)   ::                                           u10, &
                                                                           v10
 !
    real,     dimension( ims:ime, jms:jme )                                   , &
              intent(in   )   ::                                         xland, &
-     			                                                  hfx, &
+                                                                          hfx, &
                                                                           qfx, &
                                                                            br, &
                                                                          psfc
    real,     dimension( ims:ime, jms:jme )                                   , &
              intent(in   )   ::                                                &
                                                                          psim, &
-                                                                         psih, &
-                                                                       gz1oz0
+                                                                         psih
    real,     dimension( ims:ime, jms:jme )                                   , &
              intent(inout)   ::                                           znt, &
                                                                           ust, &
@@ -182,6 +186,10 @@ contains
 !
    real,     optional, intent(in   )   ::                               p_top
 !
+   real,     dimension( ims:ime, jms:jme )                                   , &
+             optional                                                        , &
+             intent(in   )   ::                                         ctopo, &
+                                                                       ctopo2
 !local
    integer ::  i,j,k
    real,     dimension( its:ite, kts:kte*ndiff )  ::                 rqvbl2dt, &
@@ -193,6 +201,23 @@ contains
                                                                         dvsfc, &
                                                                         dtsfc, &
                                                                         dqsfc
+#if defined(non_hydrostatic_core) || defined(hydrostatic_core)
+!MPAS specific optional arguments for additional diagnostics (Laura Fowler = 2013-03-06):
+   real,intent(in),dimension(ims:ime,kms:kme,jms:jme),optional:: rho
+   real:: rho_d
+   real,intent(out),dimension(ims:ime,kms:kme,jms:jme),optional:: kzhout,kzmout,kzqout
+   do j = jts,jte
+   do k = kts,kte
+   do i = its,ite
+      kzhout(i,k,j) = 0.
+      kzmout(i,k,j) = 0.
+      kzqout(i,k,j) = 0.
+   enddo
+   enddo
+   enddo
+!MPAS specific end.
+#endif
+
 !
    qv2d(:,:) = 0.0
    do j = jts,jte
@@ -204,6 +229,26 @@ contains
              pdhi(i,k) = mut(i,j)*znw(k) + p_top
           enddo
         enddo
+      elseif(present(rho)) then
+  203 format(1x,i4,1x,i2,10(1x,e15.8))
+!For MPAS, we replace the hydrostatic pressures defined at theta and w points by
+!the dry hydrostatic pressures (Laura D. Fowler):
+        k = kte+1
+        do i = its,ite
+           pdhi(i,k) = p3di(i,k,j)
+        enddo
+        do k = kte,kts,-1
+        do i = its,ite
+           rho_d = rho(i,k,j) / (1. + qv3d(i,k,j))
+           if(k.le.kte) pdhi(i,k) = pdhi(i,k+1) + g*rho_d*dz8w(i,k,j)
+        enddo
+        enddo
+        do k = kts,kte
+        do i = its,ite
+           pdh(i,k) = 0.5*(pdhi(i,k) + pdhi(i,k+1))
+        enddo
+        enddo
+!MPAS specific end.
       else
         do k = kts,kte+1
           do i = its,ite
@@ -241,7 +286,15 @@ contains
               ,dt=dt,rcl=1.0,kpbl1d=kpbl2d(ims,j)                              &
               ,exch_hx=exch_h(ims,kms,j)                                       &
               ,u10=u10(ims,j),v10=v10(ims,j)                                   &
-              ,gz1oz0=gz1oz0(ims,j)                                            &
+#if defined(non_hydrostatic_core) || defined(hydrostatic_core)
+!MPAS specific optional arguments for additional diagnostics:
+              ,kzh=kzhout(ims,kms,j)                                           & 
+              ,kzm=kzmout(ims,kms,j)                                           &
+              ,kzq=kzqout(ims,kms,j)                                           &
+#endif
+#if ( ! NMM_CORE == 1 )
+              ,ctopo=ctopo(ims,j),ctopo2=ctopo2(ims,j)                         &
+#endif
               ,ids=ids,ide=ide, jds=jds,jde=jde, kds=kds,kde=kde               &
               ,ims=ims,ime=ime, jms=jms,jme=jme, kms=kms,kme=kme               &
               ,its=its,ite=ite, jts=jts,jte=jte, kts=kts,kte=kte   )
@@ -270,12 +323,17 @@ contains
                   dt,rcl,kpbl1d,                                               &
                   exch_hx,                                                     &
                   u10,v10,                                                     &
-                  gz1oz0,                                                      &
+                  ctopo,ctopo2,                                                &
                   ids,ide, jds,jde, kds,kde,                                   &
                   ims,ime, jms,jme, kms,kme,                                   &
                   its,ite, jts,jte, kts,kte,                                   &
                 !optional
-                  regime                                           )
+                  regime                                                       &
+#if defined(non_hydrostatic_core) || defined(hydrostatic_core)
+                !MPAS specific optional arguments for additional diagnostics:
+                 ,kzh,kzm,kzq                                                  &
+#endif
+                   )
 !-------------------------------------------------------------------
    implicit none
 !-------------------------------------------------------------------
@@ -307,11 +365,21 @@ contains
 !              pressure-level diffusion, april 2009
 !               ==> negligible differences
 !              implicit forcing for momentum with clean up, july 2009
-!               ==> prevents model blownup when sfc layer is too low
-!              increase of lamda, 30 < 0.1 x del z < 300, feb 2010
+!               ==> prevents model blowup when sfc layer is too low
+!              incresea of lamda, maximum (30, 0.1 x del z) feb 2010
 !               ==> prevents model blowup when delz is extremely large
 !              revised prandtl number at surface, peggy lemone, feb 2010
 !               ==> increase kh, decrease mixing due to counter-gradient term
+!              revised thermal, shin et al. mon. wea. rev. , songyou hong, aug 2011
+!               ==> reduce the thermal strength when z1 < 0.1 h  
+!              revised prandtl number for free convection, dudhia, mar 2012
+!               ==> pr0 = 1 + bke (=0.272) when newtral, kh is reduced
+!              minimum kzo = 0.01, lo = min (30m,delz), hong, mar 2012
+!               ==> weaker mixing when stable, and les resolution in vertical
+!              gz1oz0 is removed, and phim phih are ln(z1/z0)-phim,h, hong, mar 2012
+!               ==> consider thermal z0 when differs from mechanical z0
+!              a bug fix in wscale computation in stable bl, sukanta basu, jun 2012
+!               ==> wscale becomes small with height, and less mixing in stable bl
 !
 !     references:
 !
@@ -324,7 +392,8 @@ contains
 !-------------------------------------------------------------------
 !
    real,parameter    ::  xkzmin = 0.01,xkzmax = 1000.,rimin = -100.
-   real,parameter    ::  rlam = 30.,prmin = 0.25,prmax = 4.
+   real,parameter    ::  rlam = 150.,prmin = 0.25,prmax = 4.
+!  real,parameter    ::  rlam = 30.,prmin = 0.25,prmax = 4.
    real,parameter    ::  brcr_ub = 0.0,brcr_sb = 0.25,cori = 1.e-4
    real,parameter    ::  afac = 6.8,bfac = 6.8,pfac = 2.0,pfac_q = 2.0
    real,parameter    ::  phifac = 8.,sfcfrac = 0.1
@@ -382,7 +451,7 @@ contains
 !
    real,     dimension( ims:ime ), intent(in   )   ::                    psim, &
                                                                          psih
-   real,     dimension( ims:ime ), intent(in   )   ::                  gz1oz0
+
 !
    real,     dimension( ims:ime ), intent(in   )   ::                  psfcpa
    integer,  dimension( ims:ime ), intent(out  )   ::                  kpbl1d
@@ -390,7 +459,10 @@ contains
    real,     dimension( ims:ime, kms:kme )                                   , &
              intent(in   )   ::                                            ux, &
                                                                            vx
-!optional
+   real,     dimension( ims:ime )                                            , &
+             optional                                                        , &
+             intent(in   )   ::                                         ctopo, &
+                                                                       ctopo2
    real,     dimension( ims:ime )                                            , &
              optional                                                        , &
              intent(inout)   ::                                        regime
@@ -400,29 +472,30 @@ contains
    real,     dimension( its:ite )            ::                           hol
    real,     dimension( its:ite, kts:kte+1 ) ::                            zq
 !
-   real,     dimension( its:ite, kts:kte )   ::                        	       &
+   real,     dimension( its:ite, kts:kte )   ::                                &
                                                                      thx,thvx, &
                                                                           del, &
                                                                           dza, &
                                                                           dzq, &
+                                                                         xkzo, &
                                                                            za
 !
    real,    dimension( its:ite )             ::                                &
                                                                          rhox, &
                                                                        govrth, &
                                                                   zl1,thermal, &
-                                                                 wscale,hgamt, &
-                                                                   hgamq,brdn, &
-                                                                    brup,phim, &
-                                                                         phih, &
+                                                                       wscale, &
+                                                                  hgamt,hgamq, &
+                                                                    brdn,brup, &
+                                                                    phim,phih, &
                                                                   dusfc,dvsfc, &
                                                                   dtsfc,dqsfc, &
                                                                         prpbl, &
                                                                         wspd1
 !
    real,    dimension( its:ite, kts:kte )    ::                     xkzm,xkzh, &
-                                                     		        f1,f2, &
-                                                     		        r1,r2, &
+                                                                        f1,f2, &
+                                                                        r1,r2, &
                                                                         ad,au, &
                                                                            cu, &
                                                                            al, &
@@ -433,8 +506,8 @@ contains
    real,    dimension( ims:ime, kms:kme )                                    , &
             intent(inout)   ::                                        exch_hx
 !
-   real,    dimension( ims:ime )                                             , & 
-            intent(in  )    ::                                            u10, &
+   real,    dimension( ims:ime )                                             , &
+            intent(inout)    ::                                           u10, &
                                                                           v10
    real,    dimension( its:ite )    ::                                         &
                                                                          brcr, &
@@ -453,14 +526,15 @@ contains
 !
 !
    real    ::  dt2,rdt,spdk2,fm,fh,hol1,gamfac,vpert,prnum,prnum0
-   real    ::  xkzo,ss,ri,qmean,tmean,alph,chi,zk,rl2,dk,sri
+   real    ::  ss,ri,qmean,tmean,alph,chi,zk,rl2,dk,sri
    real    ::  brint,dtodsd,dtodsu,rdz,dsdzt,dsdzq,dsdz2,rlamdz
    real    ::  utend,vtend,ttend,qtend
    real    ::  dtstep,govrthv
    real    ::  cont, conq, conw, conwrc 
 !
-   real, dimension( its:ite, kts:kte )     ::                         wscalek, &
-                                                                  xkzml,xkzhl, &
+   real, dimension( its:ite, kts:kte )     ::                         wscalek
+   real, dimension( its:ite )              ::                         delta
+   real, dimension( its:ite, kts:kte )     ::                     xkzml,xkzhl, &
                                                                zfacent,entfac
    real, dimension( its:ite )              ::                            ust3, &
                                                                  wstar3,wstar, &
@@ -469,10 +543,18 @@ contains
                                                                        bfxpbl, &
                                                                 hfxpbl,qfxpbl, &
                                                                 ufxpbl,vfxpbl, &
-                                                                  delta,dthvx
+                                                                        dthvx, &
+                                                                         zol1
    real    ::  prnumfac,bfx0,hfx0,qfx0,delb,dux,dvx,                           &
-               dsdzu,dsdzv,wm3,dthx,dqx,wspd10,ross,tem1,dsig,tvcon,conpr,prfac
+               dsdzu,dsdzv,wm3,dthx,dqx,wspd10,ross,tem1,dsig,tvcon,conpr,     &
+               prfac,prfac2,phim8z
 !
+#if defined (non_hydrostatic_core) || defined(hydrostatic_core)
+!MPAS specific begin (Laura Fowler - 2013-03-01):
+   real,intent(out),dimension(ims:ime,kms:kme),optional::kzh,kzm,kzq
+!MPAS specific end.
+#endif
+
 !----------------------------------------------------------------------
 !
    klpbl = kte
@@ -571,6 +653,20 @@ contains
      delta(i)  = 0.0
    enddo
 !
+!MPAS specific begin (Laura Fowler - 2013-03-01): Added initialization of local
+!vertical diffusion coefficients:
+   if(present(kzh) .and. present(kzm) .and. present(kzq)) then
+      do k = kts,kte
+      do i = its,ite
+         xkzh(i,k)  = 0.0
+         xkzm(i,k)  = 0.0
+         xkzhl(i,k) = 0.0
+         xkzml(i,k) = 0.0
+      enddo
+      enddo
+   endif
+!MPAS specific end.
+!
    do k = kts,klpbl
      do i = its,ite
        wscalek(i,k) = 0.0
@@ -580,6 +676,11 @@ contains
    do k = kts,klpbl
      do i = its,ite
        zfac(i,k) = 0.0
+     enddo
+   enddo
+   do k = kts,klpbl-1
+     do i = its,ite
+       xkzo(i,k) = ckz*dza(i,k+1)
      enddo
    enddo
 !
@@ -639,16 +740,15 @@ contains
    enddo
 !
    do i = its,ite
-     fm = gz1oz0(i)-psim(i)
-     fh = gz1oz0(i)-psih(i)
-     hol(i) = max(br(i)*fm*fm/fh,rimin)
+     fm = psim(i)
+     fh = psih(i)
+     zol1(i) = max(br(i)*fm*fm/fh,rimin)
      if(sfcflg(i))then
-       hol(i) = min(hol(i),-zfmin)
+       zol1(i) = min(zol1(i),-zfmin)
      else
-       hol(i) = max(hol(i),zfmin)
+       zol1(i) = max(zol1(i),zfmin)
      endif
-     hol1 = hol(i)*hpbl(i)/zl1(i)*sfcfrac
-     hol(i) = -hol(i)*hpbl(i)/zl1(i)
+     hol1 = zol1(i)*hpbl(i)/zl1(i)*sfcfrac
      if(sfcflg(i))then
        phim(i) = (1.-aphi16*hol1)**(-1./4.)
        phih(i) = (1.-aphi16*hol1)**(-1./2.)
@@ -678,7 +778,7 @@ contains
        hgamt(i) = min(gamfac*hfx(i)/cp,gamcrt)
        hgamq(i) = min(gamfac*qfx(i),gamcrq)
        vpert = (hgamt(i)+ep1*thx(i,1)*hgamq(i))/bfac*afac
-       thermal(i) = thermal(i)+max(vpert,0.)
+       thermal(i) = thermal(i)+max(vpert,0.)*min(za(i,1)/(sfcfrac*hpbl(i)),1.0)
        hgamt(i) = max(hgamt(i),0.0)
        hgamq(i) = max(hgamq(i),0.0)
        brint    = -15.9*ust(i)*ust(i)/wspd(i)*wstar3(i)/(wscale(i)**4.)
@@ -844,31 +944,34 @@ contains
      do i = its,ite
        if(k.lt.kpbl(i)) then
          zfac(i,k) = min(max((1.-(zq(i,k+1)-zl1(i))/(hpbl(i)-zl1(i))),zfmin),1.)
-         xkzo = ckz*dza(i,k+1)
          zfacent(i,k) = (1.-zfac(i,k))**3.
+         wscalek(i,k) = (ust3(i)+phifac*karman*wstar3(i)*(1.-zfac(i,k)))**h1
          if(sfcflg(i)) then 
-           prfac = conpr/phim(i)/(1.+4.*karman*wstar3(i)/ust3(i))
+           prfac = conpr
+           prfac2 = 15.9*wstar3(i)/ust3(i)/(1.+4.*karman*wstar3(i)/ust3(i))
            prnumfac = -3.*(max(zq(i,k+1)-sfcfrac*hpbl(i),0.))**2./hpbl(i)**2.
          else
            prfac = 0.
+           prfac2 = 0.
            prnumfac = 0.
+           phim8z = 1.+aphi5*zol1(i)*zq(i,k+1)/zl1(i)
+           wscalek(i,k) = ust(i)/phim8z
+           wscalek(i,k) = max(wscalek(i,k),0.001)
          endif
          prnum0 = (phih(i)/phim(i)+prfac)
-         prnum0 = min(prnum0,prmax)
-         prnum0 = max(prnum0,prmin)
-         wscalek(i,k) = (ust3(i)+phifac*karman*wstar3(i)*(1.-zfac(i,k)))**h1
-         xkzm(i,k) = xkzo+wscalek(i,k)*karman*zq(i,k+1)*zfac(i,k)**pfac
+         prnum0 = max(min(prnum0,prmax),prmin)
+         xkzm(i,k) = wscalek(i,k)*karman*zq(i,k+1)*zfac(i,k)**pfac
          prnum =  1. + (prnum0-1.)*exp(prnumfac)
          xkzq(i,k) = xkzm(i,k)/prnum*zfac(i,k)**(pfac_q-pfac)
-         prnum0 = prnum0/(1.+prfac)
+         prnum0 = prnum0/(1.+prfac2*karman*sfcfrac)
          prnum =  1. + (prnum0-1.)*exp(prnumfac)
          xkzh(i,k) = xkzm(i,k)/prnum
          xkzm(i,k) = min(xkzm(i,k),xkzmax)
-         xkzm(i,k) = max(xkzm(i,k),xkzmin)
+         xkzm(i,k) = max(xkzm(i,k),xkzo(i,k))
          xkzh(i,k) = min(xkzh(i,k),xkzmax)
-         xkzh(i,k) = max(xkzh(i,k),xkzmin)
+         xkzh(i,k) = max(xkzh(i,k),xkzo(i,k))
          xkzq(i,k) = min(xkzq(i,k),xkzmax)
-         xkzq(i,k) = max(xkzq(i,k),xkzmin)
+         xkzq(i,k) = max(xkzq(i,k),xkzo(i,k))
        endif
      enddo
    enddo
@@ -877,7 +980,6 @@ contains
 !
    do k = kts,kte-1
      do i = its,ite
-       xkzo = ckz*dza(i,k+1)
        if(k.ge.kpbl(i)) then
          ss = ((ux(i,k+1)-ux(i,k))*(ux(i,k+1)-ux(i,k))                         &
               +(vx(i,k+1)-vx(i,k))*(vx(i,k+1)-vx(i,k)))                        &
@@ -897,25 +999,26 @@ contains
          endif
          zk = karman*zq(i,k+1)
          rlamdz = min(max(0.1*dza(i,k+1),rlam),300.)
+         rlamdz = min(dza(i,k+1),rlamdz)
          rl2 = (zk*rlamdz/(rlamdz+zk))**2
          dk = rl2*sqrt(ss)
          if(ri.lt.0.)then
 ! unstable regime
            sri = sqrt(-ri)
-           xkzm(i,k) = xkzo+dk*(1+8.*(-ri)/(1+1.746*sri))
-           xkzh(i,k) = xkzo+dk*(1+8.*(-ri)/(1+1.286*sri))
+           xkzm(i,k) = dk*(1+8.*(-ri)/(1+1.746*sri))
+           xkzh(i,k) = dk*(1+8.*(-ri)/(1+1.286*sri))
          else
 ! stable regime
-           xkzh(i,k) = xkzo+dk/(1+5.*ri)**2
+           xkzh(i,k) = dk/(1+5.*ri)**2
            prnum = 1.0+2.1*ri
            prnum = min(prnum,prmax)
-           xkzm(i,k) = (xkzh(i,k)-xkzo)*prnum+xkzo
+           xkzm(i,k) = xkzh(i,k)*prnum
          endif
 !
          xkzm(i,k) = min(xkzm(i,k),xkzmax)
-         xkzm(i,k) = max(xkzm(i,k),xkzmin)
+         xkzm(i,k) = max(xkzm(i,k),xkzo(i,k))
          xkzh(i,k) = min(xkzh(i,k),xkzmax)
-         xkzh(i,k) = max(xkzh(i,k),xkzmin)
+         xkzh(i,k) = max(xkzh(i,k),xkzo(i,k))
          xkzml(i,k) = xkzm(i,k)
          xkzhl(i,k) = xkzh(i,k)
        endif
@@ -953,7 +1056,7 @@ contains
          xkzh(i,k) = -we(i)*dza(i,kpbl(i))*exp(-entfac(i,k))
          xkzh(i,k) = sqrt(xkzh(i,k)*xkzhl(i,k))
          xkzh(i,k) = min(xkzh(i,k),xkzmax)
-         xkzh(i,k) = max(xkzh(i,k),xkzmin)
+         xkzh(i,k) = max(xkzh(i,k),xkzo(i,k))
          f1(i,k+1) = thx(i,k+1)-300.
        else
          f1(i,k+1) = thx(i,k+1)-300.
@@ -989,7 +1092,7 @@ contains
      enddo
    enddo
 !
-!     compute tridiagonal matrix elements for moisture, clouds, and tracers
+!     compute tridiagonal matrix elements for moisture, clouds, and gases
 !
    do k = kts,kte
      do i = its,ite
@@ -1044,7 +1147,7 @@ contains
          xkzq(i,k) = -we(i)*dza(i,kpbl(i))*exp(-entfac(i,k))
          xkzq(i,k) = sqrt(xkzq(i,k)*xkzhl(i,k))
          xkzq(i,k) = min(xkzq(i,k),xkzmax)
-         xkzq(i,k) = max(xkzq(i,k),xkzmin)
+         xkzq(i,k) = max(xkzq(i,k),xkzo(i,k))
          f3(i,k+1,1) = qx(i,k+1)
        else
          f3(i,k+1,1) = qx(i,k+1)
@@ -1086,7 +1189,7 @@ contains
      enddo
    enddo
 !
-!     solve tridiagonal problem for moisture, clouds, and tracers
+!     solve tridiagonal problem for moisture, clouds, and gases
 !
    call tridin_ysu(al,ad,cu,r3,au,f3,its,ite,kts,kte,ndiff)
 !
@@ -1125,8 +1228,15 @@ contains
    enddo
 !
    do i = its,ite
-     ad(i,1) = 1.+ust(i)**2/wspd1(i)*rhox(i)*g/del(i,1)*dt2                    &
-              *(wspd1(i)/wspd(i))**2
+! paj: ctopo=1 if topo_wind=0 (default)
+! mchen  add this line to make sure NMM can still work with YSU PBL
+     if(present(ctopo)) then 
+       ad(i,1) = 1.+ctopo(i)*ust(i)**2/wspd1(i)*rhox(i)*g/del(i,1)*dt2         &
+        *(wspd1(i)/wspd(i))**2
+     else               
+       ad(i,1) = 1.+ust(i)**2/wspd1(i)*rhox(i)*g/del(i,1)*dt2                  &
+        *(wspd1(i)/wspd(i))**2
+     endif 
      f1(i,1) = ux(i,1)
      f2(i,1) = vx(i,1)
    enddo
@@ -1149,7 +1259,7 @@ contains
        xkzm(i,k) = prpbl(i)*xkzh(i,k)
        xkzm(i,k) = sqrt(xkzm(i,k)*xkzml(i,k))
        xkzm(i,k) = min(xkzm(i,k),xkzmax)
-       xkzm(i,k) = max(xkzm(i,k),xkzmin)
+       xkzm(i,k) = max(xkzm(i,k),xkzo(i,k))
        f1(i,k+1) = ux(i,k+1)
        f2(i,k+1) = vx(i,k+1)
      else
@@ -1192,12 +1302,33 @@ contains
      enddo
    enddo
 !
+! paj: ctopo2=1 if topo_wind=0 (default)
+!
+   do i = its,ite
+     if(present(ctopo).and.present(ctopo2)) then   ! mchen for NMM
+     u10(i) = ctopo2(i)*u10(i)+(1-ctopo2(i))*ux(i,1)
+     v10(i) = ctopo2(i)*v10(i)+(1-ctopo2(i))*vx(i,1)
+     endif  !mchen
+   enddo
+!
 !---- end of vertical diffusion
 !
    do i = its,ite
      kpbl1d(i) = kpbl(i)
    enddo
 !
+!MPAS specific begin (Laura D. Fowler - 2013-03-01)::
+   if(present(kzh) .and. present(kzm) .and. present(kzq)) then
+      do i = its,ite
+      do k = kts,kte
+         kzh(i,k) = xkzh(i,k)
+         kzm(i,k) = xkzm(i,k)
+         kzq(i,k) = xkzq(i,k)
+      enddo
+      enddo
+   endif
+!MPAS specific end.
+
    end subroutine ysu2d
 !
    subroutine tridi1n(cl,cm,cu,r1,r2,au,f1,f2,its,ite,kts,kte,nt)

@@ -21,6 +21,14 @@
           init_radiation_sw,       &
           radconst
 
+!add-ons and modifications to sourcecode:
+! * removed commented out sourcecode left from revision 1721. removed commented out calls to
+!   subroutines rrtmg_swrad and camrad.
+! * updated call to subroutine rrtmg_swrad in order to use module_ra_rrtmg_sw.F from WRF 3.4.1
+!   instead of WRF 3.2.1. Results are unchanged.
+!   Laura D. Fowler (birch.ucar.edu) / 2013-03-13.
+
+
  integer,private:: i,j,k,n
 
  contains
@@ -63,6 +71,15 @@
  radiation_sw_select: select case (trim(radt_sw_scheme))
 
     case("rrtmg_sw")
+       if(.not.allocated(alswvisdir_p) ) allocate(alswvisdir_p(ims:ime,jms:jme)         )
+       if(.not.allocated(alswvisdif_p) ) allocate(alswvisdif_p(ims:ime,jms:jme)         )
+       if(.not.allocated(alswnirdir_p) ) allocate(alswnirdir_p(ims:ime,jms:jme)         )
+       if(.not.allocated(alswnirdif_p) ) allocate(alswnirdif_p(ims:ime,jms:jme)         )
+       if(.not.allocated(swvisdir_p)   ) allocate(swvisdir_p(ims:ime,jms:jme)           )
+       if(.not.allocated(swvisdif_p)   ) allocate(swvisdif_p(ims:ime,jms:jme)           )
+       if(.not.allocated(swnirdir_p)   ) allocate(swnirdir_p(ims:ime,jms:jme)           )
+       if(.not.allocated(swnirdif_p)   ) allocate(swnirdif_p(ims:ime,jms:jme)           )
+
        if(.not.allocated(swdnflx_p)    ) allocate(swdnflx_p(ims:ime,kms:kme+1,jms:jme)  )
        if(.not.allocated(swdnflxc_p)   ) allocate(swdnflxc_p(ims:ime,kms:kme+1,jms:jme) )
        if(.not.allocated(swupflx_p)    ) allocate(swupflx_p(ims:ime,kms:kme+1,jms:jme)  )
@@ -146,6 +163,11 @@
  radiation_sw_select: select case (trim(radt_sw_scheme))
 
     case("rrtmg_sw")
+       if(allocated(alswvisdir_p) ) deallocate(alswvisdir_p )
+       if(allocated(alswvisdif_p) ) deallocate(alswvisdif_p )
+       if(allocated(alswnirdir_p) ) deallocate(alswnirdir_p )
+       if(allocated(alswnirdif_p) ) deallocate(alswnirdif_p )
+
        if(allocated(swdnflx_p)    ) deallocate(swdnflx_p    )
        if(allocated(swdnflxc_p)   ) deallocate(swdnflxc_p   )
        if(allocated(swupflx_p)    ) deallocate(swupflx_p    )
@@ -497,39 +519,78 @@
     case ("rrtmg_sw")
 
        write(0,*) '--- enter subroutine rrtmg_swrad:'
+#if defined(do_hydrostatic_pressure)
+!... REARRANGED CALL USING HYDROSTATIC PRESSURE:
        call rrtmg_swrad( &
-                rthratensw = rthratensw_p , swupt     = swupt_p    , swuptc    = swuptc_p  , &
-                swdnt      = swdnt_p      , swdntc    = swdntc_p   , swupb     = swupb_p   , &
-                swupbc     = swupbc_p     , swdnb     = swdnb_p    , swdnbc    = swdnbc_p  , &
-                swcf       = swcf_p       , gsw       = gsw_p      , xtime     = xtime_m   , &
-                gmt        = gmt          , xlat      = xlat_p     , xlong     = xlon_p    , &
-                radt       = radt         , degrad    = degrad     , declin    = declin    , &
-                coszr      = coszr_p      , julday    = julday     , solcon    = solcon    , &
-                albedo     = sfc_albedo_p , t3d       = t_p        , t8w       = t2_p      , &
-                tsk        = tsk_p        , p3d       = pres_p     , p8w       = pres2_p   , &
-                pi3d       = pi_p         , rho3d     = rho_p      , dz8w      = dz_p      , &
-                cldfra3d   = cldfrac_p    , r         = R_d        , g         = g         , &
-                icloud     = icloud       , warm_rain = warm_rain  , f_ice_phy = f_ice     , &
-                f_rain_phy = f_rain       , xland     = xland_p    , xice      = xice_p    , &
-                snow       = snow_p       , qv3d      = qv_p       , qc3d      = qc_p      , &
-                qr3d       = qr_p         , qi3d      = qi_p       , qs3d      = qs_p      , &
-                qg3d       = qg_p         , f_qv      = f_qv       , f_qc      = f_qc      , &
-                f_qr       = f_qr         , f_qi      = f_qi       , f_qs      = f_qs      , &
-                f_qg       = f_qg         ,                                                  &
+                p3d        = pres_hyd_p   , p8w        = pres2_hyd_p  , pi3d       = pi_p        ,&
+                t3d        = t_p          , t8w        = t2_p         , rho3d      = rho_p       ,&
+                rthratensw = rthratensw_p , swupt      = swupt_p      , swuptc     = swuptc_p    ,&
+                swdnt      = swdnt_p      , swdntc     = swdntc_p     , swupb      = swupb_p     ,&
+                swupbc     = swupbc_p     , swdnb      = swdnb_p      , swdnbc     = swdnbc_p    ,&
+                swcf       = swcf_p       , gsw        = gsw_p        , xtime      = xtime_m     ,&
+                gmt        = gmt          , xlat       = xlat_p       , xlong      = xlon_p      ,&
+                radt       = radt         , degrad     = degrad       , declin     = declin      ,&
+                coszr      = coszr_p      , julday     = julday       , solcon     = solcon      ,&
+                albedo     = sfc_albedo_p , tsk        = tsk_p        , dz8w       = dz_p        ,&
+                cldfra3d   = cldfrac_p    , r          = R_d          , g          = g           ,&
+                icloud     = icloud       , warm_rain  = warm_rain    , f_ice_phy  = f_ice       ,&
+                f_rain_phy = f_rain       , xland      = xland_p      , xice       = xice_p      ,&
+                snow       = snow_p       , qv3d       = qv_p         , qc3d       = qc_p        ,&
+                qr3d       = qr_p         , qi3d       = qi_p         , qs3d       = qs_p        ,&
+                qg3d       = qg_p         , sf_surface_physics = sf_surface_physics ,             & 
                 !begin optional arguments:
-                swupflx    = swupflx_p    , swupflxc  = swupflxc_p , swdnflx   = swdnflx_p , &
-                swdnflxc   = swdnflxc_p   ,                                                  &
+                f_qv       = f_qv         , f_qc       = f_qc         , f_qr       = f_qr        ,&
+                f_qi       = f_qi         , f_qs       = f_qs         , f_qg       = f_qg        ,&
+                alswvisdir = alswvisdir_p , alswvisdif = alswvisdif_p , alswnirdir = alswnirdir_p,&
+                alswnirdif = alswnirdif_p , swvisdir   = swvisdir_p   , swvisdif   = swvisdif_p  ,&
+                swnirdir   = swnirdir_p   , swnirdif   = swnirdif_p   ,                           &
                 !end optional arguments.
-                ids = ids , ide = ide , jds = jds , jde = jde , kds = kds , kde = kde ,      &
-                ims = ims , ime = ime , jms = jms , jme = jme , kms = kms , kme = kme ,      &
-                its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte        &
+                ids = ids , ide = ide , jds = jds , jde = jde , kds = kds , kde = kde ,&
+                ims = ims , ime = ime , jms = jms , jme = jme , kms = kms , kme = kme ,&
+                its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte  &
                        )
+#else
+!... REARRANGED CALL:
+       call rrtmg_swrad( &
+                p3d        = pres_p       , p8w       = pres2_p    , pi3d      = pi_p            ,&
+                t3d        = t_p          , t8w       = t2_p       , rho3d     = rho_p           ,&
+                rthratensw = rthratensw_p , swupt     = swupt_p    , swuptc    = swuptc_p        ,&
+                swdnt      = swdnt_p      , swdntc    = swdntc_p   , swupb     = swupb_p         ,&
+                swupbc     = swupbc_p     , swdnb     = swdnb_p    , swdnbc    = swdnbc_p        ,&
+                swcf       = swcf_p       , gsw       = gsw_p      , xtime     = xtime_m         ,&
+                gmt        = gmt          , xlat      = xlat_p     , xlong     = xlon_p          ,&
+                radt       = radt         , degrad    = degrad     , declin    = declin          ,&
+                coszr      = coszr_p      , julday    = julday     , solcon    = solcon          ,&
+                albedo     = sfc_albedo_p , tsk       = tsk_p      , dz8w      = dz_p            ,&
+                cldfra3d   = cldfrac_p    , r         = R_d        , g         = g               ,&
+                icloud     = icloud       , warm_rain = warm_rain  , f_ice_phy = f_ice           ,&
+                f_rain_phy = f_rain       , xland     = xland_p    , xice      = xice_p          ,&
+                snow       = snow_p       , qv3d      = qv_p       , qc3d      = qc_p            ,&
+                qr3d       = qr_p         , qi3d      = qi_p       , qs3d      = qs_p            ,&
+                qg3d       = qg_p         , sf_surface_physics = sf_surface_physics ,             & 
+                !begin optional arguments:
+                f_qv       = f_qv         , f_qc       = f_qc         , f_qr       = f_qr        ,&
+                f_qi       = f_qi         , f_qs       = f_qs         , f_qg       = f_qg        ,&
+                alswvisdir = alswvisdir_p , alswvisdif = alswvisdif_p , alswnirdir = alswnirdir_p,&
+                alswnirdif = alswnirdif_p , swvisdir   = swvisdir_p   , swvisdif   = swvisdif_p  ,&
+                swnirdir   = swnirdir_p   , swnirdif   = swnirdif_p   ,                           &
+                !end optional arguments.
+                ids = ids , ide = ide , jds = jds , jde = jde , kds = kds , kde = kde ,&
+                ims = ims , ime = ime , jms = jms , jme = jme , kms = kms , kme = kme ,&
+                its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte  &
+                       )
+#endif
        write(0,*) '--- exit subroutine rrtmg_swrad'
 
     case ("cam_sw")
 
        write(0,*) '--- enter subroutine camrad_sw:'
+#if defined(do_hydrostatic_pressure)
+!... REARRANGED CALL USING HYDROSTATIC PRESSURE:
        call camrad( dolw = .false. , dosw = .true. ,                                         &
+                p_phy         = pres_hyd_p    , p8w           = pres2_hyd_p   ,              &
+                pi_phy        = pi_p          , t_phy         = t_p           ,              &
+                z             = zmid_p        , dz8w          = dz_p          ,              &            
                 rthratenlw    = rthratenlw_p  , rthratensw    = rthratensw_p  ,              &
                 swupt         = swupt_p       , swuptc        = swuptc_p      ,              &
                 swdnt         = swdnt_p       , swdntc        = swdntc_p      ,              &
@@ -546,9 +607,6 @@
                 coszr         = coszr_p       , albedo        = sfc_albedo_p  ,              & 
                 emiss         = sfc_emiss_p   , tsk           = tsk_p         ,              & 
                 xlat          = xlat_p        , xlong         = xlon_p        ,              &
-                t_phy         = t_p           , pi_phy        = pi_p          ,              &
-                p_phy         = pres_p        , p8w           = pres2_p       ,              &
-                z             = zmid_p        , dz8w          = dz_p          ,              &            
                 rho_phy       = rho_p         , qv3d          = qv_p          ,              & 
                 qc3d          = qc_p          , qr3d          = qr_p          ,              &
                 qi3d          = qi_p          , qs3d          = qs_p          ,              &
@@ -577,6 +635,62 @@
                 ims = ims , ime = ime , jms = jms , jme = jme , kms = kms , kme = kme ,      &
                 its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte        &
                   )
+!               do j = jts,jte
+!               do i = its,ite
+!                 write(0,200) j,i,swdnt_p(i,j),swdnb_p(i,j),swupt_p(i,j),swupb_p(i,j)
+!              enddo
+!              enddo
+#else
+!... REARRANGED CALL:
+       call camrad( dolw = .false. , dosw = .true. ,                                         &
+                p_phy         = pres_p        , p8w           = pres2_p       ,              &
+                pi_phy        = pi_p          , t_phy         = t_p           ,              &
+                z             = zmid_p        , dz8w          = dz_p          ,              &            
+                rthratenlw    = rthratenlw_p  , rthratensw    = rthratensw_p  ,              &
+                swupt         = swupt_p       , swuptc        = swuptc_p      ,              &
+                swdnt         = swdnt_p       , swdntc        = swdntc_p      ,              &
+                lwupt         = lwupt_p       , lwuptc        = lwuptc_p      ,              &
+                lwdnt         = lwdnt_p       , lwdntc        = lwdntc_p      ,              &
+                swupb         = swupb_p       , swupbc        = swupbc_p      ,              &
+                swdnb         = swdnb_p       , swdnbc        = swdnbc_p      ,              &
+                lwupb         = lwupb_p       , lwupbc        = lwupbc_p      ,              &
+                lwdnb         = lwdnb_p       , lwdnbc        = lwdnbc_p      ,              &
+                swcf          = swcf_p        , lwcf          = lwcf_p        ,              &
+                gsw           = gsw_p         , glw           = glw_p         ,              &
+                olr           = olrtoa_p      , cemiss        = cemiss_p      ,              &
+                taucldc       = taucldc_p     , taucldi       = taucldi_p     ,              & 
+                coszr         = coszr_p       , albedo        = sfc_albedo_p  ,              & 
+                emiss         = sfc_emiss_p   , tsk           = tsk_p         ,              & 
+                xlat          = xlat_p        , xlong         = xlon_p        ,              &
+                rho_phy       = rho_p         , qv3d          = qv_p          ,              & 
+                qc3d          = qc_p          , qr3d          = qr_p          ,              &
+                qi3d          = qi_p          , qs3d          = qs_p          ,              &
+                qg3d          = qg_p          , f_qv          = f_qv          ,              &
+                f_qc          = f_qc          , f_qr          = f_qr          ,              &
+                f_qi          = f_qi          , f_qs          = f_qs          ,              &
+                f_qg          = f_qg          , f_ice_phy     = f_ice         ,              &
+                f_rain_phy    = f_rain        , cldfra        = cldfrac_p     ,              &
+                xland         = xland_p       , xice          = xice_p        ,              &
+                num_months    = num_months    , levsiz        = num_oznlevels ,              & 
+                pin0          = pin_p         , ozmixm        = ozmixm_p      ,              &
+                paerlev       = num_aerlevels , naer_c        = num_aerosols  ,              &
+                m_psp         = m_psp_p       , m_psn         = m_psn_p       ,              &
+                aerosolcp     = aerosolcp_p   , aerosolcn     = aerosolcn_p   ,              &
+                m_hybi0       = m_hybi_p      , snow          = snow_p        ,              &
+                cam_abs_dim1  = cam_abs_dim1  , cam_abs_dim2  = cam_abs_dim2  ,              &
+                gmt           = gmt           , yr            = year          ,              &
+                julday        = julday        , julian        = curr_julday   ,              &
+                dt            = dt_dyn        , xtime         = xtime_m       ,              &
+                declin        = declin        , solcon        = solcon        ,              &
+                radt          = radt          , degrad        = degrad        ,              &
+                n_cldadv      = 3             , abstot_3d     = abstot_p      ,              &
+                absnxt_3d     = absnxt_p      , emstot_3d     = emstot_p      ,              &
+                doabsems      = doabsems      ,                                              &
+                ids = ids , ide = ide , jds = jds , jde = jde , kds = kds , kde = kde ,      &
+                ims = ims , ime = ime , jms = jms , jme = jme , kms = kms , kme = kme ,      &
+                its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte        &
+                  )
+#endif
 !      write(0,*) 'doabsems =',doabsems
 !      write(0,*) 'max swupb      =',maxval(swupb_p(its:ite,jms:jme))
 !      write(0,*) 'max swupbc     =',maxval(swupbc_p(its:ite,jms:jme))

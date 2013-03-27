@@ -164,6 +164,19 @@
                 <var name="shdmax"                               type="real"     dimensions="nCells"              streams="io"/>
                 <var name="albedo12m"                            type="real"     dimensions="nMonths nCells"      streams="io"/>
 
+                <!-- GWDO fields -->
+                <var name="varsso"                               type="real"     dimensions="nCells"              streams="io"/>
+                <var name="var2d"                                type="real"     dimensions="nCells"              streams="io"/>
+                <var name="con"                                  type="real"     dimensions="nCells"              streams="io"/>
+                <var name="oa1"                                  type="real"     dimensions="nCells"              streams="io"/>
+                <var name="oa2"                                  type="real"     dimensions="nCells"              streams="io"/>
+                <var name="oa3"                                  type="real"     dimensions="nCells"              streams="io"/>
+                <var name="oa4"                                  type="real"     dimensions="nCells"              streams="io"/>
+                <var name="ol1"                                  type="real"     dimensions="nCells"              streams="io"/>
+                <var name="ol2"                                  type="real"     dimensions="nCells"              streams="io"/>
+                <var name="ol3"                                  type="real"     dimensions="nCells"              streams="io"/>
+                <var name="ol4"                                  type="real"     dimensions="nCells"              streams="io"/>
+
                 <!-- description of the vertical grid structure -->
                 <var name="hx"                         type="real"     dimensions="nVertLevelsP1 nCells"        streams="io"/>
                 <var name="zgrid"                      type="real"     dimensions="nVertLevelsP1 nCells"        streams="io"/>
@@ -215,10 +228,10 @@
                 <!-- horizontally interpolated from first-guess data -->
                 <var name="u_fg"       name_in_code="u"       type="real"     dimensions="nFGLevels nEdges Time"/>
                 <var name="v_fg"       name_in_code="v"       type="real"     dimensions="nFGLevels nEdges Time"/>
-                <var name="t_fg"       name_in_code="t"       type="real"     dimensions="nFGLevels nCells Time"/>
-                <var name="p_fg"       name_in_code="p"       type="real"     dimensions="nFGLevels nCells Time"/>
-                <var name="z_fg"       name_in_code="z"       type="real"     dimensions="nFGLevels nCells Time"/>
-                <var name="rh_fg"      name_in_code="rh"      type="real"     dimensions="nFGLevels nCells Time"/>
+                <var name="t_fg"       name_in_code="t"       type="real"     dimensions="nFGLevels nCells Time"       streams="o"/>
+                <var name="p_fg"       name_in_code="p"       type="real"     dimensions="nFGLevels nCells Time"       streams="o"/>
+                <var name="z_fg"       name_in_code="z"       type="real"     dimensions="nFGLevels nCells Time"       streams="o"/>
+                <var name="rh_fg"      name_in_code="rh"      type="real"     dimensions="nFGLevels nCells Time"       streams="o"/>
                 <var name="soilz_fg"   name_in_code="soilz"   type="real"     dimensions="nCells Time"                 streams="io"/>
                 <var name="psfc_fg"    name_in_code="psfc"    type="real"     dimensions="nCells Time"/>
                 <var name="pmsl_fg"    name_in_code="pmsl"    type="real"     dimensions="nCells Time"/>
@@ -255,6 +268,7 @@
                 <var name="rho"                               type="real"     dimensions="nVertLevels nCells Time"     streams="o"/>
                 <var name="theta"                             type="real"     dimensions="nVertLevels nCells Time"     streams="o"/>
                 <var name="v"                                 type="real"     dimensions="nVertLevels nEdges Time"     streams="o"/>
+                <var name="rh"                                type="real"     dimensions="nVertLevels nCells Time"     streams="o"/>
                 <var name="uReconstructX"                     type="real"     dimensions="nVertLevels nCells Time"     streams="o"/>
                 <var name="uReconstructY"                     type="real"     dimensions="nVertLevels nCells Time"     streams="o"/>
                 <var name="uReconstructZ"                     type="real"     dimensions="nVertLevels nCells Time"     streams="o"/>
@@ -275,5 +289,9 @@
                 <var name="rw"                                type="real"     dimensions="nVertLevelsP1 nCells Time"/>
                 <var name="rtheta_p"                          type="real"     dimensions="nVertLevels nCells Time"/>
                 <var name="rho_p"                             type="real"     dimensions="nVertLevels nCells Time"/>
+        </var_struct>
+
+        <var_struct name="diag_physics" time_levs="1">
+                <var name="precipw"                           type="real"     dimensions="nCells Time"                 streams="o"/>
         </var_struct>
 </registry>

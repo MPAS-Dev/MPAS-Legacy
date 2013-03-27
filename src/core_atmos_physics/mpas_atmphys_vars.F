@@ -7,6 +7,12 @@
  public
  save
 
+!add-ons and modifications to sourcecode:
+!* added the variables sf_surface_physics,alswvisdir_p,alswvisdif_p,alswnirdir_p,alswnirdif_p,
+!  swvisdir_p,swvisdif_p,swnirdir_p,and swnirdif_p to upgrade the RRTMG short wave radiation
+!  code to WRF version 3.4.1. see definition of each individual variables below.
+!  Laura D. Fowler (birch.ucar.edu) / 2013-03-11.
+
 !=============================================================================================
 !list of physics parameterizations:
 !=============================================================================================
@@ -14,6 +20,7 @@
  character(len=StrKIND),public:: microp_scheme
  character(len=StrKIND),public:: conv_deep_scheme
  character(len=StrKIND),public:: conv_shallow_scheme
+ character(len=StrKIND),public:: gwdo_scheme
  character(len=StrKIND),public:: lsm_scheme
  character(len=StrKIND),public:: pbl_scheme
  character(len=StrKIND),public:: radt_cld_scheme
@@ -30,12 +37,14 @@
  logical:: l_radtsw                   !controls call to shortwave radiation parameterization.
  logical:: l_conv                     !controls call to convective parameterization.
  logical:: l_camlw                    !controls when to save local CAM LW abs and ems arrays.
+ logical:: l_diags                    !controls when to calculate physics diagnostics.
  logical:: l_acrain                   !when .true., limit to accumulated rain is applied.
  logical:: l_acradt                   !when .true., limit to lw and sw radiation is applied.
 
  integer,public:: ids,ide,jds,jde,kds,kde
  integer,public:: ims,ime,jms,jme,kms,kme
  integer,public:: its,ite,jts,jte,kts,kte
+ integer,public:: iall
  integer,public:: n_microp
 
  integer,public:: num_months          !number of months                                    [-]
@@ -95,6 +104,17 @@
     w_p,              &!vertical velocity                                                [m/s]
     pres2_p,          &!pressure                                                         [hPa]
     t2_p               !temperature                                                        [K]
+
+!... arrays used for calculating the hydrostatic pressure and exner function:
+ real(kind=RKIND),dimension(:,:),allocatable:: &
+    psfc_hyd_p,       &!surface pressure                                                 [hPa]
+    psfc_hydd_p        !"dry" surface pressure                                           [hPa]
+ real(kind=RKIND),dimension(:,:,:),allocatable:: &
+    pres_hyd_p,       &!pressure located at theta levels                                 [hPa]
+    pres_hydd_p,      &!"dry" pressure located at theta levels                           [hPa]
+    pres2_hyd_p,      &!pressure located at w-velocity levels                            [hPa]
+    pres2_hydd_p,     &!"dry" pressure located at w-velocity levels                      [hPa]
+    znu_hyd_p          !(pres_hyd_p / P0) needed in the Tiedtke convection scheme        [hPa]
 
 !=============================================================================================
 !... variables and arrays related to parameterization of cloud microphysics:
@@ -164,6 +184,18 @@
     rqrcuten_p,       &!
     rqscuten_p         !
 
+!... kain fritsch (trigger option) specific arrays:
+ real(kind=RKIND),dimension(:,:),allocatable:: &
+    area_kf_p          !as area_p but using nCells instead of nCellsSolve                  [m2]
+ real(kind=RKIND),dimension(:,:,:),allocatable:: &
+    rqvdynten_havg_p, &!
+    rqvdynten_vavg_p, &!
+    t_kf_p,           &!as t_p but using nCells instead of nCellsSolve to compute t_havg_p [K]
+    t_havg_p,         &!
+    t_vavg_p,         &!
+    t_htrigger_p,     &!
+    t_vtrigger_p       !
+
 !... tiedtke specific arrays:
  real(kind=RKIND),dimension(:,:,:),allocatable:: &
     znu_p,            &!
@@ -184,6 +216,8 @@
  real(kind=RKIND),public:: dt_pbl
 
  real(kind=RKIND),dimension(:,:),allocatable:: &
+    ctopo_p,          &!correction to topography                                           [-]
+    ctopo2_p,         &!correction to topography 2                                         [-]                  
     hpbl_p             !PBL height                                                         [m]
 
  real(kind=RKIND),dimension(:,:,:),allocatable:: &
@@ -197,23 +231,57 @@
     rqcblten_p,       &!
     rqiblten_p         !
 
+ real(kind=RKIND),dimension(:,:,:),allocatable:: &
+    kzh_p,            &!
+    kzm_p,            &!
+    kzq_p              !
+
+!=============================================================================================
+!... variables and arrays related to parameterization of gravity wave drag over orography:
+!=============================================================================================
+
+ real(kind=RKIND),dimension(:,:),allocatable:: &
+    var2d_p,          &!orographic variance                                               (m2)
+    con_p,            &!orographic convexity                                              (m2)
+    oa1_p,            &!orographic direction asymmetry function                            (-)
+    oa2_p,            &!orographic direction asymmetry function                            (-)
+    oa3_p,            &!orographic direction asymmetry function                            (-)
+    oa4_p,            &!orographic direction asymmetry function                            (-)
+    ol1_p,            &!orographic direction asymmetry function                            (-)
+    ol2_p,            &!orographic direction asymmetry function                            (-)
+    ol3_p,            &!orographic direction asymmetry function                            (-)
+    ol4_p              !orographic direction asymmetry function                            (-)
+
+ real(kind=RKIND),dimension(:,:),allocatable:: &
+    dx_p               !maximum distance between cell centers                              (m)
+
+ real(kind=RKIND),dimension(:,:),allocatable:: &
+    dusfcg_p,         &!vertically-integrated gwdo u-stress                         (Pa m s-1)
+    dvsfcg_p           !vertically-integrated gwdo v -stress                        (Pa m s-1)
+
+ real(kind=RKIND),dimension(:,:,:),allocatable:: &
+    dtaux3d_p,        &!gravity wave drag over orography u-stress                      (m s-1)
+    dtauy3d_p          !gravity wave drag over orography u-stress                      (m s-1)
+
 !=============================================================================================
 !... variables and arrays related to parameterization of surface layer:
 !=============================================================================================
  real(kind=RKIND),dimension(:,:),allocatable:: &
     br_p,             &!bulk richardson number                                             [-]
-    cd_p,             &!
-    cda_p,            &!
-    ck_p,             &!
-    cka_p,            &!
+    cd_p,             &!momentum exchange coeff at 10 meters                               [?]
+    cda_p,            &!momentum exchange coeff at the lowest model level                  [?]
     cpm_p,            &!
     chs_p,            &!
     chs2_p,           &!
+    ck_p,             &!enthalpy exchange coeff at 10 meters                               [?]
+    cka_p,            &!enthalpy exchange coeff at the lowest model level                  [?]
     cqs2_p,           &!
     gz1oz0_p,         &!log of z1 over z0                                                  [-]
     flhc_p,           &!exchange coefficient for heat                                      [-]
     flqc_p,           &!exchange coefficient for moisture                                  [-]
     hfx_p,            &!upward heat flux at the surface                                 [W/m2]
+    fh_p,             &!integrated stability function for heat                             [-]
+    fm_p,             &!integrated stability function for momentum                         [-]             
     lh_p,             &!latent heat flux at the surface                                 [W/m2]
     mavail_p,         &!surface moisture availability                                      [-]
     mol_p,            &!T* in similarity theory                                            [K]
@@ -230,11 +298,12 @@
     th2m_p,           &!potential temperature at 2m                                        [K]
     u10_p,            &!u at 10 m                                                        [m/s]
     ust_p,            &!u* in similarity theory                                          [m/s]
-    ustm_p,           &!u* in similarity theory without vconv                            [m/s]
+    ustm_p,           &!u* in similarity theory       without vconv correction           [m/s]
     v10_p,            &!v at 10 m                                                        [m/s]
     wspd_p,           &!wind speed                                                       [m/s]
     znt_p,            &!time-varying roughness length                                      [m]
     zol_p              !
+
 
 !=============================================================================================
 !... variables and arrays related to parameterization of short-wave radiation:
@@ -256,6 +325,12 @@
     swupbc_p,         &!clear-sky upwelling shortwave flux at bottom-of-atmosphere     [J m-2]
     swupt_p,          &!all-sky upwelling shortwave flux at top-of-atmosphere          [J m-2]
     swuptc_p           !clear-sky upwelling shortwave flux at top-of-atmosphere        [J m-2]
+
+ real(kind=RKIND),dimension(:,:),allocatable:: &
+    swvisdir_p,       &!visible direct downward flux                                   [W m-2]
+    swvisdif_p,       &!visible diffuse downward flux                                  [W m-2]
+    swnirdir_p,       &!near-IR direct downward flux                                   [W m-2]
+    swnirdif_p         !near-IR diffuse downward flux                                  [W m-2]
 
  real(kind=RKIND),dimension(:,:,:),allocatable:: &
     swdnflx_p,        &!
@@ -344,6 +419,11 @@
 !=============================================================================================
 
  integer,public:: &
+    sf_surface_physics !used to define the land surface scheme by a number instead of name. It
+                       !is only needed in module_ra_rrtmg_sw.F to define the spectral surface
+                       !albedos as functions of the land surface scheme.
+
+ integer,public:: &
     num_soils          !number of soil layers                                              [-]
     
  integer,dimension(:,:),allocatable:: &
@@ -369,7 +449,6 @@
     potevp_p,         &!potential evaporation                                          [W m-2]
     qz0_p,            &!specific humidity at znt                                     [kg kg-1]
     rainbl_p,         &!
-    rib_p,            &!?
     sfcrunoff_p,      &!surface runoff                                                 [m s-1]
     shdmin_p,         &!minimum areal fractional coverage of annual green vegetation       [-]
     shdmax_p,         &!maximum areal fractional coverage of annual green vegetation       [-]
@@ -384,6 +463,12 @@
     tmn_p,            &!soil temperature at lower boundary                                 [K]
     vegfra_p,         &!vegetation fraction                                                [-]
     z0_p               !background roughness length                                        [m]
+
+ real(kind=RKIND),dimension(:,:),allocatable:: &
+    alswvisdir_p,     &!direct-beam surface albedo in visible spectrum                     [-]
+    alswvisdif_p,     &!diffuse-beam surface albedo in visible spectrum                    [-]
+    alswnirdir_p,     &!direct-beam surface albedo in near-IR spectrum                     [-]
+    alswnirdif_p       !diffuse-beam surface albedo in near-IR spectrum                    [-]
 
 !=============================================================================================
 !.. variables and arrays related to surface characteristics:

@@ -14,6 +14,12 @@
  private
  public:: physics_timetracker,physics_run_init
 
+!add-ons and modifications to sourcecode:
+!* added initialization of variable sf_surface_physics in subroutine physics_run_init. see
+!  definition of sf_surface_physics in mpas_atmphys_vars.F
+!  Laura D. Fowler (birch.ucar.edu) / 2013-03-11.
+ 
+
  integer, public:: year                 !Current year.
  integer, public:: julday               !Initial Julian day.
  real(kind=RKIND), public:: curr_julday !Current Julian day (= 0.0 at 0Z on January 1st).
@@ -54,6 +60,9 @@
 !radiation is greater than its maximum allowed value:
  integer, parameter:: acradtAlarmID   = 20
  type(MPAS_TimeInterval_Type):: acradtTimeStep
+
+!defines alarm to compute some physics diagnostics, such as radar reflectivity:
+ integer, parameter:: diagAlarmID     = 21
 
  integer :: h, m, s, s_n, s_d, DoY, yr
  real(kind=RKIND) :: utc_h
@@ -228,6 +237,14 @@
     endif
     write(0,*) '--- time to apply limit to accumulated radiation diags. L_ACRADT   =',l_acradt
  endif
+
+!check to see if it is time to calculate additional physics diagnostics:
+ l_diags = .false.
+ if(mpas_is_alarm_ringing(clock,diagAlarmID,ierr=ierr)) then
+    call mpas_reset_clock_alarm(clock,diagAlarmID,ierr=ierr)
+    l_diags = .true.
+ endif
+ write(0,*) '--- time to calculate additional physics_diagnostics               =',l_diags
 
  end subroutine physics_timetracker
 
@@ -419,6 +436,11 @@
           call physics_error_fatal('subroutine physics_init: error creating alarm radiation limit')
  endif
 
+!set alarm to calculate physics diagnostics on IO outpt only:
+ call mpas_set_timeInterval(alarmTimeStep,timeString=config_output_interval,ierr=ierr)
+ alarmStartTime = startTime
+ call mpas_add_clock_alarm(clock,diagAlarmID,alarmStartTime,alarmTimeStep,ierr=ierr)
+
  write(0,102) dt_radtlw,dt_radtsw,dt_cu,dt_pbl
 
 !initialization of physics dimensions to mimic a rectangular grid:
@@ -447,10 +469,13 @@
  lsm_scheme          = trim(config_lsm_scheme)
  microp_scheme       = trim(config_microp_scheme)
  pbl_scheme          = trim(config_pbl_scheme)
+ gwdo_scheme         = trim(config_gwdo_scheme)
  radt_cld_scheme     = trim(config_radt_cld_scheme)
  radt_lw_scheme      = trim(config_radt_lw_scheme)
  radt_sw_scheme      = trim(config_radt_sw_scheme)
  sfclayer_scheme     = trim(config_sfclayer_scheme)
+
+ if(trim(config_lsm_scheme) .eq. "noah") sf_surface_physics = 2 
 
 !initialization of local physics time-steps:
 !... dynamics:
@@ -466,6 +491,7 @@
  l_radtlw = .false.
  l_radtsw = .false.
 !... others:
+ l_diags  = .false.
  l_camlw  = .false.
  l_acrain = .false.
  l_acradt = .false.

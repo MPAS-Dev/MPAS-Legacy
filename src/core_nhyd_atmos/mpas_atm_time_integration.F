@@ -95,9 +95,8 @@ module atm_time_integration
 !      logical, parameter :: debug = .true.
       logical, parameter :: debug_mass_conservation = .true.
 
-      integer :: index_qc
-      real (kind=RKIND) :: domain_mass, scalar_mass, scalar_min, scalar_max
-      real (kind=RKIND) :: global_domain_mass, global_scalar_mass, global_scalar_min, global_scalar_max
+      real (kind=RKIND) :: scalar_min, scalar_max
+      real (kind=RKIND) :: global_scalar_min, global_scalar_max
 
 
       !
@@ -169,7 +168,7 @@ module atm_time_integration
         if (debug) write(0,*) ' compute_dyn_tend '
         block => domain % blocklist
         do while (associated(block))
-           call atm_compute_dyn_tend( block % tend, block % state % time_levs(2) % state, block % diag, block % mesh, rk_step )
+           call atm_compute_dyn_tend( block % tend, block % state % time_levs(2) % state, block % diag, block % mesh, rk_step, dt )
            block => block % next
         end do
         if (debug) write(0,*) ' finished compute_dyn_tend '
@@ -185,7 +184,8 @@ module atm_time_integration
                         block % tend, &
                         block % tend_physics, &
                         block % state % time_levs(2) % state % rho_zz % array(:,:), &
-                        block % diag % rho_edge % array(:,:) )
+                        block % diag % rho_edge % array(:,:), & 
+                        rk_step )
            block => block % next
         end do
         if (debug) write(0,*) ' finished add physics tendencies '
@@ -201,8 +201,8 @@ module atm_time_integration
 
          block => domain % blocklist
             do while (associated(block))
-               call atm_set_smlstep_pert_variables( block % state % time_levs(1) % state, block % state % time_levs(2) % state,  &
-                                                block % tend, block % diag, block % mesh )
+!               call atm_set_smlstep_pert_variables( block % state % time_levs(1) % state, block % state % time_levs(2) % state,  &
+               call atm_set_smlstep_pert_variables( block % tend, block % diag, block % mesh )
                call atm_compute_vert_imp_coefs( block % state % time_levs(2) % state, block % mesh, block % diag, rk_sub_timestep(rk_step) )
             block => block % next
          end do
@@ -290,7 +290,7 @@ module atm_time_integration
                call atm_advance_scalars_mono( block % tend, &
                                               block % state % time_levs(1) % state, block % state % time_levs(2) % state, &
                                               block % diag, block % mesh, &
-                                              rk_timestep(rk_step), rk_step, 3 )
+                                              rk_timestep(rk_step))
             end if
             block => block % next
          end do
@@ -396,7 +396,7 @@ module atm_time_integration
 
 
 !      if(debug) then
-        101 format(' local  min, max scalar',i4,2(1x,e17.10))
+!        101 format(' local  min, max scalar',i4,2(1x,e17.10))
         102 format(' global min, max scalar',i4,2(1x,e17.10))
         write(0,*)
         block => domain % blocklist
@@ -456,7 +456,6 @@ module atm_time_integration
      implicit none
      type (state_type) :: s_new, s_old
      type (diag_type) :: diag
-     integer :: iCell, k
 
      diag % ru_save % array = diag % ru % array
      diag % rw_save % array = diag % rw % array
@@ -639,10 +638,9 @@ module atm_time_integration
 
 !------------------------
 
-   subroutine atm_set_smlstep_pert_variables( s_old, s_new, tend, diag, grid )
+   subroutine atm_set_smlstep_pert_variables( tend, diag, grid )
 
       implicit none
-      type (state_type) :: s_new, s_old
       type (tend_type) :: tend
       type (diag_type) :: diag
       type (mesh_type) :: grid
@@ -728,7 +726,7 @@ module atm_time_integration
       real (kind=RKIND), dimension( grid % nVertLevels, grid % nCells+1 ) :: ts, rs
 
       integer :: cell1, cell2, iEdge, iCell, k
-      real (kind=RKIND) :: pgrad, flux1, flux2, flux, resm, epssm
+      real (kind=RKIND) :: pgrad, flux, resm, epssm
 
       real (kind=RKIND) :: cf1, cf2, cf3, pr, pl
       integer :: kr, kl
@@ -738,8 +736,6 @@ module atm_time_integration
       logical, parameter :: debug = .false.
 !      logical, parameter :: debug = .true.
       logical, parameter :: debug1 = .false.
-      real (kind=RKIND) :: wmax
-      integer :: iwmax, kwmax
       logical :: newpx
 
 !--
@@ -971,7 +967,7 @@ module atm_time_integration
         end do
 
         do k=nVertLevels,1,-1
-          rw_p(k,iCell) = rw_p(k,iCell) - gamma_tri(k,iCell)*rw_p(k+1,iCell)		     
+          rw_p(k,iCell) = rw_p(k,iCell) - gamma_tri(k,iCell)*rw_p(k+1,iCell)     
         end do
 
         do k=2,nVertLevels
@@ -1199,8 +1195,7 @@ module atm_time_integration
       real (kind=RKIND) :: dt
 
       integer :: i, iCell, iEdge, k, iScalar, cell1, cell2
-      real (kind=RKIND) :: flux, scalar_edge, d2fdx2_cell1, d2fdx2_cell2, scalar_weight
-      real (kind=RKIND) :: scalar_weight_cell1, scalar_weight_cell2
+      real (kind=RKIND) :: scalar_weight
 
       real (kind=RKIND), dimension(:,:,:), pointer :: scalar_old, scalar_new, scalar_tend
       real (kind=RKIND), dimension(:,:,:), pointer :: deriv_two
@@ -1213,15 +1208,13 @@ module atm_time_integration
       real (kind=RKIND), dimension(:,:), pointer :: adv_coefs, adv_coefs_3rd
       real (kind=RKIND), dimension( s_old % num_scalars, grid % nVertLevels ) :: flux_arr
 
-      real (kind=RKIND), dimension( s_old % num_scalars, grid % nVertLevels ) :: d2fdx2_cell1_arr, d2fdx2_cell2_arr
-
       real (kind=RKIND), dimension( s_old % num_scalars, grid % nVertLevels + 1 ) :: wdtn
       integer :: nVertLevels
 
       real (kind=RKIND), dimension(:), pointer :: fnm, fnp, rdnw, meshScalingDel2, meshScalingDel4
       real (kind=RKIND) :: coef_3rd_order
 
-      real (kind=RKIND) :: h_theta_eddy_visc2, v_theta_eddy_visc2, scalar_turb_flux, z1,z2,z3,z4,zm,z0,zp
+      real (kind=RKIND) :: h_theta_eddy_visc2, v_theta_eddy_visc2
 
       real (kind=RKIND) :: flux3, flux4
       real (kind=RKIND) :: q_im2, q_im1, q_i, q_ip1, ua, coef3
@@ -1402,7 +1395,7 @@ module atm_time_integration
 
 !---------------------------
 
-   subroutine atm_advance_scalars_mono(tend, s_old, s_new, diag, grid, dt, rk_step, rk_order)
+   subroutine atm_advance_scalars_mono(tend, s_old, s_new, diag, grid, dt)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
    !
    ! Input: s - current model state
@@ -1416,12 +1409,10 @@ module atm_time_integration
       type (diag_type),intent(in)     :: diag
       type (mesh_type),intent(in)     :: grid
       real (kind=RKIND),intent(in)    :: dt
-      integer, intent(in)             :: rk_step, rk_order
 
       type (block_type), pointer :: block
       integer :: i, iCell, iEdge, k, iScalar, cell1, cell2
-      real (kind=RKIND) :: flux, scalar_edge, d2fdx2_cell1, d2fdx2_cell2, scalar_weight
-      real (kind=RKIND) :: scalar_weight_cell1, scalar_weight_cell2
+      real (kind=RKIND) :: flux, scalar_weight
 
       real (kind=RKIND), dimension(:,:,:), pointer :: scalar_tend
       real (kind=RKIND), dimension(:,:,:), pointer :: deriv_two
@@ -1433,22 +1424,24 @@ module atm_time_integration
       integer, dimension(:), pointer :: nAdvCellsForEdge
       real (kind=RKIND), dimension(:,:), pointer :: adv_coefs, adv_coefs_3rd
 
-      type (field2DReal), pointer :: tempField
-      type (field2DReal), target :: tempFieldTarget
+      type (field3DReal), pointer :: tempField
+      type (field3DReal), target :: tempFieldTarget
 
       real (kind=RKIND), dimension( grid % nVertLevels, grid % nCells ) :: scalar_old, scalar_new
-      real (kind=RKIND), dimension( grid % nVertLevels, grid % nCells ) :: s_max, s_min, s_update
-      real (kind=RKIND), dimension( grid % nVertLevels, grid % nCells ), target :: scale_in, scale_out
+      real (kind=RKIND), dimension( grid % nVertLevels, grid % nCells ) :: s_max, s_min
+      real (kind=RKIND), dimension( 2, grid % nVertLevels, grid % nCells ), target :: scale_arr
+
+      integer, parameter :: SCALE_IN = 1, SCALE_OUT = 2
 
       real (kind=RKIND), dimension( grid % nVertLevels, grid % nEdges ) :: flux_arr
       real (kind=RKIND), dimension( grid % nVertLevels + 1, grid % nCells ) :: wdtn
 
-      integer :: nVertLevels, isc, num_scalars, icellmax, kmax
+      integer :: nVertLevels, num_scalars, icellmax, kmax
 
       real (kind=RKIND), dimension(:), pointer :: fnm, fnp, rdnw, meshScalingDel2, meshScalingDel4
       real (kind=RKIND) :: coef_3rd_order
 
-      real (kind=RKIND) :: h_theta_eddy_visc2, v_theta_eddy_visc2, scalar_turb_flux, z1,z2,z3,z4,zm,z0,zp
+      real (kind=RKIND) :: h_theta_eddy_visc2, v_theta_eddy_visc2
 
       real (kind=RKIND) :: flux3, flux4, flux_upwind
       real (kind=RKIND) :: q_im2, q_im1, q_i, q_ip1, ua, coef3, scmin,scmax
@@ -1541,25 +1534,27 @@ module atm_time_integration
         end do
         end do
 
-        scmin = scalar_old(1,1)
-        scmax = scalar_old(1,1)
-        do iCell = 1, grid%nCells
-        do k=1, grid%nVertLevels
-          scmin = min(scmin,scalar_old(k,iCell))
-          scmax = max(scmax,scalar_old(k,iCell))
-        enddo
-        enddo
-        write(0,*) ' scmin, scmin old in ',scmin,scmax
+         if(debug_print) then
+            scmin = scalar_old(1,1)
+            scmax = scalar_old(1,1)
+            do iCell = 1, grid%nCells
+            do k=1, grid%nVertLevels
+               scmin = min(scmin,scalar_old(k,iCell))
+               scmax = max(scmax,scalar_old(k,iCell))
+            enddo
+            enddo
+            write(0,*) ' scmin, scmin old in ',scmin,scmax
 
-        scmin = scalar_new(1,1)
-        scmax = scalar_new(1,1)
-        do iCell = 1, grid%nCells
-        do k=1, grid%nVertLevels
-          scmin = min(scmin,scalar_new(k,iCell))
-          scmax = max(scmax,scalar_new(k,iCell))
-        enddo
-        enddo
-        write(0,*) ' scmin, scmin new in ',scmin,scmax
+            scmin = scalar_new(1,1)
+            scmax = scalar_new(1,1)
+            do iCell = 1, grid%nCells
+            do k=1, grid%nVertLevels
+               scmin = min(scmin,scalar_new(k,iCell))
+               scmax = max(scmax,scalar_new(k,iCell))
+            enddo
+            enddo
+            write(0,*) ' scmin, scmin new in ',scmin,scmax
+         end if
 
 
       !
@@ -1644,12 +1639,12 @@ module atm_time_integration
               wdtn(k,iCell) = dt*wdtn(k,iCell) - flux_upwind
             end do
 
-! scale_in(:,:) and scale_out(:,:) are used here to store the incoming and outgoing perturbation flux 
+! scale_arr(SCALE_IN,:,:) and scale_arr(SCALE_OUT:,:) are used here to store the incoming and outgoing perturbation flux 
 ! contributions to the update:  first the vertical flux component, then the horizontal
 
             do k=1,nVertLevels
-              scale_in (k,iCell) = - rdnw(k)*(min(0.0_RKIND,wdtn(k+1,iCell))-max(0.0_RKIND,wdtn(k,iCell)))
-              scale_out(k,iCell) = - rdnw(k)*(max(0.0_RKIND,wdtn(k+1,iCell))-min(0.0_RKIND,wdtn(k,iCell)))
+              scale_arr(SCALE_IN, k,iCell) = - rdnw(k)*(min(0.0_RKIND,wdtn(k+1,iCell))-max(0.0_RKIND,wdtn(k,iCell)))
+              scale_arr(SCALE_OUT,k,iCell) = - rdnw(k)*(max(0.0_RKIND,wdtn(k+1,iCell))-min(0.0_RKIND,wdtn(k,iCell)))
             end do
 
           end do
@@ -1669,10 +1664,10 @@ module atm_time_integration
                  scalar_new(k,cell1) = scalar_new(k,cell1) - flux_upwind / areaCell(cell1)
                  scalar_new(k,cell2) = scalar_new(k,cell2) + flux_upwind / areaCell(cell2)
 
-                 scale_out(k,cell1) = scale_out(k,cell1) - max(0.0_RKIND,flux_arr(k,iEdge)) / areaCell(cell1)
-                 scale_in (k,cell1) = scale_in (k,cell1) - min(0.0_RKIND,flux_arr(k,iEdge)) / areaCell(cell1)
-                 scale_out(k,cell2) = scale_out(k,cell2) + min(0.0_RKIND,flux_arr(k,iEdge)) / areaCell(cell2)
-                 scale_in (k,cell2) = scale_in (k,cell2) + max(0.0_RKIND,flux_arr(k,iEdge)) / areaCell(cell2)
+                 scale_arr(SCALE_OUT,k,cell1) = scale_arr(SCALE_OUT,k,cell1) - max(0.0_RKIND,flux_arr(k,iEdge)) / areaCell(cell1)
+                 scale_arr(SCALE_IN, k,cell1) = scale_arr(SCALE_IN, k,cell1) - min(0.0_RKIND,flux_arr(k,iEdge)) / areaCell(cell1)
+                 scale_arr(SCALE_OUT,k,cell2) = scale_arr(SCALE_OUT,k,cell2) + min(0.0_RKIND,flux_arr(k,iEdge)) / areaCell(cell2)
+                 scale_arr(SCALE_IN, k,cell2) = scale_arr(SCALE_IN, k,cell2) + max(0.0_RKIND,flux_arr(k,iEdge)) / areaCell(cell2)
 
                end do
              end if
@@ -1682,15 +1677,15 @@ module atm_time_integration
 
           do iCell = 1, grid % nCellsSolve
             do k = 1, nVertLevels
-               s_min_update = (scalar_new(k,iCell)+scale_out(k,iCell))/h_new(k,iCell)
-               s_max_update = (scalar_new(k,iCell)+scale_in (k,iCell))/h_new(k,iCell)
+               s_min_update = (scalar_new(k,iCell)+scale_arr(SCALE_OUT,k,iCell))/h_new(k,iCell)
+               s_max_update = (scalar_new(k,iCell)+scale_arr(SCALE_IN,k,iCell))/h_new(k,iCell)
                s_upwind = scalar_new(k,iCell)/h_new(k,iCell)
            
                scale_factor = (s_max(k,iCell)-s_upwind)/(s_max_update-s_upwind+eps)
-               scale_in(k,iCell) = min( 1.0_RKIND, max( 0.0_RKIND, scale_factor) )
+               scale_arr(SCALE_IN,k,iCell) = min( 1.0_RKIND, max( 0.0_RKIND, scale_factor) )
 
                scale_factor = (s_upwind-s_min(k,iCell))/(s_upwind-s_min_update+eps)
-               scale_out(k,iCell) = min( 1.0_RKIND, max( 0.0_RKIND, scale_factor) )
+               scale_arr(SCALE_OUT,k,iCell) = min( 1.0_RKIND, max( 0.0_RKIND, scale_factor) )
 
             end do
           end do
@@ -1703,18 +1698,16 @@ module atm_time_integration
       tempField => tempFieldTarget
 
       tempField % block => block
-      tempField % dimSizes(1) = grid % nVertLevels
-      tempField % dimSizes(2) = grid % nCells
+      tempField % dimSizes(1) = 2
+      tempField % dimSizes(2) = grid % nVertLevels
+      tempField % dimSizes(3) = grid % nCells
       tempField % sendList => block % parinfo % cellsToSend
       tempField % recvList => block % parinfo % cellsToRecv
       tempField % copyList => block % parinfo % cellsToCopy
       tempField % prev => null()
       tempField % next => null()
 
-      tempField % array => scale_in
-      call mpas_dmpar_exch_halo_field(tempField, (/ 1 /))
-
-      tempField % array => scale_out
+      tempField % array => scale_arr
       call mpas_dmpar_exch_halo_field(tempField, (/ 1 /))
 
 !
@@ -1726,8 +1719,8 @@ module atm_time_integration
                if (cell1 <= grid%nCellsSolve .or. cell2 <= grid%nCellsSolve) then
                   do k = 1, nVertLevels
                      flux = flux_arr(k,iEdge)
-                     flux = max(0.0_RKIND,flux) * min(scale_out(k,cell1), scale_in(k,cell2)) &
-                          + min(0.0_RKIND,flux) * min(scale_in(k,cell1), scale_out(k,cell2))
+                     flux = max(0.0_RKIND,flux) * min(scale_arr(SCALE_OUT,k,cell1), scale_arr(SCALE_IN, k,cell2)) &
+                          + min(0.0_RKIND,flux) * min(scale_arr(SCALE_IN, k,cell1), scale_arr(SCALE_OUT,k,cell2))
                      flux_arr(k,iEdge) = flux
                   end do
                end if
@@ -1738,8 +1731,8 @@ module atm_time_integration
             do iCell=1,grid % nCells
                do k = 2, nVertLevels
                   flux =  wdtn(k,iCell)
-                  flux = max(0.0_RKIND,flux) * min(scale_out(k-1,iCell), scale_in(k  ,iCell)) &
-                       + min(0.0_RKIND,flux) * min(scale_out(k  ,iCell), scale_in(k-1,iCell))
+                  flux = max(0.0_RKIND,flux) * min(scale_arr(SCALE_OUT,k-1,iCell), scale_arr(SCALE_IN,k  ,iCell)) &
+                       + min(0.0_RKIND,flux) * min(scale_arr(SCALE_OUT,k  ,iCell), scale_arr(SCALE_IN,k-1,iCell))
                   wdtn(k,iCell) = flux
                end do
             end do
@@ -1757,39 +1750,39 @@ module atm_time_integration
             end if
          end do
 
-          do iCell=1,grid % nCellsSolve
-             do k=1,grid % nVertLevels
-               scalar_new(k,iCell) = (   scalar_new(k,iCell)  &
-                   + (-rdnw(k)*(wdtn(k+1,iCell)-wdtn(k,iCell)) ) )/h_new(k,iCell)
-             end do
-          end do
+         do iCell=1,grid % nCellsSolve
+            do k=1,grid % nVertLevels
+              scalar_new(k,iCell) = (   scalar_new(k,iCell)  &
+                  + (-rdnw(k)*(wdtn(k+1,iCell)-wdtn(k,iCell)) ) )/h_new(k,iCell)
+            end do
+         end do
 
-        if(debug_print) then
+         if(debug_print) then
 
-        scmin = scalar_new(1,1)
-        scmax = scalar_new(1,1)
-        do iCell = 1, grid%nCellsSolve
-        do k=1, grid%nVertLevels
-          scmax = max(scmax,scalar_new(k,iCell))
-          scmin = min(scmin,scalar_new(k,iCell))
-          if(s_max(k,iCell) < scalar_new(k,iCell)) then
-            write(32,*) ' over - k,iCell,s_min,s_max,scalar_new ',k,iCell,s_min(k,iCell),s_max(k,iCell),scalar_new(k,iCell)
-          end if
-          if(s_min(k,iCell) > scalar_new(k,iCell)) then
-            write(32,*) ' under - k,iCell,s_min,s_max,scalar_new ',k,iCell,s_min(k,iCell),s_max(k,iCell),scalar_new(k,iCell)
-          end if
-        enddo
-        enddo
-        write(0,*) ' scmin, scmax new out ',scmin,scmax
-        write(0,*) ' icell_min, k_min ',icellmax, kmax
+            scmin = scalar_new(1,1)
+            scmax = scalar_new(1,1)
+            do iCell = 1, grid%nCellsSolve
+            do k=1, grid%nVertLevels
+               scmax = max(scmax,scalar_new(k,iCell))
+               scmin = min(scmin,scalar_new(k,iCell))
+               if(s_max(k,iCell) < scalar_new(k,iCell)) then
+                  write(32,*) ' over - k,iCell,s_min,s_max,scalar_new ',k,iCell,s_min(k,iCell),s_max(k,iCell),scalar_new(k,iCell)
+               end if
+               if(s_min(k,iCell) > scalar_new(k,iCell)) then
+                  write(32,*) ' under - k,iCell,s_min,s_max,scalar_new ',k,iCell,s_min(k,iCell),s_max(k,iCell),scalar_new(k,iCell)
+               end if
+            enddo
+            enddo
+            write(0,*) ' scmin, scmax new out ',scmin,scmax
+            write(0,*) ' icell_min, k_min ',icellmax, kmax
 
-        end if
+         end if
 
-          do iCell = 1, grid%nCells
-          do k=1, grid%nVertLevels
-             s_new % scalars % array(iScalar,k,iCell) = max(0.0_RKIND,scalar_new(k,iCell))
-          end do
-          end do
+         do iCell = 1, grid%nCells
+         do k=1, grid%nVertLevels
+            s_new % scalars % array(iScalar,k,iCell) = max(0.0_RKIND,scalar_new(k,iCell))
+         end do
+         end do
 
       end do !  loop over scalars
 
@@ -1797,7 +1790,7 @@ module atm_time_integration
 
 !----
 
-   subroutine atm_compute_dyn_tend(tend, s, diag, grid, rk_step)
+   subroutine atm_compute_dyn_tend(tend, s, diag, grid, rk_step, dt)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
    ! Compute height and normal wind tendencies, as well as diagnostic variables
    !
@@ -1816,18 +1809,19 @@ module atm_time_integration
       type (diag_type), intent(in) :: diag
       type (mesh_type), intent(in) :: grid
       integer, intent(in) :: rk_step
+      real (kind=RKIND), intent(in) :: dt
 
       logical, parameter :: rk_diffusion = .false.
 
       integer :: iEdge, iCell, iVertex, k, cell1, cell2, vertex1, vertex2, eoe, i, j, iq
-      real (kind=RKIND) :: flux, vorticity_abs, rho_vertex, workpv, upstream_bias
+      real (kind=RKIND) :: flux, workpv
 
       integer :: nCells, nEdges, nVertices, nVertLevels, nCellsSolve
       real (kind=RKIND) :: h_mom_eddy_visc2,   v_mom_eddy_visc2,   h_mom_eddy_visc4
       real (kind=RKIND) :: h_theta_eddy_visc2, v_theta_eddy_visc2, h_theta_eddy_visc4
       real (kind=RKIND) :: u_diffusion
-      real (kind=RKIND), dimension(:), pointer ::  fVertex, fEdge, dvEdge, dcEdge, areaCell, areaTriangle, meshScalingDel2, meshScalingDel4
-      real (kind=RKIND), dimension(:,:), pointer :: weightsOnEdge, kiteAreasOnVertex, zgrid, rho_edge, rho_zz, ru, u, v, tend_u, &
+      real (kind=RKIND), dimension(:), pointer ::  fEdge, dvEdge, dcEdge, areaCell, areaTriangle, meshScalingDel2, meshScalingDel4
+      real (kind=RKIND), dimension(:,:), pointer :: weightsOnEdge, zgrid, rho_edge, rho_zz, ru, u, v, tend_u, &
                                                     circulation, divergence, vorticity, ke, pv_edge, theta_m, rw, tend_rho, &
                                                     rt_diabatic_tend, tend_theta, tend_w, w, cqw, rb, rr, pp, pressure_b, zz, zx, cqu, & 
                                                     h_divergence, kdiff
@@ -1835,13 +1829,13 @@ module atm_time_integration
       real (kind=RKIND), dimension(:,:), pointer :: tend_u_euler, tend_w_euler, tend_theta_euler
 
       real (kind=RKIND), dimension(:,:,:), pointer :: deriv_two
-      integer, dimension(:,:), pointer :: cellsOnEdge, cellsOnVertex, verticesOnEdge, edgesOnCell, edgesOnEdge, edgesOnVertex
+      integer, dimension(:,:), pointer :: cellsOnEdge, verticesOnEdge, edgesOnCell, edgesOnEdge
       integer, dimension(:), pointer :: nEdgesOnCell, nEdgesOnEdge
 
       real (kind=RKIND), dimension( grid % nVertLevels + 1 ) :: wduz, wdwz, wdtz, dpzx
       real (kind=RKIND), dimension( grid % nVertLevels ) :: u_mix, ru_edge_w, q
-      real (kind=RKIND) :: theta_edge, theta_turb_flux, z1, z2, z3, z4, zm, z0, zp, r
-      real (kind=RKIND) :: d2fdx2_cell1, d2fdx2_cell2, pgrad
+      real (kind=RKIND) :: theta_turb_flux, z1, z2, z3, z4, zm, z0, zp, r
+      real (kind=RKIND) :: d2fdx2_cell1, d2fdx2_cell2
 
       integer, dimension(:,:), pointer :: advCellsForEdge
       integer, dimension(:), pointer :: nAdvCellsForEdge
@@ -1854,11 +1848,12 @@ module atm_time_integration
       real (kind=RKIND), dimension(:,:), pointer :: cpr, cpl, pzp, pzm
       integer :: kr, kl
 
-      real (kind=RKIND), allocatable, dimension(:,:) :: rv, divergence_ru, qtot 
+      real (kind=RKIND), allocatable, dimension(:,:) :: divergence_ru, qtot 
       real (kind=RKIND), allocatable, dimension(:,:) :: delsq_theta, delsq_divergence
       real (kind=RKIND), allocatable, dimension(:,:) :: delsq_u
       real (kind=RKIND), allocatable, dimension(:,:) :: delsq_circulation, delsq_vorticity
       real (kind=RKIND) :: cf1, cf2, cf3, pr, pl
+      real (kind=RKIND) :: prandtl_inv
 
 !      logical, parameter :: debug = .true.
       logical, parameter :: debug = .false.
@@ -1974,16 +1969,18 @@ module atm_time_integration
       nCellsSolve = grid % nCellsSolve
 
       h_mom_eddy_visc2 = config_h_mom_eddy_visc2
-      h_mom_eddy_visc4 = config_h_mom_eddy_visc4
+!     h_mom_eddy_visc4 = config_h_mom_eddy_visc4
       v_mom_eddy_visc2 = config_v_mom_eddy_visc2
       h_theta_eddy_visc2 = config_h_theta_eddy_visc2
-      h_theta_eddy_visc4 = config_h_theta_eddy_visc4
+!     h_theta_eddy_visc4 = config_h_theta_eddy_visc4
       v_theta_eddy_visc2 = config_v_theta_eddy_visc2
 
       nAdvCellsForEdge => grid % nAdvCellsForEdge % array
       advCellsForEdge => grid % advCellsForEdge % array
       adv_coefs => grid % adv_coefs % array
       adv_coefs_3rd => grid % adv_coefs_3rd % array
+
+      prandtl_inv = 1.0_RKIND/prandtl
 
       !
       ! Compute u (normal) velocity tendency for each edge (cell face)
@@ -2007,11 +2004,21 @@ module atm_time_integration
             end do
             do k=1, nVertLevels
                kdiff(k,iCell) = (c_s * config_len_disp)**2 * sqrt(d_diag(k)**2 + d_off_diag(k)**2)
+               kdiff(k,iCell) = min(kdiff(k,iCell),(0.01*config_len_disp**2)/dt)
             end do
          end do
+!ldf (2012-10-10):
+         h_mom_eddy_visc4   = config_visc4_2dsmag * config_len_disp**3
+         h_theta_eddy_visc4 = h_mom_eddy_visc4
          delsq_horiz_mixing = .true.
+         write(0,*) '... config_visc4_2dsmag = ', config_visc4_2dsmag
+         write(0,*) '... h_mom_eddy_visc4    = ', h_mom_eddy_visc4
+         write(0,*) '... h_theta_eddy_visc4  = ', h_theta_eddy_visc4
       else if ( config_horiz_mixing == "2d_fixed") then
+         h_mom_eddy_visc4   = config_h_mom_eddy_visc4
+         h_theta_eddy_visc4 = config_h_theta_eddy_visc4
          delsq_horiz_mixing = .true.
+!ldf (2012-10-10):
       end if
 
       tend_u(:,:) = 0.0
@@ -2179,7 +2186,7 @@ module atm_time_integration
 
       if (delsq_horiz_mixing) then
 
-        if (h_mom_eddy_visc2 > 0.0) then
+        if ((h_mom_eddy_visc2 > 0.0) .and. (config_horiz_mixing == "2d_fixed")) then
            do iEdge=1,grid % nEdgesSolve
               cell1 = cellsOnEdge(1,iEdge)
               cell2 = cellsOnEdge(2,iEdge)
@@ -2193,7 +2200,7 @@ module atm_time_integration
                  !                    only valid for h_mom_eddy_visc2 == constant
                  !
                  u_diffusion =   ( divergence(k,cell2)  - divergence(k,cell1) ) / dcEdge(iEdge)  &
-                                -( vorticity(k,vertex2) - vorticity(k,vertex1) ) / dvEdge(iEdge)
+                                -( vorticity(k,vertex2) - vorticity(k,vertex1) ) / max(dvEdge(iEdge),0.25*dcEdge(iEdge))
                  u_diffusion = rho_edge(k,iEdge)*h_mom_eddy_visc2 * u_diffusion
                  u_diffusion = u_diffusion * meshScalingDel2(iEdge)
   
@@ -2216,7 +2223,7 @@ module atm_time_integration
                  !                    only valid for h_mom_eddy_visc2 == constant
                  !
                  u_diffusion =   ( divergence(k,cell2)  - divergence(k,cell1) ) / dcEdge(iEdge)  &
-                                -( vorticity(k,vertex2) - vorticity(k,vertex1) ) / dvEdge(iEdge)
+                                -( vorticity(k,vertex2) - vorticity(k,vertex1) ) / max(dvEdge(iEdge),0.25*dcEdge(iEdge))
                  u_diffusion = rho_edge(k,iEdge)* 0.5*(kdiff(k,cell1)+kdiff(k,cell2)) * u_diffusion
                  u_diffusion = u_diffusion * meshScalingDel2(iEdge)
 
@@ -2228,7 +2235,10 @@ module atm_time_integration
 
       end if ! delsq_horiz_mixing for u
 
-      if ( h_mom_eddy_visc4 > 0.0 ) then
+!ldf (2012-10-10): Modified loop below to allow hyper-diffusion when 2d_smagorinsky is set to true.
+!     if ((h_mom_eddy_visc4 > 0.0) .and. (config_horiz_mixing == "2d_fixed")) then
+      if ((h_mom_eddy_visc4 > 0.0 .and. config_horiz_mixing == "2d_fixed") .or. &
+          (h_mom_eddy_visc4 > 0.0 .and. config_horiz_mixing == "2d_smagorinsky")) then
 
          allocate(delsq_divergence(nVertLevels, nCells+1))
          allocate(delsq_u(nVertLevels, nEdges+1))
@@ -2545,7 +2555,7 @@ module atm_time_integration
 
       if (delsq_horiz_mixing) then
 
-        if (h_mom_eddy_visc2 > 0.0) then
+        if ((h_mom_eddy_visc2 > 0.0) .and. (config_horiz_mixing == "2d_fixed")) then
 
           do iEdge=1,grid % nEdges
             cell1 = grid % cellsOnEdge % array(1,iEdge)
@@ -2589,7 +2599,10 @@ module atm_time_integration
  
       end if
 
-      if ( h_mom_eddy_visc4 > 0.0 ) then
+!ldf (2010-10-10):
+!     if ( (h_mom_eddy_visc4 > 0.0) .and. (config_horiz_mixing == "2d_fixed")) then
+      if ((h_mom_eddy_visc4 > 0.0 .and. config_horiz_mixing == "2d_fixed") .or. &
+          (h_mom_eddy_visc4 > 0.0 .and. config_horiz_mixing == "2d_smagorinsky")) then
 
          allocate(delsq_theta(nVertLevels, nCells+1))
 
@@ -2840,7 +2853,7 @@ module atm_time_integration
       tend_theta_euler = 0.
 
       if (delsq_horiz_mixing) then
-         if ( h_theta_eddy_visc2 > 0.0 ) then
+         if ( (h_theta_eddy_visc2 > 0.0) .and. (config_horiz_mixing == "2d_fixed") ) then
 
             do iEdge=1,grid % nEdges
                cell1 = grid % cellsOnEdge % array(1,iEdge)
@@ -2848,7 +2861,7 @@ module atm_time_integration
                if (cell1 <= nCellsSolve .or. cell2 <= nCellsSolve) then
   
                   do k=1,grid % nVertLevels
-                     theta_turb_flux = h_theta_eddy_visc2*prandtl*(theta_m(k,cell2) - theta_m(k,cell1))/dcEdge(iEdge)
+                     theta_turb_flux = h_theta_eddy_visc2*prandtl_inv*(theta_m(k,cell2) - theta_m(k,cell1))/dcEdge(iEdge)
                      theta_turb_flux = theta_turb_flux * meshScalingDel2(iEdge)
                      flux = dvEdge (iEdge) * rho_edge(k,iEdge) * theta_turb_flux
 !                     tend_theta(k,cell1) = tend_theta(k,cell1) + flux
@@ -2868,7 +2881,7 @@ module atm_time_integration
                if (cell1 <= nCellsSolve .or. cell2 <= nCellsSolve) then
  
                   do k=1,grid % nVertLevels
-                     theta_turb_flux = 0.5*(kdiff(k,cell1)+kdiff(k,cell2))*prandtl  &
+                     theta_turb_flux = 0.5*(kdiff(k,cell1)+kdiff(k,cell2))*prandtl_inv  &
                                            *(theta_m(k,cell2) - theta_m(k,cell1))/dcEdge(iEdge)
                      theta_turb_flux = theta_turb_flux * meshScalingDel2(iEdge)
                      flux = dvEdge (iEdge) * rho_edge(k,iEdge) * theta_turb_flux
@@ -2884,7 +2897,10 @@ module atm_time_integration
 
       end if
 
-      if ( h_theta_eddy_visc4 > 0.0 ) then
+!ldf (2010-10-10):
+!     if ( (h_theta_eddy_visc4 > 0.0) .and. (config_horiz_mixing == "2d_fixed") ) then
+      if ((h_theta_eddy_visc4 > 0.0 .and. config_horiz_mixing == "2d_fixed") .or. &
+          (h_theta_eddy_visc4 > 0.0 .and. config_horiz_mixing == "2d_smagorinsky")) then
 
          allocate(delsq_theta(nVertLevels, nCells+1))
 
@@ -2912,7 +2928,7 @@ module atm_time_integration
             if (cell1 <= nCellsSolve .or. cell2 <= nCellsSolve) then
 
                do k=1,grid % nVertLevels
-                  theta_turb_flux = h_theta_eddy_visc4*prandtl*(delsq_theta(k,cell2) - delsq_theta(k,cell1))/dcEdge(iEdge)
+                  theta_turb_flux = h_theta_eddy_visc4*prandtl_inv*(delsq_theta(k,cell2) - delsq_theta(k,cell1))/dcEdge(iEdge)
                   theta_turb_flux = theta_turb_flux * meshScalingDel4(iEdge)
                   flux = dvEdge (iEdge) * theta_turb_flux
 
@@ -2996,10 +3012,10 @@ module atm_time_integration
                z0 = 0.5*(z2+z3)
                zp = 0.5*(z3+z4)
 
-!               tend_theta(k,iCell) = tend_theta(k,iCell) + v_theta_eddy_visc2*prandtl*rho_zz(k,iCell)*(&
+!               tend_theta(k,iCell) = tend_theta(k,iCell) + v_theta_eddy_visc2*prandtl_inv*rho_zz(k,iCell)*(&
 !                                        (theta_m(k+1,iCell)-theta_m(k  ,iCell))/(zp-z0)                 &
 !                                       -(theta_m(k  ,iCell)-theta_m(k-1,iCell))/(z0-zm) )/(0.5*(zp-zm))
-               tend_theta_euler(k,iCell) = tend_theta_euler(k,iCell) + v_theta_eddy_visc2*prandtl*rho_zz(k,iCell)*(&
+               tend_theta_euler(k,iCell) = tend_theta_euler(k,iCell) + v_theta_eddy_visc2*prandtl_inv*rho_zz(k,iCell)*(&
                                         (theta_m(k+1,iCell)-theta_m(k  ,iCell))/(zp-z0)                 &
                                        -(theta_m(k  ,iCell)-theta_m(k-1,iCell))/(z0-zm) )/(0.5*(zp-zm))
             end do
@@ -3018,10 +3034,10 @@ module atm_time_integration
                z0 = 0.5*(z2+z3)
                zp = 0.5*(z3+z4)
 
-!               tend_theta(k,iCell) = tend_theta(k,iCell) + v_theta_eddy_visc2*prandtl*rho_zz(k,iCell)*(&
+!               tend_theta(k,iCell) = tend_theta(k,iCell) + v_theta_eddy_visc2*prandtl_inv*rho_zz(k,iCell)*(&
 !                                        ((theta_m(k+1,iCell)-t_init(k+1,iCell))-(theta_m(k  ,iCell)-t_init(k,iCell)))/(zp-z0)      &
 !                                       -((theta_m(k  ,iCell)-t_init(k,iCell))-(theta_m(k-1,iCell)-t_init(k-1,iCell)))/(z0-zm) )/(0.5*(zp-zm))
-               tend_theta_euler(k,iCell) = tend_theta_euler(k,iCell) + v_theta_eddy_visc2*prandtl*rho_zz(k,iCell)*(&
+               tend_theta_euler(k,iCell) = tend_theta_euler(k,iCell) + v_theta_eddy_visc2*prandtl_inv*rho_zz(k,iCell)*(&
                                         ((theta_m(k+1,iCell)-t_init(k+1,iCell))-(theta_m(k  ,iCell)-t_init(k,iCell)))/(zp-z0)      &
                                        -((theta_m(k  ,iCell)-t_init(k,iCell))-(theta_m(k-1,iCell)-t_init(k-1,iCell)))/(z0-zm) )/(0.5*(zp-zm))
             end do
@@ -3060,12 +3076,12 @@ module atm_time_integration
       type (mesh_type), intent(in) :: grid
 
 
-      integer :: iEdge, iCell, iVertex, k, cell1, cell2, vertex1, vertex2, eoe, i, j, cov
-      real (kind=RKIND) :: flux, vorticity_abs, h_vertex, workpv, r
+      integer :: iEdge, iCell, iVertex, k, cell1, cell2, eoe, i
+      real (kind=RKIND) :: h_vertex, r
 
       integer :: nCells, nEdges, nVertices, nVertLevels
       real (kind=RKIND), dimension(:), pointer :: fVertex, fEdge, dvEdge, dcEdge, areaCell, areaTriangle
-      real (kind=RKIND), dimension(:,:), pointer :: vh, weightsOnEdge, kiteAreasOnVertex, h_edge, h, u, v, tend_h, tend_u, &
+      real (kind=RKIND), dimension(:,:), pointer :: vh, weightsOnEdge, kiteAreasOnVertex, h_edge, h, u, v, &
                                                     circulation, vorticity, ke, pv_edge, pv_vertex, pv_cell, gradPVn, gradPVt, &
                                                     divergence
       integer, dimension(:,:), pointer :: cellsOnEdge, cellsOnVertex, verticesOnEdge, edgesOnCell, edgesOnEdge, edgesOnVertex
@@ -3340,7 +3356,7 @@ module atm_time_integration
       type (mesh_type), intent(inout) :: grid
 
       !SHP-w
-      integer :: k,iCell,iEdge,i,iCell1,iCell2, cell1, cell2, coef_3rd_order
+      integer :: k,iCell,iEdge,iCell1,iCell2, cell1, cell2, coef_3rd_order
       real (kind=RKIND) :: p0, rcv, flux
 
       !SHP-w
@@ -3352,7 +3368,7 @@ module atm_time_integration
 
       do iCell=1,grid%nCells
          do k=1,grid%nVertLevels
-            state % theta_m % array(k,iCell) = diag % theta % array(k,iCell) * (1.0 + 1.61 * state % scalars % array(state % index_qv,k,iCell))
+            state % theta_m % array(k,iCell) = diag % theta % array(k,iCell) * (1._RKIND + rvord * state % scalars % array(state % index_qv,k,iCell))
             state % rho_zz % array(k,iCell) = diag % rho % array(k,iCell) / grid % zz % array(k,iCell)
          end do
       end do

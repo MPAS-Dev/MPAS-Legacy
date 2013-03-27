@@ -294,6 +294,9 @@
     
  end do
 
+!... calculate the 10cm radar reflectivity, if needed:
+ if(l_diags) call compute_radar_reflectivity(diag_physics)
+
 !... copy updated precipitation from the wrf-physics grid back to the geodesic-dynamics grid:
 
  call precip_to_MPAS(config_bucket_rainnc,diag_physics)
@@ -382,7 +385,8 @@
  type(diag_physics_type),intent(inout):: diag_physics
 
 !local variables:
- integer:: i,j
+ integer:: i,j,k
+ real(kind=RKIND):: rho_a
 
 !---------------------------------------------------------------------------------------------
 
@@ -390,6 +394,14 @@
 
  do j = jts,jte
  do i = its,ite
+
+    !precipitable water:
+    diag_physics % precipw % array(i) = 0._RKIND
+    do k = kts,kte
+       rho_a = rho_p(i,k,j) / (1._RKIND + qv_p(i,k,j))
+       diag_physics % precipw % array(i) = &
+            diag_physics % precipw % array(i) + qv_p(i,k,j) * rho_a * dz_p(i,k,j)
+    enddo
 
     !time-step precipitation:
     diag_physics % rainncv % array(i) = rainnc_p(i,j)
@@ -436,6 +448,82 @@
  end select microp_select_init
 
  end subroutine precip_to_MPAS
+
+!=============================================================================================
+ subroutine compute_radar_reflectivity(diag_physics)
+!=============================================================================================
+
+!inout arguments:
+ type(diag_physics_type),intent(inout):: diag_physics
+
+!local variables:
+ integer:: i,j,k
+ real(kind=RKIND),dimension(:),allocatable:: qv1d,qr1d,qs1d,qg1d,t1d,p1d,dBZ1d
+
+!---------------------------------------------------------------------------------------------
+!write(0,*)
+!write(0,*) '--- enter subroutine COMPUTE_RADAR_REFLECTIVITY:'
+
+ microp_select: select case(microp_scheme)
+
+    case ("kessler")
+       call physics_error_fatal('--- calculation of radar reflectivity is not available' // &
+                                 'with kessler cloud microphysics')
+
+    case ("thompson")
+       call physics_error_fatal('--- calculation of radar reflectivity is not available' // &
+                                 'with thompson cloud microphysics')
+
+    case ("wsm6")
+
+       if(.not.allocated(p1d)  ) allocate(p1d(kts:kte)  )
+       if(.not.allocated(t1d)  ) allocate(t1d(kts:kte)  )
+       if(.not.allocated(qv1d) ) allocate(qv1d(kts:kte) )
+       if(.not.allocated(qr1d) ) allocate(qr1d(kts:kte) )
+       if(.not.allocated(qs1d) ) allocate(qs1d(kts:kte) )
+       if(.not.allocated(qg1d) ) allocate(qg1d(kts:kte) )
+       if(.not.allocated(dBz1d)) allocate(dBZ1d(kts:kte))
+
+       do j = jts,jte
+       do i = its,ite
+          do k = kts,kte
+             p1d(k) = pres_p(i,k,j)
+             t1d(k) = th_p(i,k,j) * pi_p(i,k,j)
+             qv1d(k)  = qv_p(i,k,j)
+             qr1d(k)  = qr_p(i,k,j)
+             qs1d(k)  = qs_p(i,k,j)
+             qg1d(k)  = qg_p(i,k,j)
+             dBZ1d(k) = -35._RKIND
+          enddo
+
+          call refl10cm_wsm6(qv1d,qr1d,qs1d,qg1d,t1d,p1d,dBZ1d,kts,kte,i,j)
+
+          do k = kts,kte
+             dBZ1d(k) = max(-35._RKIND,dBZ1d(k))
+!            write(0,201) i,k,dBZ1d(k)
+          enddo
+          diag_physics % refl10cm_max % array(i) = maxval(dBZ1d(:))
+!         if(diag_physics % refl10cm_max % array(i) .gt. 0.) &
+!            write(0,201) j,i,diag_physics % refl10cm_max % array(i)
+       enddo
+       enddo
+
+       if(allocated(p1d)  ) deallocate(p1d  )
+       if(allocated(t1d)  ) deallocate(t1d  )
+       if(allocated(qv1d) ) deallocate(qv1d )
+       if(allocated(qr1d) ) deallocate(qr1d )
+       if(allocated(qs1d) ) deallocate(qs1d )
+       if(allocated(qg1d) ) deallocate(qg1d )
+       if(allocated(dBz1d)) deallocate(dBZ1d)
+
+    case default
+
+ end select microp_select
+!write(0,*) '--- end subroutine COMPUTE_RADAR_REFLECTIVITY'
+
+ 201 format(2i6,e15.8)
+
+ end subroutine compute_radar_reflectivity
 
 !=============================================================================================
  end module mpas_atmphys_driver_microphysics

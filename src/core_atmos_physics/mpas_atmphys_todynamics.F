@@ -12,15 +12,16 @@
  contains
  
 !=============================================================================================
-subroutine physics_addtend(mesh, state, diag, tend, tend_physics, mass, mass_edge)
+subroutine physics_addtend(mesh, state, diag, tend, tend_physics, mass, mass_edge, rk_step)
 !=============================================================================================
 
 !input variables:
 !----------------
-type(mesh_type),intent(in):: mesh
+ type(mesh_type),intent(in):: mesh
  type(state_type),intent(in):: state
  type(diag_type),intent(in):: diag
  type(tend_physics_type),intent(inout):: tend_physics
+ integer, intent(in):: rk_step
  real(kind=RKIND),dimension(:,:),intent(in):: mass
  real(kind=RKIND),dimension(:,:),intent(in):: mass_edge
 
@@ -54,9 +55,6 @@ type(mesh_type),intent(in):: mesh
 !ldf end.
 
 !=============================================================================================
-!write(0,*)
-!write(0,*) '--- enter subroutine physics_add_tend:'
-
  block => mesh % block
  
  nCells      = mesh % nCells
@@ -120,13 +118,6 @@ type(mesh_type),intent(in):: mesh
     enddo
     enddo
  endif
-write(0,*) 'max rthblten = ',maxval(rthblten(:,1:nCellsSolve))
-write(0,*) 'min rthblten = ',minval(rthblten(:,1:nCellsSolve))
-!write(0,*) 'max rqvblten = ',maxval(rqvblten(:,1:nCellsSolve))
-!write(0,*) 'min rqvblten = ',minval(rqvblten(:,1:nCellsSolve))
-!write(0,*) 'max tend     = ',maxval(tend_scalars(tend%index_qv,:,1:nCellsSolve))
-!write(0,*) 'min tend     = ',minval(tend_scalars(tend%index_qv,:,1:nCellsSolve))
-!write(0,*)
 
 !add coupled tendencies due to convection:
  if(config_conv_deep_scheme .ne. 'off') then
@@ -154,13 +145,6 @@ write(0,*) 'min rthblten = ',minval(rthblten(:,1:nCellsSolve))
     enddo
     enddo
  endif
-write(0,*) 'max rthcuten = ',maxval(rthcuten(:,1:nCellsSolve))
-write(0,*) 'min rthcuten = ',minval(rthcuten(:,1:nCellsSolve))
-!write(0,*) 'max rqvcuten = ',maxval(rqvcuten(:,1:nCellsSolve))
-!write(0,*) 'min rqvcuten = ',minval(rqvcuten(:,1:nCellsSolve))
-!write(0,*) 'max tend     = ',maxval(tend_scalars(tend%index_qv,:,1:nCellsSolve))
-!write(0,*) 'min tend     = ',minval(tend_scalars(tend%index_qv,:,1:nCellsSolve))
-!write(0,*)
 
 !add coupled tendencies due to longwave radiation:
  if(config_radt_lw_scheme .ne. 'off') then
@@ -170,8 +154,6 @@ write(0,*) 'min rthcuten = ',minval(rthcuten(:,1:nCellsSolve))
     enddo
     enddo
  endif
-write(0,*) 'max rthratenlw = ',maxval(rthratenlw(:,1:nCellsSolve))
-write(0,*) 'min rthratenlw = ',minval(rthratenlw(:,1:nCellsSolve))
     
 !add coupled tendencies due to shortwave radiation:
  if(config_radt_sw_scheme .ne. 'off') then
@@ -181,8 +163,6 @@ write(0,*) 'min rthratenlw = ',minval(rthratenlw(:,1:nCellsSolve))
     enddo
     enddo
  endif
-write(0,*) 'max rthratensw = ',maxval(rthratensw(:,1:nCellsSolve))
-write(0,*) 'min rthratensw = ',minval(rthratensw(:,1:nCellsSolve))
 
 !if non-hydrostatic core, convert the tendency for the potential temperature to a
 !tendency for the modified potential temperature:
@@ -204,6 +184,21 @@ write(0,*) 'min rthratensw = ',minval(rthratensw(:,1:nCellsSolve))
 #endif
  deallocate(theta)
  deallocate(tend_th)
+
+ if(rk_step .eq. 3) then
+    write(0,*)
+    write(0,*) '--- enter subroutine physics_addtend:'
+    write(0,*) 'max rthblten   = ',maxval(rthblten(:,1:nCellsSolve))
+    write(0,*) 'min rthblten   = ',minval(rthblten(:,1:nCellsSolve))
+    write(0,*) 'max rthcuten   = ',maxval(rthcuten(:,1:nCellsSolve))
+    write(0,*) 'min rthcuten   = ',minval(rthcuten(:,1:nCellsSolve))
+    write(0,*) 'max rthratenlw = ',maxval(rthratenlw(:,1:nCellsSolve))
+    write(0,*) 'min rthratenlw = ',minval(rthratenlw(:,1:nCellsSolve))
+    write(0,*) 'max rthratensw = ',maxval(rthratensw(:,1:nCellsSolve))
+    write(0,*) 'min rthratensw = ',minval(rthratensw(:,1:nCellsSolve))
+    write(0,*) '--- end subroutine physics_addtend'
+    write(0,*)
+ endif
 
 !formats:
  201 format(2i6,10(1x,e15.8))

@@ -26,42 +26,32 @@ module atm_advection
 !  local variables
 
       real (kind=RKIND), dimension(2, grid % nEdges) :: thetae
-      real (kind=RKIND), dimension(grid % nEdges) :: xe, ye
       real (kind=RKIND), dimension(grid % nCells) :: theta_abs
 
       real (kind=RKIND), dimension(25) :: xc, yc, zc ! cell center coordinates
       real (kind=RKIND), dimension(25) :: thetav, thetat, dl_sphere
-      real (kind=RKIND) :: xm, ym, zm, dl, xec, yec, zec
-      real (kind=RKIND) :: thetae_tmp, xe_tmp, ye_tmp
+      real (kind=RKIND) :: xec, yec, zec
+      real (kind=RKIND) :: thetae_tmp
       real (kind=RKIND) :: xv1, xv2, yv1, yv2, zv1, zv2
-      integer :: i, j, k, ip1, ip2, m, n, ip1a, ii
+      integer :: i, j, k, ip1, ip2, n
       integer :: iCell, iEdge
       real (kind=RKIND) :: pii
-      real (kind=RKIND) :: x0, y0, x1, y1, x2, y2, x3, y3, x4, y4, x5, y5
-      real (kind=RKIND) :: pdx1, pdx2, pdx3, pdy1, pdy2, pdy3, dx1, dx2, dy1, dy2
-      real (kind=RKIND) :: angv1, angv2, dl1, dl2
-      real (kind=RKIND), dimension(25) :: dxe, dye, x2v, y2v, xp, yp
+      real (kind=RKIND), dimension(25) :: xp, yp
       
       real (kind=RKIND) :: amatrix(25,25), bmatrix(25,25), wmatrix(25,25)
       real (kind=RKIND) :: length_scale
-      integer :: ma,na, cell_add, mw, nn
+      integer :: ma,na, cell_add, mw
       integer, dimension(25) :: cell_list
-
-
-      integer :: cell1, cell2
-      integer, parameter :: polynomial_order = 2
-!      logical, parameter :: debug = .true.
-      logical, parameter :: debug = .false.
-!      logical, parameter :: least_squares = .false.
-      logical, parameter :: least_squares = .true.
       logical :: add_the_cell, do_the_cell
 
-      logical, parameter :: reset_poly = .true.
-
-      real (kind=RKIND) :: rcell, cos2t, costsint, sin2t
+      real (kind=RKIND) :: cos2t, costsint, sin2t
       real (kind=RKIND), dimension(grid%maxEdges) :: angle_2d
 
-!---
+      integer, parameter :: polynomial_order = 2
+      logical, parameter :: debug = .false.
+      logical, parameter :: least_squares = .true.
+      logical, parameter :: reset_poly = .true.
+
 
       pii = 2.*asin(1.0)
 
@@ -119,7 +109,7 @@ module atm_advection
             theta_abs(iCell) =  pii/2. - sphere_angle( xc(1), yc(1), zc(1),  &
                                                        xc(2), yc(2), zc(2),  &
                                                        0.0_RKIND, 0.0_RKIND, 1.0_RKIND ) 
-
+  
 ! angles from cell center to neighbor centers (thetav)
 
             do i=1,n-1
@@ -130,7 +120,7 @@ module atm_advection
                thetav(i) = sphere_angle( xc(1),   yc(1),   zc(1),    &
                                          xc(i+1), yc(i+1), zc(i+1),  &
                                          xc(ip2), yc(ip2), zc(ip2)   )
-
+  
                dl_sphere(i) = grid%sphere_radius*arc_length( xc(1),   yc(1),   zc(1),  &
                                                              xc(i+1), yc(i+1), zc(i+1) )
             end do
@@ -159,9 +149,9 @@ module atm_advection
                iEdge = grid % EdgesOnCell % array(i,iCell)
                if ( iCell .ne. grid % CellsOnEdge % array(1,iEdge)) &
                   angle_2d(i) = angle_2d(i) - pii
-
-!               xp(i) = grid % xCell % array(cell_list(i)) - grid % xCell % array(iCell)
-!               yp(i) = grid % yCell % array(cell_list(i)) - grid % yCell % array(iCell)
+  
+!                 xp(i) = grid % xCell % array(cell_list(i)) - grid % xCell % array(iCell)
+!                 yp(i) = grid % yCell % array(cell_list(i)) - grid % yCell % array(iCell)
 
                xp(i) = grid % dcEdge % array(grid % EdgesOnCell % array(i,iCell)) * cos(angle_2d(i))
                yp(i) = grid % dcEdge % array(grid % EdgesOnCell % array(i,iCell)) * sin(angle_2d(i))
@@ -205,20 +195,20 @@ module atm_advection
                amatrix(i,1) = 1.
                amatrix(i,2) = xp(i-1)
                amatrix(i,3) = yp(i-1)
-   
+     
                amatrix(i,4) = xp(i-1)**2
                amatrix(i,5) = xp(i-1) * yp(i-1)
                amatrix(i,6) = yp(i-1)**2
-   
+     
                amatrix(i,7) = xp(i-1)**3
                amatrix(i,8) = yp(i-1) * (xp(i-1)**2)
                amatrix(i,9) = xp(i-1) * (yp(i-1)**2)
                amatrix(i,10) = yp(i-1)**3
-   
+     
                wmatrix(i,i) = 1.
- 
+   
             end do
-
+  
          else
             na = 15
             ma = ma+1
@@ -229,16 +219,16 @@ module atm_advection
                amatrix(i,1) = 1.
                amatrix(i,2) = xp(i-1)
                amatrix(i,3) = yp(i-1)
-   
+     
                amatrix(i,4) = xp(i-1)**2
                amatrix(i,5) = xp(i-1) * yp(i-1)
                amatrix(i,6) = yp(i-1)**2
-   
+     
                amatrix(i,7) = xp(i-1)**3
                amatrix(i,8) = yp(i-1) * (xp(i-1)**2)
                amatrix(i,9) = xp(i-1) * (yp(i-1)**2)
                amatrix(i,10) = yp(i-1)**3
-   
+     
                amatrix(i,11) = xp(i-1)**4
                amatrix(i,12) = yp(i-1) * (xp(i-1)**3)
                amatrix(i,13) = (xp(i-1)**2)*(yp(i-1)**2)
@@ -248,11 +238,11 @@ module atm_advection
                wmatrix(i,i) = 1.
   
             end do
- 
+   
             do i=1,mw
                wmatrix(i,i) = 1.
             end do
- 
+   
          end if
  
          call poly_fit_2( amatrix, bmatrix, wmatrix, ma, na, 25 )
@@ -363,7 +353,6 @@ module atm_advection
 
       if (debug) stop
 
-
 !      write(0,*) ' check for deriv2 coefficients, iEdge 4 '
 !
 !      iEdge = 4
@@ -400,9 +389,7 @@ module atm_advection
       real (kind=RKIND) :: a, b, c          ! Side lengths of spherical triangle ABC
    
       real (kind=RKIND) :: ABx, ABy, ABz    ! The components of the vector AB
-      real (kind=RKIND) :: mAB              ! The magnitude of AB
       real (kind=RKIND) :: ACx, ACy, ACz    ! The components of the vector AC
-      real (kind=RKIND) :: mAC              ! The magnitude of AC
    
       real (kind=RKIND) :: Dx               ! The i-components of the cross product AB x AC
       real (kind=RKIND) :: Dy               ! The j-components of the cross product AB x AC
@@ -571,16 +558,15 @@ module atm_advection
       real (kind=RKIND), dimension(n,m)  :: b
       real (kind=RKIND), dimension(m,m)  :: w,wt,h
       real (kind=RKIND), dimension(n,m)  :: at, ath
-      real (kind=RKIND), dimension(n,n)  :: ata, ata_inv, atha, atha_inv
+      real (kind=RKIND), dimension(n,n)  :: ata, atha, atha_inv
+!      real (kind=RKIND), dimension(n,n)  :: ata_inv
       integer, dimension(n) :: indx
-      integer :: i,j
    
       if ( (ne<n) .or. (ne<m) ) then
          write(6,*) ' error in poly_fit_2 inversion ',m,n,ne
          stop
       end if
    
-!      a(1:m,1:n) = a_in(1:n,1:m) 
       a(1:m,1:n) = a_in(1:m,1:n)
       w(1:m,1:m) = weights_in(1:m,1:m) 
       b_out(:,:) = 0.   
@@ -615,133 +601,132 @@ module atm_advection
    end subroutine poly_fit_2
 
 
-! Updated 10/24/2001.
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!   Program 4.4   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!                                                                       !
-! Please Note:                                                          !
-!                                                                       !
-! (1) This computer program is written by Tao Pang in conjunction with  !
-!     his book, "An Introduction to Computational Physics," published   !
-!     by Cambridge University Press in 1997.                            !
-!                                                                       !
-! (2) No warranties, express or implied, are made for this program.     !
-!                                                                       !
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-SUBROUTINE MIGS (A,N,X,INDX)
-!
-! Subroutine to invert matrix A(N,N) with the inverse stored
-! in X(N,N) in the output.  Copyright (c) Tao Pang 2001.
-!
-  IMPLICIT NONE
-  INTEGER, INTENT (IN) :: N
-  INTEGER :: I,J,K
-  INTEGER, INTENT (OUT), DIMENSION (N) :: INDX
-  REAL (kind=RKIND), INTENT (INOUT), DIMENSION (N,N):: A
-  REAL (kind=RKIND), INTENT (OUT), DIMENSION (N,N):: X
-  REAL (kind=RKIND), DIMENSION (N,N) :: B
-!
-  DO I = 1, N
-    DO J = 1, N
-      B(I,J) = 0.0
-    END DO
-  END DO
-  DO I = 1, N
-    B(I,I) = 1.0
-  END DO
-!
-  CALL ELGS (A,N,INDX)
-!
-  DO I = 1, N-1
-    DO J = I+1, N
-      DO K = 1, N
-        B(INDX(J),K) = B(INDX(J),K)-A(INDX(J),I)*B(INDX(I),K)
-      END DO
-    END DO
-  END DO
-!
-  DO I = 1, N
-    X(N,I) = B(INDX(N),I)/A(INDX(N),N)
-    DO J = N-1, 1, -1
-      X(J,I) = B(INDX(J),I)
-      DO K = J+1, N
-        X(J,I) = X(J,I)-A(INDX(J),K)*X(K,I)
-      END DO
-      X(J,I) =  X(J,I)/A(INDX(J),J)
-    END DO
-  END DO
-END SUBROUTINE MIGS
+   ! Updated 10/24/2001.
+   !
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!   Program 4.4   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   !
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   !                                                                       !
+   ! Please Note:                                                          !
+   !                                                                       !
+   ! (1) This computer program is written by Tao Pang in conjunction with  !
+   !     his book, "An Introduction to Computational Physics," published   !
+   !     by Cambridge University Press in 1997.                            !
+   !                                                                       !
+   ! (2) No warranties, express or implied, are made for this program.     !
+   !                                                                       !
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   !
+   SUBROUTINE MIGS (A,N,X,INDX)
+   !
+   ! Subroutine to invert matrix A(N,N) with the inverse stored
+   ! in X(N,N) in the output.  Copyright (c) Tao Pang 2001.
+   !
+     IMPLICIT NONE
+     INTEGER, INTENT (IN) :: N
+     INTEGER :: I,J,K
+     INTEGER, INTENT (OUT), DIMENSION (N) :: INDX
+     REAL (kind=RKIND), INTENT (INOUT), DIMENSION (N,N):: A
+     REAL (kind=RKIND), INTENT (OUT), DIMENSION (N,N):: X
+     REAL (kind=RKIND), DIMENSION (N,N) :: B
+   !
+     DO I = 1, N
+       DO J = 1, N
+         B(I,J) = 0.0
+       END DO
+     END DO
+     DO I = 1, N
+       B(I,I) = 1.0
+     END DO
+   !
+     CALL ELGS (A,N,INDX)
+   !
+     DO I = 1, N-1
+       DO J = I+1, N
+         DO K = 1, N
+           B(INDX(J),K) = B(INDX(J),K)-A(INDX(J),I)*B(INDX(I),K)
+         END DO
+       END DO
+     END DO
+   !
+     DO I = 1, N
+       X(N,I) = B(INDX(N),I)/A(INDX(N),N)
+       DO J = N-1, 1, -1
+         X(J,I) = B(INDX(J),I)
+         DO K = J+1, N
+           X(J,I) = X(J,I)-A(INDX(J),K)*X(K,I)
+         END DO
+         X(J,I) =  X(J,I)/A(INDX(J),J)
+       END DO
+     END DO
+   END SUBROUTINE MIGS
 
 
-SUBROUTINE ELGS (A,N,INDX)
-!
-! Subroutine to perform the partial-pivoting Gaussian elimination.
-! A(N,N) is the original matrix in the input and transformed matrix
-! plus the pivoting element ratios below the diagonal in the output.
-! INDX(N) records the pivoting order.  Copyright (c) Tao Pang 2001.
-!
-  IMPLICIT NONE
-  INTEGER, INTENT (IN) :: N
-  INTEGER :: I,J,K,ITMP
-  INTEGER, INTENT (OUT), DIMENSION (N) :: INDX
-  REAL (kind=RKIND) :: C1,PI,PI1,PJ
-  REAL (kind=RKIND), INTENT (INOUT), DIMENSION (N,N) :: A
-  REAL (kind=RKIND), DIMENSION (N) :: C
-!
-! Initialize the index
-!
-  DO I = 1, N
-    INDX(I) = I
-  END DO
-!
-! Find the rescaling factors, one from each row
-!
-  DO I = 1, N
-    C1= 0.0
-    DO J = 1, N
-      C1 = MAX(C1,ABS(A(I,J)))
-    END DO
-    C(I) = C1
-  END DO
-!
-! Search the pivoting (largest) element from each column
-!
-  DO J = 1, N-1
-    PI1 = 0.0
-    DO I = J, N
-      PI = ABS(A(INDX(I),J))/C(INDX(I))
-      IF (PI.GT.PI1) THEN
-        PI1 = PI
-        K   = I
-      ENDIF
-    END DO
-!
-! Interchange the rows via INDX(N) to record pivoting order
-!
-    ITMP    = INDX(J)
-    INDX(J) = INDX(K)
-    INDX(K) = ITMP
-    DO I = J+1, N
-      PJ  = A(INDX(I),J)/A(INDX(J),J)
-!
-! Record pivoting ratios below the diagonal
-!
-      A(INDX(I),J) = PJ
-!
-! Modify other elements accordingly
-!
-      DO K = J+1, N
-        A(INDX(I),K) = A(INDX(I),K)-PJ*A(INDX(J),K)
-      END DO
-    END DO
-  END DO
-!
-END SUBROUTINE ELGS
-
-!-------------------------------------------------------------
+   SUBROUTINE ELGS (A,N,INDX)
+   !
+   ! Subroutine to perform the partial-pivoting Gaussian elimination.
+   ! A(N,N) is the original matrix in the input and transformed matrix
+   ! plus the pivoting element ratios below the diagonal in the output.
+   ! INDX(N) records the pivoting order.  Copyright (c) Tao Pang 2001.
+   !
+     IMPLICIT NONE
+     INTEGER, INTENT (IN) :: N
+     INTEGER :: I,J,K,ITMP
+     INTEGER, INTENT (OUT), DIMENSION (N) :: INDX
+     REAL (kind=RKIND) :: C1,PI,PI1,PJ
+     REAL (kind=RKIND), INTENT (INOUT), DIMENSION (N,N) :: A
+     REAL (kind=RKIND), DIMENSION (N) :: C
+   !
+   ! Initialize the index
+   !
+     DO I = 1, N
+       INDX(I) = I
+     END DO
+   !
+   ! Find the rescaling factors, one from each row
+   !
+     DO I = 1, N
+       C1= 0.0
+       DO J = 1, N
+         C1 = MAX(C1,ABS(A(I,J)))
+       END DO
+       C(I) = C1
+     END DO
+   !
+   ! Search the pivoting (largest) element from each column
+   !
+     DO J = 1, N-1
+       PI1 = 0.0
+       DO I = J, N
+         PI = ABS(A(INDX(I),J))/C(INDX(I))
+         IF (PI.GT.PI1) THEN
+           PI1 = PI
+           K   = I
+         ENDIF
+       END DO
+   !
+   ! Interchange the rows via INDX(N) to record pivoting order
+   !
+       ITMP    = INDX(J)
+       INDX(J) = INDX(K)
+       INDX(K) = ITMP
+       DO I = J+1, N
+         PJ  = A(INDX(I),J)/A(INDX(J),J)
+   !
+   ! Record pivoting ratios below the diagonal
+   !
+         A(INDX(I),J) = PJ
+   !
+   ! Modify other elements accordingly
+   !
+         DO K = J+1, N
+           A(INDX(I),K) = A(INDX(I),K)-PJ*A(INDX(J),K)
+         END DO
+       END DO
+     END DO
+   !
+   END SUBROUTINE ELGS
+   
 
    subroutine atm_initialize_deformation_weights( grid )
                                       
@@ -758,30 +743,22 @@ END SUBROUTINE ELGS
 
 !  local variables
 
-      real (kind=RKIND), dimension(2, grid % nEdges) :: thetae
-      real (kind=RKIND), dimension(grid % nEdges) :: xe, ye
       real (kind=RKIND), dimension(grid % nCells) :: theta_abs
 
       real (kind=RKIND), dimension(25) :: xc, yc, zc ! cell center coordinates
       real (kind=RKIND), dimension(25) :: thetav, thetat, dl_sphere
-      real (kind=RKIND) :: xm, ym, zm, dl, xec, yec, zec
-      real (kind=RKIND) :: thetae_tmp, xe_tmp, ye_tmp
-      real (kind=RKIND) :: xv1, xv2, yv1, yv2, zv1, zv2
-      integer :: i, j, k, ip1, ip2, m, n, ip1a, ii
-      integer :: iCell, iEdge
+      real (kind=RKIND) :: dl
+      integer :: i, ip1, ip2, n
+      integer :: iCell
       real (kind=RKIND) :: pii
-      real (kind=RKIND) :: x0, y0, x1, y1, x2, y2, x3, y3, x4, y4, x5, y5
-      real (kind=RKIND) :: pdx1, pdx2, pdx3, pdy1, pdy2, pdy3, dx1, dx2, dy1, dy2
-      real (kind=RKIND) :: angv1, angv2, dl1, dl2
-      real (kind=RKIND), dimension(25) :: dxe, dye, x2v, y2v, xp, yp, xpt, ypt
+      real (kind=RKIND), dimension(25) :: xp, yp
       
       real (kind=RKIND) :: length_scale
-      integer :: ma,na, cell_add, mw, nn
       integer, dimension(25) :: cell_list
 
-      integer :: cell1, cell2, iv
+      integer :: iv
       logical :: do_the_cell
-      real (kind=RKIND) :: area_cell, sint2, cost2, sint_cost, sumw1, sumw2, xptt, area_cellt
+      real (kind=RKIND) :: area_cell, sint2, cost2, sint_cost, area_cellt
 
       logical, parameter :: debug = .false.
 

@@ -10,6 +10,8 @@ module init_atm_test_cases
    use mpas_RBF_interpolation
    use mpas_vector_reconstruction
    use mpas_timer
+   use mpas_init_atm_static
+   use mpas_init_atm_surface
 
    ! Added only clause to keep xlf90 from getting confused from the overloaded abs intrinsic in mpas_timekeeping
    use mpas_timekeeping !, only: MPAS_Time_type, MPAS_TimeInterval_type, MPAS_Clock_type, &
@@ -104,20 +106,25 @@ module init_atm_test_cases
          write(0,*) ' real-data GFS test case '
          block_ptr => domain % blocklist
          do while (associated(block_ptr))
+            if (config_static_interp) then
+               call init_atm_static(block_ptr % mesh)
+               call init_atm_static_orogwd(block_ptr % mesh)
+            endif
             call init_atm_test_case_gfs(block_ptr % mesh, block_ptr % fg, & 
                                         block_ptr % state % time_levs(1) % state, block_ptr % diag, &
-                                        config_test_case)
-            if (config_met_interp) call physics_initialize_real(block_ptr % mesh, block_ptr % fg)
+                                        block_ptr % diag_physics, config_test_case)
+            if (config_met_interp) call physics_initialize_real(block_ptr % mesh, block_ptr % fg, domain % dminfo)
+
             block_ptr => block_ptr % next
          end do
 
       else if (config_test_case == 8 ) then
 
-         write(0,*) ' real-data surface (SST) update test case '
+         write(0,*) 'real-data surface (SST) update test case '
          block_ptr => domain % blocklist
          do while (associated(block_ptr))
-            call init_atm_test_case_sfc(domain, domain % dminfo, block_ptr % mesh, block_ptr % fg, block_ptr % state % time_levs(1) % state, &
-                                    block_ptr % diag, config_test_case, block_ptr % parinfo)
+            ! Defined in mpas_init_atm_surface.F
+            call init_atm_test_case_sfc(domain, domain % dminfo, block_ptr % mesh,block_ptr % fg, block_ptr % state % time_levs(1) % state)
             block_ptr => block_ptr % next
          end do
 
@@ -2231,7 +2238,7 @@ module init_atm_test_cases
    end subroutine init_atm_test_case_mtn_wave
 
 
-   subroutine init_atm_test_case_gfs(grid, fg, state, diag, test_case)
+   subroutine init_atm_test_case_gfs(grid, fg, state, diag, diag_physics, test_case)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! Real-data test case using GFS data
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -2247,6 +2254,7 @@ module init_atm_test_cases
       type (fg_type), intent(inout) :: fg
       type (state_type), intent(inout) :: state
       type (diag_type), intent(inout) :: diag
+      type (diag_physics_type), intent(inout):: diag_physics
       integer, intent(in) :: test_case
 
       type (block_type), pointer :: block
@@ -2291,10 +2299,9 @@ module init_atm_test_cases
 
       !This is temporary variable here. It just need when calculate tangential velocity v.
       integer :: eoe, j
-      integer, dimension(:), pointer :: nEdgesOnEdge, nEdgesOnCell
+      integer, dimension(:), pointer :: nEdgesOnCell
       integer, dimension(:,:), pointer :: edgesOnEdge, cellsOnEdge, edgesOnCell, cellsOnCell
       real (kind=RKIND), dimension(:), pointer :: dvEdge, dcEdge, AreaCell 
-      real (kind=RKIND), dimension(:,:), pointer :: weightsOnEdge
       real (kind=RKIND), dimension(:,:), pointer :: v
       real (kind=RKIND), dimension(:,:), pointer :: sorted_arr
 
@@ -2302,7 +2309,7 @@ module init_atm_test_cases
       type (field1DReal), target :: tempFieldTarget
 
       real(kind=RKIND), dimension(:), pointer :: hs, hs1
-      real(kind=RKIND) :: hm, zh, dzmin, dzmina, dzmina_global, dzminf, sm
+      real(kind=RKIND) :: hm, hm_global, zh, dzmin, dzmina, dzmina_global, dzminf, sm
       integer :: nsmterrain, kz, sfc_k
       logical :: hybrid, smooth
 
@@ -2310,19 +2317,10 @@ module init_atm_test_cases
       real (kind=RKIND) :: p_check
 
       ! For interpolating terrain and land use
-      integer :: nx, ny, nzz, iPoint, subx, suby
-      integer :: isigned, endian, wordsize, istatus
-      integer :: iTileStart, iTileEnd
-      integer :: jTileStart, jTileEnd
-      integer, allocatable, dimension(:) :: nhs
-      integer, allocatable, dimension(:,:) :: ncat
-      real (kind=4) :: scalefactor   ! NB: this should be a single-precision real
-      real (kind=RKIND) :: lat_pt, lon_pt, lon_pt_o
-      real (kind=4), allocatable, dimension(:,:,:) :: rarray    ! NB: this should be a single-precision real array
+      integer :: nx, ny
+      integer :: istatus
+
       real (kind=RKIND), allocatable, dimension(:,:) :: rslab, maskslab
-      real (kind=RKIND), allocatable, dimension(:,:) :: maxsnowalb
-      real (kind=RKIND), allocatable, dimension(:,:) :: soiltemp_1deg
-      real (kind=RKIND), allocatable, dimension(:,:,:) :: vegfra
       integer, dimension(:), pointer :: mask_array
       integer, dimension(grid % nEdges), target :: edge_mask
       character (len=StrKIND) :: fname
@@ -2364,8 +2362,6 @@ module init_atm_test_cases
       parinfo => block % parinfo
       dminfo => block % domain % dminfo
 
-      weightsOnEdge     => grid % weightsOnEdge % array
-      nEdgesOnEdge      => grid % nEdgesOnEdge % array
       nEdgesOnCell      => grid % nEdgesOnCell % array
       edgesOnEdge       => grid % edgesOnEdge % array
       edgesOnCell       => grid % edgesOnCell % array
@@ -2421,620 +2417,7 @@ module init_atm_test_cases
       omega_e = omega
       p0 = 1.e+05
 
-      interp_list(1) = FOUR_POINT
-      interp_list(2) = SEARCH
-      interp_list(3) = 0
-
-
-      !
-      ! Scale all distances and areas from a unit sphere to one with radius sphere_radius
-      !
-
-      if (config_static_interp) then
-
-      grid % xCell % array = grid % xCell % array * r_earth
-      grid % yCell % array = grid % yCell % array * r_earth
-      grid % zCell % array = grid % zCell % array * r_earth
-      grid % xVertex % array = grid % xVertex % array * r_earth
-      grid % yVertex % array = grid % yVertex % array * r_earth
-      grid % zVertex % array = grid % zVertex % array * r_earth
-      grid % xEdge % array = grid % xEdge % array * r_earth
-      grid % yEdge % array = grid % yEdge % array * r_earth
-      grid % zEdge % array = grid % zEdge % array * r_earth
-      grid % dvEdge % array = grid % dvEdge % array * r_earth
-      grid % dcEdge % array = grid % dcEdge % array * r_earth
-      grid % areaCell % array = grid % areaCell % array * r_earth**2.0
-      grid % areaTriangle % array = grid % areaTriangle % array * r_earth**2.0
-      grid % kiteAreasOnVertex % array = grid % kiteAreasOnVertex % array * r_earth**2.0
-
       scalars(:,:,:) = 0.
-
-      call atm_initialize_advection_rk(grid) 
-      call atm_initialize_deformation_weights(grid) 
-
-
-      !
-      ! Interpolate HGT
-      !
-!     nx = 126
-!     ny = 126
-      nx = 1206
-      ny = 1206
-      nzz = 1
-      isigned = 1
-      endian = 0
-      wordsize = 2
-      scalefactor = 1.0
-      allocate(rarray(nx,ny,nzz))
-      allocate(nhs(grid % nCells))
-      nhs(:) = 0
-      ter(:) = 0.0
-
-      do jTileStart=1,20401,ny-6
-!     do jTileStart=1,961,ny-6
-         jTileEnd = jTileStart + ny - 1 - 6
-         do iTileStart=1,42001,nx-6
-!        do iTileStart=1,2041,nx-6
-            iTileEnd = iTileStart + nx - 1 - 6
-            write(fname,'(a,i5.5,a1,i5.5,a1,i5.5,a1,i5.5)') trim(config_geog_data_path)//'topo_30s/',iTileStart,'-',iTileEnd,'.',jTileStart,'-',jTileEnd
-!           write(fname,'(a,i5.5,a1,i5.5,a1,i5.5,a1,i5.5)') trim(config_geog_data_path)//'topo_10m/',iTileStart,'-',iTileEnd,'.',jTileStart,'-',jTileEnd
-write(0,*) trim(fname)
-
-            call read_geogrid(fname, len_trim(fname), &
-                              rarray, &
-                              nx, ny, nzz, &
-                              isigned, endian, scalefactor, wordsize, istatus)
-            call init_atm_check_read_error(istatus, fname, dminfo)
-
-            iPoint = 1
-            do j=4,ny-3
-            do i=4,nx-3
-               lat_pt = -89.99583 + (jTileStart + j - 5) * 0.0083333333
-               lon_pt = -179.99583 + (iTileStart + i - 5) * 0.0083333333
-!              lat_pt = -89.91667 + (jTileStart + j - 5) * 0.166667
-!              lon_pt = -179.91667 + (iTileStart + i - 5) * 0.166667
-               lat_pt = lat_pt * pii / 180.0
-               lon_pt = lon_pt * pii / 180.0
-
-               iPoint = nearest_cell(lat_pt, lon_pt, &
-                                     iPoint, &
-                                     grid % nCells, grid % maxEdges, grid % nEdgesOnCell % array, grid % cellsOnCell % array, &
-                                     grid % latCell % array, grid % lonCell % array)
-
-               ter(iPoint) = ter(iPoint) + rarray(i,j,1)
-               nhs(iPoint) = nhs(iPoint) + 1
-
-            end do
-            end do
-
-          end do
-       end do
-
-      do iCell=1, grid % nCells
-         ter(iCell) = ter(iCell) / real(nhs(iCell))
-      end do
-
-      deallocate(rarray)
-      deallocate(nhs)
-
-
-      !
-      ! Interpolate LU_INDEX
-      !
-      nx = 1200
-      ny = 1200
-      nzz = 1
-      isigned = 1
-      endian = 0
-      wordsize = 1
-      scalefactor = 1.0
-      allocate(rarray(nx,ny,nzz))
-      allocate(ncat(24,grid % nCells))
-      ncat(:,:) = 0
-      grid % lu_index % array(:) = 0.0
-
-      do jTileStart=1,20401,ny
-         jTileEnd = jTileStart + ny - 1
-         do iTileStart=1,42001,nx
-            iTileEnd = iTileStart + nx - 1
-            write(fname,'(a,i5.5,a1,i5.5,a1,i5.5,a1,i5.5)') trim(config_geog_data_path)//'/landuse_30s/',iTileStart,'-',iTileEnd,'.',jTileStart,'-',jTileEnd
-write(0,*) trim(fname)
-
-            call read_geogrid(fname, len_trim(fname), &
-                              rarray, &
-                              nx, ny, nzz, &
-                              isigned, endian, scalefactor, wordsize, istatus)
-            call init_atm_check_read_error(istatus, fname, dminfo)
-
-            iPoint = 1
-            do j=1,ny
-            do i=1,nx
-               lat_pt = -89.99583 + (jTileStart + j - 2) * 0.0083333333
-               lon_pt = -179.99583 + (iTileStart + i - 2) * 0.0083333333
-               lat_pt = lat_pt * pii / 180.0
-               lon_pt = lon_pt * pii / 180.0
-
-               iPoint = nearest_cell(lat_pt, lon_pt, &
-                                     iPoint, &
-                                     grid % nCells, grid % maxEdges, grid % nEdgesOnCell % array, grid % cellsOnCell % array, &
-                                     grid % latCell % array, grid % lonCell % array)
-
-               ncat(int(rarray(i,j,1)),iPoint) = ncat(int(rarray(i,j,1)),iPoint) + 1
-
-            end do
-            end do
-
-         end do
-      end do
-
-      do iCell=1, grid % nCells
-         grid % lu_index % array(iCell) = 1
-         do i=2,24
-            if (ncat(i,iCell) > ncat(grid % lu_index % array(iCell),iCell)) then
-               grid % lu_index % array(iCell) = i
-            end if
-         end do
-      end do
-
-      deallocate(rarray)
-      deallocate(ncat)
-
-
-      !
-      ! Interpolate SOILCAT_TOP
-      !
-      nx = 1200
-      ny = 1200
-      nzz = 1
-      isigned = 1
-      endian = 0
-      wordsize = 1
-      scalefactor = 1.0
-      allocate(rarray(nx,ny,nzz))
-      allocate(ncat(16,grid % nCells))
-      ncat(:,:) = 0
-      grid % soilcat_top % array(:) = 0.0
-
-      do jTileStart=1,20401,ny
-         jTileEnd = jTileStart + ny - 1
-         do iTileStart=1,42001,nx
-            iTileEnd = iTileStart + nx - 1
-            write(fname,'(a,i5.5,a1,i5.5,a1,i5.5,a1,i5.5)') trim(config_geog_data_path)//'/soiltype_top_30s/',iTileStart,'-',iTileEnd,'.',jTileStart,'-',jTileEnd
-write(0,*) trim(fname)
-
-            call read_geogrid(fname, len_trim(fname), &
-                              rarray, &
-                              nx, ny, nzz, &
-                              isigned, endian, scalefactor, wordsize, istatus)
-            call init_atm_check_read_error(istatus, fname, dminfo)
-
-            iPoint = 1
-            do j=1,ny
-            do i=1,nx
-               lat_pt = -89.99583 + (jTileStart + j - 2) * 0.0083333333
-               lon_pt = -179.99583 + (iTileStart + i - 2) * 0.0083333333
-               lat_pt = lat_pt * pii / 180.0
-               lon_pt = lon_pt * pii / 180.0
-
-               iPoint = nearest_cell(lat_pt, lon_pt, &
-                                     iPoint, &
-                                     grid % nCells, grid % maxEdges, grid % nEdgesOnCell % array, grid % cellsOnCell % array, &
-                                     grid % latCell % array, grid % lonCell % array)
-
-               ncat(int(rarray(i,j,1)),iPoint) = ncat(int(rarray(i,j,1)),iPoint) + 1
-
-            end do
-            end do
-
-         end do
-      end do
-
-      do iCell=1, grid % nCells
-         grid % soilcat_top % array(iCell) = 1
-         do i=2,16
-            if (ncat(i,iCell) > ncat(grid % soilcat_top % array(iCell),iCell)) then
-               grid % soilcat_top % array(iCell) = i
-            end if
-         end do
-      end do
-
-      deallocate(rarray)
-      deallocate(ncat)
-
-
-      !
-      ! Interpolate SOILCAT_BOT
-      !
-      nx = 1200
-      ny = 1200
-      nzz = 1
-      isigned = 1
-      endian = 0
-      wordsize = 1
-      scalefactor = 1.0
-      allocate(rarray(nx,ny,nzz))
-      allocate(ncat(16,grid % nCells))
-      ncat(:,:) = 0
-      grid % soilcat_bot % array(:) = 0.0
-
-      do jTileStart=1,20401,ny
-         jTileEnd = jTileStart + ny - 1
-         do iTileStart=1,42001,nx
-            iTileEnd = iTileStart + nx - 1
-            write(fname,'(a,i5.5,a1,i5.5,a1,i5.5,a1,i5.5)') trim(config_geog_data_path)//'/soiltype_bot_30s/',iTileStart,'-',iTileEnd,'.',jTileStart,'-',jTileEnd
-write(0,*) trim(fname)
-
-            call read_geogrid(fname, len_trim(fname), &
-                              rarray, &
-                              nx, ny, nzz, &
-                              isigned, endian, scalefactor, wordsize, istatus)
-            call init_atm_check_read_error(istatus, fname, dminfo)
-
-            iPoint = 1
-            do j=1,ny
-            do i=1,nx
-               lat_pt = -89.99583 + (jTileStart + j - 2) * 0.0083333333
-               lon_pt = -179.99583 + (iTileStart + i - 2) * 0.0083333333
-               lat_pt = lat_pt * pii / 180.0
-               lon_pt = lon_pt * pii / 180.0
-
-               iPoint = nearest_cell(lat_pt, lon_pt, &
-                                     iPoint, &
-                                     grid % nCells, grid % maxEdges, grid % nEdgesOnCell % array, grid % cellsOnCell % array, &
-                                     grid % latCell % array, grid % lonCell % array)
-
-               ncat(int(rarray(i,j,1)),iPoint) = ncat(int(rarray(i,j,1)),iPoint) + 1
-
-            end do
-            end do
-
-         end do
-      end do
-
-      do iCell=1, grid % nCells
-         grid % soilcat_bot % array(iCell) = 1
-         do i=2,16
-            if (ncat(i,iCell) > ncat(grid % soilcat_bot % array(iCell),iCell)) then
-               grid % soilcat_bot % array(iCell) = i
-            end if
-         end do
-      end do
-
-      deallocate(rarray)
-      deallocate(ncat)
-
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! KLUDGE TO FIX SOIL TYPE OVER ANTARCTICA
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      where (grid % lu_index % array == 24) grid % soilcat_top % array = 16
-      where (grid % lu_index % array == 24) grid % soilcat_bot % array = 16
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! CORRECT INCONSISTENT SOIL AND LAND USE DATA
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      do iCell = 1,grid % nCells
-         if (grid % lu_index % array(iCell) == 16 .or. &
-             grid % soilcat_top % array(iCell) == 14 .or. &
-             grid % soilcat_bot % array(iCell) == 14) then
-            if (grid % lu_index % array(iCell) /= 16) then
-               write(0,*) 'Turning lu_index into water at ', iCell
-               grid % lu_index % array(iCell) = 16
-            end if
-            if (grid % soilcat_top % array(iCell) /= 14) then
-               write(0,*) 'Turning soilcat_top into water at ', iCell
-               grid % soilcat_top % array(iCell) = 14
-            end if
-            if (grid % soilcat_bot % array(iCell) /= 14) then
-               write(0,*) 'Turning soilcat_bot into water at ', iCell
-               grid % soilcat_bot % array(iCell) = 14
-            end if
-         end if
-      end do
-
-
-      !
-      ! Derive LANDMASK
-      !
-      grid % landmask % array(:) = 0
-      do iCell=1, grid % nCells
-         if (grid % lu_index % array(iCell) /= 16) grid % landmask % array(iCell) = 1
-      end do
-
-
-      !
-      ! Interpolate SOILTEMP:
-      !
-      nx = 186
-      ny = 186
-      nzz = 1
-      isigned = 0
-      endian = 0
-      wordsize = 2
-      scalefactor = 0.01
-      allocate(rarray(nx,ny,nzz))
-      allocate(soiltemp_1deg(360,180))
-      grid % soiltemp % array(:) = 0.0
-
-      call map_set(PROJ_LATLON, proj, &
-                   latinc = 1.0_RKIND, &
-                   loninc = 1.0_RKIND, &
-                   knowni = 1.0_RKIND, &
-                   knownj = 1.0_RKIND, &
-                   lat1 = -89.5_RKIND, &
-                   lon1 = -179.5_RKIND)
-
-      write(fname,'(a,i5.5,a1,i5.5,a1,i5.5,a1,i5.5)') trim(config_geog_data_path)//'soiltemp_1deg/',1,'-',180,'.',1,'-',180
-write(0,*) trim(fname)
-      call read_geogrid(fname, len_trim(fname), &
-                        rarray, &
-                        nx, ny, nzz, &
-                        isigned, endian, scalefactor, wordsize, istatus)
-      call init_atm_check_read_error(istatus, fname, dminfo)
-
-      soiltemp_1deg(1:180,1:180) = rarray(4:183,4:183,1)
-
-      write(fname,'(a,i5.5,a1,i5.5,a1,i5.5,a1,i5.5)') trim(config_geog_data_path)//'soiltemp_1deg/',181,'-',360,'.',1,'-',180
-write(0,*) trim(fname)
-      call read_geogrid(fname, len_trim(fname), &
-                        rarray, &
-                        nx, ny, nzz, &
-                        isigned, endian, scalefactor, wordsize, istatus)
-      call init_atm_check_read_error(istatus, fname, dminfo)
-
-      soiltemp_1deg(181:360,1:180) = rarray(4:183,4:183,1)
-
-      interp_list(1) = FOUR_POINT
-      interp_list(2) = W_AVERAGE4
-      interp_list(3) = W_AVERAGE16
-      interp_list(4) = SEARCH
-      interp_list(5) = 0
-
-      do iCell=1,grid%nCells
-  
-         if (grid % landmask % array(iCell) == 1) then
-            lat = grid % latCell % array(iCell)*DEG_PER_RAD
-            lon = grid % lonCell % array(iCell)*DEG_PER_RAD
-            call latlon_to_ij(proj, lat, lon, x, y)
-            if (x < 0.5) then
-               lon = lon + 360.0
-               call latlon_to_ij(proj, lat, lon, x, y)
-            else if (x >= 360.5) then
-               lon = lon - 360.0
-               call latlon_to_ij(proj, lat, lon, x, y)
-            end if
-if (y < 1.0) y = 1.0
-if (y > 179.0) y = 179.0
-!            grid % soiltemp % array(iCell) = interp_sequence(x, y, 1, soiltemp_1deg, 1, 360, 1, 180, 1, 1, -1.e30_RKIND, interp_list, 1)
-            grid % soiltemp % array(iCell) = interp_sequence(x, y, 1, soiltemp_1deg, 1, 360, 1, 180, 1, 1, 0.0_RKIND, interp_list, 1)
-         else
-            grid % soiltemp % array(iCell) = 0.0
-         end if
-
-      end do
-
-      deallocate(rarray)
-      deallocate(soiltemp_1deg)
-
-
-      !
-      ! Interpolate SNOALB
-      !
-      nx = 186
-      ny = 186
-      nzz = 1
-      isigned = 0
-      endian = 0
-      wordsize = 1
-      scalefactor = 1.0
-      allocate(rarray(nx,ny,nzz))
-      allocate(maxsnowalb(360,180))
-      grid % snoalb % array(:) = 0.0
-
-      call map_set(PROJ_LATLON, proj, &
-                   latinc = 1.0_RKIND, &
-                   loninc = 1.0_RKIND, &
-                   knowni = 1.0_RKIND, &
-                   knownj = 1.0_RKIND, &
-                   lat1 = -89.5_RKIND, &
-                   lon1 = -179.5_RKIND)
-
-      write(fname,'(a,i5.5,a1,i5.5,a1,i5.5,a1,i5.5)') trim(config_geog_data_path)//'maxsnowalb/',1,'-',180,'.',1,'-',180
-write(0,*) trim(fname)
-      call read_geogrid(fname, len_trim(fname), &
-                        rarray, &
-                        nx, ny, nzz, &
-                        isigned, endian, scalefactor, wordsize, istatus)
-      call init_atm_check_read_error(istatus, fname, dminfo)
-
-      maxsnowalb(1:180,1:180) = rarray(4:183,4:183,1)
-
-      write(fname,'(a,i5.5,a1,i5.5,a1,i5.5,a1,i5.5)') trim(config_geog_data_path)//'maxsnowalb/',181,'-',360,'.',1,'-',180
-write(0,*) trim(fname)
-      call read_geogrid(fname, len_trim(fname), &
-                        rarray, &
-                        nx, ny, nzz, &
-                        isigned, endian, scalefactor, wordsize, istatus)
-      call init_atm_check_read_error(istatus, fname, dminfo)
-
-      maxsnowalb(181:360,1:180) = rarray(4:183,4:183,1)
-
-      interp_list(1) = FOUR_POINT
-      interp_list(2) = W_AVERAGE4
-      interp_list(3) = W_AVERAGE16
-      interp_list(4) = SEARCH
-      interp_list(5) = 0
-
-      do iCell=1,grid%nCells
-  
-         if (grid % landmask % array(iCell) == 1) then
-            lat = grid % latCell % array(iCell)*DEG_PER_RAD
-            lon = grid % lonCell % array(iCell)*DEG_PER_RAD
-            call latlon_to_ij(proj, lat, lon, x, y)
-            if (x < 0.5) then
-               lon = lon + 360.0
-               call latlon_to_ij(proj, lat, lon, x, y)
-            else if (x >= 360.5) then
-               lon = lon - 360.0
-               call latlon_to_ij(proj, lat, lon, x, y)
-            end if
-if (y < 1.0) y = 1.0
-if (y > 179.0) y = 179.0
-!            grid % snoalb % array(iCell) = interp_sequence(x, y, 1, maxsnowalb, 1, 360, 1, 180, 1, 1, -1.e30_RKIND, interp_list, 1)
-            grid % snoalb % array(iCell) = interp_sequence(x, y, 1, maxsnowalb, 1, 360, 1, 180, 1, 1, 0.0_RKIND, interp_list, 1)
-         else
-            grid % snoalb % array(iCell) = 0.0
-         end if
-
-      end do
-
-      grid % snoalb % array(:) = grid % snoalb % array(:) / 100.0
-
-      deallocate(rarray)
-      deallocate(maxsnowalb)
-
-
-      !
-      ! Interpolate GREENFRAC
-      !
-      nx = 1256
-      ny = 1256
-      nzz = 12
-      isigned = 0
-      endian = 0
-      wordsize = 1
-      scalefactor = 1.0
-      allocate(rarray(nx,ny,nzz))
-      allocate(vegfra(2500,1250,12))
-!     grid % vegfra % array(:) = 0.0
-      grid % greenfrac % array(:,:) = 0.0
-
-      call map_set(PROJ_LATLON, proj, &
-                   latinc = 0.144_RKIND, &
-                   loninc = 0.144_RKIND, &
-                   knowni = 1.0_RKIND, &
-                   knownj = 1.0_RKIND, &
-                   lat1 = -89.928_RKIND, &
-                   lon1 = -179.928_RKIND)
-
-      write(fname,'(a,i5.5,a1,i5.5,a1,i5.5,a1,i5.5)') trim(config_geog_data_path)//'greenfrac/',1,'-',1250,'.',1,'-',1250
-write(0,*) trim(fname)
-      call read_geogrid(fname, len_trim(fname), &
-                        rarray, &
-                        nx, ny, nzz, &
-                        isigned, endian, scalefactor, wordsize, istatus)
-      call init_atm_check_read_error(istatus, fname, dminfo)
-
-      vegfra(1:1250,1:1250,1:12) = rarray(4:1253,4:1253,1:12)
-
-      write(fname,'(a,i5.5,a1,i5.5,a1,i5.5,a1,i5.5)') trim(config_geog_data_path)//'greenfrac/',1251,'-',2500,'.',1,'-',1250
-write(0,*) trim(fname)
-      call read_geogrid(fname, len_trim(fname), &
-                        rarray, &
-                        nx, ny, nzz, &
-                        isigned, endian, scalefactor, wordsize, istatus)
-      call init_atm_check_read_error(istatus, fname, dminfo)
-
-      vegfra(1251:2500,1:1250,1:12) = rarray(4:1253,4:1253,1:12)
-
-      do iCell=1,grid%nCells
-         if (grid % landmask % array(iCell) == 1) then
-            lat = grid % latCell % array(iCell)*DEG_PER_RAD
-            lon = grid % lonCell % array(iCell)*DEG_PER_RAD
-            call latlon_to_ij(proj, lat, lon, x, y)
-            if (x < 0.5) then
-               lon = lon + 360.0
-               call latlon_to_ij(proj, lat, lon, x, y)
-            else if (x >= 2500.5) then
-               lon = lon - 360.0
-               call latlon_to_ij(proj, lat, lon, x, y)
-            end if
-if (y < 1.0) y = 1.0
-if (y > 1249.0) y = 1249.0
-            do k=1,12
-               grid % greenfrac % array(k,iCell) = interp_sequence(x, y, k, vegfra, 1, 2500, 1, 1250, 1, 12, -1.e30_RKIND, interp_list, 1)
-            end do
-         else
-            grid % greenfrac % array(:,iCell) = 0.0
-         end if
-         grid % shdmin % array(iCell) = minval(grid % greenfrac % array(:,iCell))
-         grid % shdmax % array(iCell) = maxval(grid % greenfrac % array(:,iCell))
-      
-      end do
-
-      deallocate(rarray)
-      deallocate(vegfra)
-
-
-      !
-      ! Interpolate ALBEDO12M
-      !
-      nx = 1256
-      ny = 1256
-      nzz = 12
-      isigned = 0
-      endian = 0
-      wordsize = 1
-      scalefactor = 1.0
-      allocate(rarray(nx,ny,nzz))
-      allocate(vegfra(2500,1250,12))
-      grid % albedo12m % array(:,:) = 0.0
-
-      call map_set(PROJ_LATLON, proj, &
-                   latinc = 0.144_RKIND, &
-                   loninc = 0.144_RKIND, &
-                   knowni = 1.0_RKIND, &
-                   knownj = 1.0_RKIND, &
-                   lat1 = -89.928_RKIND, &
-                   lon1 = -179.928_RKIND)
-
-      write(fname,'(a,i5.5,a1,i5.5,a1,i5.5,a1,i5.5)') trim(config_geog_data_path)//'albedo_ncep/',1,'-',1250,'.',1,'-',1250
-write(0,*) trim(fname)
-      call read_geogrid(fname, len_trim(fname), &
-                        rarray, &
-                        nx, ny, nzz, &
-                        isigned, endian, scalefactor, wordsize, istatus)
-      call init_atm_check_read_error(istatus, fname, dminfo)
-
-      vegfra(1:1250,1:1250,1:12) = rarray(4:1253,4:1253,1:12)
-
-      write(fname,'(a,i5.5,a1,i5.5,a1,i5.5,a1,i5.5)') trim(config_geog_data_path)//'albedo_ncep/',1251,'-',2500,'.',1,'-',1250
-write(0,*) trim(fname)
-      call read_geogrid(fname, len_trim(fname), &
-                        rarray, &
-                        nx, ny, nzz, &
-                        isigned, endian, scalefactor, wordsize, istatus)
-      call init_atm_check_read_error(istatus, fname, dminfo)
-
-      vegfra(1251:2500,1:1250,1:12) = rarray(4:1253,4:1253,1:12)
-
-      do iCell=1,grid%nCells
-         if (grid % landmask % array(iCell) == 1) then
-            lat = grid % latCell % array(iCell)*DEG_PER_RAD
-            lon = grid % lonCell % array(iCell)*DEG_PER_RAD
-            call latlon_to_ij(proj, lat, lon, x, y)
-            if (x < 0.5) then
-               lon = lon + 360.0
-               call latlon_to_ij(proj, lat, lon, x, y)
-            else if (x >= 2500.5) then
-               lon = lon - 360.0
-               call latlon_to_ij(proj, lat, lon, x, y)
-            end if
-if (y < 1.0) y = 1.0
-if (y > 1249.0) y = 1249.0
-            do k=1,12
-               grid % albedo12m % array(k,iCell) = interp_sequence(x, y, k, vegfra, 1, 2500, 1, 1250, 1, 12, 0.0_RKIND, interp_list, 1)
-            end do
-         else
-            grid % albedo12m % array(:,iCell) = 8.0
-         end if
-      end do
-
-      deallocate(rarray)
-      deallocate(vegfra)
-
- 
-      end if    ! config_static_interp
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! BEGIN ADOPT GFS TERRAIN HEIGHT
@@ -3120,22 +2503,27 @@ if (y > 1249.0) y = 1249.0
 
          do iCell=1,grid%nCells
             hs(iCell) = 0.
-            do j = 1,nEdgesOnCell(iCell)
-               hs(iCell) = hs(iCell) + dvEdge(edgesOnCell(j,iCell))    &
-                                     / dcEdge(edgesOnCell(j,iCell))    &
-                                     *   (ter(cellsOnCell(j,iCell))-ter(iCell))
-            end do
-            hs(iCell) = ter(iCell) + 0.25*hs(iCell)
+            if(ter(iCell) .ne. 0.) then
+               do j = 1,nEdgesOnCell(iCell)
+                  hs(iCell) = hs(iCell) + dvEdge(edgesOnCell(j,iCell))    &
+                                        / dcEdge(edgesOnCell(j,iCell))    &
+                                        * (ter(cellsOnCell(j,iCell))-ter(iCell))
+               end do
+            endif
+            hs(iCell) = ter(iCell) + 0.125*hs(iCell)
          end do
 
          do iCell=1,grid %nCells
             ter(iCell) = 0.
-            do j = 1,nEdgesOnCell(iCell)
-               ter(iCell) = ter(iCell) + dvEdge(edgesOnCell(j,iCell))    &
-                                     / dcEdge(edgesOnCell(j,iCell))    &
-                                     *    (hs(cellsOnCell(j,iCell))-hs(iCell))
-            end do
-            ter(iCell) = hs(iCell) - 0.25*ter(iCell)
+            if(hs(iCell) .ne. 0.) then
+               do j = 1,nEdgesOnCell(iCell)
+                  ter(iCell) = ter(iCell) + dvEdge(edgesOnCell(j,iCell))    &
+                                          / dcEdge(edgesOnCell(j,iCell))    &
+                                          * (hs(cellsOnCell(j,iCell))-hs(iCell))
+               end do
+            endif
+!           ter(iCell) = hs(iCell) - 0.25*ter(iCell)
+            ter(iCell) = hs(iCell) - 0.125*ter(iCell)
          end do
 
          ! note that ther variable ter used throughout this section is a pointer to grid % ter % array, here we are passing ter's parent field
@@ -3147,7 +2535,9 @@ if (y > 1249.0) y = 1249.0
          hx(:,iCell) = ter(iCell)
       end do
 
-      hm = maxval(ter(:))
+      hm = maxval(ter(1:nCellsSolve))
+      call mpas_dmpar_max_real(dminfo, hm, hm_global)
+      hm = hm_global
       write(0,*) "max ter = ", hm
 
 !     Metrics for hybrid coordinate and vertical stretching
@@ -3243,7 +2633,7 @@ if (y > 1249.0) y = 1249.0
 
       if (smooth) then
 
-         dzmin = 0.3
+         dzmin = 0.5
 
          do k=2,kz-1
             hx(k,:) = hx(k-1,:)
@@ -3251,9 +2641,9 @@ if (y > 1249.0) y = 1249.0
 
 !            dzmin = max(0.5_RKIND,1.-.5*zw(k)/hm)
 
-            sm = .05*min(0.5_RKIND*zw(k)/hm,1.0_RKIND)
+            sm = .02*min(0.5_RKIND*zw(k)/hm,1.0_RKIND)
           
-            do i=1,50
+            do i=1,30
                do iCell=1,grid % nCells
                   hs1(iCell) = 0.
                   do j = 1,nEdgesOnCell(iCell)
@@ -3287,7 +2677,7 @@ if (y > 1249.0) y = 1249.0
                call mpas_dmpar_exch_halo_field(tempField)
 
              !  dzmina = minval(hs(:)-hx(k-1,:))
-               dzmina = minval(zw(k)+ah(k)*hs(1:grid%nCellsSolve)-zw(k-1)-ah(k-1)*hx(k-1,1:grid%nCellsSolve))
+               dzmina = minval(zw(k)+ah(k)*hs(1:nCellsSolve)-zw(k-1)-ah(k-1)*hx(k-1,1:nCellsSolve))
                call mpas_dmpar_min_real(dminfo, dzmina, dzmina_global)
              !  write(0,*) ' k,i, dzmina, dzmin, zw(k)-zw(k-1) ', k,i, dzmina, dzmin, zw(k)-zw(k-1)
                if (dzmina_global >= dzmin*(zw(k)-zw(k-1))) then
@@ -3428,7 +2818,7 @@ if (y > 1249.0) y = 1249.0
       do while (istatus == 0)
          if (index(field % field, 'LANDSEA') /= 0) then
 
-            allocate(maskslab(-3:field % nx+3, field % ny))
+            allocate(maskslab(-2:field % nx+3, field % ny))
             maskslab(1:field % nx, 1:field % ny) = field % slab(1:field % nx, 1:field % ny)
             maskslab(0, 1:field % ny)  = field % slab(field % nx, 1:field % ny)
             maskslab(-1, 1:field % ny) = field % slab(field % nx-1, 1:field % ny)
@@ -3849,7 +3239,8 @@ write(0,*) 'Interpolating SNOW'
             else if (index(field % field, 'SEAICE') /= 0) then
 write(0,*) 'Interpolating SEAICE'
 
-               interp_list(1) = SIXTEEN_POINT
+               !interp_list(1) = SIXTEEN_POINT
+               interp_list(1) = FOUR_POINT
                interp_list(2) = FOUR_POINT
                interp_list(3) = W_AVERAGE4
                interp_list(4) = SEARCH
@@ -3873,7 +3264,7 @@ write(0,*) 'Interpolating SKINTEMP'
                ndims = 1
             end if
 
-            allocate(rslab(-3:field % nx+3, field % ny))
+            allocate(rslab(-2:field % nx+3, field % ny))
             rslab(1:field % nx, 1:field % ny) = field % slab(1:field % nx, 1:field % ny)
             rslab(0, 1:field % ny)  = field % slab(field % nx, 1:field % ny)
             rslab(-1, 1:field % ny) = field % slab(field % nx-1, 1:field % ny)
@@ -3892,9 +3283,9 @@ write(0,*) 'Interpolating SKINTEMP'
                      call latlon_to_ij(proj, lat, lon, x, y)
                   end if
                   if (ndims == 1) then
-                     destField1d(i) = interp_sequence(x, y, 1, rslab, -3, field % nx + 3, 1, field % ny, 1, 1, msgval, interp_list, 1, maskval=maskval, mask_array=maskslab)
+                     destField1d(i) = interp_sequence(x, y, 1, rslab, -2, field % nx + 3, 1, field % ny, 1, 1, msgval, interp_list, 1, maskval=maskval, mask_array=maskslab)
                   else if (ndims == 2) then
-                     destField2d(k,i) = interp_sequence(x, y, 1, rslab, -3, field % nx + 3, 1, field % ny, 1, 1, msgval, interp_list, 1, maskval=maskval, mask_array=maskslab)
+                     destField2d(k,i) = interp_sequence(x, y, 1, rslab, -2, field % nx + 3, 1, field % ny, 1, 1, msgval, interp_list, 1, maskval=maskval, mask_array=maskslab)
                   end if
                else
                   if (ndims == 1) then
@@ -4050,26 +3441,15 @@ write(0,*) 'PROCESSING SEAICE'
       ! Freeze really cold ocean
       where (fg % sst % array < 271.0 .and. grid % landmask % array == 0) fg % xice % array = 1.0
 
+      ! Limit XICE to values between 0 and 1. Although the input meteorological field is between 0.
+      ! and 1., interpolation to the MPAS grid can yield values of XiCE less than 0. and greater
+      ! than 1.:
+      where (fg % xice % array < 0._RKIND) fg % xice % array = 0._RKIND
+      where (fg % xice % array > 1._RKIND) fg % xice % array = 1._RKIND
+
       ! Set SEAICE (0/1 flag) based on XICE (fractional ice coverage)
       fg % seaice % array(:) = 0.0
       where (fg % xice % array >= 0.5) fg % seaice % array = 1.0
-
-
-      !
-      ! For now, hard-wire soil layer depths and thicknesses
-      !
-
-      !LDF begin:
-      !fg % dzs % array(1,:) = 0.10
-      !fg % dzs % array(2,:) = 0.30
-      !fg % dzs % array(3,:) = 0.60
-      !fg % dzs % array(4,:) = 1.00
-
-      !fg % dz % array(1,:) = 0.05
-      !fg % dz % array(2,:) = 0.25
-      !fg % dz % array(3,:) = 0.70
-      !fg % dz % array(4,:) = 1.50
-      !LDF end.
 
 
       !  
@@ -4101,7 +3481,9 @@ write(0,*) 'PROCESSING SEAICE'
          call mpas_quicksort(config_nfglevels, sorted_arr)
          do k=1,grid%nVertLevels
             target_z = 0.5 * (grid % zgrid % array(k,iCell) + grid % zgrid % array(k+1,iCell))
-            state % theta_m % array(k,iCell) = vertical_interp(target_z, config_nfglevels, sorted_arr, order=1, extrap=1)
+!           state % theta_m % array(k,iCell) = vertical_interp(target_z, config_nfglevels, sorted_arr, order=1, extrap=1)
+            state % theta_m % array(k,iCell) = vertical_interp(target_z, config_nfglevels-1, &
+                                      sorted_arr(:,1:config_nfglevels-1), order=1, extrap=1)
          end do
 
 
@@ -4116,7 +3498,10 @@ write(0,*) 'PROCESSING SEAICE'
          call mpas_quicksort(config_nfglevels, sorted_arr)
          do k=1,grid%nVertLevels
             target_z = 0.5 * (grid % zgrid % array(k,iCell) + grid % zgrid % array(k+1,iCell))
-            state % scalars % array(state % index_qv,k,iCell) = vertical_interp(target_z, config_nfglevels, sorted_arr, order=1, extrap=0)
+!           state % scalars % array(state % index_qv,k,iCell) = vertical_interp(target_z, config_nfglevels, sorted_arr, order=1, extrap=0)
+            state % scalars % array(state % index_qv,k,iCell) = vertical_interp(target_z, config_nfglevels-1, &
+                                                       sorted_arr(:,1:config_nfglevels-1), order=1, extrap=1)
+            diag % rh % array(k,iCell) = state % scalars % array(state % index_qv,k,iCell)
          end do
 
 
@@ -4131,7 +3516,9 @@ write(0,*) 'PROCESSING SEAICE'
          call mpas_quicksort(config_nfglevels, sorted_arr)
          do k=1,grid%nVertLevels
             target_z = 0.5 * (grid % zgrid % array(k,iCell) + grid % zgrid % array(k+1,iCell))
-            fg % gfs_z % array(k,iCell) = vertical_interp(target_z, config_nfglevels, sorted_arr, order=1, extrap=1)
+!           fg % gfs_z % array(k,iCell) = vertical_interp(target_z, config_nfglevels, sorted_arr, order=1, extrap=1)
+            fg % gfs_z % array(k,iCell) = vertical_interp(target_z, config_nfglevels-1, &
+                                 sorted_arr(:,1:config_nfglevels-1), order=1, extrap=1)
          end do
 
 
@@ -4149,7 +3536,9 @@ write(0,*) 'PROCESSING SEAICE'
          call mpas_quicksort(config_nfglevels, sorted_arr)
          do k=1,grid%nVertLevels
             target_z = 0.5 * (grid % zgrid % array(k,iCell) + grid % zgrid % array(k+1,iCell))
-            diag % pressure % array(k,iCell) = exp(vertical_interp(target_z, config_nfglevels, sorted_arr, order=1, extrap=1))
+!           diag % pressure % array(k,iCell) = exp(vertical_interp(target_z, config_nfglevels, sorted_arr, order=1, extrap=1))
+            diag % pressure % array(k,iCell) = exp(vertical_interp(target_z, config_nfglevels-1, &
+                                         sorted_arr(:,1:config_nfglevels-1), order=1, extrap=1))
          end do
 
 
@@ -4186,7 +3575,9 @@ write(0,*) 'PROCESSING SEAICE'
          call mpas_quicksort(config_nfglevels, sorted_arr)
          do k=1,grid%nVertLevels
             target_z = 0.25 * (grid % zgrid % array(k,cellsOnEdge(1,iEdge)) + grid % zgrid % array(k+1,cellsOnEdge(1,iEdge)) + grid % zgrid % array(k,cellsOnEdge(2,iEdge)) + grid % zgrid % array(k+1,cellsOnEdge(2,iEdge)))
-            state % u % array(k,iEdge) = vertical_interp(target_z, config_nfglevels, sorted_arr, order=1, extrap=0)
+!           state % u % array(k,iEdge) = vertical_interp(target_z, config_nfglevels, sorted_arr, order=1, extrap=0)
+            state % u % array(k,iEdge) = vertical_interp(target_z, config_nfglevels-1, & 
+                                sorted_arr(:,1:config_nfglevels-1), order=1, extrap=1)
          end do
 
       end do
@@ -4243,8 +3634,8 @@ write(0,*) 'PROCESSING SEAICE'
 
             ! QV
             es = 6.112 * exp((17.27*(state % theta_m % array(k,iCell) - 273.16))/(state % theta_m % array(k,iCell) - 35.86))
-            rs = 0.622 * es / (diag % pressure % array(k,iCell) - es)
-            scalars(state % index_qv,k,iCell) = rs * scalars(state % index_qv,k,iCell)
+            rs = 0.622 * es * 100. / (diag % pressure % array(k,iCell) - es * 100.)
+            scalars(state % index_qv,k,iCell) = 0.01 * rs * scalars(state % index_qv,k,iCell)
 
             ! PI
             p(k,iCell) = (diag % pressure % array(k,iCell) / p0) ** (rgas / cp)
@@ -4259,6 +3650,17 @@ write(0,*) 'PROCESSING SEAICE'
          end do
       end do
 
+
+      !
+      ! Calculation of the initial precipitable water:
+      ! 
+      do iCell = 1,grid%nCells
+         diag_physics%precipw%array(iCell) = 0.0
+         do k = 1,grid%nVertLevels
+            diag_physics%precipw%array(iCell) = diag_physics%precipw%array(iCell) &
+                         + rho_zz(k,iCell)*scalars(state%index_qv,k,iCell)*(zgrid(k+1,iCell)-zgrid(k,iCell))
+         enddo
+      enddo
 
       !
       ! Reference state based on a dry isothermal atmosphere
@@ -4385,242 +3787,6 @@ write(0,*) 'PROCESSING SEAICE'
       end do
 
    end subroutine init_atm_test_case_gfs
-
-
-   subroutine init_atm_test_case_sfc(domain, dminfo, grid, fg, state, diag, test_case, parinfo)
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   ! Real-data test case using SST data
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-      use mpas_dmpar
-      use mpas_io_output
-      use init_atm_read_met
-      use init_atm_llxy
-      use init_atm_hinterp
-
-      implicit none
-
-      type (domain_type), intent(inout) :: domain
-      type (dm_info), intent(in) :: dminfo
-      type (mesh_type), intent(inout) :: grid
-      type (fg_type), intent(inout) :: fg
-      type (state_type), intent(inout) :: state
-      type (diag_type), intent(inout) :: diag
-      integer, intent(in) :: test_case
-      type (parallel_info), pointer :: parinfo
-
-      integer :: istatus
-      integer :: iCell, i, j
-      type (met_data) :: field
-      type (proj_info) :: proj
-      real (kind=RKIND) :: lat, lon, x, y
-      integer, dimension(5) :: interp_list
-      real (kind=RKIND), allocatable, dimension(:,:) :: slab_r8
-      type (io_output_object) :: sfc_update_obj
-      type (MPAS_Clock_type) :: fg_clock
-      type (MPAS_Time_type) :: start_time, stop_time, curr_time
-      type (MPAS_TimeInterval_type) :: fg_interval
-      character (len=StrKIND) :: timeString
-
-
-      ! Set interpolation sequence to be used for SST/SKINTEMP field
-      interp_list(1) = FOUR_POINT
-      interp_list(2) = SEARCH
-      interp_list(3) = 0
-
-
-      ! Set up clock to step through all intermediate file dates to be processed
-      call mpas_set_time(start_time, dateTimeString=trim(config_start_time))
-      call mpas_set_time(stop_time,  dateTimeString=trim(config_stop_time))
-      call mpas_set_timeInterval(fg_interval, S=config_fg_interval)
-
-      call mpas_create_clock(fg_clock, start_time, fg_interval, stopTime=stop_time) 
-
-
-      ! Initialize the output file
-      sfc_update_obj % time = 1
-      sfc_update_obj % filename = trim(config_sfc_update_name)
-
-      call mpas_output_state_init(sfc_update_obj, domain, "SFC")
-
-      ! Loop over all times, interpolating the SST/SKINTEMP field from each intermediate file
-      curr_time = mpas_get_clock_time(fg_clock, MPAS_NOW) 
-      do while (curr_time <= stop_time)
-         call mpas_get_time(curr_time, dateTimeString=timeString)
-         write(0,*) 'Processing ',trim(config_sfc_prefix)//':'//timeString(1:13)
-
-         ! Open intermediate file
-         call read_met_init(trim(config_sfc_prefix), .false., timeString(1:13), istatus)
-         if (istatus /= 0) then
-            write(0,*) 'Error reading ',trim(config_sfc_prefix)//':'//timeString(1:13)
-            exit
-         end if
-
-         ! Scan through all fields in the file, looking for the SST or SKINTEMP field
-         call read_next_met_field(field, istatus)
-         do while (istatus == 0)
-
-            !initialization of sea-surface temperature (SST) and sea-ice fraction (XICE) arrays,
-            !prior to reading the input data:
-            fg % sst  % array (1:grid%nCells) = 0.0
-            fg % xice % array (1:grid%nCells) = 0.0
-
-            if (index(field % field, 'SKINTEMP') /= 0 .or. index(field % field, 'SST') /= 0) then
-
-               ! Interpolation routines use real(kind=RKIND), so copy from default real array
-               allocate(slab_r8(field % nx, field % ny))
-               do j=1,field % ny
-               do i=1,field % nx
-                  slab_r8(i,j) = field % slab(i,j)
-               end do
-               end do
-
-               !
-               ! Set up map projection
-               !
-               call map_init(proj)
-             
-               if (field % iproj == PROJ_LATLON) then
-                  call map_set(PROJ_LATLON, proj, &
-                               latinc = real(field % deltalat,RKIND), &
-                               loninc = real(field % deltalon,RKIND), &
-                               knowni = 1.0_RKIND, &
-                               knownj = 1.0_RKIND, &
-                               lat1 = real(field % startlat,RKIND), &
-                               lon1 = real(field % startlon,RKIND))
-               else if (field % iproj == PROJ_GAUSS) then
-                  call map_set(PROJ_GAUSS, proj, &
-                               nlat = nint(field % deltalat), &
-                               loninc = real(field % deltalon,RKIND), &
-                               lat1 = real(field % startlat,RKIND), &
-                               lon1 = real(field % startlon,RKIND))
-!                               nxmax = nint(360.0 / field % deltalon), &
-               else if (field % iproj == PROJ_PS) then
-                  call map_set(PROJ_PS, proj, &
-                               dx = real(field % dx,RKIND), &
-                               truelat1 = real(field % truelat1,RKIND), &
-                               stdlon = real(field % xlonc,RKIND), &
-                               knowni = real(field % nx / 2.0,RKIND), &
-                               knownj = real(field % ny / 2.0,RKIND), &
-                               lat1 = real(field % startlat,RKIND), &
-                               lon1 = real(field % startlon,RKIND))
-               end if
-   
-               ! Interpolate SST/SKINTEMP field to each MPAS grid cell
-               do iCell=1,grid % nCells
-                  lat = grid % latCell % array(iCell) * DEG_PER_RAD
-                  lon = grid % lonCell % array(iCell) * DEG_PER_RAD
-                  call latlon_to_ij(proj, lat, lon, x, y)
-                  if (y < 0.5) then
-                     y = 1.0
-                  else if (y >= real(field%ny)+0.5) then
-                     y = real(field % ny)
-                  end if
-                  if (x < 0.5) then
-                     lon = lon + 360.0
-                     call latlon_to_ij(proj, lat, lon, x, y)
-                  else if (x >= real(field%nx)+0.5) then
-                     lon = lon - 360.0
-                     call latlon_to_ij(proj, lat, lon, x, y)
-                  end if
-                  fg % sst % array(iCell) = interp_sequence(x, y, 1, slab_r8, 1, field % nx, 1, field % ny, 1, 1, -1.e30_RKIND, interp_list, 1)
-               end do
-
-               deallocate(slab_r8)
-               deallocate(field % slab)
-
-            else if (index(field % field, 'SEAICE') /= 0) then
-
-               ! Interpolation routines use real(kind=RKIND), so copy from default real array
-               allocate(slab_r8(field % nx, field % ny))
-               do j=1,field % ny
-               do i=1,field % nx
-                  slab_r8(i,j) = field % slab(i,j)
-               end do
-               end do
-
-               !
-               ! Set up map projection
-               !
-               call map_init(proj)
-             
-               if (field % iproj == PROJ_LATLON) then
-                  call map_set(PROJ_LATLON, proj, &
-                               latinc = real(field % deltalat,RKIND), &
-                               loninc = real(field % deltalon,RKIND), &
-                               knowni = 1.0_RKIND, &
-                               knownj = 1.0_RKIND, &
-                               lat1 = real(field % startlat,RKIND), &
-                               lon1 = real(field % startlon,RKIND))
-               else if (field % iproj == PROJ_GAUSS) then
-                  call map_set(PROJ_GAUSS, proj, &
-                               nlat = nint(field % deltalat), &
-                               loninc = real(field % deltalon,RKIND), &
-                               lat1 = real(field % startlat,RKIND), &
-                               lon1 = real(field % startlon,RKIND))
-!                               nxmax = nint(360.0 / field % deltalon), &
-               else if (field % iproj == PROJ_PS) then
-                  call map_set(PROJ_PS, proj, &
-                               dx = real(field % dx,RKIND), &
-                               truelat1 = real(field % truelat1,RKIND), &
-                               stdlon = real(field % xlonc,RKIND), &
-                               knowni = real(field % nx / 2.0,RKIND), &
-                               knownj = real(field % ny / 2.0,RKIND), &
-                               lat1 = real(field % startlat,RKIND), &
-                               lon1 = real(field % startlon,RKIND))
-               end if
-   
-               ! Interpolate SEAICE/SKINTEMP field to each MPAS grid cell
-               do iCell=1,grid % nCells
-                  lat = grid % latCell % array(iCell) * DEG_PER_RAD
-                  lon = grid % lonCell % array(iCell) * DEG_PER_RAD
-                  call latlon_to_ij(proj, lat, lon, x, y)
-                  if (y < 0.5) then
-                     y = 1.0
-                  else if (y >= real(field%ny)+0.5) then
-                     y = real(field % ny)
-                  end if
-                  if (x < 0.5) then
-                     lon = lon + 360.0
-                     call latlon_to_ij(proj, lat, lon, x, y)
-                  else if (x >= real(field%nx)+0.5) then
-                     lon = lon - 360.0
-                     call latlon_to_ij(proj, lat, lon, x, y)
-                  end if
-                  fg % xice % array(iCell) = interp_sequence(x, y, 1, slab_r8, 1, field % nx, 1, field % ny, 1, 1, -1.e30_RKIND, interp_list, 1)
-                  if (fg % xice % array(iCell) == -1.e30_RKIND) fg % xice % array(iCell) = 0.0_RKIND
-
-               end do
-
-               deallocate(slab_r8)
-               deallocate(field % slab)
-
-            else
-
-               deallocate(field % slab)
-            end if
-
-            call read_next_met_field(field, istatus)
-         end do
-
-         ! Close intermediate file
-         call read_met_close()
-
-         ! Write the interpolated SST/SKINTEMP field as a new time slice in the MPAS output file
-         call mpas_output_state_for_domain(sfc_update_obj, domain, sfc_update_obj % time)
-         sfc_update_obj % time = sfc_update_obj % time + 1
-
-         call mpas_advance_clock(fg_clock)
-         curr_time = mpas_get_clock_time(fg_clock, MPAS_NOW) 
-
-         call mpas_get_time(curr_time, dateTimeString=timeString)
-         state % xtime % scalar = timeString
-
-      end do
-
-      call mpas_output_state_finalize(sfc_update_obj, dminfo)
-      
-   end subroutine init_atm_test_case_sfc
 
 
 !---------------------  TEST CASE 9 -----------------------------------------------
@@ -6200,48 +5366,6 @@ write(0,*) 'PROCESSING SEAICE'
    end subroutine init_atm_test_case_resting_atmosphere
 
 
-   integer function nearest_cell(target_lat, target_lon, &
-                                 start_cell, &
-                                 nCells, maxEdges, nEdgesOnCell, cellsOnCell, latCell, lonCell)
-
-      implicit none
-
-      real (kind=RKIND), intent(in) :: target_lat, target_lon
-      integer, intent(in) :: start_cell
-      integer, intent(in) :: nCells, maxEdges
-      integer, dimension(nCells), intent(in) :: nEdgesOnCell
-      integer, dimension(maxEdges,nCells), intent(in) :: cellsOnCell
-      real (kind=RKIND), dimension(nCells), intent(in) :: latCell, lonCell
-
-      integer :: i
-      integer :: iCell
-      integer :: current_cell
-      real (kind=RKIND) :: current_distance, d
-      real (kind=RKIND) :: nearest_distance
-
-      nearest_cell = start_cell
-      current_cell = -1
-
-      do while (nearest_cell /= current_cell)
-         current_cell = nearest_cell
-         current_distance = sphere_distance(latCell(current_cell), lonCell(current_cell), target_lat, target_lon, 1.0_RKIND)
-         nearest_cell = current_cell
-         nearest_distance = current_distance
-         do i = 1, nEdgesOnCell(current_cell)
-            iCell = cellsOnCell(i,current_cell)
-            if (iCell <= nCells) then
-               d = sphere_distance(latCell(iCell), lonCell(iCell), target_lat, target_lon, 1.0_RKIND)
-               if (d < nearest_distance) then
-                  nearest_cell = iCell
-                  nearest_distance = d
-               end if
-            end if
-         end do
-      end do
-
-   end function nearest_cell
-
-
    integer function nearest_edge(target_lat, target_lon, &
                                  start_edge, &
                                  nCells, nEdges, maxEdges, nEdgesOnCell, edgesOnCell, cellsOnEdge, latCell, lonCell, latEdge, lonEdge)
@@ -6325,7 +5449,7 @@ write(0,*) 'PROCESSING SEAICE'
       if (present(extrap)) then
          extrap_type = extrap
       else
-         interp_order = 1
+         extrap_type = 1
       end if
 
       if (present(surface_val)) then
@@ -6383,43 +5507,7 @@ write(0,*) 'PROCESSING SEAICE'
    end function vertical_interp
 
 
-   subroutine init_atm_check_read_error(istatus, fname, dminfo)
-
-      implicit none
-
-      integer, intent(in) :: istatus
-      character (len=*), intent(in) :: fname
-      type (dm_info), intent(in) :: dminfo
-
-      if (istatus /= 0) then
-         write(0,*) 'ERROR: Could not read file '//trim(fname)
-         call mpas_dmpar_abort(dminfo)
-      end if
-
-   end subroutine init_atm_check_read_error
-
-
 !----------------------------------------------------------------------------------------------------------
-
-   real (kind=RKIND) function sphere_distance(lat1, lon1, lat2, lon2, radius)
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   ! Compute the great-circle distance between (lat1, lon1) and (lat2, lon2) on a
-   !   sphere with given radius.
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-      implicit none
-
-      real (kind=RKIND), intent(in) :: lat1, lon1, lat2, lon2, radius
-
-      real (kind=RKIND) :: arg1
-
-      arg1 = sqrt( sin(0.5*(lat2-lat1))**2 +  &
-                   cos(lat1)*cos(lat2)*sin(0.5*(lon2-lon1))**2 )
-      sphere_distance = 2.*radius*asin(arg1)
-
-   end function sphere_distance
-
-!--------------------------------------------------------------------
 
    real (kind=RKIND) function env_qv( z, temperature, pressure, rh_max )
 

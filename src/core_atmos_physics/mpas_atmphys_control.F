@@ -35,16 +35,17 @@
 
  write(0,*)
  write(0,*) '--- enter subroutine physics_namelist_check:'
- write(0,*) '    config_microp_scheme       = ', config_microp_scheme
- write(0,*) '    config_conv_shallow_scheme = ', config_conv_shallow_scheme
- write(0,*) '    config_conv_deep_scheme    = ', config_conv_deep_scheme
- write(0,*) '    config_eddy_scheme         = ', config_eddy_scheme
- write(0,*) '    config_lsm_scheme          = ', config_lsm_scheme
- write(0,*) '    config_pbl_scheme          = ', config_pbl_scheme
- write(0,*) '    config_radt_cld_scheme     = ', config_radt_cld_scheme
- write(0,*) '    config_radt_lw_scheme      = ', config_radt_lw_scheme
- write(0,*) '    config_radt_sw_scheme      = ', config_radt_sw_scheme
- write(0,*) '    config_sfclayer_scheme     = ', config_sfclayer_scheme
+ write(0,*) '    config_microp_scheme       = ', trim(config_microp_scheme)
+ write(0,*) '    config_conv_shallow_scheme = ', trim(config_conv_shallow_scheme)
+ write(0,*) '    config_conv_deep_scheme    = ', trim(config_conv_deep_scheme)
+ write(0,*) '    config_eddy_scheme         = ', trim(config_eddy_scheme)
+ write(0,*) '    config_lsm_scheme          = ', trim(config_lsm_scheme)
+ write(0,*) '    config_pbl_scheme          = ', trim(config_pbl_scheme)
+ write(0,*) '    config_gwdo_scheme         = ', trim(config_gwdo_scheme)
+ write(0,*) '    config_radt_cld_scheme     = ', trim(config_radt_cld_scheme)
+ write(0,*) '    config_radt_lw_scheme      = ', trim(config_radt_lw_scheme)
+ write(0,*) '    config_radt_sw_scheme      = ', trim(config_radt_sw_scheme)
+ write(0,*) '    config_sfclayer_scheme     = ', trim(config_sfclayer_scheme)
 
 !cloud microphysics scheme:
  if(.not. (config_microp_scheme .eq. 'off'      .or. &
@@ -89,6 +90,22 @@
 
     write(mpas_err_message,'(A,A10)') 'illegal value for pbl_scheme: ', &
           trim(config_pbl_scheme)
+    call physics_error_fatal(mpas_err_message)
+
+ endif
+
+!gravity wave drag over orography scheme:
+ if(.not. (config_gwdo_scheme .eq. 'off' .or. &
+           config_gwdo_scheme .eq. 'ysu_gwdo')) then
+
+    write(mpas_err_message,'(A,A10)') 'illegal value for gwdo_scheme: ', &
+          trim(config_gwdo_scheme)
+    call physics_error_fatal(mpas_err_message)
+
+ elseif(config_gwdo_scheme .eq. 'ysu_gwdo' .and. config_pbl_scheme .ne. 'ysu') then
+
+    write(mpas_err_message,'(A,A10)') 'turn YSU PBL scheme on with config_gwdo = ysu_gwdo:', &
+          trim(config_gwdo_scheme)
     call physics_error_fatal(mpas_err_message)
 
  endif

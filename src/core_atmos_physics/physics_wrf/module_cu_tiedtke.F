@@ -63,7 +63,7 @@ MODULE module_cu_tiedtke
       VTMPC1=RV/RD-1.0,             &
       VTMPC2=CPV/CPD-1.0,           &
       CVDIFTS=1.0,                  &
-      CEVAPCU1=1.93E-6*261.,        & 
+      CEVAPCU1=1.93E-6*261.0*0.5/G, & ! Correction from WRFV3.4.1 sourcecode.
       CEVAPCU2=1.E3/(38.3*0.293) )
 
      

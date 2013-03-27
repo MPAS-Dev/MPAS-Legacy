@@ -75,7 +75,7 @@
  if(.not.allocated(qsfc_p)       ) allocate(qsfc_p(ims:ime,jms:jme)         )
  if(.not.allocated(qz0_p)        ) allocate(qz0_p(ims:ime,jms:jme)          )
  if(.not.allocated(rainbl_p)     ) allocate(rainbl_p(ims:ime,jms:jme)       )
- if(.not.allocated(rib_p)        ) allocate(rib_p(ims:ime,jms:jme)          )
+ if(.not.allocated(br_p)         ) allocate(br_p(ims:ime,jms:jme)          )
  if(.not.allocated(sfc_albbck_p) ) allocate(sfc_albbck_p(ims:ime,jms:jme)   )
  if(.not.allocated(sfc_albedo_p) ) allocate(sfc_albedo_p(ims:ime,jms:jme)   )
  if(.not.allocated(sfc_emibck_p) ) allocate(sfc_emibck_p(ims:ime,jms:jme)   )
@@ -139,7 +139,7 @@
  if(allocated(qsfc_p)       ) deallocate(qsfc_p       )
  if(allocated(qz0_p)        ) deallocate(qz0_p        )
  if(allocated(rainbl_p)     ) deallocate(rainbl_p     )
- if(allocated(rib_p)        ) deallocate(rib_p        )
+ if(allocated(br_p)         ) deallocate(br_p         )
  if(allocated(sfc_albbck_p) ) deallocate(sfc_albbck_p )
  if(allocated(sfc_albedo_p) ) deallocate(sfc_albedo_p )
  if(allocated(sfc_emibck_p) ) deallocate(sfc_emibck_p )
@@ -221,7 +221,7 @@
     qgh_p(i,j)        = diag_physics % qgh        % array(i)
     qsfc_p(i,j)       = diag_physics % qsfc       % array(i)
     qz0_p(i,j)        = diag_physics % qz0        % array(i)
-    rib_p(i,j)        = diag_physics % rib        % array(i)
+    br_p(i,j)         = diag_physics % br         % array(i)
     sfc_albedo_p(i,j) = diag_physics % sfc_albedo % array(i)
     sfc_emibck_p(i,j) = diag_physics % sfc_emibck % array(i)
     sfc_emiss_p(i,j)  = diag_physics % sfc_emiss  % array(i)
@@ -309,7 +309,7 @@
     diag_physics % qgh        % array(i) = qgh_p(i,j)
     diag_physics % qsfc       % array(i) = qsfc_p(i,j)
     diag_physics % qz0        % array(i) = qz0_p(i,j)
-    diag_physics % rib        % array(i) = rib_p(i,j)
+    diag_physics % br         % array(i) = br_p(i,j)
     diag_physics % sfc_albedo % array(i) = sfc_albedo_p(i,j)
     diag_physics % sfc_emibck % array(i) = sfc_emibck_p(i,j)
     diag_physics % sfc_emiss  % array(i) = sfc_emiss_p(i,j)
@@ -405,8 +405,10 @@
  lsm_select: select case (trim(lsm_scheme))
 
     case("noah")
+#if defined(do_hydrostatic_pressure)
+!... REARRANGED CALL USING HYDROSTATIC PRESSURE:
        call lsm( &
-                dz8w      = dz_p      , p8w3d     = pres2_p      , t3d       = t_p          , &  
+                dz8w      = dz_p      , p8w3d     = pres2_hyd_p  , t3d       = t_p          , &  
                 qv3d      = qv_p      , xland     = xland_p      , xice      = xice_p       , &
                 ivgtyp    = ivgtyp_p  , isltyp    = isltyp_p     , tmn       = tmn_p        , &
                 vegfra    = vegfra_p  , shdmin    = shdmin_p     , shdmax    = shdmax_p     , &
@@ -420,7 +422,7 @@
                 snowh     = snowh_p   , canwat    = canwat_p     , smstav    = smstav_p     , &
                 smstot    = smstot_p  , sfcrunoff = sfcrunoff_p  , udrunoff  = udrunoff_p   , &               
                 acsnom    = acsnom_p  , acsnow    = acsnow_p     , snotime   = snotime_p    , &
-                snopcx    = snopcx_p  , emiss     = sfc_emiss_p  , rib       = rib_p        , &
+                snopcx    = snopcx_p  , emiss     = sfc_emiss_p  , rib       = br_p         , &
                 potevp    = potevp_p  , albedo    = sfc_albedo_p , albbck    = sfc_albbck_p , &
                 z0        = z0_p      , znt       = znt_p        , lai       = lai_p        , &
                 noahres   = noahres_p , chklowq   = chklowq_p    , sh2o      = sh2o_p       , &
@@ -441,6 +443,44 @@
                 ims = ims , ime = ime , jms = jms , jme = jme , kms = kms , kme = kme ,       &
                 its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte         &
                )
+#else
+       call lsm( &
+                dz8w      = dz_p      , p8w3d     = pres2_p      , t3d       = t_p          , &  
+                qv3d      = qv_p      , xland     = xland_p      , xice      = xice_p       , &
+                ivgtyp    = ivgtyp_p  , isltyp    = isltyp_p     , tmn       = tmn_p        , &
+                vegfra    = vegfra_p  , shdmin    = shdmin_p     , shdmax    = shdmax_p     , &
+                snoalb    = snoalb_p  , glw       = glw_p        , gsw       = gsw_p        , &
+                swdown    = swdown_p  , rainbl    = rainbl_p     , embck     = sfc_emibck_p , & 
+                sr        = sr_p      , qgh       = qgh_p        , cpm       = cpm_p        , &
+                qz0       = qz0_p     , tsk       = tsk_p        , hfx       = hfx_p        , & 
+                qfx       = qfx_p     , lh        = lh_p         , grdflx    = grdflx_p     , &
+                qsfc      = qsfc_p    , cqs2      = cqs2_p       , chs       = chs_p        , &
+                chs2      = chs2_p    , snow      = snow_p       , snowc     = snowc_p      , &
+                snowh     = snowh_p   , canwat    = canwat_p     , smstav    = smstav_p     , &
+                smstot    = smstot_p  , sfcrunoff = sfcrunoff_p  , udrunoff  = udrunoff_p   , &               
+                acsnom    = acsnom_p  , acsnow    = acsnow_p     , snotime   = snotime_p    , &
+                snopcx    = snopcx_p  , emiss     = sfc_emiss_p  , rib       = br_p         , &
+                potevp    = potevp_p  , albedo    = sfc_albedo_p , albbck    = sfc_albbck_p , &
+                z0        = z0_p      , znt       = znt_p        , lai       = lai_p        , &
+                noahres   = noahres_p , chklowq   = chklowq_p    , sh2o      = sh2o_p       , &
+                smois     = smois_p   , tslb      = tslb_p       , smcrel    = smcrel_p     , &
+                dzs       = dzs_p     , isurban   = isurban      , isice     = isice        , &                
+                rovcp     = rcp       , dt        = dt_pbl       , myj       = myj          , &
+                itimestep = itimestep , frpcpn    = frpcpn       , rdlai2d   = rdlai2d      , &
+                xice_threshold   = xice_threshold     ,                                       &
+                usemonalb        = config_sfc_albedo  ,                                       &
+                mminlu           = input_landuse_data ,                                       &
+                num_soil_layers  = num_soil_layers    ,                                       &         
+                num_roof_layers  = num_soil_layers    ,                                       &
+                num_wall_layers  = num_soil_layers    ,                                       &
+                num_road_layers  = num_soil_layers    ,                                       &
+                num_urban_layers = num_soil_layers    ,                                       &
+                sf_urban_physics = sf_urban_physics   ,                                       &
+                ids = ids , ide = ide , jds = jds , jde = jde , kds = kds , kde = kde ,       &
+                ims = ims , ime = ime , jms = jms , jme = jme , kms = kms , kme = kme ,       &
+                its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte         &
+               )
+#endif
 
     case default
 

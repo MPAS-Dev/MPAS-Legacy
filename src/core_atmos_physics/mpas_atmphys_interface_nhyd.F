@@ -54,6 +54,15 @@
  if(.not.allocated(qs_p)   ) allocate(qs_p(ims:ime,kms:kme,jms:jme)   )
  if(.not.allocated(qg_p)   ) allocate(qg_p(ims:ime,kms:kme,jms:jme)   )
 
+!... arrays used for calculating the hydrostatic pressure and exner function:
+ if(.not.allocated(psfc_hyd_p)  ) allocate(psfc_hyd_p(ims:ime,jms:jme)          )
+ if(.not.allocated(psfc_hydd_p) ) allocate(psfc_hydd_p(ims:ime,jms:jme)         )
+ if(.not.allocated(pres_hyd_p)  ) allocate(pres_hyd_p(ims:ime,kms:kme,jms:jme)  )
+ if(.not.allocated(pres_hydd_p) ) allocate(pres_hydd_p(ims:ime,kms:kme,jms:jme) )
+ if(.not.allocated(pres2_hyd_p) ) allocate(pres2_hyd_p(ims:ime,kms:kme,jms:jme) )
+ if(.not.allocated(pres2_hydd_p)) allocate(pres2_hydd_p(ims:ime,kms:kme,jms:jme))
+ if(.not.allocated(znu_hyd_p)   ) allocate(znu_hyd_p(ims:ime,kms:kme,jms:jme)   )
+ 
  end subroutine allocate_forall_physics
 
 !=============================================================================================
@@ -91,6 +100,14 @@
  if(allocated(qs_p)    ) deallocate(qs_p    )
  if(allocated(qg_p)    ) deallocate(qg_p    )
 
+ if(allocated(psfc_hyd_p)  ) deallocate(psfc_hyd_p  )
+ if(allocated(psfc_hydd_p) ) deallocate(psfc_hydd_p )
+ if(allocated(pres_hyd_p)  ) deallocate(pres_hyd_p  )
+ if(allocated(pres_hydd_p) ) deallocate(pres_hydd_p )
+ if(allocated(pres2_hyd_p) ) deallocate(pres2_hyd_p )
+ if(allocated(pres2_hydd_p)) deallocate(pres2_hydd_p)
+ if(allocated(znu_hyd_p)   ) deallocate(znu_hyd_p   )
+ 
  end subroutine deallocate_forall_physics
 
 !=============================================================================================
@@ -114,7 +131,7 @@
  real(kind=RKIND),dimension(:,:),pointer:: rho_zz,theta_m,qv,pressure_p,u,v,w
  real(kind=RKIND),dimension(:,:),pointer:: qvs,rh
 
- real(kind=RKIND):: rho1,rho2,tem1,tem2
+ real(kind=RKIND):: rho_a,rho1,rho2,tem1,tem2
 
 !---------------------------------------------------------------------------------------------
 
@@ -152,18 +169,7 @@
  u => diag  % uReconstructZonal % array
  v => diag  % uReconstructMeridional % array
 
-!ldf (2012-01-06): updates the surface pressure as is done in subroutine microphysics_to_MPAS.
-!do j = jts,jte
-!do i = its,ite
-!   sfc_pressure(i) = 0.5*g*(zgrid(2,i)-zgrid(1,i)) &
-!                   * (1.25 * rho_zz(1,i) * zz(1,i) * (1. + qv(1,i))  &
-!                   -  0.25 * rho_zz(2,i) * zz(2,i) * (1. + qv(1,i)))
-!   sfc_pressure(i) = sfc_pressure(i) + pressure_p(1,i) + pressure_b(1,i)
-!enddo
-!enddo
-!ldf end.
-!ldf (2012-01-09): updates the surface pressure using zgrid.
-!do j = jts,jte
+!calculation of the surface pressure using hydrostatic assumption down to the surface::
  do i = its,ite
     tem1 = zgrid(2,i)-zgrid(1,i)
     tem2 = zgrid(3,i)-zgrid(2,i)
@@ -173,15 +179,13 @@
                     * (rho1 + 0.5*(rho2-rho1)*tem1/(tem1+tem2))
     sfc_pressure(i) = sfc_pressure(i) + pressure_p(1,i) + pressure_b(1,i)
  enddo
-!enddo
-!ldf end.
 
-!copy sounding variables from the geodesic grid to the rectangular grid:
- do j = jts, jte
- do i = its, ite
-    psfc_p(i,j) = diag % surface_pressure % array(i)
- enddo
- enddo
+!arrays located at theta points:
+!do j = jts, jte
+!do i = its, ite
+!   psfc_p(i,j) = diag % surface_pressure % array(i)
+!enddo
+!enddo
 
  do j = jts, jte
  do k = kts, kte
@@ -216,6 +220,7 @@
  enddo
  enddo
 
+!arrays located at w points:
  do j = jts, jte
  do k = kts,kte+1
  do i = its,ite
@@ -225,38 +230,26 @@
  enddo
  enddo
 
+!check that the pressure in the layer above the surface is greater than that in the layer
+!above it:
  do j = jts,jte
  do i = its,ite
-    if(pres_p(i,1,j) .lt. pres_p(i,2,j)) then
+    if(pres_p(i,1,j) .le. pres_p(i,2,j)) then
        write(0,*)
-       write(0,*) '--- subroutine MPAS_to_phys: pres:',j,i
-       write(0,*) 'latCell=', latCell(i)
-       write(0,*) 'lonCell=', lonCell(i)
+       write(0,*) '--- subroutine MPAS_to_phys - pressure(1) < pressure(2):'
+       write(0,*) 'i      =', i
+       write(0,*) 'latCell=', latCell(i)/degrad
+       write(0,*) 'lonCell=', lonCell(i)/degrad
        do k = kts,kte
-          write(0,201) j,i,k,pressure_b(k,i),pressure_p(k,i),pres_p(i,k,j),zz(k,i), &
+          write(0,201) j,i,k,dz_p(i,k,j),pressure_b(k,i),pressure_p(k,i),pres_p(i,k,j), &
              rho_p(i,k,j),th_p(i,k,j),t_p(i,k,j),qv_p(i,k,j)
        enddo
-       write(0,*)
-       do k = kts,kte
-          write(0,201) j,i,k,qv_p(i,k,j),qc_p(i,k,j),qr_p(i,k,j),qi_p(i,k,j),qs_p(i,k,j), &
-                       qg_p(i,k,j)
-       enddo
-       write(0,*)
-       stop
+!      stop
     endif
  enddo
  enddo
 
 !interpolation of pressure and temperature from theta points to w points:
-!do j = jts,jte
-!do k = kts+1,kte
-!do i = its,ite
-!   t2_p(i,k,j)    = fzm(k)*t_p(i,k,j) + fzp(k)*t_p(i,k-1,j)
-!   pres2_p(i,k,j) = fzm(k)*pres_p(i,k,j) + fzp(k)*pres_p(i,k-1,j)
-!enddo
-!enddo
-!enddo
-!ldf(2011-01-10):
  do j = jts,jte
  do k = kts+1,kte
  do i = its,ite
@@ -286,7 +279,8 @@
  enddo
  enddo
 
-!interpolation of pressure and temperature from theta points to the surface:
+!ldf (2012-06-22): recalculates the pressure at the surface as an extrapolation of the
+!pressures in the 2 layers above the surface, as was originally done:
  k = kts
  do j = jts,jte
  do i = its,ite
@@ -296,31 +290,35 @@
     w1 = (z0-z2)/(z1-z2)
     w2 = 1.-w1
     t2_p(i,k,j)    = w1*t_p(i,k,j)+w2*t_p(i,k+1,j)
-    !use surface pressure calculated in subroutine recover_large_step_variables.
-    !pres2_p(i,k,j) = w1*pres_p(i,k,j)+w2*pres_p(i,k+1,j)
-    pres2_p(i,k,j) = psfc_p(i,j)
+    pres2_p(i,k,j) = w1*pres_p(i,k,j)+w2*pres_p(i,k+1,j)
+    psfc_p(i,j) = pres2_p(i,k,j)
  enddo
- enddo 
+ enddo
+
+!calculation of the hydrostatic pressure:
  do j = jts,jte
  do i = its,ite
-    if(pres2_p(i,1,j) .lt. pres2_p(i,2,j)) then
-       write(0,*)
-       write(0,*) '--- subroutine MPAS_to_phys: pres2:',j,i
-       do k = kts,kte+1
-          write(0,201) j,i,k,pres2_p(i,k,j)
-      enddo
-!      write(0,*)
-!      do k = kts,kte
-!         write(0,201) j,i,k,pressure_b(k,i),pressure_p(k,i),pres_p(i,k,j),zz(k,i), &
-!            rho_p(i,k,j),th_p(i,k,j),t_p(i,k,j),qv_p(i,k,j)
-!      enddo
-!      write(0,*)
-!      do k = kts,kte
-!         write(0,201) j,i,k,qv_p(i,k,j),qc_p(i,k,j),qr_p(i,k,j),qi_p(i,k,j),qs_p(i,k,j), &
-!                     qg_p(i,k,j)
-!      enddo
-       stop
-    endif
+    !pressure at w-points:
+    k = kte+1
+    pres2_hyd_p(i,k,j)  = pres2_p(i,k,j)
+    pres2_hydd_p(i,k,j) = pres2_p(i,k,j)
+    do k = kte,1,-1
+       rho_a = rho_p(i,k,j) / (1.+qv_p(i,k,j))
+       pres2_hyd_p(i,k,j)  = pres2_hyd_p(i,k+1,j)  + g*rho_p(i,k,j)*dz_p(i,k,j)
+       pres2_hydd_p(i,k,j) = pres2_hydd_p(i,k+1,j) + g*rho_a*dz_p(i,k,j)
+    enddo
+    !pressure at theta-points:
+    do k = kte,1,-1
+       pres_hyd_p(i,k,j)  = 0.5*(pres2_hyd_p(i,k+1,j)+pres2_hyd_p(i,k,j))
+       pres_hydd_p(i,k,j) = 0.5*(pres2_hydd_p(i,k+1,j)+pres2_hydd_p(i,k,j))
+    enddo
+    !surface pressure:
+    psfc_hyd_p(i,j) = pres2_hyd_p(i,1,j)
+    psfc_hydd_p(i,j) = pres2_hydd_p(i,1,j)
+    !znu:
+    do k = kte,1,-1
+       znu_hyd_p(i,k,j) = pres_hyd_p(i,k,j) / psfc_hyd_p(i,j) 
+    enddo
  enddo
  enddo
 
@@ -546,15 +544,6 @@
  enddo
 
 !updates the surface pressure.
-!do j = jts,jte
-!do i = its,ite
-!   sfc_pressure(i) = 0.5*g*(zgrid(2,i)-zgrid(1,i)) &
-!                   * (1.25 * rho_zz(1,i) * zz(1,i) * (1. + qv_p(i,1,j))  &
-!                   -  0.25 * rho_zz(2,i) * zz(2,i) * (1. + qv_p(i,2,j)))
-!   sfc_pressure(i) = sfc_pressure(i) + pressure_p(1,i) + pressure_b(1,i)
-!enddo
-!enddo
-!ldf (2012-01-09):
  do j = jts,jte
  do i = its,ite
     tem1 = zgrid(2,i)-zgrid(1,i)

@@ -1669,7 +1669,7 @@ MODULE init_atm_llxy
       TYPE (proj_info), INTENT(IN) :: proj
       
       ! Local variables
-      INTEGER :: ii,imt,jj,jmt,k,krows,ncol,nrow,iri
+      INTEGER :: ii,imt,jj,jmt,ncol,nrow
       REAL(KIND=HIGH) :: dphd,dlmd !Grid increments, degrees
       REAL(KIND=HIGH) :: glatd  !Geographic latitude, positive north
       REAL(KIND=HIGH) :: glond  !Geographic longitude, positive west
@@ -1839,8 +1839,8 @@ MODULE init_atm_llxy
       TYPE (proj_info), INTENT(IN) :: proj
       
       ! Local variables
-      INTEGER :: ih,jh
-      INTEGER :: midcol,midrow,ncol,iadd1,iadd2,imt,jh2,knrow,krem,kv,nrow
+      INTEGER :: jh
+      INTEGER :: midcol,midrow
       REAL (KIND=RKIND) :: i_work, j_work
       REAL (KIND=RKIND) :: dphd,dlmd !Grid increments, degrees
       REAL(KIND=HIGH) :: arg1,arg2,d2r,fctr,glatr,glatd,glond,pi, &

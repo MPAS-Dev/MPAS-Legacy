@@ -7,6 +7,7 @@ dummy:
 
 OBJS = \
 	libmassv.o                 \
+	module_bl_gwdo.o           \
 	module_bl_ysu.o            \
 	module_cam_shr_kind_mod.o  \
 	module_cam_support.o       \
@@ -14,6 +15,7 @@ OBJS = \
 	module_cu_kfeta_wrf3.3.1.o \
 	module_cu_tiedtke.o        \
 	module_mp_kessler.o        \
+	module_mp_radar.o          \
 	module_mp_thompson.o       \
 	module_mp_wsm6.o           \
 	module_ra_cam.o            \
@@ -36,11 +38,15 @@ module_cam_support.o: \
 	module_cam_shr_kind_mod.o  \
 	../mpas_atmphys_utilities.o
 
+module_mp_radar.o: \
+	../mpas_atmphys_utilities.o
+
 module_mp_thompson.o: \
 	../mpas_atmphys_utilities.o
 
 module_mp_wsm6.o: \
-	libmassv.o
+	libmassv.o \
+	module_mp_radar.o
 
 module_ra_cam.o: \
 	module_cam_support.o \

@@ -85,7 +85,6 @@
 
 !local variables:
  character(len=StrKIND):: day15,mon
- character(len=StrKIND):: yr
 
  integer:: l,n
  integer:: julyr,julday,int_month,month1,month2
@@ -144,7 +143,7 @@
     endif
  enddo find_month
  
- 201 format(i6,3(1x,e15.8))
+! 201 format(i6,3(1x,e15.8))
 
  end subroutine monthly_interp_to_date
 

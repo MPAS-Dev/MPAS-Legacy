@@ -5,7 +5,8 @@ PHYSICS=-DDO_PHYSICS
 
 OBJS = mpas_atm_mpas_core.o \
        mpas_atm_time_integration.o \
-       mpas_atm_advection.o
+       mpas_atm_advection.o \
+       mpas_atm_interp_diagnostics.o
 
 all: physcore core_hyd
 
@@ -22,7 +23,7 @@ mpas_atm_time_integration.o:
 
 mpas_atm_advection.o: 
 
-mpas_atm_mpas_core.o: mpas_atm_advection.o mpas_atm_time_integration.o
+mpas_atm_mpas_core.o: mpas_atm_advection.o mpas_atm_time_integration.o mpas_atm_interp_diagnostics.o
 
 clean:
 	( cd ../core_atmos_physics; make clean )

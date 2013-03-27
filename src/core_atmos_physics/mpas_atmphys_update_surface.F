@@ -54,7 +54,7 @@
  shdmax     => sfc_input % shdmax     % array
 
 !updates the surface background albedo for the current date as a function of the monthly-mean
-!surface background albedo valid on the 15th day of the month, if input_sfc_albedo is true:
+!surface background albedo valid on the 15th day of the month, if config_sfc_albedo is true:
  if(config_sfc_albedo) then
 
     call monthly_interp_to_date(nCellsSolve,current_date,albedo12m,sfc_albbck)
@@ -146,6 +146,9 @@
     if(config_frac_seaice) then
 
        if(xice(iCell).ne.xicem(iCell) .and. xicem(iCell).gt.xice_threshold) then
+          !Fractional values of sfc_albedo and sfc_emiss are valid according to the earlier
+          !fractional sea-ice fraction, xicem. We recompute them for the new sea-ice fraction,
+          !xice.
           sfc_albedo(iCell) = 0.08 + (sfc_albedo(iCell) -0.08) * xice(iCell)/xicem(iCell)
           sfc_emiss(iCell)  = 0.98 + (sfc_emiss(iCell)-0.98) * xice(iCell)/xicem(iCell)
        endif
@@ -178,12 +181,12 @@
        sfc_emibck(iCell) = 0.98
 
     elseif(xland(iCell).lt.1.5 .and. xice(iCell).lt.xice_threshold .and. &
-       xicem(iCell).lt.xice_threshold) then
+       xicem(iCell).ge.xice_threshold) then
 
        !sea-ice points turn to water points:
        xicem(iCell)  = xice(iCell)
        xland(iCell)  = 2.
-       isltyp(iCell) = 16
+       isltyp(iCell) = 14
        ivgtyp(iCell) = iswater
        vegfra(iCell) = 0.
        tmn(iCell)    = sst(iCell)
@@ -236,22 +239,25 @@
  real(kind=RKIND):: fs, con1, con2, con3, con4, con5, zlan, q2, ts, phi, qn1
  real(kind=RKIND):: usw, qo, swo, us, tb, dtc, dtw, alw, dtwo, delt, f1
 
- real(kind=RKIND),dimension(:),pointer:: tsk,xland
+ real(kind=RKIND),dimension(:),pointer:: sst,tsk,xland
  real(kind=RKIND),dimension(:),pointer:: glw,gsw
- real(kind=RKIND),dimension(:),pointer:: hfx,qfx,sstsk
- real(kind=RKIND),dimension(:),pointer:: dtw1,emiss,ust
+ real(kind=RKIND),dimension(:),pointer:: hfx,qfx
+ real(kind=RKIND),dimension(:),pointer:: emiss,ust
+ real(kind=RKIND),dimension(:),pointer:: sstsk,dtc1,dtw1
 
 !---------------------------------------------------------------------------------------------
-!write(0,*)
-!write(0,*) '--- enter subroutine physics_update_sstskin:'
+ write(0,*)
+ write(0,*) '--- enter subroutine physics_update_sstskin:'
 
  nCellsSolve = mesh % nCellsSolve
 
  tsk   => sfc_input % skintemp % array
+ sst   => sfc_input % sst      % array
  xland => sfc_input % xland    % array
 
- dtw1  => diag_physics % sstsk_diur % array
  sstsk => diag_physics % sstsk      % array
+ dtc1  => diag_physics % sstsk_dtc  % array
+ dtw1  => diag_physics % sstsk_dtw  % array
  emiss => diag_physics % sfc_emiss  % array
  glw   => diag_physics % glw        % array
  gsw   => diag_physics % gsw        % array
@@ -262,6 +268,12 @@
  skinmax = -9999.
  skinmin =  9999.
 
+!first, restore the surface temperature to the sea-surface temperature:
+ do iCell = 1, nCellsSolve
+    if(xland(iCell) .ge. 1.5) tsk(iCell) = sst(iCell)
+ enddo
+
+!calculate the skin sea-surface temperature: 
  do iCell = 1, nCellsSolve
 
     if(xland(iCell) .ge. 1.5) then
@@ -324,19 +336,20 @@
        skinmax = amax1(skinmax,ts-tb)
        skinmin = amin1(skinmin,ts-tb)
        sstsk(iCell) = ts+273.15                ! convert ts (in C) to sstsk (in K)
+       dtc1(iCell)  = dtc                      ! dtc always in C
        dtw1(iCell)  = dtw                      ! dtw always in C
 
     endif
 
  enddo
 
-!update the skin temperature:
+!update the surface temperature over the oceans:
  do iCell = 1, nCellsSolve
     if(xland(iCell) .gt. 1.5) tsk(iCell) = sstsk(iCell)
  enddo
 
- write(0,*) 'check skin sst skinmax = ', skinmax, '  skinmin = ', skinmin
- 
+ write(0,*) 'check skin sst skinmax = ', skinmax
+ write(0,*) 'check skin sst skinmin = ', skinmin
 
  end subroutine physics_update_sstskin
 

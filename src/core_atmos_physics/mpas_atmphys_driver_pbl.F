@@ -24,11 +24,14 @@
 
 !from surface-layer model:
  if(.not.allocated(br_p)      ) allocate(br_p(ims:ime,jms:jme)               )
+ if(.not.allocated(ctopo_p)   ) allocate(ctopo_p(ims:ime,jms:jme)            )
+ if(.not.allocated(ctopo2_p)  ) allocate(ctopo2_p(ims:ime,jms:jme)           )
  if(.not.allocated(gz1oz0_p)  ) allocate(gz1oz0_p(ims:ime,jms:jme)           )
  if(.not.allocated(hfx_p)     ) allocate(hfx_p(ims:ime,jms:jme)              )
  if(.not.allocated(psih_p)    ) allocate(psih_p(ims:ime,jms:jme)             )
  if(.not.allocated(psim_p)    ) allocate(psim_p(ims:ime,jms:jme)             )
  if(.not.allocated(qfx_p)     ) allocate(qfx_p(ims:ime,jms:jme)              )
+ if(.not.allocated(regime_p)  ) allocate(regime_p(ims:ime,jms:jme)           )
  if(.not.allocated(u10_p)     ) allocate(u10_p(ims:ime,jms:jme)              )
  if(.not.allocated(ust_p)     ) allocate(ust_p(ims:ime,jms:jme)              )
  if(.not.allocated(v10_p)     ) allocate(v10_p(ims:ime,jms:jme)              )
@@ -46,6 +49,10 @@
  if(.not.allocated(rqvblten_p)) allocate(rqvblten_p(ims:ime,kms:kme,jms:jme) )
  if(.not.allocated(rqcblten_p)) allocate(rqcblten_p(ims:ime,kms:kme,jms:jme) )
  if(.not.allocated(rqiblten_p)) allocate(rqiblten_p(ims:ime,kms:kme,jms:jme) )
+!temporary for debugging the YSU PBL scheme:
+ if(.not.allocated(kzh_p)     ) allocate(kzh_p(ims:ime,kms:kme,jms:jme)      )
+ if(.not.allocated(kzm_p)     ) allocate(kzm_p(ims:ime,kms:kme,jms:jme)      )
+ if(.not.allocated(kzq_p)     ) allocate(kzq_p(ims:ime,kms:kme,jms:jme)      )
 
  end subroutine allocate_pbl
 
@@ -55,11 +62,14 @@
 
 !from surface-layer model:
  if(allocated(br_p)      ) deallocate(br_p       )
+ if(allocated(ctopo_p)   ) deallocate(ctopo_p    )
+ if(allocated(ctopo2_p)  ) deallocate(ctopo2_p   )
  if(allocated(gz1oz0_p)  ) deallocate(gz1oz0_p   )
  if(allocated(hfx_p)     ) deallocate(hfx_p      )
  if(allocated(psih_p)    ) deallocate(psih_p     )
  if(allocated(psim_p)    ) deallocate(psim_p     )
  if(allocated(qfx_p)     ) deallocate(qfx_p      )
+ if(allocated(regime_p)  ) deallocate(regime_p   )
  if(allocated(u10_p)     ) deallocate(u10_p      )
  if(allocated(ust_p)     ) deallocate(ust_p      )
  if(allocated(v10_p)     ) deallocate(v10_p      )
@@ -77,6 +87,10 @@
  if(allocated(rqvblten_p)) deallocate(rqvblten_p )
  if(allocated(rqcblten_p)) deallocate(rqcblten_p )
  if(allocated(rqiblten_p)) deallocate(rqiblten_p )
+!temporary for debugging the YSU PBL scheme:
+ if(allocated(kzh_p)     ) deallocate(kzh_p      )
+ if(allocated(kzm_p)     ) deallocate(kzm_p      )
+ if(allocated(kzq_p)     ) deallocate(kzq_p      )
 
  end subroutine deallocate_pbl
 
@@ -100,6 +114,7 @@
     psim_p(i,j)   = diag_physics % psim   % array(i)
     psih_p(i,j)   = diag_physics % psih   % array(i)
     qfx_p(i,j)    = diag_physics % qfx    % array(i)
+    regime_p(i,j) = diag_physics % regime % array(i)
     u10_p(i,j)    = diag_physics % u10    % array(i)
     ust_p(i,j)    = diag_physics % ust    % array(i)
     v10_p(i,j)    = diag_physics % v10    % array(i)
@@ -108,6 +123,8 @@
 
     xland_p(i,j)  = sfc_input % xland  % array(i)       
 !initialization for YSU PBL scheme:
+    ctopo_p(i,j)  = 1._RKIND
+    ctopo2_p(i,j) = 1._RKIND
     kpbl_p(i,j)   = 1
  enddo
  enddo
@@ -122,9 +139,12 @@
     rqvblten_p(i,k,j) = 0.
     rqcblten_p(i,k,j) = 0.
     rqiblten_p(i,k,j) = 0.
+!temporary for debugging the YSU PBL scheme:
+    kzh_p(i,k,j)    = 0._RKIND
+    kzm_p(i,k,j)    = 0._RKIND
+    kzq_p(i,k,j)    = 0._RKIND
  enddo
  enddo
-
  enddo
 
  end subroutine pbl_from_MPAS
@@ -156,6 +176,10 @@
     tend_physics % rqvblten % array(k,i) = rqvblten_p(i,k,j)
     tend_physics % rqcblten % array(k,i) = rqcblten_p(i,k,j)
     tend_physics % rqiblten % array(k,i) = rqiblten_p(i,k,j)
+!temporary for debugging the YSU PBL scheme:
+    diag_physics % kzh % array(k,i) = kzh_p(i,k,j)
+    diag_physics % kzm % array(k,i) = kzm_p(i,k,j)
+    diag_physics % kzq % array(k,i) = kzq_p(i,k,j)
  enddo
  enddo
  enddo
@@ -182,26 +206,55 @@
  pbl_select: select case (trim(pbl_scheme))
 
     case("ysu")
+#if defined(do_hydrostatic_pressure)
+!... REARRANGED CALL USING HYDROSTATIC PRESSURE:
        call ysu ( &
-                 u3d      = u_p        , v3d      = v_p         , th3d     = th_p       , &
-                 t3d      = t_p        , qv3d     = qv_p        , qc3d     = qc_p       , &
-                 qi3d     = qi_p       , p3d      = pres_p      , p3di     = pres2_p    , &
-                 pi3d     = pi_p       , rublten  = rublten_p   , rvblten  = rvblten_p  , &
-                 rthblten = rthblten_p , rqvblten = rqvblten_p  , rqcblten = rqcblten_p , &
-                 rqiblten = rqiblten_p , flag_qi  = f_qi        , cp       = cp         , &
-                 g        = g          , rovcp    = rcp         , rd       = R_d        , &
-                 rovg     = rdg        , ep1      = ep_1        , ep2      = ep_2       , &
-                 karman   = karman     , xlv      = xlv         , rv       = R_v        , &
-                 dz8w     = dz_p       , psfc     = psfc_p      , znt      = znt_p      , &
+                 p3d      = pres_hyd_p , p3di     = pres2_hyd_p , psfc     = psfc_p     , &
+                 th3d     = th_p       , t3d      = t_p         , dz8w     = dz_p       , &
+                 pi3d     = pi_p       , u3d      = u_p         , v3d      = v_p        , &
+                 qv3d     = qv_p       , qc3d     = qc_p        , qi3d     = qi_p       , &
+                 rublten  = rublten_p  , rvblten  = rvblten_p   , rthblten = rthblten_p , &
+                 rqvblten = rqvblten_p , rqcblten = rqcblten_p  , rqiblten = rqiblten_p , & 
+                 flag_qi  = f_qi       , cp       = cp          , g        = g          , &
+                 rovcp    = rcp        , rd       = R_d         , rovg     = rdg        , & 
+                 ep1      = ep_1       , ep2      = ep_2        , karman   = karman     , &
+                 xlv      = xlv        , rv       = R_v         , znt      = znt_p      , &
                  ust      = ust_p      , hpbl     = hpbl_p      , psim     = psim_p     , &
                  psih     = psih_p     , xland    = xland_p     , hfx      = hfx_p      , &
-                 qfx      = qfx_p      , gz1oz0   = gz1oz0_p    , wspd     = wspd_p     , &
-                 br       = br_p       , dt       = dt_pbl      , kpbl2d   = kpbl_p     , &
-                 exch_h   = exch_p     , u10      = u10_p       , v10      = v10_p      , &
+                 qfx      = qfx_p      , wspd     = wspd_p      , br       = br_p       , &
+                 dt       = dt_pbl     , kpbl2d   = kpbl_p      , exch_h   = exch_p     , &
+                 u10      = u10_p      , v10      = v10_p       , ctopo    = ctopo_p    , & 
+                 ctopo2   = ctopo2_p   , regime   = regime_p    , rho      = rho_p      , &
+                 kzhout   = kzh_p      , kzmout   = kzm_p       , kzqout   = kzq_p      , &
                  ids = ids , ide = ide , jds = jds , jde = jde , kds = kds , kde = kde  , &
                  ims = ims , ime = ime , jms = jms , jme = jme , kms = kms , kme = kme  , &
                  its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte    &
                 )
+#else
+!... REARRANGED CALL:
+       call ysu ( &
+                 p3d      = pres_p     , p3di     = pres2_p     , psfc     = psfc_p     , &
+                 th3d     = th_p       , t3d      = t_p         , dz8w     = dz_p       , &
+                 pi3d     = pi_p       , u3d      = u_p         , v3d      = v_p        , &
+                 qv3d     = qv_p       , qc3d     = qc_p        , qi3d     = qi_p       , &
+                 rublten  = rublten_p  , rvblten  = rvblten_p   , rthblten = rthblten_p , &
+                 rqvblten = rqvblten_p , rqcblten = rqcblten_p  , rqiblten = rqiblten_p , & 
+                 flag_qi  = f_qi       , cp       = cp          , g        = g          , &
+                 rovcp    = rcp        , rd       = R_d         , rovg     = rdg        , & 
+                 ep1      = ep_1       , ep2      = ep_2        , karman   = karman     , &
+                 xlv      = xlv        , rv       = R_v         , znt      = znt_p      , &
+                 ust      = ust_p      , hpbl     = hpbl_p      , psim     = psim_p     , &
+                 psih     = psih_p     , xland    = xland_p     , hfx      = hfx_p      , &
+                 qfx      = qfx_p      , wspd     = wspd_p      , br       = br_p       , &
+                 dt       = dt_pbl     , kpbl2d   = kpbl_p      , exch_h   = exch_p     , &
+                 u10      = u10_p      , v10      = v10_p       , ctopo    = ctopo_p    , & 
+                 ctopo2   = ctopo2_p   , regime   = regime_p    , rho      = rho_p      , &
+                 kzhout   = kzh_p      , kzmout   = kzm_p       , kzqout   = kzq_p      , &
+                 ids = ids , ide = ide , jds = jds , jde = jde , kds = kds , kde = kde  , &
+                 ims = ims , ime = ime , jms = jms , jme = jme , kms = kms , kme = kme  , &
+                 its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte    &
+                )
+#endif
 
      case default
 
@@ -209,7 +262,7 @@
 
 !copy all arrays back to the MPAS grid:
  call pbl_to_MPAS(diag_physics,tend_physics)
- write(0,*) '--- enter subroutine driver_pbl'
+ write(0,*) '--- end subroutine driver_pbl'
 
  end subroutine driver_pbl
 

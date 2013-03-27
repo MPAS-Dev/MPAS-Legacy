@@ -29,16 +29,13 @@ module mpas_core
       real (kind=RKIND) :: dt
       type (block_type), pointer :: block
 
-      type (field1DChar) :: xtime
-      type (MPAS_Time_type) :: startTime, sliceTime
-      type (MPAS_TimeInterval_type) :: timeDiff, minTimeDiff
       character(len=StrKIND) :: timeStamp
       integer :: i
       integer :: ierr
 
       if (.not. config_do_restart) then
 
-         ! Code that was previously handled by atm_setup_test_case()
+         ! Code that was previously in atm_setup_test_case()
 
          block => domain % blocklist
          do while (associated(block))
@@ -340,8 +337,6 @@ module mpas_core
       type (domain_type), intent(inout) :: domain
       type (io_output_object), intent(inout) :: output_obj
    
-      integer :: i, j, k
-      integer :: eoe
       type (block_type), pointer :: block_ptr
    
       block_ptr => domain % blocklist
@@ -376,6 +371,8 @@ module mpas_core
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    
       use mpas_grid_types
+      use mpas_constants
+      use mpas_atm_interp_diagnostics
    
       implicit none
    
@@ -383,15 +380,16 @@ module mpas_core
       type (diag_type), intent(inout) :: diag
       type (mesh_type), intent(in) :: grid
    
-      integer :: i, eoe
       integer :: iCell, k
 
       do iCell=1,grid%nCells
          do k=1,grid%nVertLevels
-            diag % theta % array(k,iCell) = state % theta_m % array(k,iCell) / (1.0 + 1.61 * state % scalars % array(state % index_qv,k,iCell))
+            diag % theta % array(k,iCell) = state % theta_m % array(k,iCell) / (1._RKIND + rvord * state % scalars % array(state % index_qv,k,iCell))
             diag % rho % array(k,iCell) = state % rho_zz % array(k,iCell) * grid % zz % array(k,iCell)
          end do
       end do
+
+      call interp_diagnostics(grid,state,diag)
    
    end subroutine atm_compute_output_diagnostics
    
@@ -407,6 +405,7 @@ module mpas_core
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    
       use mpas_grid_types
+      use mpas_constants
    
       implicit none
    
@@ -414,12 +413,11 @@ module mpas_core
       type (diag_type), intent(inout) :: diag
       type (mesh_type), intent(in) :: grid
    
-      integer :: i, eoe
       integer :: iCell, k
 
       do iCell=1,grid%nCells
          do k=1,grid%nVertLevels
-            diag % theta % array(k,iCell) = state % theta_m % array(k,iCell) / (1.0 + 1.61 * state % scalars % array(state % index_qv,k,iCell))
+            diag % theta % array(k,iCell) = state % theta_m % array(k,iCell) / (1._RKIND + rvord * state % scalars % array(state % index_qv,k,iCell))
             diag % rho % array(k,iCell) = state % rho_zz % array(k,iCell) * grid % zz % array(k,iCell)
          end do
       end do

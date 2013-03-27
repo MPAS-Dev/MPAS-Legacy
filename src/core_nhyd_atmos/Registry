@@ -15,6 +15,7 @@ namelist real      nhyd_model config_v_mom_eddy_visc2     0.0
 namelist real      nhyd_model config_h_theta_eddy_visc2   0.0
 namelist real      nhyd_model config_h_theta_eddy_visc4   0.0
 namelist real      nhyd_model config_v_theta_eddy_visc2   0.0
+namelist real      nhyd_model config_visc4_2dsmag         0.0
 namelist integer   nhyd_model config_number_of_sub_steps  4
 namelist integer   nhyd_model config_w_adv_order          3
 namelist integer   nhyd_model config_theta_adv_order      3
@@ -33,7 +34,7 @@ namelist real      nhyd_model config_epssm                0.1
 namelist real      nhyd_model config_smdiv                0.1
 namelist logical   nhyd_model config_newpx                false
 namelist real      nhyd_model config_apvm_upwinding       0.5
-namelist logical   nhyd_model config_h_ScaleWithMesh      false
+namelist logical   nhyd_model config_h_ScaleWithMesh      true
 namelist integer   nhyd_model config_num_halos            2
 namelist real      damping    config_zd                   22000.0
 namelist real      damping    config_xnutr                0.0
@@ -45,6 +46,7 @@ namelist character io         config_output_interval      06:00:00
 namelist integer   io         config_frames_per_outfile   0
 namelist integer   io         config_pio_num_iotasks      0 
 namelist integer   io         config_pio_stride           1
+namelist character io         config_pio_format           pnetcdf
 namelist character decomposition config_block_decomp_file_prefix  graph.info.part.
 namelist integer   decomposition config_number_of_blocks          0
 namelist logical   decomposition config_explicit_proc_decomp      .false.
@@ -283,14 +285,33 @@ var persistent integer nAdvCellsForEdge ( nEdges ) 0 - nAdvCellsForEdge mesh - -
 % Space needed for deformation calculation weights
 var persistent real    defc_a ( maxEdges nCells ) 0 iro defc_a mesh - -
 var persistent real    defc_b ( maxEdges nCells ) 0 iro defc_b mesh - -
-var persistent real    kdiff ( nVertLevels nCells Time ) 1 - kdiff diag - -
+var persistent real    kdiff ( nVertLevels nCells Time ) 1 o kdiff diag - -
 
 % Arrays required for reconstruction of velocity field
 var persistent real    coeffs_reconstruct ( R3 maxEdges nCells ) 0 iro coeffs_reconstruct mesh - -
 
 % ADDED DECLARATIONS MADE BY LDF:
-var persistent real    surface_pressure    ( nCells Time    ) 1 iro surface_pressure    diag - -
-var persistent real    surface_temperature ( nCells Time    ) 1   o surface_temperature diag - -
+var persistent real    surface_pressure    ( nCells Time    ) 1 iro surface_pressure       diag - -
+
+var persistent real    temperature_200hPa  ( nCells Time    ) 1   o temperature_200hPa     diag - -
+var persistent real    temperature_500hPa  ( nCells Time    ) 1   o temperature_500hPa     diag - -
+var persistent real    temperature_850hPa  ( nCells Time    ) 1   o temperature_850hPa     diag - -
+var persistent real    height_200hPa       ( nCells Time    ) 1   o height_200hPa          diag - -
+var persistent real    height_500hPa       ( nCells Time    ) 1   o height_500hPa          diag - -
+var persistent real    height_850hPa       ( nCells Time    ) 1   o height_850hPa          diag - -
+var persistent real    uzonal_200hPa       ( nCells Time    ) 1   o uzonal_200hPa          diag - -
+var persistent real    uzonal_500hPa       ( nCells Time    ) 1   o uzonal_500hPa          diag - -
+var persistent real    uzonal_850hPa       ( nCells Time    ) 1   o uzonal_850hPa          diag - -
+var persistent real    umeridional_200hPa  ( nCells Time    ) 1   o umeridional_200hPa     diag - -
+var persistent real    umeridional_500hPa  ( nCells Time    ) 1   o umeridional_500hPa     diag - -
+var persistent real    umeridional_850hPa  ( nCells Time    ) 1   o umeridional_850hPa     diag - -
+var persistent real    w_200hPa            ( nCells Time    ) 1   o w_200hPa               diag - -
+var persistent real    w_500hPa            ( nCells Time    ) 1   o w_500hPa               diag - -
+var persistent real    w_850hPa            ( nCells Time    ) 1   o w_850hPa               diag - -
+
+var persistent real    vorticity_200hPa    ( nVertices Time ) 1   o vorticity_200hPa       diag - -
+var persistent real    vorticity_500hPa    ( nVertices Time ) 1   o vorticity_500hPa       diag - -
+var persistent real    vorticity_850hPa    ( nVertices Time ) 1   o vorticity_850hPa       diag - -
 
 %==================================================================================================
 % DECLARATIONS OF ALL PHYSICS VARIABLES (will need to be moved to a Physics Registry shared by the
@@ -360,6 +381,7 @@ namelist character physics  config_conv_deep_scheme       off
 namelist character physics  config_eddy_scheme            off 
 namelist character physics  config_lsm_scheme             off
 namelist character physics  config_pbl_scheme             off
+namelist character physics  config_gwdo_scheme            off
 namelist character physics  config_radt_cld_scheme        off
 namelist character physics  config_radt_lw_scheme         off
 namelist character physics  config_radt_sw_scheme         off
@@ -402,6 +424,10 @@ var persistent real    tyear_accum  ( nCells Time           ) 1  r  tyear_accum 
 % graupelnc : accumulated grid-scale precipitation of graupel                                  (mm)
 % graupelncv: time-step grid-scale precipitation of graupel                                    (mm)
 % sr        : time-step ratio of frozen versus total grid-scale precipitation                   (-)
+% precipw   : precipitable water                                                            (kg/m2)
+% refl10cm_max: maximum column reflectivity                                                   (dBz)
+
+var persistent real    refl10cm_max ( nCells Time           ) 1   o refl10cm_max   diag_physics - -
 
 var persistent integer i_rainnc   ( nCells Time             ) 1  ro i_rainnc       diag_physics - -
 var persistent real    sr         ( nCells Time             ) 1  ro sr             diag_physics - -
@@ -413,8 +439,9 @@ var persistent real    rainnc     ( nCells Time             ) 1  ro rainnc      
 var persistent real    snownc     ( nCells Time             ) 1  ro snownc         diag_physics - -
 var persistent real    graupelnc  ( nCells Time             ) 1  ro graupelnc      diag_physics - -
 
-var persistent real    qsat       ( nVertLevels nCells Time ) 1  o  qsat           diag_physics - -
-var persistent real    relhum     ( nVertLevels nCells Time ) 1  o  relhum         diag_physics - -
+var persistent real    precipw    ( nCells Time             ) 1   o precipw        diag_physics - -
+var persistent real    qsat       ( nVertLevels nCells Time ) 1   o  qsat          diag_physics - -
+var persistent real    relhum     ( nVertLevels nCells Time ) 1   o  relhum        diag_physics - -
 
 %--------------------------------------------------------------------------------------------------
 %... PARAMETERIZATION OF CONVECTION:
@@ -487,6 +514,49 @@ var persistent real    rthblten ( nVertLevels nCells Time   ) 1  ro rthblten    
 var persistent real    rqvblten ( nVertLevels nCells Time   ) 1  ro rqvblten       tend_physics - -
 var persistent real    rqcblten ( nVertLevels nCells Time   ) 1  ro rqcblten       tend_physics - -
 var persistent real    rqiblten ( nVertLevels nCells Time   ) 1  ro rqiblten       tend_physics - -
+
+%    TEMPORARY:
+var persistent real    kzh      ( nVertLevels nCells Time   ) 1   o kzh            diag_physics - -
+var persistent real    kzm      ( nVertLevels nCells Time   ) 1   o kzm            diag_physics - -
+var persistent real    kzq      ( nVertLevels nCells Time   ) 1   o kzq            diag_physics - -
+
+%--------------------------------------------------------------------------------------------------
+%... PARAMETERIZATION OF GRAVITY WAVE DRAG OVER OROGRAPHY:
+%--------------------------------------------------------------------------------------------------
+
+% var2d      : orographic variance                                                             (m2)
+% con        : orographic convexity                                                            (m2)
+% oa1        : orographic direction asymmetry function                                          (-)
+% oa2        : orographic direction asymmetry function                                          (-)
+% oa3        : orographic direction asymmetry function                                          (-)
+% oa4        : orographic direction asymmetry function                                          (-)
+% ol1        : orographic direction asymmetry function                                          (-)
+% ol2        : orographic direction asymmetry function                                          (-)
+% ol3        : orographic direction asymmetry function                                          (-)
+% ol4        : orographic direction asymmetry function                                          (-)
+% dusfcg     : vertically-integrated gravity wave drag over orography u-stress           (Pa m s-1)
+% dvsfcg     : vertically-integrated gravity wave drag over orography v-stress           (Pa m s-1)
+% dtaux3d    : gravity wave drag over orography u-stress                                    (m s-1)
+% dtauy3d    : gravity wave drag over orography v-stress                                    (m s-1)
+
+var persistent real    var2d    ( nCells                    ) 0  iro var2d         sfc_input    - -
+var persistent real    con      ( nCells                    ) 0  iro con           sfc_input    - -
+var persistent real    oa1      ( nCells                    ) 0  iro oa1           sfc_input    - -
+var persistent real    oa2      ( nCells                    ) 0  iro oa2           sfc_input    - -
+var persistent real    oa3      ( nCells                    ) 0  iro oa3           sfc_input    - -
+var persistent real    oa4      ( nCells                    ) 0  iro oa4           sfc_input    - -
+var persistent real    ol1      ( nCells                    ) 0  iro ol1           sfc_input    - -
+var persistent real    ol2      ( nCells                    ) 0  iro ol2           sfc_input    - -
+var persistent real    ol3      ( nCells                    ) 0  iro ol3           sfc_input    - -
+var persistent real    ol4      ( nCells                    ) 0  iro ol4           sfc_input    - -
+
+var persistent real    dusfcg   ( nCells Time               ) 1  ro dusfcg         diag_physics - -
+var persistent real    dvsfcg   ( nCells Time               ) 1  ro dvsfcg         diag_physics - -
+var persistent real    dtaux3d  ( nVertLevels nCells Time   ) 1  ro dtaux3d        diag_physics - -
+var persistent real    dtauy3d  ( nVertLevels nCells Time   ) 1  ro dtauy3d        diag_physics - -
+
+var persistent real    rubldiff ( nVertLevels nCells Time   ) 1  ro rubldiff       diag_physics - -
+var persistent real    rvbldiff ( nVertLevels nCells Time   ) 1  ro rvbldiff       diag_physics - -
 
 %--------------------------------------------------------------------------------------------------
 %... PARAMETERIZATION OF SURFACE LAYER PROCESSES:
@@ -772,7 +842,6 @@ var persistent real    cldfrac    ( nVertLevels nCells Time ) 1   o cldfrac     
 % noahres        :residual of the noah land-surface scheme energy budget                    [W m-2]
 % potevp         :potential evaporation                                                     [W m-2]
 % qz0            :specific humidity at znt                                                [kg kg-1]
-% rib            :??
 % sfc_albedo     :surface albedo                                                                [-]
 % sfc_embck      :background emissivity                                                         [-]
 % sfc_emiss      :surface emissivity                                                            [-]
@@ -781,8 +850,9 @@ var persistent real    cldfrac    ( nVertLevels nCells Time ) 1   o cldfrac     
 % smstot         :total moisture                                                           [m3 m-3]
 % snopcx         :snow phase change heat flux                                               [W m-2]
 % snotime        :??
-% sstsk          : skin sea-surface temperature                                                [K]
-% sstsk_diur     : skin sea-surface temperature difference                                     [K]
+% sstsk          : skin sea-surface temperature                                                 [K]
+% sstsk_dtc      : skin sea-surface temperature cooling                                         [K]
+% sstsk_dtw      : skin sea-surface temperature warming                                         [K]
 % thc            :thermal inertia                                              [Cal cm-1 K-1 s-0.5]
 % udrunoff       :sub-surface runoff                                                        [m s-1]
 % xicem          :ice mask from previous time-step                                              [-]
@@ -798,7 +868,6 @@ var persistent real    lai        ( nCells Time             ) 1  ro lai         
 var persistent real    noahres    ( nCells Time             ) 1  ro noahres        diag_physics - -
 var persistent real    potevp     ( nCells Time             ) 1  ro potevp         diag_physics - -
 var persistent real    qz0        ( nCells Time             ) 1  ro qz0            diag_physics - -
-var persistent real    rib        ( nCells Time             ) 1  ro rib            diag_physics - -
 var persistent real    sfc_albedo ( nCells Time             ) 1  ro sfc_albedo     diag_physics - -
 var persistent real    sfc_emiss  ( nCells Time             ) 1  ro sfc_emiss      diag_physics - -
 var persistent real    sfc_emibck ( nCells Time             ) 1  ro sfc_emibck     diag_physics - -
@@ -808,7 +877,8 @@ var persistent real    smstot     ( nCells Time             ) 1  ro smstot      
 var persistent real    snopcx     ( nCells Time             ) 1  ro snopcx         diag_physics - -
 var persistent real    snotime    ( nCells Time             ) 1  ro snotime        diag_physics - -
 var persistent real    sstsk      ( nCells Time             ) 1  ro sstsk          diag_physics - -
-var persistent real    sstsk_diur ( nCells Time             ) 1  ro sstsk_diur     diag_physics - -
+var persistent real    sstsk_dtc  ( nCells Time             ) 1  ro sstsk_dtc      diag_physics - -
+var persistent real    sstsk_dtw  ( nCells Time             ) 1  ro sstsk_dtw      diag_physics - -
 var persistent real    thc        ( nCells Time             ) 1  ro thc            diag_physics - - 
 var persistent real    udrunoff   ( nCells Time             ) 1  ro udrunoff       diag_physics - -   
 var persistent real    xicem      ( nCells Time             ) 1  ro xicem          diag_physics - -
