@@ -1,3 +1,16 @@
+!***********************************************************************
+!
+!  mpas_attlist
+!
+!> \brief   MPAS Attribute list module
+!> \author  Michael Duda
+!> \date    03/27/13
+!> \version SVN:$Id$
+!> \details 
+!> This module provides type definitions and subroutines for working with attribute lists.
+!
+!-----------------------------------------------------------------------
+
 module mpas_attlist
 
    use mpas_kind_types
@@ -42,15 +55,26 @@ module mpas_attlist
 
 contains
 
-
-   subroutine mpas_add_att_int0d(attList, attName, attValue, ierr)
+!***********************************************************************
+!
+!  routine mpas_add_att_int0d
+!
+!> \brief   MPAS Add 0D integer attribute routine
+!> \author  Michael Duda
+!> \date    03/27/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine adds a 0D integer attribute the attribute list.
+!
+!-----------------------------------------------------------------------
+   subroutine mpas_add_att_int0d(attList, attName, attValue, ierr)!{{{
 
       implicit none
 
-      type (att_list_type), pointer :: attList
-      character (len=*), intent(in) :: attName
-      integer, intent(in) :: attValue
-      integer, intent(out), optional :: ierr
+      type (att_list_type), pointer :: attList !< Input/Output: Attribute list
+      character (len=*), intent(in) :: attName !< Input: Attribute name
+      integer, intent(in) :: attValue !< Input: Attribute value
+      integer, intent(out), optional :: ierr !< Output: Error flag
 
       type (att_list_type), pointer :: cursor
 
@@ -72,17 +96,28 @@ contains
       write(cursor % attName,'(a)') trim(attName)
       cursor % attValueInt = attValue
 
-   end subroutine mpas_add_att_int0d
+   end subroutine mpas_add_att_int0d!}}}
 
-
-   subroutine mpas_add_att_int1d(attList, attName, attValue, ierr)
+!***********************************************************************
+!
+!  routine mpas_add_att_int1d
+!
+!> \brief   MPAS Add 1D integer attribute routine
+!> \author  Michael Duda
+!> \date    03/27/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine adds a 1D integer attribute the attribute list.
+!
+!-----------------------------------------------------------------------
+   subroutine mpas_add_att_int1d(attList, attName, attValue, ierr)!{{{
 
       implicit none
 
-      type (att_list_type), pointer :: attList
-      character (len=*), intent(in) :: attName
-      integer, dimension(:), intent(in) :: attValue
-      integer, intent(out), optional :: ierr
+      type (att_list_type), pointer :: attList !< Input/Output: Attribute list
+      character (len=*), intent(in) :: attName !< Input: Attribute name
+      integer, dimension(:), intent(in) :: attValue !< Input: Attribute value
+      integer, intent(out), optional :: ierr !< Output: Error flag
 
       type (att_list_type), pointer :: cursor
 
@@ -105,17 +140,28 @@ contains
       write(cursor % attName,'(a)') trim(attName)
       cursor % attValueIntA(:) = attValue(:)
 
-   end subroutine mpas_add_att_int1d
+   end subroutine mpas_add_att_int1d!}}}
 
-
-   subroutine mpas_add_att_real0d(attList, attName, attValue, ierr)
+!***********************************************************************
+!
+!  routine mpas_add_att_real0d
+!
+!> \brief   MPAS Add 0D real attribute routine
+!> \author  Michael Duda
+!> \date    03/27/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine adds a 0D real attribute the attribute list.
+!
+!-----------------------------------------------------------------------
+   subroutine mpas_add_att_real0d(attList, attName, attValue, ierr)!{{{
 
       implicit none
 
-      type (att_list_type), pointer :: attList
-      character (len=*), intent(in) :: attName
-      real (kind=RKIND), intent(in) :: attValue
-      integer, intent(out), optional :: ierr
+      type (att_list_type), pointer :: attList !< Input/Output: Attribute list
+      character (len=*), intent(in) :: attName !< Input: Attribute name
+      real (kind=RKIND), intent(in) :: attValue !< Input: Attribute value
+      integer, intent(out), optional :: ierr !< Output: Error flag
 
       type (att_list_type), pointer :: cursor
 
@@ -137,17 +183,28 @@ contains
       write(cursor % attName,'(a)') trim(attName)
       cursor % attValueReal = attValue
 
-   end subroutine mpas_add_att_real0d
+   end subroutine mpas_add_att_real0d!}}}
 
-
-   subroutine mpas_add_att_real1d(attList, attName, attValue, ierr)
+!***********************************************************************
+!
+!  routine mpas_add_att_real1d
+!
+!> \brief   MPAS Add 1D real attribute routine
+!> \author  Michael Duda
+!> \date    03/27/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine adds a 1D real attribute the attribute list.
+!
+!-----------------------------------------------------------------------
+   subroutine mpas_add_att_real1d(attList, attName, attValue, ierr)!{{{
 
       implicit none
 
-      type (att_list_type), pointer :: attList
-      character (len=*), intent(in) :: attName
-      real (kind=RKIND), dimension(:), intent(in) :: attValue
-      integer, intent(out), optional :: ierr
+      type (att_list_type), pointer :: attList !< Input/Output: Attribute list
+      character (len=*), intent(in) :: attName !< Input: Attribute name
+      real (kind=RKIND), dimension(:), intent(in) :: attValue !< Input: Attribute value
+      integer, intent(out), optional :: ierr !< Output: Error flag
 
       type (att_list_type), pointer :: cursor
 
@@ -170,17 +227,28 @@ contains
       write(cursor % attName,'(a)') trim(attName)
       cursor % attValueRealA(:) = attValue(:)
 
-   end subroutine mpas_add_att_real1d
+   end subroutine mpas_add_att_real1d!}}}
 
-
-   subroutine mpas_add_att_text(attList, attName, attValue, ierr)
+!***********************************************************************
+!
+!  routine mpas_add_att_text
+!
+!> \brief   MPAS Add text attribute routine
+!> \author  Michael Duda
+!> \date    03/27/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine adds a text attribute the attribute list.
+!
+!-----------------------------------------------------------------------
+   subroutine mpas_add_att_text(attList, attName, attValue, ierr)!{{{
 
       implicit none
 
-      type (att_list_type), pointer :: attList
-      character (len=*), intent(in) :: attName
-      character (len=*), intent(in) :: attValue
-      integer, intent(out), optional :: ierr
+      type (att_list_type), pointer :: attList !< Input/Output: Attribute list
+      character (len=*), intent(in) :: attName !< Input: Attribute name
+      character (len=*), intent(in) :: attValue !< Input: Attribute value
+      integer, intent(out), optional :: ierr !< Output: Error flag
 
       type (att_list_type), pointer :: cursor
 
@@ -202,17 +270,28 @@ contains
       write(cursor % attName,'(a)') trim(attName)
       write(cursor % attValueText,'(a)') trim(attValue)
 
-   end subroutine mpas_add_att_text
+   end subroutine mpas_add_att_text!}}}
 
-
-   subroutine mpas_get_att_int0d(attList, attName, attValue, ierr)
+!***********************************************************************
+!
+!  routine mpas_get_att_int0d
+!
+!> \brief   MPAS get 0D integer attribute routine
+!> \author  Michael Duda
+!> \date    03/27/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine returns the attribute value of a 0D integer attribute.
+!
+!-----------------------------------------------------------------------
+   subroutine mpas_get_att_int0d(attList, attName, attValue, ierr)!{{{
 
       implicit none
 
-      type (att_list_type), pointer :: attList
-      character (len=*), intent(in) :: attName
-      integer, intent(out) :: attValue
-      integer, intent(out), optional :: ierr
+      type (att_list_type), pointer :: attList !< Input: Attribute list
+      character (len=*), intent(in) :: attName !< Input: Attribute name
+      integer, intent(out) :: attValue !< Output: Attribute value
+      integer, intent(out), optional :: ierr !< Output: Error flag
 
       type (att_list_type), pointer :: cursor
 
@@ -233,17 +312,28 @@ contains
 
       if (present(ierr)) ierr = 1    ! Not found
 
-   end subroutine mpas_get_att_int0d
+   end subroutine mpas_get_att_int0d!}}}
 
-
-   subroutine mpas_get_att_int1d(attList, attName, attValue, ierr)
+!***********************************************************************
+!
+!  routine mpas_get_att_int1d
+!
+!> \brief   MPAS get 1D integer attribute routine
+!> \author  Michael Duda
+!> \date    03/27/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine returns the attribute value of a 1D integer attribute.
+!
+!-----------------------------------------------------------------------
+   subroutine mpas_get_att_int1d(attList, attName, attValue, ierr)!{{{
 
       implicit none
 
-      type (att_list_type), pointer :: attList
-      character (len=*), intent(in) :: attName
-      integer, dimension(:), pointer :: attValue
-      integer, intent(out), optional :: ierr
+      type (att_list_type), pointer :: attList !< Input: Attribute list
+      character (len=*), intent(in) :: attName !< Input: Attribute name
+      integer, dimension(:), pointer :: attValue !< Output: Attribute value
+      integer, intent(out), optional :: ierr !< Output: Error flag
 
       type (att_list_type), pointer :: cursor
 
@@ -265,17 +355,28 @@ contains
 
       if (present(ierr)) ierr = 1    ! Not found
 
-   end subroutine mpas_get_att_int1d
+   end subroutine mpas_get_att_int1d!}}}
 
-
-   subroutine mpas_get_att_real0d(attList, attName, attValue, ierr)
+!***********************************************************************
+!
+!  routine mpas_get_att_real0d
+!
+!> \brief   MPAS get 0D real attribute routine
+!> \author  Michael Duda
+!> \date    03/27/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine returns the attribute value of a 0D real attribute.
+!
+!-----------------------------------------------------------------------
+   subroutine mpas_get_att_real0d(attList, attName, attValue, ierr)!{{{
 
       implicit none
 
-      type (att_list_type), pointer :: attList
-      character (len=*), intent(in) :: attName
-      real (kind=RKIND), intent(out) :: attValue
-      integer, intent(out), optional :: ierr
+      type (att_list_type), pointer :: attList !< Input: Attribute list
+      character (len=*), intent(in) :: attName !< Input: Attribute name
+      real (kind=RKIND), intent(out) :: attValue !< Output: Attribute value
+      integer, intent(out), optional :: ierr !< Output: Error flag
 
       type (att_list_type), pointer :: cursor
 
@@ -296,17 +397,28 @@ contains
 
       if (present(ierr)) ierr = 1    ! Not found
 
-   end subroutine mpas_get_att_real0d
+   end subroutine mpas_get_att_real0d!}}}
 
-
-   subroutine mpas_get_att_real1d(attList, attName, attValue, ierr)
+!***********************************************************************
+!
+!  routine mpas_get_att_real1d
+!
+!> \brief   MPAS get 1D real attribute routine
+!> \author  Michael Duda
+!> \date    03/27/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine returns the attribute value of a 1D real attribute.
+!
+!-----------------------------------------------------------------------
+   subroutine mpas_get_att_real1d(attList, attName, attValue, ierr)!{{{
 
       implicit none
 
-      type (att_list_type), pointer :: attList
-      character (len=*), intent(in) :: attName
-      real (kind=RKIND), dimension(:), pointer :: attValue
-      integer, intent(out), optional :: ierr
+      type (att_list_type), pointer :: attList !< Input: Attribute list
+      character (len=*), intent(in) :: attName !< Input: Attribute name
+      real (kind=RKIND), dimension(:), pointer :: attValue !< Output: Attribute value
+      integer, intent(out), optional :: ierr !< Output: Error flag
 
       type (att_list_type), pointer :: cursor
 
@@ -328,17 +440,28 @@ contains
 
       if (present(ierr)) ierr = 1    ! Not found
 
-   end subroutine mpas_get_att_real1d
+   end subroutine mpas_get_att_real1d!}}}
 
-
-   subroutine mpas_get_att_text(attList, attName, attValue, ierr)
+!***********************************************************************
+!
+!  routine mpas_get_att_text
+!
+!> \brief   MPAS get text attribute routine
+!> \author  Michael Duda
+!> \date    03/27/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine returns the attribute value of a text attribute.
+!
+!-----------------------------------------------------------------------
+   subroutine mpas_get_att_text(attList, attName, attValue, ierr)!{{{
 
       implicit none
 
-      type (att_list_type), pointer :: attList
-      character (len=*), intent(in) :: attName
-      character (len=*), intent(out) :: attValue
-      integer, intent(out), optional :: ierr
+      type (att_list_type), pointer :: attList !< Input: Attribute list
+      character (len=*), intent(in) :: attName !< Input: Attribute name
+      character (len=*), intent(out) :: attValue !< Output: Attribute value
+      integer, intent(out), optional :: ierr !< Output: Error flag
 
       type (att_list_type), pointer :: cursor
 
@@ -359,16 +482,27 @@ contains
 
       if (present(ierr)) ierr = 1    ! Not found
 
-   end subroutine mpas_get_att_text
+   end subroutine mpas_get_att_text!}}}
 
-
-   subroutine mpas_remove_att(attList, attName, ierr)
+!***********************************************************************
+!
+!  routine mpas_remove_att
+!
+!> \brief   MPAS remove attribute routine
+!> \author  Michael Duda
+!> \date    03/27/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine removes an attribute from an attribute list.
+!
+!-----------------------------------------------------------------------
+   subroutine mpas_remove_att(attList, attName, ierr)!{{{
 
       implicit none
 
-      type (att_list_type), pointer :: attList
-      character (len=*), intent(in) :: attName
-      integer, intent(out), optional :: ierr
+      type (att_list_type), pointer :: attList !< Input/Output: Attribute list
+      character (len=*), intent(in) :: attName !< Input: Attribute name
+      integer, intent(out), optional :: ierr !< Output: Error flag
 
       type (att_list_type), pointer :: cursor, cursor_prev
 
@@ -410,15 +544,26 @@ contains
 
       if (present(ierr)) ierr = 1    ! Not found
 
-   end subroutine mpas_remove_att
+   end subroutine mpas_remove_att!}}}
 
-
-   subroutine mpas_deallocate_attlist(attList, ierr)
+!***********************************************************************
+!
+!  routine mpas_deallocate_attlist
+!
+!> \brief   MPAS attribute list deallocation routine
+!> \author  Michael Duda
+!> \date    03/27/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine deallocates an attribute list.
+!
+!-----------------------------------------------------------------------
+   subroutine mpas_deallocate_attlist(attList, ierr)!{{{
 
       implicit none
 
-      type (att_list_type), pointer :: attList
-      integer, intent(out), optional :: ierr
+      type (att_list_type), pointer :: attList !< Input/Output: Attribute list
+      integer, intent(out), optional :: ierr !< Output: Error flag
 
       type (att_list_type), pointer :: cursor
 
@@ -436,6 +581,6 @@ contains
          cursor => attList
       end do
 
-   end subroutine mpas_deallocate_attlist
+   end subroutine mpas_deallocate_attlist!}}}
 
 end module mpas_attlist

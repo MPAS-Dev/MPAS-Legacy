@@ -1,3 +1,17 @@
+!***********************************************************************
+!
+!  mpas_timer
+!
+!> \brief   MPAS Timer module
+!> \author  Michael Duda, Doug Jacobsen
+!> \date    03/27/13
+!> \version SVN:$Id$
+!> \details 
+!> This module provides developers with internal timer routines. These can be
+!> use to profile various parts of code within MPAS. Calls to TAU happen in this module as well
+!> to provide more detailed profiling.
+!
+!-----------------------------------------------------------------------
       module mpas_timer
 
         use mpas_kind_types
@@ -32,6 +46,19 @@
 
         contains
 
+!***********************************************************************
+!
+!  routine mpas_timer_start
+!
+!> \brief   MPAS Timer start routine
+!> \author  Doug Jacobsen
+!> \date    03/27/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine starts a timer. By default, timer_name is searched for in the linked list of timers.
+!> If timer_ptr is provided, the search doesn't happen and the pointer to the timer is used (or allocated if not created yet).
+!
+!-----------------------------------------------------------------------
         subroutine mpas_timer_start(timer_name, clear_timer, timer_ptr)!{{{
 #         ifdef _MPI
           use mpi
@@ -161,6 +188,19 @@
           
         end subroutine mpas_timer_start!}}}
        
+!***********************************************************************
+!
+!  routine mpas_timer_stop
+!
+!> \brief   MPAS Timer stop routine
+!> \author  Doug Jacobsen
+!> \date    03/27/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine stops a timer. By default, timer_name is searched for in the linked list of timers.
+!> If timer_ptr is provided, the search doesn't happen and the pointer to the timer is used.
+!
+!-----------------------------------------------------------------------
         subroutine mpas_timer_stop(timer_name, timer_ptr)!{{{
 #         ifdef _MPI
           use mpi
@@ -238,9 +278,23 @@
 
         end subroutine mpas_timer_stop!}}}
 
+!***********************************************************************
+!
+!  recursive routine mpas_timer_write
+!
+!> \brief   MPAS Timer write routine
+!> \author  Doug Jacobsen
+!> \date    03/27/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine writes all timer output to stdout. It recursively calls 
+!> itself until all timers have been written out. Prior to writing timers,
+!> this routine calls mpas_timer_sync.
+!
+!-----------------------------------------------------------------------
         recursive subroutine mpas_timer_write(timer_ptr, total_ptr)!{{{
-          type (timer_node), pointer, optional :: timer_ptr
-          type (timer_node), pointer, optional :: total_ptr
+          type (timer_node), pointer, optional :: timer_ptr !< Input - Optional: Pointer to a specific timer to write out.
+          type (timer_node), pointer, optional :: total_ptr !< Input - Optional: Pointer to the total_time timer.
           character (len=StrKIND) :: tname
 
           logical :: total_found, string_equals
@@ -312,8 +366,20 @@
 
         end subroutine mpas_timer_write!}}}
 
+!***********************************************************************
+!
+!  routine mpas_timer_init
+!
+!> \brief   MPAS Timer init routine
+!> \author  Doug Jacobsen
+!> \date    03/27/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine initializes the mpas_timer setup. It needs to have access to the dminfo object in order to sync timers.
+!
+!-----------------------------------------------------------------------
         subroutine mpas_timer_init(domain)!{{{
-          type (domain_type), intent(in), optional :: domain
+          type (domain_type), intent(in), optional :: domain !< Input - Optional: Domain structure
 
           if( present(domain) ) then
               domain_info => domain % dminfo
@@ -323,6 +389,19 @@
 
         end subroutine mpas_timer_init!}}}
 
+!***********************************************************************
+!
+!  routine mpas_timer_sync
+!
+!> \brief   MPAS Timer sync routine
+!> \author  Doug Jacobsen
+!> \date    03/27/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine synchronizes timers across all processors in order to better represent
+!> the entire run domain with the timer output.
+!
+!-----------------------------------------------------------------------
         subroutine mpas_timer_sync()!{{{
           use mpas_dmpar
 

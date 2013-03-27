@@ -1,14 +1,19 @@
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! MODULE HASH
+!***********************************************************************
 !
-! Purpose: This module provides a dictionary/hashtable with insert, search, and
-!   remove routines. 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!  mpas_hash
+!
+!> \brief   MPAS Hash table module
+!> \author  Michael Duda
+!> \date    03/27/13
+!> \version SVN:$Id$
+!> \details 
+!> This module provides A dictionary/hashtable with insert, search, and remove routines.
+!
+!-----------------------------------------------------------------------
 module mpas_hash
 
    ! Parameters
-   integer, parameter :: TABLESIZE=27183     ! Number of spaces in the table (the
-                                             !   number of linked lists)
+   integer, parameter :: TABLESIZE=27183     !< Number of spaces in the table (the number of linked lists)
  
    type hashnode
       integer :: key
@@ -16,29 +21,35 @@ module mpas_hash
    end type hashnode
  
    type hashnode_ptr
-      type (hashnode), pointer :: p        ! Pointer to a list of entries
+      type (hashnode), pointer :: p        !< Pointer to a list of entries
    end type hashnode_ptr
  
    type hashtable
       integer :: size
-      type (hashnode_ptr), dimension(TABLESIZE) :: table ! The hashtable array
+      type (hashnode_ptr), dimension(TABLESIZE) :: table !< The hashtable array
    end type hashtable
 
  
    contains
  
- 
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-   ! Name: hash_init
-   !
-   ! Purpose: To initialize a hashtable
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-   subroutine mpas_hash_init(h)
+!***********************************************************************
+!
+!  routine mpas_hash_init
+!
+!> \brief   MPAS Hash table init routine
+!> \author  Michael Duda
+!> \date    03/27/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine initializes a hashtable.
+!
+!-----------------------------------------------------------------------
+   subroutine mpas_hash_init(h)!{{{
    
      implicit none
  
      ! Arguments
-     type (hashtable), intent(inout) :: h
+     type (hashtable), intent(inout) :: h !< Input/Output: Hash table
  
      ! Local variables
      integer :: i
@@ -49,25 +60,29 @@ module mpas_hash
         nullify(h%table(i)%p)
      end do
  
-   end subroutine mpas_hash_init
+   end subroutine mpas_hash_init!}}}
  
  
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-   ! Name: hash_insert
-   !
-   ! Purpose: Given a hashtable h and a key to be inserted into the hashtable,
-   !   this routine adds key to the table. 
-   !
-   ! NOTE: If the key already exists in the table, a second copy of the
-   !   key is added to the table
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-   subroutine mpas_hash_insert(h, key)
+!***********************************************************************
+!
+!  routine mpas_hash_insert
+!
+!> \brief   MPAS Hash table insert routine
+!> \author  Michael Duda
+!> \date    03/27/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine inserts a key into a hashtable. If the key already exists in the hash table,
+!> a second copy of the key is added to the table.
+!
+!-----------------------------------------------------------------------
+   subroutine mpas_hash_insert(h, key)!{{{
    
      implicit none
  
      ! Arguments
-     integer, intent(in) :: key
-     type (hashtable), intent(inout) :: h
+     integer, intent(in) :: key !< Input: Key
+     type (hashtable), intent(inout) :: h !< Input/Output: Hashtable
  
      ! Local variables
      integer :: hashval, i
@@ -82,22 +97,27 @@ module mpas_hash
 
      h%size = h%size + 1
  
-   end subroutine mpas_hash_insert
+   end subroutine mpas_hash_insert!}}}
  
- 
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-   ! Name: hash_search
-   !
-   ! Purpose: This function returns TRUE if the specified key was found in the
-   !   hashtable h, and FALSE otherwise.
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-   logical function mpas_hash_search(h, key)
+!***********************************************************************
+!
+!  logical function mpas_hash_search
+!
+!> \brief   MPAS Hash table search routine
+!> \author  Michael Duda
+!> \date    03/27/13
+!> \version SVN:$Id$
+!> \details 
+!> This function searches for a key within a hashtable. If the key is found TRUE is returned, and FALSE is return otherwise.
+!
+!-----------------------------------------------------------------------
+   logical function mpas_hash_search(h, key)!{{{
    
       implicit none
   
       ! Arguments
-      integer, intent(in) :: key
-      type (hashtable), intent(inout) :: h
+      integer, intent(in) :: key !< Input: Key
+      type (hashtable), intent(inout) :: h !< Input/Output: Hashtable
   
       ! Local variables
       integer :: hashval, i
@@ -170,6 +190,6 @@ module mpas_hash
 
       h%size = 0
  
-   end subroutine mpas_hash_destroy
+   end subroutine mpas_hash_destroy!}}}
  
 end module mpas_hash
