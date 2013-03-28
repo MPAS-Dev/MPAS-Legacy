@@ -1,3 +1,16 @@
+!***********************************************************************
+!
+!  mpas_rbf_interpolation
+!
+!> \brief   MPAS Radial basis function interpolation module
+!> \author  Xylar Asay-Davis
+!> \date    03/28/13
+!> \version SVN:$Id$
+!> \details 
+!> This module provides routines for performing interpolation with radial basis functions.
+!> It performs interpolation of scalar and vector functions in 2 and 3 dimensions.
+!
+!-----------------------------------------------------------------------
 module mpas_rbf_interpolation
    use mpas_dmpar
    use mpas_grid_types
@@ -5,11 +18,6 @@ module mpas_rbf_interpolation
    implicit none
    private
    save
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-! Purpose: perform interpolation of scalar and vector functions in 2D
-!   and 3D using Radial Basis Functions (RBFs).
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
 
    ! Initialize the geometry that will be useful from interpolation
   public :: mpas_rbf_interp_initialize
@@ -93,26 +101,32 @@ module mpas_rbf_interpolation
 
   contains
 
-  subroutine mpas_rbf_interp_initialize(grid)
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  ! Purpose: compute geometric fields that will be potentially useful for calling
-  !          the interpolation routines
-  !
-  ! Input: the grid
-  !
-  ! Output: 
-  !  edgeNormalVectors - the unit vector at the center of each edge tangent to the sphere
-  !  cellTangentPlane - 2 orthogonal unit vectors in the tangent plane of each cell
-  !                     The first unit vector is chosen to point toward the center of the first
-  !                     edge on the cell.
-  !  localVerticalUnitVectors - the unit normal vector of the tangent plane at the center 
-  !                             of each cell
-  !       
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+
+!***********************************************************************
+!
+!  routine mpas_rbf_interp_initialize
+!
+!> \brief   MPAS RBF interpolation initialization routine
+!> \author  Xylar Asay-Davis
+!> \date    03/28/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine computes geometric fields that will be potentially useful for calling
+!> the interpolation routines.
+!> Input: the grid
+!> Output:
+!>      edgeNormalVectors - the unit vector at the center of each edge tangent to the sphere
+!>      cellTangentPlane - 2 orthogonal unit vectors in the tangent plane of each cell
+!>                         The first unit vector is chosen to point toward the center of the first
+!>                         edge on the cell.
+!>      localVerticalUnitVectors - the unit normal vector of the tangent plane at the center 
+!>                         of each cell
+!-----------------------------------------------------------------------
+  subroutine mpas_rbf_interp_initialize(grid)!{{{
 
     implicit none
 
-    type (mesh_type), intent(inout) :: grid 
+    type (mesh_type), intent(inout) :: grid  !< Input/Output: Grid information
 
     integer :: nCells, nEdges
     integer, dimension(:,:), pointer :: cellsOnEdge, edgesOnCell
@@ -185,34 +199,41 @@ module mpas_rbf_interpolation
       cellTangentPlane(:,2,iCell) = yHatPlane
     end do
 
-  end subroutine mpas_rbf_interp_initialize
+  end subroutine mpas_rbf_interp_initialize!}}}
 
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  ! Purpose: Compute interpolation coefficients in 2D that can be used to
-  !  reconstruct a given scalar function at varying locations. This is useful
-  !  for finding the location on the the RBF reconstruction of a function
-  !  (e.g., a height field) that minimizes the distance to a point in 3D space.
-  !  The reconstruction is performed with basis functions that are RBFs and constant 
-  ! Input:
-  !  pointCount - the number of "source" points and functionValues supplied
-  !  coeffCount - the size of coefficients, must be at least pointCount + 1
-  !  points - the location of the "source" points in the 2D space where the values of
-  !    the function are known
-  !  fieldValues - the values of the function of interest at the points
-  !  alpha - a constant that give the characteristic length scale of the RBFs,
-  !    should be on the order of the distance between points
-  ! Output:
-  !  coefficients - the coefficients needed to perform interpolation of the funciton
-  !    at destination points yet to be specified
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  subroutine mpas_rbf_interp_loc_2D_sca_const_comp_coeffs(pointCount, coeffCount, &
+!***********************************************************************
+!
+!  routine mpas_rbf_interp_loc_2D_sca_const_comp_coeffs
+!
+!> \brief   MPAS 2D scalar constant interpolation coefficient routine
+!> \author  Xylar Asay-Davis
+!> \date    03/28/13
+!> \version SVN:$Id$
+!> \details 
+!>  This routine computes interpolation coefficients in 2D that can be used to reconstruct a given scalar function at varying locations.
+!>  This is useful for finding the location on the RBF reconstruction of a function (e.g. a heigh field) that minimizes the distantce
+!>  to a point in 3D space. The reconstruction is performed with basis functions that are RBFs and constant.
+!>  Input:
+!>   pointCount - the number of "source" points and functionValues supplied
+!>   coeffCount - the size of coefficients, must be at least pointCount + 1
+!>   points - the location of the "source" points in the 2D space where the values of
+!>     the function are known
+!>   fieldValues - the values of the function of interest at the points
+!>   alpha - a constant that give the characteristic length scale of the RBFs,
+!>     should be on the order of the distance between points
+!>  Output:
+!>   coefficients - the coefficients needed to perform interpolation of the funciton
+!>     at destination points yet to be specified       
+!-----------------------------------------------------------------------
+  subroutine mpas_rbf_interp_loc_2D_sca_const_comp_coeffs(pointCount, coeffCount, &!{{{
     points, fieldValues, alpha, coefficients)
  
-    integer, intent(in) :: pointCount, coeffCount
-    real(kind=RKIND), dimension(pointCount,2), intent(in) :: points
-    real(kind=RKIND), dimension(pointCount), intent(in) :: fieldValues
-    real(kind=RKIND), intent(in) :: alpha
-    real(kind=RKIND), dimension(coeffCount), intent(out) :: coefficients
+    integer, intent(in) :: pointCount !< Input: Number of points
+    integer, intent(in) :: coeffCount !< Input: Number of coefficients
+    real(kind=RKIND), dimension(pointCount,2), intent(in) :: points !< Input: List of points
+    real(kind=RKIND), dimension(pointCount), intent(in) :: fieldValues !< Input: Value at points
+    real(kind=RKIND), intent(in) :: alpha !< Input: Charachteristic length scale of RBFs
+    real(kind=RKIND), dimension(coeffCount), intent(out) :: coefficients !< Output: List of coefficients
 
     integer :: i, j, matrixSize
     real(kind=RKIND), dimension(pointCount+1,pointCount+1) :: matrix
@@ -242,35 +263,44 @@ module mpas_rbf_interpolation
     call mpas_legs(matrix(1:matrixSize,1:matrixSize), matrixSize, rhs(1:matrixSize), &
       coefficients(1:matrixSize), pivotIndices(1:matrixSize))
 
-  end subroutine mpas_rbf_interp_loc_2D_sca_const_comp_coeffs
+  end subroutine mpas_rbf_interp_loc_2D_sca_const_comp_coeffs!}}}
 
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  ! Purpose: Compute interpolation coefficients in 2D that can be used to
-  !  reconstruct a given scalar function at varying locations. This is useful
-  !  for finding the location on the the RBF reconstruction of a function
-  !  (e.g., a height field) that minimizes the distance to a point in 3D space.
-  !  The reconstruction is performed with basis functions that are RBFs plus constant
-  !  and linear 
-  ! Input:
-  !  pointCount - the number of "source" points and functionValues supplied
-  !  coeffCount - the size of coefficients, must be at least pointCount + 3
-  !  points - the location of the "source" points in the 2D space where the values of
-  !    the function are known
-  !  fieldValues - the values of the function of interest at the points
-  !  alpha - a constant that give the characteristic length scale of the RBFs,
-  !    should be on the order of the distance between points
-  ! Output:
-  !  coefficients - the coefficients needed to perform interpolation of the funciton
-  !    at destination points yet to be specified
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  subroutine mpas_rbf_interp_loc_2D_sca_lin_comp_coeffs(pointCount, coeffCount, &
+!***********************************************************************
+!
+!  routine mpas_rbf_interp_loc_2D_sca_lin_comp_coeffs
+!
+!> \brief   MPAS 2D scalar linear interpolation coefficient routine
+!> \author  Xylar Asay-Davis
+!> \date    03/28/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine computes interpolation coefficients in 2D that can be used to
+!>  reconstruct a given scalar function at varying locations. This is useful
+!>  for finding the location on the the RBF reconstruction of a function
+!>  (e.g., a height field) that minimizes the distance to a point in 3D space.
+!>  The reconstruction is performed with basis functions that are RBFs plus constant
+!>  and linear 
+!> Input:
+!>  pointCount - the number of "source" points and functionValues supplied
+!>  coeffCount - the size of coefficients, must be at least pointCount + 3
+!>  points - the location of the "source" points in the 2D space where the values of
+!>    the function are known
+!>  fieldValues - the values of the function of interest at the points
+!>  alpha - a constant that give the characteristic length scale of the RBFs,
+!>    should be on the order of the distance between points
+!> Output:
+!>  coefficients - the coefficients needed to perform interpolation of the funciton
+!>    at destination points yet to be specified
+!-----------------------------------------------------------------------
+  subroutine mpas_rbf_interp_loc_2D_sca_lin_comp_coeffs(pointCount, coeffCount, &!{{{
     points, fieldValues, alpha, coefficients)
  
-    integer, intent(in) :: pointCount, coeffCount
-    real(kind=RKIND), dimension(pointCount,2), intent(in) :: points
-    real(kind=RKIND), dimension(pointCount), intent(in) :: fieldValues
-    real(kind=RKIND), intent(in) :: alpha
-    real(kind=RKIND), dimension(coeffCount), intent(out) :: coefficients
+    integer, intent(in) :: pointCount !< Input: Number of points
+    integer, intent(in) :: coeffCount !< Input: Number of coefficients
+    real(kind=RKIND), dimension(pointCount,2), intent(in) :: points !< Input: List of points
+    real(kind=RKIND), dimension(pointCount), intent(in) :: fieldValues !< Input: List of values at points
+    real(kind=RKIND), intent(in) :: alpha !< Input: Characteristic length scale for RBFs 
+    real(kind=RKIND), dimension(coeffCount), intent(out) :: coefficients !< Output: List of coefficients
 
     integer :: i, j, matrixSize
     real(kind=RKIND), dimension(pointCount+3,pointCount+3) :: matrix
@@ -301,43 +331,53 @@ module mpas_rbf_interpolation
     call mpas_legs(matrix(1:matrixSize,1:matrixSize), matrixSize, rhs(1:matrixSize), &
       coefficients(1:matrixSize), pivotIndices(1:matrixSize))
 
-  end subroutine mpas_rbf_interp_loc_2D_sca_lin_comp_coeffs
+  end subroutine mpas_rbf_interp_loc_2D_sca_lin_comp_coeffs!}}}
 
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  ! Purpose: Evalute a scalar function in 2D using coefficients computed in
-  !  rbfInterp_loc_2D_sca_const_compCoeffs.  This 
-  !  function can be called repeatedly with different destination points
-  !  to quickly evaluate the interpolating function using the same
-  !  coefficients.  This is useful for finding the location on the the 
-  !  RBF reconstruction of a function (e.g., a height field) that minimizes
-  !  the distance to a point in 3D space. The reconstruction is performed
-  !  with basis functions that are RBFs and constant 
-  ! Input:
-  !  fieldCount - the number fields to be evaluated.  This is useful for reconstructing,
-  !    for example, the x-, y- and z-components of a vector field at the same
-  !    point in 2D
-  !  coeffCount - the size of coefficients, must be at least pointCount + 1
-  !  pointCount - the number of "source" points and functionValues supplied
-  !  coefficients - the coefficients needed to perform interpolation of the funciton
-  !    at the evaluationPoint
-  !  evaluationPoint - the point in 2D where the function is to be reconstructed
-  !  points - the location of the "source" points in the 2D space where the values of
-  !    the function are known
-  !  alpha - a constant that give the characteristic length scale of the RBFs,
-  !    should be on the order of the distance between points
-  ! Output:
-  !  derivs - the value of the function, the 2 components of its Jacobian and
-  !    the 3 unique components of its Hessian at the evaluationPoint
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  subroutine mpas_rbf_interp_loc_2D_sca_const_eval_with_derivs(fieldCount, coeffCount, &
+!***********************************************************************
+!
+!  routine mpas_rbf_interp_loc_2D_sca_const_eval_with_derivs
+!
+!> \brief   MPAS 2D scalar constant evaulation routine
+!> \author  Xylar Asay-Davis
+!> \date    03/28/13
+!> \version SVN:$Id$
+!> \details 
+!>  This routine evalutes a scalar function in 2D using coefficients computed in
+!>   rbfInterp_loc_2D_sca_const_compCoeffs.  This 
+!>   function can be called repeatedly with different destination points
+!>   to quickly evaluate the interpolating function using the same
+!>   coefficients.  This is useful for finding the location on the the 
+!>   RBF reconstruction of a function (e.g., a height field) that minimizes
+!>   the distance to a point in 3D space. The reconstruction is performed
+!>   with basis functions that are RBFs and constant 
+!>  Input:
+!>   fieldCount - the number fields to be evaluated.  This is useful for reconstructing,
+!>     for example, the x-, y- and z-components of a vector field at the same
+!>     point in 2D
+!>   coeffCount - the size of coefficients, must be at least pointCount + 1
+!>   pointCount - the number of "source" points and functionValues supplied
+!>   coefficients - the coefficients needed to perform interpolation of the funciton
+!>     at the evaluationPoint
+!>   evaluationPoint - the point in 2D where the function is to be reconstructed
+!>   points - the location of the "source" points in the 2D space where the values of
+!>     the function are known
+!>   alpha - a constant that give the characteristic length scale of the RBFs,
+!>     should be on the order of the distance between points
+!>  Output:
+!>   derivs - the value of the function, the 2 components of its Jacobian and
+!>     the 3 unique components of its Hessian at the evaluationPoint
+!-----------------------------------------------------------------------
+  subroutine mpas_rbf_interp_loc_2D_sca_const_eval_with_derivs(fieldCount, coeffCount, &!{{{
     pointCount, coefficients, evaluationPoint, points, alpha, derivs)
-    integer, intent(in) :: fieldCount, coeffCount, pointCount
-    real(kind=RKIND), dimension(coeffCount, fieldCount), intent(in) :: coefficients
-    real(kind=RKIND), dimension(2), intent(in) :: evaluationPoint
-    real(kind=RKIND), dimension(pointCount,2), intent(in) :: points
-    real(kind=RKIND), intent(in) :: alpha
+    integer, intent(in) :: fieldCount !< Input: Number of fields
+    integer, intent(in) :: coeffCount !< Input: Number of coefficients
+    integer, intent(in) :: pointCount !< Input: Number of points
+    real(kind=RKIND), dimension(coeffCount, fieldCount), intent(in) :: coefficients !< Input: List of coefficients
+    real(kind=RKIND), dimension(2), intent(in) :: evaluationPoint !< Input: Location for evaluation
+    real(kind=RKIND), dimension(pointCount,2), intent(in) :: points !< Input: List of points
+    real(kind=RKIND), intent(in) :: alpha !< Input: Characteristic length scale for RBFs
 
-    real(kind=RKIND), dimension(6,fieldCount), intent(out) :: derivs
+    real(kind=RKIND), dimension(6,fieldCount), intent(out) :: derivs !< Output: List of derivatives
 
     integer :: pointIndex
     real(kind=RKIND) :: x, y, rSquared, rbfValue, rbfDerivOverR, rbfSecondDeriv
@@ -369,43 +409,53 @@ module mpas_rbf_interpolation
       end if
     end do
     derivs(1,:) = derivs(1,:) + coefficients(pointCount+1,:)
-  end subroutine mpas_rbf_interp_loc_2D_sca_const_eval_with_derivs
+  end subroutine mpas_rbf_interp_loc_2D_sca_const_eval_with_derivs!}}}
 
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  ! Purpose: Evalute a scalar function in 2D using coefficients computed in
-  !  rbfInterp_loc_2D_sca_const_compCoeffs.  This 
-  !  function can be called repeatedly with different destination points
-  !  to quickly evaluate the interpolating function using the same
-  !  coefficients.  This is useful for finding the location on the the 
-  !  RBF reconstruction of a function (e.g., a height field) that minimizes
-  !  the distance to a point in 3D space. The reconstruction is performed
-  !  with basis functions that are RBFs, constant and linear
-  ! Input:
-  !  fieldCount - the number fields to be evaluated.  This is useful for reconstructing,
-  !    for example, the x-, y- and z-components of a vector field at the same
-  !    point in 2D
-  !  coeffCount - the size of coefficients, must be at least pointCount + 1
-  !  pointCount - the number of "source" points and functionValues supplied
-  !  coefficients - the coefficients needed to perform interpolation of the funciton
-  !    at the evaluationPoint
-  !  evaluationPoint - the point in 2D where the function is to be reconstructed
-  !  points - the location of the "source" points in the 2D space where the values of
-  !    the function are known
-  !  alpha - a constant that give the characteristic length scale of the RBFs,
-  !    should be on the order of the distance between points
-  ! Output:
-  !  derivs - the value of the function, the 2 components of its Jacobian and
-  !    the 3 unique components of its Hessian at the evaluationPoint
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  subroutine mpas_rbf_interp_loc_2D_sca_lin_eval_with_derivs(fieldCount, coeffCount, &
+!***********************************************************************
+!
+!  routine mpas_rbf_interp_loc_2D_sca_lin_eval_with_derivs
+!
+!> \brief   MPAS 2D scalar linear evaluation routine
+!> \author  Xylar Asay-Davis
+!> \date    03/28/13
+!> \version SVN:$Id$
+!> \details 
+!>  This routine evalutes a scalar function in 2D using coefficients computed in
+!>   rbfInterp_loc_2D_sca_const_compCoeffs.  This 
+!>   function can be called repeatedly with different destination points
+!>   to quickly evaluate the interpolating function using the same
+!>   coefficients.  This is useful for finding the location on the the 
+!>   RBF reconstruction of a function (e.g., a height field) that minimizes
+!>   the distance to a point in 3D space. The reconstruction is performed
+!>   with basis functions that are RBFs, constant and linear
+!>  Input:
+!>   fieldCount - the number fields to be evaluated.  This is useful for reconstructing,
+!>     for example, the x-, y- and z-components of a vector field at the same
+!>     point in 2D
+!>   coeffCount - the size of coefficients, must be at least pointCount + 1
+!>   pointCount - the number of "source" points and functionValues supplied
+!>   coefficients - the coefficients needed to perform interpolation of the funciton
+!>     at the evaluationPoint
+!>   evaluationPoint - the point in 2D where the function is to be reconstructed
+!>   points - the location of the "source" points in the 2D space where the values of
+!>     the function are known
+!>   alpha - a constant that give the characteristic length scale of the RBFs,
+!>     should be on the order of the distance between points
+!>  Output:
+!>   derivs - the value of the function, the 2 components of its Jacobian and
+!>     the 3 unique components of its Hessian at the evaluationPoint
+!-----------------------------------------------------------------------
+  subroutine mpas_rbf_interp_loc_2D_sca_lin_eval_with_derivs(fieldCount, coeffCount, &!{{{
     pointCount, coefficients, evaluationPoint, points, alpha, derivs)
-    integer, intent(in) :: fieldCount, coeffCount, pointCount
-    real(kind=RKIND), dimension(coeffCount, fieldCount), intent(in) :: coefficients
-    real(kind=RKIND), dimension(2), intent(in) :: evaluationPoint
-    real(kind=RKIND), dimension(pointCount,2), intent(in) :: points
-    real(kind=RKIND), intent(in) :: alpha
+    integer, intent(in) :: fieldCount !< Input: Number of fields
+    integer, intent(in) :: coeffCount !< Input: Number of coefficients
+    integer, intent(in) :: pointCount !< Input: Number of points
+    real(kind=RKIND), dimension(coeffCount, fieldCount), intent(in) :: coefficients !< Input: List of coefficients
+    real(kind=RKIND), dimension(2), intent(in) :: evaluationPoint !< Input: Point for evaluation
+    real(kind=RKIND), dimension(pointCount,2), intent(in) :: points !< Input: List of points
+    real(kind=RKIND), intent(in) :: alpha !< Input: Characteristic length scale of RBFs
 
-    real(kind=RKIND), dimension(6,fieldCount), intent(out) :: derivs
+    real(kind=RKIND), dimension(6,fieldCount), intent(out) :: derivs !< Output: Derivatives
 
     integer :: pointIndex
     real(kind=RKIND) :: x, y, rSquared, rbfValue, rbfDerivOverR, rbfSecondDeriv
@@ -442,39 +492,47 @@ module mpas_rbf_interpolation
     derivs(2,:) = derivs(2,:) + coefficients(pointCount+2,:)
     derivs(3,:) = derivs(3,:) + coefficients(pointCount+3,:)
 
-  end subroutine mpas_rbf_interp_loc_2D_sca_lin_eval_with_derivs
+  end subroutine mpas_rbf_interp_loc_2D_sca_lin_eval_with_derivs!}}}
 
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  ! Purpose: Compute interpolation coefficients in 3D that can be used to
-  !  interpolate a number of scalar functions at a given locations. This is useful
-  !  if the interpolation location does not change with time, or if several
-  !  fields are to be interpolated at a given time step.  (If both the fields
-  !  and the interpolation locations vary with time, there is no clear advantage in
-  !  using either this method or the method for 2D interpoaltion above; for simplicity
-  !  and because we foresee more uses for the method of this subroutine, we have not
-  !  implemented a 3D version of the fixed field, variable interpolation location method
-  !  as we have in 2D.) Coefficients are produced for handling Dirichlet boundary
-  !  conditions (or no boundaries).  The interpolation is performed with basis functions
-  !  that are RBFs plus a constant.
-  ! Input:
-  !  pointCount - the number of "source" points and functionValues supplied
-  !  sourcePoints - the location of the "source" points in the 3D space where the values of
-  !    the function are known
-  !  destinationPoint - the point where the interpolation will be performed
-  !  alpha - a constant that give the characteristic length scale of the RBFs,
-  !    should be on the order of the distance between points
-  ! Output:
-  !  coefficients - the coefficients used to interpolate a function with Dirichlet
-  !    boundary conditions to the specified destinationPoint
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  subroutine mpas_rbf_interp_func_3D_sca_const_dir_comp_coeffs( &
+!***********************************************************************
+!
+!  routine mpas_rbf_interp_func_3D_sca_const_dir_comp_coeffs
+!
+!> \brief   MPAS 3D scalar constant coefficients routine
+!> \author  Xylar Asay-Davis
+!> \date    03/28/13
+!> \version SVN:$Id$
+!> \details 
+!>  This routine computes interpolation coefficients in 3D that can be used to
+!>   interpolate a number of scalar functions at a given locations. This is useful
+!>   if the interpolation location does not change with time, or if several
+!>   fields are to be interpolated at a given time step.  (If both the fields
+!>   and the interpolation locations vary with time, there is no clear advantage in
+!>   using either this method or the method for 2D interpoaltion above; for simplicity
+!>   and because we foresee more uses for the method of this subroutine, we have not
+!>   implemented a 3D version of the fixed field, variable interpolation location method
+!>   as we have in 2D.) Coefficients are produced for handling Dirichlet boundary
+!>   conditions (or no boundaries).  The interpolation is performed with basis functions
+!>   that are RBFs plus a constant.
+!>  Input:
+!>   pointCount - the number of "source" points and functionValues supplied
+!>   sourcePoints - the location of the "source" points in the 3D space where the values of
+!>     the function are known
+!>   destinationPoint - the point where the interpolation will be performed
+!>   alpha - a constant that give the characteristic length scale of the RBFs,
+!>     should be on the order of the distance between points
+!>  Output:
+!>   coefficients - the coefficients used to interpolate a function with Dirichlet
+!>     boundary conditions to the specified destinationPoint
+!-----------------------------------------------------------------------
+  subroutine mpas_rbf_interp_func_3D_sca_const_dir_comp_coeffs( &!{{{
     pointCount, sourcePoints, destinationPoint, alpha, coefficients)
 
-    integer, intent(in) :: pointCount
-    real(kind=RKIND), dimension(pointCount,3), intent(in) :: sourcePoints
-    real(kind=RKIND), dimension(3), intent(in) :: destinationPoint
-    real(kind=RKIND), intent(in) :: alpha
-    real(kind=RKIND), dimension(pointCount), intent(out) :: coefficients
+    integer, intent(in) :: pointCount !< Input: Number of points
+    real(kind=RKIND), dimension(pointCount,3), intent(in) :: sourcePoints !< Input: List of source points
+    real(kind=RKIND), dimension(3), intent(in) :: destinationPoint !< Input: List of destination points
+    real(kind=RKIND), intent(in) :: alpha !< Input: Characteristic length scale of RBFs
+    real(kind=RKIND), dimension(pointCount), intent(out) :: coefficients !< Output: List of coefficients
 
     integer :: i, j
     integer :: matrixSize
@@ -513,46 +571,54 @@ module mpas_rbf_interpolation
     deallocate(coeffs)  
     deallocate(pivotIndices) 
 
-  end subroutine mpas_rbf_interp_func_3D_sca_const_dir_comp_coeffs
+  end subroutine mpas_rbf_interp_func_3D_sca_const_dir_comp_coeffs!}}}
 
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  ! Purpose: Compute interpolation coefficients in a plane in 3D that can be used to
-  !  interpolate a number of scalar functions at a given locations. This is useful
-  !  if the interpolation location does not change with time, or if several
-  !  fields are to be interpolated at a given time step.  (If both the fields
-  !  and the interpolation locations vary with time, there is no clear advantage in
-  !  using either this method or the method for 2D interpoaltion above; for simplicity
-  !  and because we foresee more uses for the method of this subroutine, we have not
-  !  implemented a 3D version of the fixed field, variable interpolation location method
-  !  as we have in 2D.) Coefficients are produced for handling both Dirichlet (or no)
-  !  boundary conditions.  The interpolation is performed with basis functions that are
-  !  RBFs plus constant and linear.  All points are projected into the plane given by the
-  !  planeBasisVectors.
-  ! Input:
-  !  pointCount - the number of "source" points and functionValues supplied
-  !  sourcePoints - the location of the "source" points in the 3D space where the values of
-  !    the function are known.  The points will be projected into the plane given by 
-  !    planeBasisVectors
-  !  destinationPoint - the point in 3D where the interpolation will be performed.  The
-  !    destinationPoint will be projected into the plane given by planeBasisVectors.
-  !  alpha - a constant that give the characteristic length scale of the RBFs,
-  !    should be on the order of the distance between points
-  !  planeBasisVectors - the basis fectors for the plane where interpolation is performed.
-  !    All points are projected into this plane. 
-  ! Output:
-  !  coefficients - the coefficients used to interpolate a function with Dirichlet
-  !    boundary conditions to the specified destinationPoint
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  subroutine mpas_rbf_interp_func_3D_plane_sca_lin_dir_comp_coeffs( &
+!***********************************************************************
+!
+!  routine mpas_rbf_interp_func_3D_plane_sca_lin_dir_comp_coeffs
+!
+!> \brief   MPAS 3D planar scalar linear coefficients routine
+!> \author  Xylar Asay-Davis
+!> \date    03/28/13
+!> \version SVN:$Id$
+!> \details 
+!>  This routine computes interpolation coefficients in a plane in 3D that can be used to
+!>   interpolate a number of scalar functions at a given locations. This is useful
+!>   if the interpolation location does not change with time, or if several
+!>   fields are to be interpolated at a given time step.  (If both the fields
+!>   and the interpolation locations vary with time, there is no clear advantage in
+!>   using either this method or the method for 2D interpoaltion above; for simplicity
+!>   and because we foresee more uses for the method of this subroutine, we have not
+!>   implemented a 3D version of the fixed field, variable interpolation location method
+!>   as we have in 2D.) Coefficients are produced for handling both Dirichlet (or no)
+!>   boundary conditions.  The interpolation is performed with basis functions that are
+!>   RBFs plus constant and linear.  All points are projected into the plane given by the
+!>   planeBasisVectors.
+!>  Input:
+!>   pointCount - the number of "source" points and functionValues supplied
+!>   sourcePoints - the location of the "source" points in the 3D space where the values of
+!>     the function are known.  The points will be projected into the plane given by 
+!>     planeBasisVectors
+!>   destinationPoint - the point in 3D where the interpolation will be performed.  The
+!>     destinationPoint will be projected into the plane given by planeBasisVectors.
+!>   alpha - a constant that give the characteristic length scale of the RBFs,
+!>     should be on the order of the distance between points
+!>   planeBasisVectors - the basis fectors for the plane where interpolation is performed.
+!>     All points are projected into this plane. 
+!>  Output:
+!>   coefficients - the coefficients used to interpolate a function with Dirichlet
+!>     boundary conditions to the specified destinationPoint
+!-----------------------------------------------------------------------
+  subroutine mpas_rbf_interp_func_3D_plane_sca_lin_dir_comp_coeffs( &!{{{
     pointCount, sourcePoints, destinationPoint, &
     alpha, planeBasisVectors, coefficients)
 
-    integer, intent(in) :: pointCount
-    real(kind=RKIND), dimension(pointCount,3), intent(in) :: sourcePoints
-    real(kind=RKIND), dimension(3), intent(in) :: destinationPoint
-    real(kind=RKIND), intent(in) :: alpha
-    real(kind=RKIND), dimension(2,3) :: planeBasisVectors
-    real(kind=RKIND), dimension(pointCount), intent(out) :: coefficients
+    integer, intent(in) :: pointCount !< Input: Number of points
+    real(kind=RKIND), dimension(pointCount,3), intent(in) :: sourcePoints !< Input: List of source points
+    real(kind=RKIND), dimension(3), intent(in) :: destinationPoint !< Input: Destination point
+    real(kind=RKIND), intent(in) :: alpha !< Input: Characteristic length scale of RBFs
+    real(kind=RKIND), dimension(2,3) :: planeBasisVectors !< Input: Basis vectors for the interpolation plane
+    real(kind=RKIND), dimension(pointCount), intent(out) :: coefficients !< Output: List of coefficients
 
     integer :: i, j
     integer :: matrixSize
@@ -596,39 +662,47 @@ module mpas_rbf_interpolation
     deallocate(coeffs)  
     deallocate(pivotIndices) 
 
-  end subroutine mpas_rbf_interp_func_3D_plane_sca_lin_dir_comp_coeffs
+  end subroutine mpas_rbf_interp_func_3D_plane_sca_lin_dir_comp_coeffs!}}}
 
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  ! Purpose: Compute interpolation coefficients in 3D that can be used to
-  !  interpolate a number of scalar functions at a given locations. This is useful
-  !  if the interpolation location does not change with time, or if several
-  !  fields are to be interpolated at a given time step.  (If both the fields
-  !  and the interpolation locations vary with time, there is no clear advantage in
-  !  using either this method or the method for 2D interpoaltion above; for simplicity
-  !  and because we foresee more uses for the method of this subroutine, we have not
-  !  implemented a 3D version of the fixed field, variable interpolation location method
-  !  as we have in 2D.) Coefficients are produced for handling both Dirichlet (or no)
-  !  boundary conditions.  The interpolation is performed with basis functions that are
-  !  RBFs plus constant and linear.
-  ! Input:
-  !  pointCount - the number of "source" points and functionValues supplied
-  !  sourcePoints - the location of the "source" points in the 3D space where the values of
-  !    the function are known
-  !  destinationPoint - the point where the interpolation will be performed
-  !  alpha - a constant that give the characteristic length scale of the RBFs,
-  !    should be on the order of the distance between points
-  ! Output:
-  !  coefficients - the coefficients used to interpolate a function with Dirichlet
-  !    boundary conditions to the specified destinationPoint
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  subroutine mpas_rbf_interp_func_3D_sca_lin_dir_comp_coeffs(pointCount, &
+!***********************************************************************
+!
+!  routine mpas_rbf_interp_func_3D_sca_lin_dir_comp_coeffs
+!
+!> \brief   MPAS 3D scalar linear coefficients routine
+!> \author  Xylar Asay-Davis
+!> \date    03/28/13
+!> \version SVN:$Id$
+!> \details 
+!>  This routine computes interpolation coefficients in 3D that can be used to
+!>   interpolate a number of scalar functions at a given locations. This is useful
+!>   if the interpolation location does not change with time, or if several
+!>   fields are to be interpolated at a given time step.  (If both the fields
+!>   and the interpolation locations vary with time, there is no clear advantage in
+!>   using either this method or the method for 2D interpoaltion above; for simplicity
+!>   and because we foresee more uses for the method of this subroutine, we have not
+!>   implemented a 3D version of the fixed field, variable interpolation location method
+!>   as we have in 2D.) Coefficients are produced for handling both Dirichlet (or no)
+!>   boundary conditions.  The interpolation is performed with basis functions that are
+!>   RBFs plus constant and linear.
+!>  Input:
+!>   pointCount - the number of "source" points and functionValues supplied
+!>   sourcePoints - the location of the "source" points in the 3D space where the values of
+!>     the function are known
+!>   destinationPoint - the point where the interpolation will be performed
+!>   alpha - a constant that give the characteristic length scale of the RBFs,
+!>     should be on the order of the distance between points
+!>  Output:
+!>   coefficients - the coefficients used to interpolate a function with Dirichlet
+!>     boundary conditions to the specified destinationPoint
+!-----------------------------------------------------------------------
+  subroutine mpas_rbf_interp_func_3D_sca_lin_dir_comp_coeffs(pointCount, &!{{{
     sourcePoints, destinationPoint, alpha, coefficients)
 
-    integer, intent(in) :: pointCount
-    real(kind=RKIND), dimension(pointCount,3), intent(in) :: sourcePoints
-    real(kind=RKIND), dimension(3), intent(in) :: destinationPoint
-    real(kind=RKIND), intent(in) :: alpha
-    real(kind=RKIND), dimension(pointCount), intent(out) :: coefficients
+    integer, intent(in) :: pointCount !< Input: Number of points
+    real(kind=RKIND), dimension(pointCount,3), intent(in) :: sourcePoints !< Input: List of source points
+    real(kind=RKIND), dimension(3), intent(in) :: destinationPoint !< Input: Destination point
+    real(kind=RKIND), intent(in) :: alpha !< Input: Characteristic length scale for RBFs
+    real(kind=RKIND), dimension(pointCount), intent(out) :: coefficients !< Output: List of coefficients
 
     integer :: i, j
     integer :: matrixSize
@@ -670,52 +744,60 @@ module mpas_rbf_interpolation
     deallocate(coeffs)  
     deallocate(pivotIndices) 
 
-  end subroutine mpas_rbf_interp_func_3D_sca_lin_dir_comp_coeffs
+  end subroutine mpas_rbf_interp_func_3D_sca_lin_dir_comp_coeffs!}}}
 
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  ! Purpose: Compute interpolation coefficients in 3D that can be used to
-  !  interpolate a number of scalar functions at a given locations. This is useful
-  !  if the interpolation location does not change with time, or if several
-  !  fields are to be interpolated at a given time step.  (If both the fields
-  !  and the interpolation locations vary with time, there is no clear advantage in
-  !  using either this method or the method for 2D interpoaltion above; for simplicity
-  !  and because we foresee more uses for the method of this subroutine, we have not
-  !  implemented a 3D version of the fixed field, variable interpolation location method
-  !  as we have in 2D.) Coefficients are produced for handling both Dirichlet and Neumann
-  !  boundary conditions.  The interpolation is performed with basis functions that are
-  !  RBFs plus a constant.
-  ! Input:
-  !  pointCount - the number of "source" points and functionValues supplied
-  !  sourcePoints - the location of the "source" points in the 3D space where the values of
-  !    the function are known
-  !  isInterface - a logical array indicating which of the source points (if any) are at
-  !    at the domain interface.  These points and their normals will be used to compute the
-  !    neumannCoefficients below
-  !  interfaceNormals - a 3D normal vector for each sourcePoint.  These vectors are only used
-  !    at points where isInterface == .true., and can take arbitrary values elsewehere.  The
-  !    normal vector is used to compute coefficients for the normal derivative of the
-  !    interpolating function in order to impose the Neumann Boundary condition
-  !  destinationPoint - the point where the interpolation will be performed
-  !  alpha - a constant that give the characteristic length scale of the RBFs,
-  !    should be on the order of the distance between points
-  ! Output:
-  !  dirichletCoefficients - the coefficients used to interpolate a function with Dirichlet
-  !    boundary conditions to the specified destinationPoint
-  !  neumannCoefficients - the coefficients used to interpolate a function with Neumann
-  !    boundary conditions to the specified destinationPoint
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  subroutine mpas_rbf_interp_func_3D_sca_const_dir_neu_comp_coeffs( &
+!***********************************************************************
+!
+!  routine mpas_rbf_interp_func_3D_sca_const_dir_neu_comp_coeffs
+!
+!> \brief   MPAS 3D scalar constant Dirichlet and Neumann coefficients routine
+!> \author  Xylar Asay-Davis
+!> \date    03/28/13
+!> \version SVN:$Id$
+!> \details 
+!>  This routine computes interpolation coefficients in 3D that can be used to
+!>   interpolate a number of scalar functions at a given locations. This is useful
+!>   if the interpolation location does not change with time, or if several
+!>   fields are to be interpolated at a given time step.  (If both the fields
+!>   and the interpolation locations vary with time, there is no clear advantage in
+!>   using either this method or the method for 2D interpoaltion above; for simplicity
+!>   and because we foresee more uses for the method of this subroutine, we have not
+!>   implemented a 3D version of the fixed field, variable interpolation location method
+!>   as we have in 2D.) Coefficients are produced for handling both Dirichlet and Neumann
+!>   boundary conditions.  The interpolation is performed with basis functions that are
+!>   RBFs plus a constant.
+!>  Input:
+!>   pointCount - the number of "source" points and functionValues supplied
+!>   sourcePoints - the location of the "source" points in the 3D space where the values of
+!>     the function are known
+!>   isInterface - a logical array indicating which of the source points (if any) are at
+!>     at the domain interface.  These points and their normals will be used to compute the
+!>     neumannCoefficients below
+!>   interfaceNormals - a 3D normal vector for each sourcePoint.  These vectors are only used
+!>     at points where isInterface == .true., and can take arbitrary values elsewehere.  The
+!>     normal vector is used to compute coefficients for the normal derivative of the
+!>     interpolating function in order to impose the Neumann Boundary condition
+!>   destinationPoint - the point where the interpolation will be performed
+!>   alpha - a constant that give the characteristic length scale of the RBFs,
+!>     should be on the order of the distance between points
+!>  Output:
+!>   dirichletCoefficients - the coefficients used to interpolate a function with Dirichlet
+!>     boundary conditions to the specified destinationPoint
+!>   neumannCoefficients - the coefficients used to interpolate a function with Neumann
+!>     boundary conditions to the specified destinationPoint
+!-----------------------------------------------------------------------
+  subroutine mpas_rbf_interp_func_3D_sca_const_dir_neu_comp_coeffs( &!{{{
     pointCount, sourcePoints, isInterface, interfaceNormals, destinationPoint, &
     alpha, dirichletCoefficients, neumannCoefficients)
 
-    integer, intent(in) :: pointCount
-    real(kind=RKIND), dimension(pointCount,3), intent(in) :: sourcePoints
-    logical, dimension(pointCount), intent(in) :: isInterface
-    real(kind=RKIND), dimension(pointCount,3), intent(in) :: interfaceNormals
-    real(kind=RKIND), dimension(3), intent(in) :: destinationPoint
-    real(kind=RKIND), intent(in) :: alpha
-    real(kind=RKIND), dimension(pointCount), intent(out) :: &
-      dirichletCoefficients, neumannCoefficients
+    integer, intent(in) :: pointCount !< Input: Number of points
+    real(kind=RKIND), dimension(pointCount,3), intent(in) :: sourcePoints !< Input: List of source points
+    logical, dimension(pointCount), intent(in) :: isInterface !< Input: Logicals determining if a source point is at an interface
+    real(kind=RKIND), dimension(pointCount,3), intent(in) :: interfaceNormals !< Input: Normal vector at interface for each source point
+    real(kind=RKIND), dimension(3), intent(in) :: destinationPoint !< Input: Destination point
+    real(kind=RKIND), intent(in) :: alpha !< Input: Characteristic length scale of RBFs
+    real(kind=RKIND), dimension(pointCount), intent(out) :: dirichletCoefficients !< Output: Coefficients with Dirichlet BCs
+    real(kind=RKIND), dimension(pointCount), intent(out) :: neumannCoefficients !< Output: Coefficients with Neumann BCs
 
     integer :: i, j
     integer :: matrixSize
@@ -772,58 +854,66 @@ module mpas_rbf_interpolation
     deallocate(coeffs)  
     deallocate(pivotIndices) 
 
-  end subroutine mpas_rbf_interp_func_3D_sca_const_dir_neu_comp_coeffs
+  end subroutine mpas_rbf_interp_func_3D_sca_const_dir_neu_comp_coeffs!}}}
 
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  ! Purpose: Compute interpolation coefficients in a plane in 3D that can be used to
-  !  interpolate a number of scalar functions at a given locations. This is useful
-  !  if the interpolation location does not change with time, or if several
-  !  fields are to be interpolated at a given time step.  (If both the fields
-  !  and the interpolation locations vary with time, there is no clear advantage in
-  !  using either this method or the method for 2D interpoaltion above; for simplicity
-  !  and because we foresee more uses for the method of this subroutine, we have not
-  !  implemented a 3D version of the fixed field, variable interpolation location method
-  !  as we have in 2D.) Coefficients are produced for handling both Dirichlet and Neumann
-  !  boundary conditions.  The interpolation is performed with basis functions that are
-  !  RBFs plus constant and linear.  All points are projected into the plane given by the
-  !  planeBasisVectors.
-  ! Input:
-  !  pointCount - the number of "source" points and functionValues supplied
-  !  sourcePoints - the location of the "source" points in the 3D space where the values of
-  !    the function are known.  The sourcePoints will be projected into the plane given by
-  !    planeBasisVectors
-  !  isInterface - a logical array indicating which of the source points (if any) are at
-  !    at the domain interface.  These points and their normals will be used to compute the
-  !    neumannCoefficients below
-  !  interfaceNormals - a 3D normal vector for each sourcePoint.  These vectors are only used
-  !    at points where isInterface == .true., and can take arbitrary values elsewehere.  The
-  !    normal vector is used to compute coefficients for the normal derivative of the
-  !    interpolating function in order to impose the Neumann Boundary condition
-  !  destinationPoint - the point in 3D where the interpolation will be performed.  The
-  !    destinationPoint will be projected into the plane given by planeBasisVectors.
-  !  alpha - a constant that give the characteristic length scale of the RBFs,
-  !    should be on the order of the distance between points
-  !  planeBasisVectors - the basis fectors for the plane where interpolation is performed.
-  !    All points are projected into this plane. 
-  ! Output:
-  !  dirichletCoefficients - the coefficients used to interpolate a function with Dirichlet
-  !    boundary conditions to the specified destinationPoint
-  !  neumannCoefficients - the coefficients used to interpolate a function with Neumann
-  !    boundary conditions to the specified destinationPoint
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  subroutine mpas_rbf_interp_func_3D_plane_sca_lin_dir_neu_comp_coeffs( &
+!***********************************************************************
+!
+!  routine mpas_rbf_interp_func_3D_plane_sca_lin_dir_neu_comp_coeffs
+!
+!> \brief   MPAS 3D scalar planar linear Dirichlet and Neumann coefficients routine
+!> \author  Xylar Asay-Davis
+!> \date    03/28/13
+!> \version SVN:$Id$
+!> \details 
+!>  This routine computes interpolation coefficients in a plane in 3D that can be used to
+!>   interpolate a number of scalar functions at a given locations. This is useful
+!>   if the interpolation location does not change with time, or if several
+!>   fields are to be interpolated at a given time step.  (If both the fields
+!>   and the interpolation locations vary with time, there is no clear advantage in
+!>   using either this method or the method for 2D interpoaltion above; for simplicity
+!>   and because we foresee more uses for the method of this subroutine, we have not
+!>   implemented a 3D version of the fixed field, variable interpolation location method
+!>   as we have in 2D.) Coefficients are produced for handling both Dirichlet and Neumann
+!>   boundary conditions.  The interpolation is performed with basis functions that are
+!>   RBFs plus constant and linear.  All points are projected into the plane given by the
+!>   planeBasisVectors.
+!>  Input:
+!>   pointCount - the number of "source" points and functionValues supplied
+!>   sourcePoints - the location of the "source" points in the 3D space where the values of
+!>     the function are known.  The sourcePoints will be projected into the plane given by
+!>     planeBasisVectors
+!>   isInterface - a logical array indicating which of the source points (if any) are at
+!>     at the domain interface.  These points and their normals will be used to compute the
+!>     neumannCoefficients below
+!>   interfaceNormals - a 3D normal vector for each sourcePoint.  These vectors are only used
+!>     at points where isInterface == .true., and can take arbitrary values elsewehere.  The
+!>     normal vector is used to compute coefficients for the normal derivative of the
+!>     interpolating function in order to impose the Neumann Boundary condition
+!>   destinationPoint - the point in 3D where the interpolation will be performed.  The
+!>     destinationPoint will be projected into the plane given by planeBasisVectors.
+!>   alpha - a constant that give the characteristic length scale of the RBFs,
+!>     should be on the order of the distance between points
+!>   planeBasisVectors - the basis fectors for the plane where interpolation is performed.
+!>     All points are projected into this plane. 
+!>  Output:
+!>   dirichletCoefficients - the coefficients used to interpolate a function with Dirichlet
+!>     boundary conditions to the specified destinationPoint
+!>   neumannCoefficients - the coefficients used to interpolate a function with Neumann
+!>     boundary conditions to the specified destinationPoint
+!-----------------------------------------------------------------------
+  subroutine mpas_rbf_interp_func_3D_plane_sca_lin_dir_neu_comp_coeffs( &!{{{
     pointCount, sourcePoints, isInterface, interfaceNormals, destinationPoint, &
     alpha, planeBasisVectors, dirichletCoefficients, neumannCoefficients)
 
-    integer, intent(in) :: pointCount
-    real(kind=RKIND), dimension(pointCount,3), intent(in) :: sourcePoints
-    logical, dimension(pointCount), intent(in) :: isInterface
-    real(kind=RKIND), dimension(pointCount,3), intent(in) :: interfaceNormals
-    real(kind=RKIND), dimension(3), intent(in) :: destinationPoint
-    real(kind=RKIND), intent(in) :: alpha
-    real(kind=RKIND), dimension(2,3) :: planeBasisVectors
-    real(kind=RKIND), dimension(pointCount), intent(out) :: &
-      dirichletCoefficients, neumannCoefficients
+    integer, intent(in) :: pointCount !< Input: Number of points
+    real(kind=RKIND), dimension(pointCount,3), intent(in) :: sourcePoints !< Input: List of points
+    logical, dimension(pointCount), intent(in) :: isInterface !< Input: List of logicals determining if point is at an interface
+    real(kind=RKIND), dimension(pointCount,3), intent(in) :: interfaceNormals !< Input: List of interface normals
+    real(kind=RKIND), dimension(3), intent(in) :: destinationPoint !< Input: Destination point
+    real(kind=RKIND), intent(in) :: alpha !< Input: Characteristic length scale of RBFs
+    real(kind=RKIND), dimension(2,3) :: planeBasisVectors !< Input: Basis vectors for interpolation plane
+    real(kind=RKIND), dimension(pointCount), intent(out) :: dirichletCoefficients !< Output: List of Dirichlet coefficients
+    real(kind=RKIND), dimension(pointCount), intent(out) :: neumannCoefficients !< Output: List of Neumann coefficients
 
     integer :: i, j
     integer :: matrixSize
@@ -889,52 +979,60 @@ module mpas_rbf_interpolation
     deallocate(coeffs)  
     deallocate(pivotIndices) 
 
-  end subroutine mpas_rbf_interp_func_3D_plane_sca_lin_dir_neu_comp_coeffs
+  end subroutine mpas_rbf_interp_func_3D_plane_sca_lin_dir_neu_comp_coeffs!}}}
 
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  ! Purpose: Compute interpolation coefficients in 3D that can be used to
-  !  interpolate a number of scalar functions at a given locations. This is useful
-  !  if the interpolation location does not change with time, or if several
-  !  fields are to be interpolated at a given time step.  (If both the fields
-  !  and the interpolation locations vary with time, there is no clear advantage in
-  !  using either this method or the method for 2D interpoaltion above; for simplicity
-  !  and because we foresee more uses for the method of this subroutine, we have not
-  !  implemented a 3D version of the fixed field, variable interpolation location method
-  !  as we have in 2D.) Coefficients are produced for handling both Dirichlet and Neumann
-  !  boundary conditions.  The interpolation is performed with basis functions that are
-  !  RBFs plus constant and linear.
-  ! Input:
-  !  pointCount - the number of "source" points and functionValues supplied
-  !  sourcePoints - the location of the "source" points in the 3D space where the values of
-  !    the function are known
-  !  isInterface - a logical array indicating which of the source points (if any) are at
-  !    at the domain interface.  These points and their normals will be used to compute the
-  !    neumannCoefficients below
-  !  interfaceNormals - a 3D normal vector for each sourcePoint.  These vectors are only used
-  !    at points where isInterface == .true., and can take arbitrary values elsewehere.  The
-  !    normal vector is used to compute coefficients for the normal derivative of the
-  !    interpolating function in order to impose the Neumann Boundary condition
-  !  destinationPoint - the point where the interpolation will be performed
-  !  alpha - a constant that give the characteristic length scale of the RBFs,
-  !    should be on the order of the distance between points
-  ! Output:
-  !  dirichletCoefficients - the coefficients used to interpolate a function with Dirichlet
-  !    boundary conditions to the specified destinationPoint
-  !  neumannCoefficients - the coefficients used to interpolate a function with Neumann
-  !    boundary conditions to the specified destinationPoint
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  subroutine mpas_rbf_interp_func_3D_sca_lin_dir_neu_comp_coeffs(pointCount, &
+!***********************************************************************
+!
+!  routine mpas_rbf_interp_func_3D_sca_lin_dir_neu_comp_coeffs
+!
+!> \brief   MPAS 3D scalar linear Dirichlet and Neumann coefficients routine
+!> \author  Xylar Asay-Davis
+!> \date    03/28/13
+!> \version SVN:$Id$
+!> \details 
+!>  This routine computes interpolation coefficients in 3D that can be used to
+!>   interpolate a number of scalar functions at a given locations. This is useful
+!>   if the interpolation location does not change with time, or if several
+!>   fields are to be interpolated at a given time step.  (If both the fields
+!>   and the interpolation locations vary with time, there is no clear advantage in
+!>   using either this method or the method for 2D interpoaltion above; for simplicity
+!>   and because we foresee more uses for the method of this subroutine, we have not
+!>   implemented a 3D version of the fixed field, variable interpolation location method
+!>   as we have in 2D.) Coefficients are produced for handling both Dirichlet and Neumann
+!>   boundary conditions.  The interpolation is performed with basis functions that are
+!>   RBFs plus constant and linear.
+!>  Input:
+!>   pointCount - the number of "source" points and functionValues supplied
+!>   sourcePoints - the location of the "source" points in the 3D space where the values of
+!>     the function are known
+!>   isInterface - a logical array indicating which of the source points (if any) are at
+!>     at the domain interface.  These points and their normals will be used to compute the
+!>     neumannCoefficients below
+!>   interfaceNormals - a 3D normal vector for each sourcePoint.  These vectors are only used
+!>     at points where isInterface == .true., and can take arbitrary values elsewehere.  The
+!>     normal vector is used to compute coefficients for the normal derivative of the
+!>     interpolating function in order to impose the Neumann Boundary condition
+!>   destinationPoint - the point where the interpolation will be performed
+!>   alpha - a constant that give the characteristic length scale of the RBFs,
+!>     should be on the order of the distance between points
+!>  Output:
+!>   dirichletCoefficients - the coefficients used to interpolate a function with Dirichlet
+!>     boundary conditions to the specified destinationPoint
+!>   neumannCoefficients - the coefficients used to interpolate a function with Neumann
+!>     boundary conditions to the specified destinationPoint
+!-----------------------------------------------------------------------
+  subroutine mpas_rbf_interp_func_3D_sca_lin_dir_neu_comp_coeffs(pointCount, &!{{{
     sourcePoints, isInterface, interfaceNormals, destinationPoint, &
     alpha, dirichletCoefficients, neumannCoefficients)
 
-    integer, intent(in) :: pointCount
-    real(kind=RKIND), dimension(pointCount,3), intent(in) :: sourcePoints
-    logical, dimension(pointCount), intent(in) :: isInterface
-    real(kind=RKIND), dimension(pointCount,3), intent(in) :: interfaceNormals
-    real(kind=RKIND), dimension(3), intent(in) :: destinationPoint
-    real(kind=RKIND), intent(in) :: alpha
-    real(kind=RKIND), dimension(pointCount), intent(out) :: &
-      dirichletCoefficients, neumannCoefficients
+    integer, intent(in) :: pointCount !< Input: Number of points
+    real(kind=RKIND), dimension(pointCount,3), intent(in) :: sourcePoints !< Input: List of points
+    logical, dimension(pointCount), intent(in) :: isInterface !< Input: List of logicals determining if point as at an interface
+    real(kind=RKIND), dimension(pointCount,3), intent(in) :: interfaceNormals !< Input: List of interface normals
+    real(kind=RKIND), dimension(3), intent(in) :: destinationPoint !< Input: Destination point
+    real(kind=RKIND), intent(in) :: alpha !< Input: Characteristic length scale of RBFs
+    real(kind=RKIND), dimension(pointCount), intent(out) :: dirichletCoefficients !< Output: List of Dirichlet coefficients
+    real(kind=RKIND), dimension(pointCount), intent(out) :: neumannCoefficients !< Outut: List of Neumann coefficients
 
     integer :: i, j
     integer :: matrixSize
@@ -997,45 +1095,53 @@ module mpas_rbf_interpolation
     deallocate(coeffs)  
     deallocate(pivotIndices) 
 
-  end subroutine mpas_rbf_interp_func_3D_sca_lin_dir_neu_comp_coeffs
+  end subroutine mpas_rbf_interp_func_3D_sca_lin_dir_neu_comp_coeffs!}}}
 
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  ! Purpose: Compute interpolation coefficients in 3D that can be used to
-  !  interpolate a number of vector functions at a given locations. This is useful
-  !  if the interpolation location does not change with time, or if several
-  !  fields are to be interpolated at a given time step.  (If both the vector fields
-  !  and the interpolation locations vary with time, there is no clear advantage in
-  !  using either this method or the method for 2D interpoaltion above; for simplicity
-  !  and because we foresee more uses for the method of this subroutine, we have not
-  !  implemented a 3D version of the fixed field, variable interpolation location method
-  !  as we have in 2D.) Coefficients are produced for handling Dirichlet boundary
-  !  conditions (or no boundaries).  The interpolation is performed with basis functions
-  !  that are RBFs plus a constant.
-  ! Input:
-  !  pointCount - the number of "source" points and functionValues supplied
-  !  sourcePoints - the location of the "source" points in the 3D space where the values of
-  !    the function are known
-  !  unitVectors - the unit vectors associated with each of the sourcePoints.  Interpolation
-  !    is performed by supplying the value of the vector function dotted into each of these unit
-  !    vectors.  If multiple unit vectors are supplied at the same sourcePoint, they *must* be
-  !    orthogonal for the interpolation to succeed.
-  !  destinationPoint - the point where the interpolation will be performed
-  !  alpha - a constant that give the characteristic length scale of the RBFs,
-  !    should be on the order of the distance between points
-  ! Output:
-  !  coefficients - the coefficients used to interpolate a function with Dirichlet
-  !    boundary conditions to the specified destinationPoint
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  subroutine mpas_rbf_interp_func_3D_vec_const_dir_comp_coeffs(pointCount, &
+!***********************************************************************
+!
+!  routine mpas_rbf_interp_func_3D_vec_const_dir_comp_coeffs
+!
+!> \brief   MPAS 3D vector constant Dirichlet coefficients routine
+!> \author  Xylar Asay-Davis
+!> \date    03/28/13
+!> \version SVN:$Id$
+!> \details 
+!>  This routine computes interpolation coefficients in 3D that can be used to
+!>   interpolate a number of vector functions at a given locations. This is useful
+!>   if the interpolation location does not change with time, or if several
+!>   fields are to be interpolated at a given time step.  (If both the vector fields
+!>   and the interpolation locations vary with time, there is no clear advantage in
+!>   using either this method or the method for 2D interpoaltion above; for simplicity
+!>   and because we foresee more uses for the method of this subroutine, we have not
+!>   implemented a 3D version of the fixed field, variable interpolation location method
+!>   as we have in 2D.) Coefficients are produced for handling Dirichlet boundary
+!>   conditions (or no boundaries).  The interpolation is performed with basis functions
+!>   that are RBFs plus a constant.
+!>  Input:
+!>   pointCount - the number of "source" points and functionValues supplied
+!>   sourcePoints - the location of the "source" points in the 3D space where the values of
+!>     the function are known
+!>   unitVectors - the unit vectors associated with each of the sourcePoints.  Interpolation
+!>     is performed by supplying the value of the vector function dotted into each of these unit
+!>     vectors.  If multiple unit vectors are supplied at the same sourcePoint, they *must* be
+!>     orthogonal for the interpolation to succeed.
+!>   destinationPoint - the point where the interpolation will be performed
+!>   alpha - a constant that give the characteristic length scale of the RBFs,
+!>     should be on the order of the distance between points
+!>  Output:
+!>   coefficients - the coefficients used to interpolate a function with Dirichlet
+!>     boundary conditions to the specified destinationPoint
+!-----------------------------------------------------------------------
+  subroutine mpas_rbf_interp_func_3D_vec_const_dir_comp_coeffs(pointCount, &!{{{
     sourcePoints, unitVectors, destinationPoint, &
     alpha, coefficients)
 
-    integer, intent(in) :: pointCount
-    real(kind=RKIND), dimension(pointCount,3), intent(in) :: sourcePoints
-    real(kind=RKIND), dimension(pointCount,3), intent(in) :: unitVectors
-    real(kind=RKIND), dimension(3), intent(in) :: destinationPoint
-    real(kind=RKIND), intent(in) :: alpha
-    real(kind=RKIND), dimension(pointCount, 3), intent(out) :: coefficients
+    integer, intent(in) :: pointCount !< Input: Number of points
+    real(kind=RKIND), dimension(pointCount,3), intent(in) :: sourcePoints !< Input: List of points
+    real(kind=RKIND), dimension(pointCount,3), intent(in) :: unitVectors !< Input: List of unit vectors
+    real(kind=RKIND), dimension(3), intent(in) :: destinationPoint !< Input: Destination point
+    real(kind=RKIND), intent(in) :: alpha !< Input: Characteristic length scale of RBFs
+    real(kind=RKIND), dimension(pointCount, 3), intent(out) :: coefficients !< Output: List of coefficients
 
     integer :: i, j
     integer :: matrixSize
@@ -1082,51 +1188,59 @@ module mpas_rbf_interpolation
     deallocate(coeffs)  
     deallocate(pivotIndices) 
 
-  end subroutine mpas_rbf_interp_func_3D_vec_const_dir_comp_coeffs 
+  end subroutine mpas_rbf_interp_func_3D_vec_const_dir_comp_coeffs !}}}
 
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  ! Purpose: Compute interpolation coefficients in 3D that can be used to
-  !  interpolate a number of vector functions at a given locations. This is useful
-  !  if the interpolation location does not change with time, or if several
-  !  fields are to be interpolated at a given time step.  (If both the vector fields
-  !  and the interpolation locations vary with time, there is no clear advantage in
-  !  using either this method or the method for 2D interpoaltion above; for simplicity
-  !  and because we foresee more uses for the method of this subroutine, we have not
-  !  implemented a 3D version of the fixed field, variable interpolation location method
-  !  as we have in 2D.) Coefficients are produced for handling Dirichlet boundary
-  !  conditions (or no boundaries).  The interpolation is performed with basis functions
-  !  that are RBFs plus a constant.
-  ! Input:
-  !  pointCount - the number of "source" points and functionValues supplied
-  !  sourcePoints - the location of the "source" points in the 3D space where the values of
-  !    the function are known.  The sourcePoints are projected into the plane given by
-  !    planeBasisVectors
-  !  unitVectors - the unit vectors associated with each of the sourcePoints.  Interpolation
-  !    is performed by supplying the value of the vector function dotted into each of these unit
-  !    vectors.  If multiple unit vectors are supplied at the same sourcePoint, they *must* be
-  !    orthogonal for the interpolation to succeed.  The unitVectors are projected into the
-  !    plane given by planeBasisVectors
-  !  destinationPoint - the point where the interpolation will be performed.  The destinationPoint
-  !    is projected into the plane given by planeBasisVectors
-  !  alpha - a constant that give the characteristic length scale of the RBFs,
-  !    should be on the order of the distance between points
-  !  planeBasisVectors - the basis fectors for the plane where interpolation is performed.
-  !    All points are projected into this plane. 
-  ! Output:
-  !  coefficients - the coefficients used to interpolate a function with Dirichlet
-  !    boundary conditions to the specified destinationPoint
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  subroutine mpas_rbf_interp_func_3D_plane_vec_const_dir_comp_coeffs(pointCount, &
+!***********************************************************************
+!
+!  routine mpas_rbf_interp_func_3D_plane_vec_const_dir_comp_coeffs
+!
+!> \brief   MPAS 3D vector planar constant Dirichlet coefficients routine
+!> \author  Xylar Asay-Davis
+!> \date    03/28/13
+!> \version SVN:$Id$
+!> \details 
+!>   This routine computes interpolation coefficients in 3D that can be used to
+!>    interpolate a number of vector functions at a given locations. This is useful
+!>    if the interpolation location does not change with time, or if several
+!>    fields are to be interpolated at a given time step.  (If both the vector fields
+!>    and the interpolation locations vary with time, there is no clear advantage in
+!>    using either this method or the method for 2D interpoaltion above; for simplicity
+!>    and because we foresee more uses for the method of this subroutine, we have not
+!>    implemented a 3D version of the fixed field, variable interpolation location method
+!>    as we have in 2D.) Coefficients are produced for handling Dirichlet boundary
+!>    conditions (or no boundaries).  The interpolation is performed with basis functions
+!>    that are RBFs plus a constant.
+!>   Input:
+!>    pointCount - the number of "source" points and functionValues supplied
+!>    sourcePoints - the location of the "source" points in the 3D space where the values of
+!>      the function are known.  The sourcePoints are projected into the plane given by
+!>      planeBasisVectors
+!>    unitVectors - the unit vectors associated with each of the sourcePoints.  Interpolation
+!>      is performed by supplying the value of the vector function dotted into each of these unit
+!>      vectors.  If multiple unit vectors are supplied at the same sourcePoint, they *must* be
+!>      orthogonal for the interpolation to succeed.  The unitVectors are projected into the
+!>      plane given by planeBasisVectors
+!>    destinationPoint - the point where the interpolation will be performed.  The destinationPoint
+!>      is projected into the plane given by planeBasisVectors
+!>    alpha - a constant that give the characteristic length scale of the RBFs,
+!>      should be on the order of the distance between points
+!>    planeBasisVectors - the basis fectors for the plane where interpolation is performed.
+!>      All points are projected into this plane. 
+!>   Output:
+!>    coefficients - the coefficients used to interpolate a function with Dirichlet
+!>      boundary conditions to the specified destinationPoint
+!-----------------------------------------------------------------------
+  subroutine mpas_rbf_interp_func_3D_plane_vec_const_dir_comp_coeffs(pointCount, &!{{{
     sourcePoints, unitVectors, destinationPoint, &
     alpha, planeBasisVectors, coefficients)
 
-    integer, intent(in) :: pointCount
-    real(kind=RKIND), dimension(pointCount,3), intent(in) :: sourcePoints
-    real(kind=RKIND), dimension(pointCount,3), intent(in) :: unitVectors
-    real(kind=RKIND), dimension(3), intent(in) :: destinationPoint
-    real(kind=RKIND), intent(in) :: alpha
-    real(kind=RKIND), dimension(2,3) :: planeBasisVectors
-    real(kind=RKIND), dimension(pointCount, 3), intent(out) :: coefficients
+    integer, intent(in) :: pointCount !< Input: Number of points
+    real(kind=RKIND), dimension(pointCount,3), intent(in) :: sourcePoints !< Input: List of points
+    real(kind=RKIND), dimension(pointCount,3), intent(in) :: unitVectors !< Input: List of unit vectors
+    real(kind=RKIND), dimension(3), intent(in) :: destinationPoint !< Input: Destination point
+    real(kind=RKIND), intent(in) :: alpha !< Input: Characteristic length scale of RBFs
+    real(kind=RKIND), dimension(2,3) :: planeBasisVectors !< Input: Basis vectors for interpolation plane
+    real(kind=RKIND), dimension(pointCount, 3), intent(out) :: coefficients !< Output: List of coefficients
 
     integer :: i, j
     integer :: matrixSize
@@ -1191,55 +1305,63 @@ module mpas_rbf_interpolation
     deallocate(coeffs)  
     deallocate(pivotIndices)
 
-  end subroutine mpas_rbf_interp_func_3D_plane_vec_const_dir_comp_coeffs 
+  end subroutine mpas_rbf_interp_func_3D_plane_vec_const_dir_comp_coeffs !}}}
 
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  ! Purpose: Compute interpolation coefficients in 3D that can be used to
-  !  interpolate a number of vector functions at a given locations. This is useful
-  !  if the interpolation location does not change with time, or if several
-  !  fields are to be interpolated at a given time step.  (If both the vector fields
-  !  and the interpolation locations vary with time, there is no clear advantage in
-  !  using either this method or the method for 2D interpoaltion above; for simplicity
-  !  and because we foresee more uses for the method of this subroutine, we have not
-  !  implemented a 3D version of the fixed field, variable interpolation location method
-  !  as we have in 2D.) Coefficients are produced for handling Dirichlet normal /
-  !  Neumann tangential boundary conditions (such as free slip).  The interpolation is 
-  !  performed with basis functions that are RBFs plus a constant.
-  ! Input:
-  !  pointCount - the number of "source" points and functionValues supplied
-  !  sourcePoints - the location of the "source" points in the 3D space where the values of
-  !    the function are known
-  !  isTangentToInterface - a logical array indicating which sourcePoints/unitVectors are
-  !    tangent to the interface where the boundary condition will be applied.  A Neumann
-  !    boundary condition will be applied at these points in these directions.
-  !  normalVectorIndex - where isTangentToInterface == .true., the index into unitVectors that
-  !    gives the normal vector at the same sourcePoint.  This information is needed to compute
-  !    the Neumann boundary condition at this point.
-  !  unitVectors - the unit vectors associated with each of the sourcePoints.  Interpolation
-  !    is performed by supplying the value of the vector function dotted into each of these unit
-  !    vectors.  If multiple unit vectors are supplied at the same sourcePoint, they *must* be
-  !    orthogonal for the interpolation to succeed.  A normal vector and two tangential vectors
-  !    are needed at each interface point in order to satisfy the Dirichlet normal boundary
-  !    condition and the Neumann tangential boundary conditions at these points.
-  !  destinationPoint - the point where the interpolation will be performed
-  !  alpha - a constant that give the characteristic length scale of the RBFs,
-  !    should be on the order of the distance between points
-  ! Output:
-  !  coefficients - the coefficients used to interpolate a function with Dirichlet
-  !    boundary conditions to the specified destinationPoint
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  subroutine mpas_rbf_interp_func_3D_vec_const_tan_neu_comp_coeffs(pointCount, &
+!***********************************************************************
+!
+!  routine mpas_rbf_interp_func_3D_vec_const_tan_neu_comp_coeffs
+!
+!> \brief   MPAS 3D vector constant tangent Neumann coefficients routine
+!> \author  Xylar Asay-Davis
+!> \date    03/28/13
+!> \version SVN:$Id$
+!> \details 
+!>  This routine computes interpolation coefficients in 3D that can be used to
+!>   interpolate a number of vector functions at a given locations. This is useful
+!>   if the interpolation location does not change with time, or if several
+!>   fields are to be interpolated at a given time step.  (If both the vector fields
+!>   and the interpolation locations vary with time, there is no clear advantage in
+!>   using either this method or the method for 2D interpoaltion above; for simplicity
+!>   and because we foresee more uses for the method of this subroutine, we have not
+!>   implemented a 3D version of the fixed field, variable interpolation location method
+!>   as we have in 2D.) Coefficients are produced for handling Dirichlet normal /
+!>   Neumann tangential boundary conditions (such as free slip).  The interpolation is 
+!>   performed with basis functions that are RBFs plus a constant.
+!>  Input:
+!>   pointCount - the number of "source" points and functionValues supplied
+!>   sourcePoints - the location of the "source" points in the 3D space where the values of
+!>     the function are known
+!>   isTangentToInterface - a logical array indicating which sourcePoints/unitVectors are
+!>     tangent to the interface where the boundary condition will be applied.  A Neumann
+!>     boundary condition will be applied at these points in these directions.
+!>   normalVectorIndex - where isTangentToInterface == .true., the index into unitVectors that
+!>     gives the normal vector at the same sourcePoint.  This information is needed to compute
+!>     the Neumann boundary condition at this point.
+!>   unitVectors - the unit vectors associated with each of the sourcePoints.  Interpolation
+!>     is performed by supplying the value of the vector function dotted into each of these unit
+!>     vectors.  If multiple unit vectors are supplied at the same sourcePoint, they *must* be
+!>     orthogonal for the interpolation to succeed.  A normal vector and two tangential vectors
+!>     are needed at each interface point in order to satisfy the Dirichlet normal boundary
+!>     condition and the Neumann tangential boundary conditions at these points.
+!>   destinationPoint - the point where the interpolation will be performed
+!>   alpha - a constant that give the characteristic length scale of the RBFs,
+!>     should be on the order of the distance between points
+!>  Output:
+!>   coefficients - the coefficients used to interpolate a function with Dirichlet
+!>     boundary conditions to the specified destinationPoint
+!-----------------------------------------------------------------------
+  subroutine mpas_rbf_interp_func_3D_vec_const_tan_neu_comp_coeffs(pointCount, &!{{{
     sourcePoints, isTangentToInterface, normalVectorIndex, unitVectors, destinationPoint, &
     alpha, coefficients)
 
-    integer, intent(in) :: pointCount
-    real(kind=RKIND), dimension(pointCount,3), intent(in) :: sourcePoints
-    logical, dimension(pointCount), intent(in) :: isTangentToInterface
-    integer, dimension(pointCount), intent(in) :: normalVectorIndex
-    real(kind=RKIND), dimension(pointCount,3), intent(in) :: unitVectors
-    real(kind=RKIND), dimension(3), intent(in) :: destinationPoint
-    real(kind=RKIND), intent(in) :: alpha
-    real(kind=RKIND), dimension(pointCount, 3), intent(out) :: coefficients
+    integer, intent(in) :: pointCount !< Input: Number of points
+    real(kind=RKIND), dimension(pointCount,3), intent(in) :: sourcePoints !< Input: List of points
+    logical, dimension(pointCount), intent(in) :: isTangentToInterface !< Input: List of logicals determining if point is tangent to interface
+    integer, dimension(pointCount), intent(in) :: normalVectorIndex !< Input: Index of for normal vectors
+    real(kind=RKIND), dimension(pointCount,3), intent(in) :: unitVectors !< Input: List of unit vectors
+    real(kind=RKIND), dimension(3), intent(in) :: destinationPoint !< Input: Destination point
+    real(kind=RKIND), intent(in) :: alpha !< Input: Characteristic length scale of RBFs
+    real(kind=RKIND), dimension(pointCount, 3), intent(out) :: coefficients !< Output: List of coefficients
 
     integer :: i, j
     integer :: matrixSize
@@ -1287,61 +1409,70 @@ module mpas_rbf_interpolation
     deallocate(coeffs)  
     deallocate(pivotIndices)
 
-  end subroutine mpas_rbf_interp_func_3D_vec_const_tan_neu_comp_coeffs 
+  end subroutine mpas_rbf_interp_func_3D_vec_const_tan_neu_comp_coeffs !}}}
 
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  ! Purpose: Compute interpolation coefficients in 3D that can be used to
-  !  interpolate a number of vector functions at a given locations. This is useful
-  !  if the interpolation location does not change with time, or if several
-  !  fields are to be interpolated at a given time step.  (If both the vector fields
-  !  and the interpolation locations vary with time, there is no clear advantage in
-  !  using either this method or the method for 2D interpoaltion above; for simplicity
-  !  and because we foresee more uses for the method of this subroutine, we have not
-  !  implemented a 3D version of the fixed field, variable interpolation location method
-  !  as we have in 2D.) Coefficients are produced for handling Dirichlet normal /
-  !  Neumann tangential boundary conditions (such as free slip).  The interpolation is 
-  !  performed with basis functions that are RBFs plus a constant.
-  ! Input:
-  !  pointCount - the number of "source" points and functionValues supplied
-  !  sourcePoints - the location of the "source" points in the 3D space where the values of
-  !    the function are known.  The sourcePoints are projected into the plane given by
-  !    planeBasisVectors
-  !  isTangentToInterface - a logical array indicating which sourcePoints/unitVectors are
-  !    tangent to the interface where the boundary condition will be applied.  A Neumann
-  !    boundary condition will be applied at these points in these directions.
-  !  normalVectorIndex - where isTangentToInterface == .true., the index into unitVectors that
-  !    gives the normal vector at the same sourcePoint.  This information is needed to compute
-  !    the Neumann boundary condition at this point.
-  !  unitVectors - the unit vectors associated with each of the sourcePoints.  Interpolation
-  !    is performed by supplying the value of the vector function dotted into each of these unit
-  !    vectors.  If multiple unit vectors are supplied at the same sourcePoint, they *must* be
-  !    orthogonal for the interpolation to succeed.  A normal vector and two tangential vectors
-  !    are needed at each interface point in order to satisfy the Dirichlet normal boundary
-  !    condition and the Neumann tangential boundary conditions at these points. The unitVectors
-  !    are projected into the plane given by planeBasisVectors
-  !  destinationPoint - the point where the interpolation will be performed.  The destinationPoint
-  !    is projected into the plane given by planeBasisVectors
-  !  alpha - a constant that give the characteristic length scale of the RBFs,
-  !    should be on the order of the distance between points
-  !  planeBasisVectors - the basis fectors for the plane where interpolation is performed.
-  !    All points are projected into this plane. 
-  ! Output:
-  !  coefficients - the coefficients used to interpolate a function with Dirichlet
-  !    boundary conditions to the specified destinationPoint
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  subroutine mpas_rbf_interp_func_3D_plane_vec_const_tan_neu_comp_coeffs(&
+!***********************************************************************
+!
+!  routine mpas_rbf_interp_func_3D_plane_vec_const_tan_neu_comp_coeffs
+!
+!> \brief   MPAS 3D vector planar constant tangent Neumann coefficients routine
+!> \author  Xylar Asay-Davis
+!> \date    03/28/13
+!> \version SVN:$Id$
+!> \details 
+!>  This routine computes interpolation coefficients in 3D that can be used to
+!>   interpolate a number of vector functions at a given locations. This is useful
+!>   if the interpolation location does not change with time, or if several
+!>   fields are to be interpolated at a given time step.  (If both the vector fields
+!>   and the interpolation locations vary with time, there is no clear advantage in
+!>   using either this method or the method for 2D interpoaltion above; for simplicity
+!>   and because we foresee more uses for the method of this subroutine, we have not
+!>   implemented a 3D version of the fixed field, variable interpolation location method
+!>   as we have in 2D.) Coefficients are produced for handling Dirichlet normal /
+!>   Neumann tangential boundary conditions (such as free slip).  The interpolation is 
+!>   performed with basis functions that are RBFs plus a constant.
+!>  Input:
+!>   pointCount - the number of "source" points and functionValues supplied
+!>   sourcePoints - the location of the "source" points in the 3D space where the values of
+!>     the function are known.  The sourcePoints are projected into the plane given by
+!>     planeBasisVectors
+!>   isTangentToInterface - a logical array indicating which sourcePoints/unitVectors are
+!>     tangent to the interface where the boundary condition will be applied.  A Neumann
+!>     boundary condition will be applied at these points in these directions.
+!>   normalVectorIndex - where isTangentToInterface == .true., the index into unitVectors that
+!>     gives the normal vector at the same sourcePoint.  This information is needed to compute
+!>     the Neumann boundary condition at this point.
+!>   unitVectors - the unit vectors associated with each of the sourcePoints.  Interpolation
+!>     is performed by supplying the value of the vector function dotted into each of these unit
+!>     vectors.  If multiple unit vectors are supplied at the same sourcePoint, they *must* be
+!>     orthogonal for the interpolation to succeed.  A normal vector and two tangential vectors
+!>     are needed at each interface point in order to satisfy the Dirichlet normal boundary
+!>     condition and the Neumann tangential boundary conditions at these points. The unitVectors
+!>     are projected into the plane given by planeBasisVectors
+!>   destinationPoint - the point where the interpolation will be performed.  The destinationPoint
+!>     is projected into the plane given by planeBasisVectors
+!>   alpha - a constant that give the characteristic length scale of the RBFs,
+!>     should be on the order of the distance between points
+!>   planeBasisVectors - the basis fectors for the plane where interpolation is performed.
+!>     All points are projected into this plane. 
+!>  Output:
+!>   coefficients - the coefficients used to interpolate a function with Dirichlet
+!>     boundary conditions to the specified destinationPoint
+!-----------------------------------------------------------------------
+
+  subroutine mpas_rbf_interp_func_3D_plane_vec_const_tan_neu_comp_coeffs(&!{{{
     pointCount, sourcePoints, isTangentToInterface, normalVectorIndex, unitVectors, &
     destinationPoint, alpha, planeBasisVectors, coefficients)
 
-    integer, intent(in) :: pointCount
-    real(kind=RKIND), dimension(pointCount,3), intent(in) :: sourcePoints
-    logical, dimension(pointCount), intent(in) :: isTangentToInterface
-    integer, dimension(pointCount), intent(in) :: normalVectorIndex
-    real(kind=RKIND), dimension(pointCount,3), intent(in) :: unitVectors
-    real(kind=RKIND), dimension(3), intent(in) :: destinationPoint
-    real(kind=RKIND), intent(in) :: alpha
-    real(kind=RKIND), dimension(2,3), intent(in) :: planeBasisVectors
-    real(kind=RKIND), dimension(pointCount, 3), intent(out) :: coefficients
+    integer, intent(in) :: pointCount !< input: Number of points
+    real(kind=RKIND), dimension(pointCount,3), intent(in) :: sourcePoints !< Input: List of points
+    logical, dimension(pointCount), intent(in) :: isTangentToInterface !< Input: List of logicals determining if point is tangent to interface
+    integer, dimension(pointCount), intent(in) :: normalVectorIndex !< Input: Index for normal vectors
+    real(kind=RKIND), dimension(pointCount,3), intent(in) :: unitVectors !< Input: List of unit vectors
+    real(kind=RKIND), dimension(3), intent(in) :: destinationPoint !< Input: Destination point
+    real(kind=RKIND), intent(in) :: alpha !< Input: Characteristic length scale of RBFs
+    real(kind=RKIND), dimension(2,3), intent(in) :: planeBasisVectors !< Input: Basis vectors for interpolation plane
+    real(kind=RKIND), dimension(pointCount, 3), intent(out) :: coefficients !< Output: List of coefficients
 
     integer :: i, j
     integer :: matrixSize
@@ -1407,52 +1538,99 @@ module mpas_rbf_interpolation
     deallocate(coeffs)  
     deallocate(pivotIndices)
 
-   end subroutine mpas_rbf_interp_func_3D_plane_vec_const_tan_neu_comp_coeffs 
+   end subroutine mpas_rbf_interp_func_3D_plane_vec_const_tan_neu_comp_coeffs !}}}
 
 
 !!!!!!!!!!!!!!!!!!!!!
 ! private subroutines
 !!!!!!!!!!!!!!!!!!!!!
 
-  function evaluate_rbf(rSquared) result(rbfValue)
-    real(kind=RKIND), intent(in) :: rSquared
+!***********************************************************************
+!
+!  function evaluate_rbf
+!
+!> \brief   MPAS RBF Evaluation function
+!> \author  Xylar Asay-Davis
+!> \date    03/28/13
+!> \version SVN:$Id$
+!> \details 
+!> This function evaluates an RBF and returns the value.
+!-----------------------------------------------------------------------
+  function evaluate_rbf(rSquared) result(rbfValue)!{{{
+    real(kind=RKIND), intent(in) :: rSquared !< Input: Squared value of r
     real(kind=RKIND) :: rbfValue
 
     ! inverse multiquadratic
     rbfValue = 1/sqrt(1 + rSquared)
 
-  end function evaluate_rbf
+  end function evaluate_rbf!}}}
 
-  subroutine mpas_evaluate_rbf_and_deriv(rSquared, rbfValue, rbfDerivOverR)
-    real(kind=RKIND), intent(in) :: rSquared
-    real(kind=RKIND), intent(out) :: rbfValue, rbfDerivOverR
+!***********************************************************************
+!
+!  routine mpas_evaluate_rbf_and_deriv
+!
+!> \brief   MPAS RBF Evaluation and derivative routine
+!> \author  Xylar Asay-Davis
+!> \date    03/28/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine computes the value and derivative of a RBF.
+!-----------------------------------------------------------------------
+  subroutine mpas_evaluate_rbf_and_deriv(rSquared, rbfValue, rbfDerivOverR)!{{{
+    real(kind=RKIND), intent(in) :: rSquared !< Input: Squared value of R
+    real(kind=RKIND), intent(out) :: rbfValue !< Output: Value of RBF
+    real(kind=RKIND), intent(out) :: rbfDerivOverR  !< Outut: Derivative of RBF over R
 
     ! inverse multiquadratic
     rbfValue = 1/sqrt(1 + rSquared)
     rbfDerivOverR = -rbfValue**3
 
-  end subroutine mpas_evaluate_rbf_and_deriv
+  end subroutine mpas_evaluate_rbf_and_deriv!}}}
 
-  subroutine mpas_evaluate_rbf_and_derivs(rSquared, rbfValue, rbfDerivOverR, rbfSecondDeriv)
-    real(kind=RKIND), intent(in) :: rSquared
-    real(kind=RKIND), intent(out) :: rbfValue, rbfDerivOverR, rbfSecondDeriv
+!***********************************************************************
+!
+!  routine mpas_evaluate_rbf_and_derivs
+!
+!> \brief   MPAS RBF Evaluation and first and second derivative routine
+!> \author  Xylar Asay-Davis
+!> \date    03/28/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine computes the value and the first two derivatives of a RBF.
+!-----------------------------------------------------------------------
+  subroutine mpas_evaluate_rbf_and_derivs(rSquared, rbfValue, rbfDerivOverR, rbfSecondDeriv)!{{{
+    real(kind=RKIND), intent(in) :: rSquared !< Input: Squared value of R
+    real(kind=RKIND), intent(out) :: rbfValue !< Output: Value of RBF
+    real(kind=RKIND), intent(out) :: rbfDerivOverR !< Output: Value of first derivative of RBF
+    real(kind=RKIND), intent(out) :: rbfSecondDeriv !< Output: Value of second derivative of RBF
 
     ! inverse multiquadratic
     rbfValue = 1/sqrt(1 + rSquared)
     rbfDerivOverR = -rbfValue**3
     rbfSecondDeriv = (2*rSquared-1)*rbfValue**5
 
-  end subroutine mpas_evaluate_rbf_and_derivs
+  end subroutine mpas_evaluate_rbf_and_derivs!}}}
 
-  subroutine mpas_set_up_scalar_rbf_dirichlet_matrix_and_rhs(pointCount, sourcePoints, destinationPoint, &
+!***********************************************************************
+!
+!  routine mpas_set_up_scalar_rbf_dirichlet_matrix_and_rhs
+!
+!> \brief   MPAS RBF Scalar Matrix and RHS setup routine
+!> \author  Xylar Asay-Davis
+!> \date    03/28/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine sets up the matrix and RHS for scalar Dirichlet RBF interpolation.
+!-----------------------------------------------------------------------
+  subroutine mpas_set_up_scalar_rbf_dirichlet_matrix_and_rhs(pointCount, sourcePoints, destinationPoint, &!{{{
     alpha, dirichletMatrix, rhs)
 
-    integer, intent(in) :: pointCount
-    real(kind=RKIND), dimension(pointCount,3), intent(in) :: sourcePoints
-    real(kind=RKIND), dimension(3), intent(in) :: destinationPoint
-    real(kind=RKIND), intent(in) :: alpha
-    real(kind=RKIND), dimension(pointCount,pointCount), intent(out) :: dirichletMatrix
-    real(kind=RKIND), dimension(pointCount), intent(out) :: rhs
+    integer, intent(in) :: pointCount !< Input: Number of points
+    real(kind=RKIND), dimension(pointCount,3), intent(in) :: sourcePoints !< Input: List of points
+    real(kind=RKIND), dimension(3), intent(in) :: destinationPoint !< Input: Destination point
+    real(kind=RKIND), intent(in) :: alpha !< Input: Characteristic length scale of RBF
+    real(kind=RKIND), dimension(pointCount,pointCount), intent(out) :: dirichletMatrix !< Output: Matrix
+    real(kind=RKIND), dimension(pointCount), intent(out) :: rhs !< Output: Right hand side
 
     integer :: i, j
 
@@ -1471,21 +1649,32 @@ module mpas_rbf_interpolation
       rhs(j) = evaluate_rbf(rSquared)
     end do
 
-  end subroutine mpas_set_up_scalar_rbf_dirichlet_matrix_and_rhs
+  end subroutine mpas_set_up_scalar_rbf_dirichlet_matrix_and_rhs!}}}
 
-  subroutine mpas_set_up_scalar_rbf_matrix_and_rhs(pointCount, &
+!***********************************************************************
+!
+!  routine mpas_set_up_scalar_rbf_matrix_and_rhs
+!
+!> \brief   MPAS RBF Scalar Matrix and RHS setup routine
+!> \author  Xylar Asay-Davis
+!> \date    03/28/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine sets up the matrix and RHS for scalar Dirichlet and Neumann RBF interpolation.
+!-----------------------------------------------------------------------
+  subroutine mpas_set_up_scalar_rbf_matrix_and_rhs(pointCount, &!{{{
     sourcePoints, isInterface, interfaceNormals, destinationPoint, &
     alpha, dirichletMatrix, neumannMatrix, rhs)
 
-    integer, intent(in) :: pointCount
-    real(kind=RKIND), dimension(pointCount,3), intent(in) :: sourcePoints
-    logical, dimension(pointCount), intent(in) :: isInterface
-    real(kind=RKIND), dimension(pointCount,3), intent(in) :: interfaceNormals
-    real(kind=RKIND), dimension(3), intent(in) :: destinationPoint
-    real(kind=RKIND), intent(in) :: alpha
-    real(kind=RKIND), dimension(pointCount,pointCount), intent(out) :: &
-      dirichletMatrix, neumannMatrix
-    real(kind=RKIND), dimension(pointCount), intent(out) :: rhs
+    integer, intent(in) :: pointCount !< Input: Number of points
+    real(kind=RKIND), dimension(pointCount,3), intent(in) :: sourcePoints !< Input: List of points
+    logical, dimension(pointCount), intent(in) :: isInterface !< Input: Logicals determining if point is an interface
+    real(kind=RKIND), dimension(pointCount,3), intent(in) :: interfaceNormals !< Input: Normals at interfaces
+    real(kind=RKIND), dimension(3), intent(in) :: destinationPoint !< Input: Destination point
+    real(kind=RKIND), intent(in) :: alpha !< Input: Characteristic length scale of RBF
+    real(kind=RKIND), dimension(pointCount,pointCount), intent(out) :: dirichletMatrix !< Output: Dirichlet Matrix
+    real(kind=RKIND), dimension(pointCount,pointCount), intent(out) :: neumannMatrix !< Output: Neumann Matrix
+    real(kind=RKIND), dimension(pointCount), intent(out) :: rhs !< Output: Right hand side
 
     integer :: i, j
 
@@ -1517,19 +1706,31 @@ module mpas_rbf_interpolation
       rhs(j) = evaluate_rbf(rSquared)
     end do
 
-  end subroutine mpas_set_up_scalar_rbf_matrix_and_rhs
+  end subroutine mpas_set_up_scalar_rbf_matrix_and_rhs!}}}
 
-  subroutine mpas_set_up_vector_dirichlet_rbf_matrix_and_rhs(pointCount, dimensions, &
+!***********************************************************************
+!
+!  routine mpas_set_up_vector_dirichlet_rbf_matrix_and_rhs
+!
+!> \brief   MPAS RBF Vector Matrix and RHS setup routine
+!> \author  Xylar Asay-Davis
+!> \date    03/28/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine sets up the matrix and RHS for vector Dirichlet RBF interpolation.
+!-----------------------------------------------------------------------
+  subroutine mpas_set_up_vector_dirichlet_rbf_matrix_and_rhs(pointCount, dimensions, &!{{{
     sourcePoints, unitVectors, destinationPoint, &
     alpha, matrix, rhs)
 
-    integer, intent(in) :: pointCount, dimensions
-    real(kind=RKIND), dimension(pointCount,dimensions), intent(in) :: sourcePoints
-    real(kind=RKIND), dimension(pointCount,dimensions), intent(in) :: unitVectors
-    real(kind=RKIND), dimension(dimensions), intent(in) :: destinationPoint
-    real(kind=RKIND), intent(in) :: alpha
-    real(kind=RKIND), dimension(pointCount,pointCount), intent(out) :: matrix
-    real(kind=RKIND), dimension(pointCount,dimensions), intent(out) :: rhs
+    integer, intent(in) :: pointCount !< Input: Number of points
+    integer, intent(in) :: dimensions !< Input: Number of dimensions
+    real(kind=RKIND), dimension(pointCount,dimensions), intent(in) :: sourcePoints !< Input: List of points
+    real(kind=RKIND), dimension(pointCount,dimensions), intent(in) :: unitVectors !< Input: List of unit vectors
+    real(kind=RKIND), dimension(dimensions), intent(in) :: destinationPoint !< Input: Destination point
+    real(kind=RKIND), intent(in) :: alpha !< Input: Characteristic length scale of RBFs
+    real(kind=RKIND), dimension(pointCount,pointCount), intent(out) :: matrix !< Output: Matrix
+    real(kind=RKIND), dimension(pointCount,dimensions), intent(out) :: rhs !< Output: Right hand side
 
     integer :: i, j
 
@@ -1550,21 +1751,33 @@ module mpas_rbf_interpolation
       rhs(j,:) = evaluate_rbf(rSquared)*unitVectors(j,:)
     end do
 
-  end subroutine mpas_set_up_vector_dirichlet_rbf_matrix_and_rhs
+  end subroutine mpas_set_up_vector_dirichlet_rbf_matrix_and_rhs!}}}
 
-  subroutine mpas_set_up_vector_free_slip_rbf_matrix_and_rhs(pointCount, dimensions, &
+!***********************************************************************
+!
+!  routine mpas_set_up_vector_free_slip_rbf_matrix_and_rhs
+!
+!> \brief   MPAS RBF Vector Matrix and RHS setup routine
+!> \author  Xylar Asay-Davis
+!> \date    03/28/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine sets up the matrix and RHS for vector Free Slip RBF interpolation.
+!-----------------------------------------------------------------------
+  subroutine mpas_set_up_vector_free_slip_rbf_matrix_and_rhs(pointCount, dimensions, &!{{{
     sourcePoints, isTangentToInterface, normalVectorIndex, unitVectors, destinationPoint, &
     alpha, matrix, rhs)
 
-    integer, intent(in) :: pointCount, dimensions
-    real(kind=RKIND), dimension(pointCount,dimensions), intent(in) :: sourcePoints
-    logical, dimension(pointCount), intent(in) :: isTangentToInterface
-    integer, dimension(pointCount), intent(in) :: normalVectorIndex
-    real(kind=RKIND), dimension(pointCount,dimensions), intent(in) :: unitVectors
-    real(kind=RKIND), dimension(dimensions), intent(in) :: destinationPoint
-    real(kind=RKIND), intent(in) :: alpha
-    real(kind=RKIND), dimension(pointCount,pointCount), intent(out) :: matrix
-    real(kind=RKIND), dimension(pointCount,dimensions), intent(out) :: rhs
+    integer, intent(in) :: pointCount !< Input: Number of points
+    integer, intent(in) :: dimensions !< Input: Number of dimensions
+    real(kind=RKIND), dimension(pointCount,dimensions), intent(in) :: sourcePoints !< Input: List of points
+    logical, dimension(pointCount), intent(in) :: isTangentToInterface !< Input: Logical to determine if point is tangent to interface
+    integer, dimension(pointCount), intent(in) :: normalVectorIndex !< Input: Index to normal vector
+    real(kind=RKIND), dimension(pointCount,dimensions), intent(in) :: unitVectors !< Input: List of unit vectors
+    real(kind=RKIND), dimension(dimensions), intent(in) :: destinationPoint !< Input: Destination point
+    real(kind=RKIND), intent(in) :: alpha !< Input: Characteristic length scale of RBF
+    real(kind=RKIND), dimension(pointCount,pointCount), intent(out) :: matrix !< Output: Matrix
+    real(kind=RKIND), dimension(pointCount,dimensions), intent(out) :: rhs !< Output: Right hand side
 
     integer :: i, j
 
@@ -1597,24 +1810,47 @@ module mpas_rbf_interpolation
       rhs(j,:) = evaluate_rbf(rSquared)*unitVectors(j,:)
     end do
 
-  end subroutine mpas_set_up_vector_free_slip_rbf_matrix_and_rhs
+  end subroutine mpas_set_up_vector_free_slip_rbf_matrix_and_rhs!}}}
 
-  subroutine mpas_unit_vec_in_r3(xin)
+!***********************************************************************
+!
+!  routine mpas_unit_vec_in_r3
+!
+!> \brief   MPAS 3D unit vector routine
+!> \author  Xylar Asay-Davis
+!> \date    03/28/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine creates a unit vector out of an input point.
+!-----------------------------------------------------------------------
+  subroutine mpas_unit_vec_in_r3(xin)!{{{
     implicit none
-    real (kind=RKIND), intent(inout) :: xin(3)
+    real (kind=RKIND), intent(inout) :: xin(3) !< Input/Output: Vector and unit vector
     real (kind=RKIND) :: mag
     mag = sqrt(xin(1)**2+xin(2)**2+xin(3)**2)
     xin(:) = xin(:) / mag
-  end subroutine mpas_unit_vec_in_r3
+  end subroutine mpas_unit_vec_in_r3!}}}
 
-  subroutine mpas_cross_product_in_r3(p_1,p_2,p_out)
-    real (kind=RKIND), intent(in) :: p_1 (3), p_2 (3)
-    real (kind=RKIND), intent(out) :: p_out (3)
+!***********************************************************************
+!
+!  routine mpas_cross_product_in_r3
+!
+!> \brief   MPAS 3D cross product routine
+!> \author  Xylar Asay-Davis
+!> \date    03/28/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine computes the cross product of two input vectors.
+!-----------------------------------------------------------------------
+  subroutine mpas_cross_product_in_r3(p_1,p_2,p_out)!{{{
+    real (kind=RKIND), intent(in) :: p_1 (3) !< Input: Vector 1
+    real (kind=RKIND), intent(in) :: p_2 (3) !< Input: Vector 2
+    real (kind=RKIND), intent(out) :: p_out (3) !< Output: Cross product of vector 1 and vector 2
 
     p_out(1) = p_1(2)*p_2(3)-p_1(3)*p_2(2)
     p_out(2) = p_1(3)*p_2(1)-p_1(1)*p_2(3)
     p_out(3) = p_1(1)*p_2(2)-p_1(2)*p_2(1)
-  end subroutine mpas_cross_product_in_r3
+  end subroutine mpas_cross_product_in_r3!}}}
 
 ! Updated 10/24/2001.
 !
@@ -1656,20 +1892,28 @@ module mpas_rbf_interpolation
 !  WRITE (6, "(F16.8)") (X(I), I=1,N)
 !END PROGRAM EX43
 
+!***********************************************************************
+!
+!  routine mpas_legs
+!
+!> \brief   MPAS Gaussian elimination solver routine
+!> \author  Xylar Asay-Davis
+!> \date    03/28/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine solves the equation A(N,N)*X(N) = B(N) with the partial-pivoting
+!> Gaussian Elimination scheme. Copyright (c) Tao Pang 2001.
+!-----------------------------------------------------------------------
+subroutine mpas_legs (A,N,B,X,INDX)!{{{
 
-subroutine mpas_legs (A,N,B,X,INDX)
-!
-! subroutine to solve the equation A(N,N)*X(N) = B(N) with the
-! partial-pivoting Gaussian elimination scheme.
-! Copyright (c) Tao Pang 2001.
-!
   IMPLICIT NONE
-  integer, INTENT (IN) :: N
-  integer :: I,J
-  integer, INTENT (OUT), DIMENSION (N) :: INDX
-  real(kind=RKIND), INTENT (INOUT), DIMENSION (N,N) :: A
-  real(kind=RKIND), INTENT (INOUT), DIMENSION (N) :: B
-  real(kind=RKIND), INTENT (OUT), DIMENSION (N) :: X
+  integer, INTENT (IN) :: N !< Input: Size of matrix and vectors
+  integer, INTENT (OUT), DIMENSION (N) :: INDX !< Output: Pivot vector
+  real(kind=RKIND), INTENT (INOUT), DIMENSION (N,N) :: A !< Input/Output: Matrix
+  real(kind=RKIND), INTENT (INOUT), DIMENSION (N) :: B !< Input/Output: Right hand side vector
+  real(kind=RKIND), INTENT (OUT), DIMENSION (N) :: X !< Output: Solution
+
+  integer :: I,J 
 !
   CALL elgs (A,N,INDX)
 !
@@ -1688,7 +1932,7 @@ subroutine mpas_legs (A,N,B,X,INDX)
     X(I) =  X(I)/A(INDX(I),I)
   END DO
 !
-END subroutine mpas_legs
+END subroutine mpas_legs!}}}
 !
 
 
@@ -1709,18 +1953,26 @@ END subroutine mpas_legs
 !                                                                       !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-subroutine migs (A,N,X,INDX)
+!***********************************************************************
 !
-! subroutine to invert matrix A(N,N) with the inverse stored
-! in X(N,N) in the output.  Copyright (c) Tao Pang 2001.
+!  routine migs
 !
+!> \brief   Matrix inversion routine
+!> \author  Xylar Asay-Davis
+!> \date    03/28/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine inverts the matrix A(N,N) and stores it in X(N,B)
+!> Copyright (c) Tao Pang 2001.
+!-----------------------------------------------------------------------
+subroutine migs (A,N,X,INDX)!{{{
   IMPLICIT NONE
-  integer, INTENT (IN) :: N
-  integer :: I,J,K
-  integer, INTENT (OUT), DIMENSION (N) :: INDX
-  real(kind=RKIND), INTENT (INOUT), DIMENSION (N,N):: A
-  real(kind=RKIND), INTENT (OUT), DIMENSION (N,N):: X
+  integer, INTENT (IN) :: N !< Input: Size of matrix and inverse
+  integer, INTENT (OUT), DIMENSION (N) :: INDX !< Output: Pivot vector
+  real(kind=RKIND), INTENT (INOUT), DIMENSION (N,N):: A !< Input/Output: Matrix to invert
+  real(kind=RKIND), INTENT (OUT), DIMENSION (N,N):: X !< Output: Inverse of Matrix
   real(kind=RKIND), DIMENSION (N,N) :: B
+  integer :: I,J,K
 !
   DO I = 1, N
     DO J = 1, N
@@ -1751,10 +2003,22 @@ subroutine migs (A,N,X,INDX)
       X(J,I) =  X(J,I)/A(INDX(J),J)
     END DO
   END DO
-END subroutine migs
+END subroutine migs!}}}
 
+!***********************************************************************
+!
+!  routine elgs
+!
+!> \brief   Partial-pivoting Gaussian elimination routine
+!> \author  Xylar Asay-Davis
+!> \date    03/28/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine performs the partial-pivoting Gaussian elimination.
+!> Copyright (c) Tao Pang 2001.
+!-----------------------------------------------------------------------
 
-subroutine elgs (A,N,INDX)
+subroutine elgs (A,N,INDX)!{{{
 !
 ! subroutine to perform the partial-pivoting Gaussian elimination.
 ! A(N,N) is the original matrix in the input and transformed matrix
@@ -1762,11 +2026,11 @@ subroutine elgs (A,N,INDX)
 ! INDX(N) records the pivoting order.  Copyright (c) Tao Pang 2001.
 !
   IMPLICIT NONE
-  integer, INTENT (IN) :: N
+  integer, INTENT (IN) :: N !< Input: Size of matrix
+  integer, INTENT (OUT), DIMENSION (N) :: INDX !< Output: Pivot vector
+  real(kind=RKIND), INTENT (INOUT), DIMENSION (N,N) :: A !< Input/Output: Matrix and solution
   integer :: I,J,K,ITMP
-  integer, INTENT (OUT), DIMENSION (N) :: INDX
   real(kind=RKIND) :: C1,PI,PI1,PJ
-  real(kind=RKIND), INTENT (INOUT), DIMENSION (N,N) :: A
   real(kind=RKIND), DIMENSION (N) :: C
 !
 ! Initialize the index
@@ -1818,7 +2082,7 @@ subroutine elgs (A,N,INDX)
     END DO
   END DO
 !
-END subroutine elgs
+END subroutine elgs!}}}
 
 end module mpas_rbf_interpolation
 
