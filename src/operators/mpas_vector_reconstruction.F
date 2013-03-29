@@ -1,3 +1,15 @@
+!***********************************************************************
+!
+!  mpas_vector_reconstruction
+!
+!> \brief   MPAS Vector reconstruction module
+!> \author  Xylar Asay-Davis, Todd Ringler
+!> \date    03/28/13
+!> \version SVN:$Id$
+!> \details 
+!> This module provides routines for performing vector reconstruction from edges to cell centers.
+!
+!-----------------------------------------------------------------------
 module mpas_vector_reconstruction
 
   use mpas_grid_types
@@ -11,19 +23,25 @@ module mpas_vector_reconstruction
 
   contains
 
-  subroutine mpas_init_reconstruct(grid)
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-  ! Purpose: pre-compute coefficients used by the reconstruct() routine
-  !
-  ! Input: grid meta data
-  !
-  ! Output: grid % coeffs_reconstruct - coefficients used to reconstruct 
-  !                                     velocity vectors at cell centers 
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+!***********************************************************************
+!
+!  routine mpas_init_reconstruct
+!
+!> \brief   MPAS Vector reconstruction initialization routine
+!> \author  Xylar Asay-Davis, Todd Ringler
+!> \date    03/28/13
+!> \version SVN:$Id$
+!> \details 
+!>  Purpose: pre-compute coefficients used by the reconstruct() routine
+!>  Input: grid meta data
+!>  Output: grid % coeffs_reconstruct - coefficients used to reconstruct 
+!>                                      velocity vectors at cell centers 
+!-----------------------------------------------------------------------
+  subroutine mpas_init_reconstruct(grid)!{{{
 
     implicit none
 
-    type (mesh_type), intent(inout) :: grid 
+    type (mesh_type), intent(inout) :: grid  !< Input/Output: Grid information
 
     ! temporary arrays needed in the (to be constructed) init procedure
     integer :: nCellsSolve
@@ -110,23 +128,32 @@ module mpas_vector_reconstruction
     deallocate(edgeOnCellNormals)
     deallocate(coeffs)
 
-  end subroutine mpas_init_reconstruct
+  end subroutine mpas_init_reconstruct!}}}
 
-  subroutine mpas_reconstruct(grid, u, uReconstructX, uReconstructY, uReconstructZ, uReconstructZonal, uReconstructMeridional)
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  ! Purpose: reconstruct vector field at cell centers based on radial basis functions
-  !
-  ! Input: grid meta data and vector component data residing at cell edges
-  !
-  ! Output: reconstructed vector field (measured in X,Y,Z) located at cell centers
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!***********************************************************************
+!
+!  routine mpas_reconstruct
+!
+!> \brief   MPAS Vector reconstruction routine
+!> \author  Xylar Asay-Davis, Todd Ringler
+!> \date    03/28/13
+!> \version SVN:$Id$
+!> \details 
+!>  Purpose: reconstruct vector field at cell centers based on radial basis functions
+!>  Input: grid meta data and vector component data residing at cell edges
+!>  Output: reconstructed vector field (measured in X,Y,Z) located at cell centers
+!-----------------------------------------------------------------------
+  subroutine mpas_reconstruct(grid, u, uReconstructX, uReconstructY, uReconstructZ, uReconstructZonal, uReconstructMeridional)!{{{
 
     implicit none
 
-    type (mesh_type), intent(in) :: grid
-    real (kind=RKIND), dimension(:,:), intent(in) :: u
-    real (kind=RKIND), dimension(:,:), intent(out) :: uReconstructX, uReconstructY, uReconstructZ
-    real (kind=RKIND), dimension(:,:), intent(out) :: uReconstructZonal, uReconstructMeridional
+    type (mesh_type), intent(in) :: grid !< Input: Grid information
+    real (kind=RKIND), dimension(:,:), intent(in) :: u !< Input: Velocity field on edges
+    real (kind=RKIND), dimension(:,:), intent(out) :: uReconstructX !< Output: X Component of velocity reconstructed to cell centers
+    real (kind=RKIND), dimension(:,:), intent(out) :: uReconstructY !< Output: Y Component of velocity reconstructed to cell centers
+    real (kind=RKIND), dimension(:,:), intent(out) :: uReconstructZ !< Output: Z Component of velocity reconstructed to cell centers
+    real (kind=RKIND), dimension(:,:), intent(out) :: uReconstructZonal !< Output: Zonal Component of velocity reconstructed to cell centers
+    real (kind=RKIND), dimension(:,:), intent(out) :: uReconstructMeridional !< Output: Meridional Component of velocity reconstructed to cell centers
 
     !   temporary arrays needed in the compute procedure
     integer :: nCellsSolve
@@ -191,6 +218,6 @@ module mpas_vector_reconstruction
       uReconstructMeridional = uReconstructY
     end if
 
-  end subroutine mpas_reconstruct
+  end subroutine mpas_reconstruct!}}}
 
 end module mpas_vector_reconstruction
