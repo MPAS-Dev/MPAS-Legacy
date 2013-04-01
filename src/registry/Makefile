@@ -11,7 +11,7 @@ parse: $(OBJS)
 	$(CC) -o $@ $(OBJS)
 
 clean:
-	$(RM) *.o parse
+	$(RM) *.o ezxml/*.o parse
 
 .c.o:
 	$(CC) -c $<
