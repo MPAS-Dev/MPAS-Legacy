@@ -1,3 +1,16 @@
+!***********************************************************************
+!
+!  mpas_grid_types
+!
+!> \brief   MPAS Grid and field type defintion module
+!> \author  Michael Duda, Doug Jacobsen
+!> \date    04/02/13
+!> \version SVN:$Id$
+!> \details 
+!> This module defines derived data types related to fields, and variable structures.
+!> It also includes routines for allocating and deallocating these types.
+!
+!-----------------------------------------------------------------------
 module mpas_grid_types
 
    use mpas_kind_types
@@ -472,31 +485,54 @@ module mpas_grid_types
 
    contains
 
-
-   subroutine mpas_allocate_domain(dom, dminfo)
+!***********************************************************************
+!
+!  routine mpas_allocate_domain
+!
+!> \brief   MPAS Domain allocation routine
+!> \author  Michael Duda
+!> \date    04/02/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine allocates a domain structure.
+!
+!-----------------------------------------------------------------------
+   subroutine mpas_allocate_domain(dom, dminfo)!{{{
 
       implicit none
 
-      type (domain_type), pointer :: dom
-      type (dm_info), pointer :: dminfo
+      type (domain_type), pointer :: dom !< Input/Output: Domain structure
+      type (dm_info), pointer :: dminfo !< Input: Domain Information
 
       allocate(dom)
       nullify(dom % blocklist)
       dom % dminfo => dminfo
 
-   end subroutine mpas_allocate_domain
+   end subroutine mpas_allocate_domain!}}}
 
-
-   subroutine mpas_allocate_block(nHaloLayers, b, dom, blockID, &
+!***********************************************************************
+!
+!  routine mpas_allocate_block
+!
+!> \brief   MPAS Block allocation routine
+!> \author  Michael Duda
+!> \date    04/02/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine allocates a block structure. It calls routines to allocate the variable structures
+!> that are members of the block type.
+!
+!-----------------------------------------------------------------------
+   subroutine mpas_allocate_block(nHaloLayers, b, dom, blockID, &!{{{
 #include "dim_dummy_args.inc"
                             )
 
       implicit none
 
-      integer, intent(in) :: nHaloLayers
-      type (block_type), pointer :: b
-      type (domain_type), pointer :: dom
-      integer, intent(in) :: blockID
+      integer, intent(in) :: nHaloLayers !< Input: Number of halo laters
+      type (block_type), pointer :: b !< Input/Output: Block structure
+      type (domain_type), pointer :: dom !< Input: Domain structure
+      integer, intent(in) :: blockID !< Input: Global ID of block
 #include "dim_dummy_decls.inc"
 
 
@@ -511,19 +547,30 @@ module mpas_grid_types
 
 #include "block_allocs.inc"
 
-   end subroutine mpas_allocate_block
+   end subroutine mpas_allocate_block!}}}
 
 
 #include "group_alloc_routines.inc"
 
 #include "provis_alloc_routines.inc"
 
-
+!***********************************************************************
+!
+!  routine mpas_deallocate_domain
+!
+!> \brief   MPAS Domain deallocation routine
+!> \author  Michael Duda
+!> \date    04/02/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine deallocates a domain structure. 
+!
+!-----------------------------------------------------------------------
    subroutine mpas_deallocate_domain(dom)!{{{
 
       implicit none
 
-      type (domain_type), pointer :: dom
+      type (domain_type), pointer :: dom !< Input/Output: Domain to deallocate
 
       type (block_type), pointer :: block_ptr
 
@@ -537,9 +584,21 @@ module mpas_grid_types
 
    end subroutine mpas_deallocate_domain!}}}
 
+!***********************************************************************
+!
+!  routine mpas_allocate_scratch_field1d_integer
+!
+!> \brief   MPAS 1D Scratch integer allocation routine.
+!> \author  Doug Jacobsen
+!> \date    04/02/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine allocates a 1D scratch integer field.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_allocate_scratch_field1d_integer(f, single_block_in)!{{{
-       type (field1dInteger), pointer :: f
-       logical, intent(in), optional :: single_block_in
+       type (field1dInteger), pointer :: f !< Input: Field to allocate
+       logical, intent(in), optional :: single_block_in !< Input: Logical flag that determines if a single block should be allocated or all blocks.
        logical :: single_block
        type (field1dInteger), pointer :: f_cursor
 
@@ -569,9 +628,21 @@ module mpas_grid_types
 
    end subroutine mpas_allocate_scratch_field1d_integer!}}}
 
+!***********************************************************************
+!
+!  routine mpas_allocate_scratch_field2d_integer
+!
+!> \brief   MPAS 2D Scratch integer allocation routine.
+!> \author  Doug Jacobsen
+!> \date    04/02/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine allocates a 2D scratch integer field.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_allocate_scratch_field2d_integer(f, single_block_in)!{{{
-       type (field2dInteger), pointer :: f
-       logical, intent(in), optional :: single_block_in
+       type (field2dInteger), pointer :: f !< Input: Field to allocate
+       logical, intent(in), optional :: single_block_in !< Input: Logical flag that determines if a single block should be allocated, or all blocks.
        logical :: single_block
        type (field2dInteger), pointer :: f_cursor
 
@@ -601,9 +672,21 @@ module mpas_grid_types
 
    end subroutine mpas_allocate_scratch_field2d_integer!}}}
 
+!***********************************************************************
+!
+!  routine mpas_allocate_scratch_field3d_integer
+!
+!> \brief   MPAS 3D Scratch integer allocation routine.
+!> \author  Doug Jacobsen
+!> \date    04/02/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine allocates a 3D scratch integer field.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_allocate_scratch_field3d_integer(f, single_block_in)!{{{
-       type (field3dInteger), pointer :: f
-       logical, intent(in), optional :: single_block_in
+       type (field3dInteger), pointer :: f !< Input: Field to allocate
+       logical, intent(in), optional :: single_block_in !< Input: Logical flag that determines if a single block should be allocated, or all blocks.
        logical :: single_block
        type (field3dInteger), pointer :: f_cursor
 
@@ -633,9 +716,21 @@ module mpas_grid_types
 
    end subroutine mpas_allocate_scratch_field3d_integer!}}}
 
+!***********************************************************************
+!
+!  routine mpas_allocate_scratch_field1d_real
+!
+!> \brief   MPAS 1D Scratch real allocation routine.
+!> \author  Doug Jacobsen
+!> \date    04/02/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine allocates a 1D scratch real field.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_allocate_scratch_field1d_real(f, single_block_in)!{{{
-       type (field1dReal), pointer :: f
-       logical, intent(in), optional :: single_block_in
+       type (field1dReal), pointer :: f !< Input: Field to allocate
+       logical, intent(in), optional :: single_block_in !< Input: Logical flag that determines if a single block should be allocated, or all blocks.
        logical :: single_block
        type (field1dReal), pointer :: f_cursor
 
@@ -665,9 +760,21 @@ module mpas_grid_types
 
    end subroutine mpas_allocate_scratch_field1d_real!}}}
 
+!***********************************************************************
+!
+!  routine mpas_allocate_scratch_field2d_real
+!
+!> \brief   MPAS 2D Scratch real allocation routine.
+!> \author  Doug Jacobsen
+!> \date    04/02/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine allocates a 2D scratch real field.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_allocate_scratch_field2d_real(f, single_block_in)!{{{
-       type (field2dReal), pointer :: f
-       logical, intent(in), optional :: single_block_in
+       type (field2dReal), pointer :: f !< Input: Field to allocate
+       logical, intent(in), optional :: single_block_in !< Input: Logical flag that determines if a single block should be allocated, or all blocks.
        logical :: single_block
        type (field2dReal), pointer :: f_cursor
 
@@ -697,9 +804,21 @@ module mpas_grid_types
 
    end subroutine mpas_allocate_scratch_field2d_real!}}}
 
+!***********************************************************************
+!
+!  routine mpas_allocate_scratch_field3d_real
+!
+!> \brief   MPAS 3D Scratch real allocation routine.
+!> \author  Doug Jacobsen
+!> \date    04/02/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine allocates a 3D scratch real field.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_allocate_scratch_field3d_real(f, single_block_in)!{{{
-       type (field3dReal), pointer :: f
-       logical, intent(in), optional :: single_block_in
+       type (field3dReal), pointer :: f !< Input: Field to allocate
+       logical, intent(in), optional :: single_block_in !< Input: Logical flag that determines if a single block should be allocated, or all blocks.
        logical :: single_block
        type (field3dReal), pointer :: f_cursor
 
@@ -729,9 +848,21 @@ module mpas_grid_types
 
    end subroutine mpas_allocate_scratch_field3d_real!}}}
 
+!***********************************************************************
+!
+!  routine mpas_allocate_scratch_field4D_real
+!
+!> \brief   MPAS 4D Scratch real allocation routine.
+!> \author  Doug Jacobsen
+!> \date    04/02/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine allocates a 4D scratch real field.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_allocate_scratch_field4d_real(f, single_block_in)!{{{
-       type (field4dReal), pointer :: f
-       logical, intent(in), optional :: single_block_in
+       type (field4dReal), pointer :: f !< Input: Field to allocate
+       logical, intent(in), optional :: single_block_in !< Input: Logical flag that determines if a single block should be allocated, or all blocks.
        logical :: single_block
        type (field4dReal), pointer :: f_cursor
 
@@ -761,9 +892,21 @@ module mpas_grid_types
 
    end subroutine mpas_allocate_scratch_field4d_real!}}}
 
+!***********************************************************************
+!
+!  routine mpas_allocate_scratch_field5D_real
+!
+!> \brief   MPAS 5D Scratch real allocation routine.
+!> \author  Doug Jacobsen
+!> \date    04/02/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine allocates a 5D scratch real field.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_allocate_scratch_field5d_real(f, single_block_in)!{{{
-       type (field5dReal), pointer :: f
-       logical, intent(in), optional :: single_block_in
+       type (field5dReal), pointer :: f !< Input: Field to allocate
+       logical, intent(in), optional :: single_block_in !< Input: Logical flag that determines if a single block should be allocated, or all blocks.
        logical :: single_block
        type (field5dReal), pointer :: f_cursor
 
@@ -793,9 +936,21 @@ module mpas_grid_types
 
    end subroutine mpas_allocate_scratch_field5d_real!}}}
 
+!***********************************************************************
+!
+!  routine mpas_allocate_scratch_field1D_char
+!
+!> \brief   MPAS 1D Scratch character deallocation rotuine
+!> \author  Doug Jacobsen
+!> \date    04/02/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine allocates a 1D scratch character field.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_allocate_scratch_field1d_char(f, single_block_in)!{{{
-       type (field1dChar), pointer :: f
-       logical, intent(in), optional :: single_block_in
+       type (field1dChar), pointer :: f !< Input: Field to allocate
+       logical, intent(in), optional :: single_block_in !< Input: Logical flag that determines if a single block should be allocated, or all blocks.
        logical :: single_block
        type (field1dChar), pointer :: f_cursor
 
@@ -825,9 +980,21 @@ module mpas_grid_types
 
    end subroutine mpas_allocate_scratch_field1d_char!}}}
 
+!***********************************************************************
+!
+!  routine mpas_deallocate_scratch_field1D_integer
+!
+!> \brief   MPAS 1D Scratch integer deallocation rotuine
+!> \author  Doug Jacobsen
+!> \date    04/02/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine deallocates a 1D scratch integer field.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_deallocate_scratch_field1d_integer(f, single_block_in)!{{{
-       type (field1dInteger), pointer :: f
-       logical, intent(in), optional :: single_block_in
+       type (field1dInteger), pointer :: f !< Input: Field to deallocate
+       logical, intent(in), optional :: single_block_in !< Input: Logical that determines if a single block should be deallocated, or all blocks.
        logical :: single_block
        type (field1dInteger), pointer :: f_cursor
 
@@ -858,9 +1025,21 @@ module mpas_grid_types
 
    end subroutine mpas_deallocate_scratch_field1d_integer!}}}
 
+!***********************************************************************
+!
+!  routine mpas_deallocate_scratch_field2D_integer
+!
+!> \brief   MPAS 2D Scratch integer deallocation rotuine
+!> \author  Doug Jacobsen
+!> \date    04/02/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine deallocates a 2D scratch integer field.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_deallocate_scratch_field2d_integer(f, single_block_in)!{{{
-       type (field2dInteger), pointer :: f
-       logical, intent(in), optional :: single_block_in
+       type (field2dInteger), pointer :: f !< Input: Field to deallocate
+       logical, intent(in), optional :: single_block_in !< Input: Logical that determines if a single block should be deallocated, or all blocks.
        logical :: single_block
        type (field2dInteger), pointer :: f_cursor
 
@@ -891,9 +1070,21 @@ module mpas_grid_types
 
    end subroutine mpas_deallocate_scratch_field2d_integer!}}}
 
+!***********************************************************************
+!
+!  routine mpas_deallocate_scratch_field3D_integer
+!
+!> \brief   MPAS 3D Scratch integer deallocation rotuine
+!> \author  Doug Jacobsen
+!> \date    04/02/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine deallocates a 3D scratch integer field.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_deallocate_scratch_field3d_integer(f, single_block_in)!{{{
-       type (field3dInteger), pointer :: f
-       logical, intent(in), optional :: single_block_in
+       type (field3dInteger), pointer :: f !< Input: Field to deallocate
+       logical, intent(in), optional :: single_block_in !< Input: Logical that determines if a single block should be deallocated, or all blocks.
        logical :: single_block
        type (field3dInteger), pointer :: f_cursor
 
@@ -924,9 +1115,21 @@ module mpas_grid_types
 
    end subroutine mpas_deallocate_scratch_field3d_integer!}}}
 
+!***********************************************************************
+!
+!  routine mpas_deallocate_scratch_field1D_real
+!
+!> \brief   MPAS 1D Scratch real deallocation rotuine
+!> \author  Doug Jacobsen
+!> \date    04/02/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine deallocates a 1D scratch real field.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_deallocate_scratch_field1d_real(f, single_block_in)!{{{
-       type (field1dReal), pointer :: f
-       logical, intent(in), optional :: single_block_in
+       type (field1dReal), pointer :: f !< Input: Field to deallocate
+       logical, intent(in), optional :: single_block_in !< Input: Logical that determines if a single block should be deallocated, or all blocks.
        logical :: single_block
        type (field1dReal), pointer :: f_cursor
 
@@ -957,9 +1160,21 @@ module mpas_grid_types
 
    end subroutine mpas_deallocate_scratch_field1d_real!}}}
 
+!***********************************************************************
+!
+!  routine mpas_deallocate_scratch_field2D_real
+!
+!> \brief   MPAS 2D Scratch real deallocation rotuine
+!> \author  Doug Jacobsen
+!> \date    04/02/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine deallocates a 2D scratch real field.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_deallocate_scratch_field2d_real(f, single_block_in)!{{{
-       type (field2dReal), pointer :: f
-       logical, intent(in), optional :: single_block_in
+       type (field2dReal), pointer :: f !< Input: Field to deallocate
+       logical, intent(in), optional :: single_block_in !< Input: Logical that determines if a single block should be deallocated, or all blocks.
        logical :: single_block
        type (field2dReal), pointer :: f_cursor
 
@@ -990,9 +1205,21 @@ module mpas_grid_types
 
    end subroutine mpas_deallocate_scratch_field2d_real!}}}
 
+!***********************************************************************
+!
+!  routine mpas_deallocate_scratch_field3D_real
+!
+!> \brief   MPAS 3D Scratch real deallocation rotuine
+!> \author  Doug Jacobsen
+!> \date    04/02/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine deallocates a 3D scratch real field.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_deallocate_scratch_field3d_real(f, single_block_in)!{{{
-       type (field3dReal), pointer :: f
-       logical, intent(in), optional :: single_block_in
+       type (field3dReal), pointer :: f !< Input: Field to deallocate
+       logical, intent(in), optional :: single_block_in !< Input: Logical that determines if a single block should be deallocated, or all blocks.
        logical :: single_block
        type (field3dReal), pointer :: f_cursor
 
@@ -1023,9 +1250,21 @@ module mpas_grid_types
 
    end subroutine mpas_deallocate_scratch_field3d_real!}}}
 
+!***********************************************************************
+!
+!  routine mpas_deallocate_scratch_field4D_real
+!
+!> \brief   MPAS 4D Scratch real deallocation rotuine
+!> \author  Doug Jacobsen
+!> \date    04/02/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine deallocates a 4D scratch real field.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_deallocate_scratch_field4d_real(f, single_block_in)!{{{
-       type (field4dReal), pointer :: f
-       logical, intent(in), optional :: single_block_in
+       type (field4dReal), pointer :: f !< Input: Field to deallocate
+       logical, intent(in), optional :: single_block_in !< Input: Logical that determines if a single block should be deallocated, or all blocks.
        logical :: single_block
        type (field4dReal), pointer :: f_cursor
 
@@ -1056,9 +1295,21 @@ module mpas_grid_types
 
    end subroutine mpas_deallocate_scratch_field4d_real!}}}
 
+!***********************************************************************
+!
+!  routine mpas_deallocate_scratch_field5D_real
+!
+!> \brief   MPAS 5D Scratch real deallocation rotuine
+!> \author  Doug Jacobsen
+!> \date    04/02/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine deallocates a 5D scratch real field.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_deallocate_scratch_field5d_real(f, single_block_in)!{{{
-       type (field5dReal), pointer :: f
-       logical, intent(in), optional :: single_block_in
+       type (field5dReal), pointer :: f !< Input: Field to deallocate
+       logical, intent(in), optional :: single_block_in !< Input: Logical that determines if a single block should be deallocated, or all blocks.
        logical :: single_block
        type (field5dReal), pointer :: f_cursor
 
@@ -1089,9 +1340,21 @@ module mpas_grid_types
 
    end subroutine mpas_deallocate_scratch_field5d_real!}}}
 
+!***********************************************************************
+!
+!  routine mpas_deallocate_scratch_field1D_char
+!
+!> \brief   MPAS 1D Scratch character deallocation rotuine
+!> \author  Doug Jacobsen
+!> \date    04/02/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine deallocates a 1D scratch character field.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_deallocate_scratch_field1d_char(f, single_block_in)!{{{
-       type (field1dChar), pointer :: f
-       logical, intent(in), optional :: single_block_in
+       type (field1dChar), pointer :: f !< Input: Field to deallocate
+       logical, intent(in), optional :: single_block_in !< Input: Logical that determines if a single block should be deallocated, or all blocks.
        logical :: single_block
        type (field1dChar), pointer :: f_cursor
 
@@ -1122,9 +1385,20 @@ module mpas_grid_types
 
    end subroutine mpas_deallocate_scratch_field1d_char!}}}
 
-
+!***********************************************************************
+!
+!  routine mpas_deallocate_field0d_integer
+!
+!> \brief   MPAS 0D integer deallocation routine.
+!> \author  Doug Jacobsen
+!> \date    04/02/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine deallocates a 0D integer field.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_deallocate_field0d_integer(f)!{{{
-       type (field0dInteger), pointer :: f
+       type (field0dInteger), pointer :: f !< Input: Field to deallocate
        type (field0dInteger), pointer :: f_cursor
 
        f_cursor => f
@@ -1146,8 +1420,20 @@ module mpas_grid_types
 
    end subroutine mpas_deallocate_field0d_integer!}}}
 
+!***********************************************************************
+!
+!  routine mpas_deallocate_field1D_integer
+!
+!> \brief   MPAS 1D integer deallocation routine.
+!> \author  Doug Jacobsen
+!> \date    04/02/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine deallocates a 1D integer field.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_deallocate_field1d_integer(f)!{{{
-       type (field1dInteger), pointer :: f
+       type (field1dInteger), pointer :: f !< Input: Field to deallocate
        type (field1dInteger), pointer :: f_cursor
 
        f_cursor => f
@@ -1173,8 +1459,20 @@ module mpas_grid_types
 
    end subroutine mpas_deallocate_field1d_integer!}}}
 
+!***********************************************************************
+!
+!  routine mpas_deallocate_field2D_integer
+!
+!> \brief   MPAS 2D integer deallocation routine.
+!> \author  Doug Jacobsen
+!> \date    04/02/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine deallocates a 2D integer field.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_deallocate_field2d_integer(f)!{{{
-       type (field2dInteger), pointer :: f
+       type (field2dInteger), pointer :: f !< Input: Field to deallocate
        type (field2dInteger), pointer :: f_cursor
 
        f_cursor => f
@@ -1200,8 +1498,20 @@ module mpas_grid_types
 
    end subroutine mpas_deallocate_field2d_integer!}}}
 
+!***********************************************************************
+!
+!  routine mpas_deallocate_field3D_integer
+!
+!> \brief   MPAS 3D integer deallocation routine.
+!> \author  Doug Jacobsen
+!> \date    04/02/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine deallocates a 3D integer field.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_deallocate_field3d_integer(f)!{{{
-       type (field3dInteger), pointer :: f
+       type (field3dInteger), pointer :: f !< Input: Field to deallocate
        type (field3dInteger), pointer :: f_cursor
 
        f_cursor => f
@@ -1227,8 +1537,20 @@ module mpas_grid_types
 
    end subroutine mpas_deallocate_field3d_integer!}}}
 
+!***********************************************************************
+!
+!  routine mpas_deallocate_field0d_real
+!
+!> \brief   MPAS 0D real deallocation routine.
+!> \author  Doug Jacobsen
+!> \date    04/02/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine deallocates a 0D real field.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_deallocate_field0d_real(f)!{{{
-       type (field0dReal), pointer :: f
+       type (field0dReal), pointer :: f !< Input: Field to deallocate
        type (field0dReal), pointer :: f_cursor
 
        f_cursor => f
@@ -1251,8 +1573,20 @@ module mpas_grid_types
 
    end subroutine mpas_deallocate_field0d_real!}}}
 
+!***********************************************************************
+!
+!  routine mpas_deallocate_field1D_real
+!
+!> \brief   MPAS 1D real deallocation routine.
+!> \author  Doug Jacobsen
+!> \date    04/02/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine deallocates a 1D real field.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_deallocate_field1d_real(f)!{{{
-       type (field1dReal), pointer :: f
+       type (field1dReal), pointer :: f !< Input: Field to deallocate
        type (field1dReal), pointer :: f_cursor
 
        f_cursor => f
@@ -1278,8 +1612,20 @@ module mpas_grid_types
 
    end subroutine mpas_deallocate_field1d_real!}}}
 
+!***********************************************************************
+!
+!  routine mpas_deallocate_field2D_real
+!
+!> \brief   MPAS 2D real deallocation routine.
+!> \author  Doug Jacobsen
+!> \date    04/02/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine deallocates a 2D real field.
+!
+
    subroutine mpas_deallocate_field2d_real(f)!{{{
-       type (field2dReal), pointer :: f
+       type (field2dReal), pointer :: f !< Input: Field to deallocate
        type (field2dReal), pointer :: f_cursor
 
        f_cursor => f
@@ -1305,8 +1651,20 @@ module mpas_grid_types
 
    end subroutine mpas_deallocate_field2d_real!}}}
 
+!***********************************************************************
+!
+!  routine mpas_deallocate_field3D_real
+!
+!> \brief   MPAS 3D real deallocation routine.
+!> \author  Doug Jacobsen
+!> \date    04/02/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine deallocates a 3D real field.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_deallocate_field3d_real(f)!{{{
-       type (field3dReal), pointer :: f
+       type (field3dReal), pointer :: f !< Input: Field to deallocate
        type (field3dReal), pointer :: f_cursor
 
        f_cursor => f
@@ -1332,8 +1690,20 @@ module mpas_grid_types
 
    end subroutine mpas_deallocate_field3d_real!}}}
 
+!***********************************************************************
+!
+!  routine mpas_deallocate_field4D_real
+!
+!> \brief   MPAS 4D real deallocation routine.
+!> \author  Doug Jacobsen
+!> \date    04/02/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine deallocates a 4D real field.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_deallocate_field4d_real(f)!{{{
-       type (field4dReal), pointer :: f
+       type (field4dReal), pointer :: f !< Input: Field to deallocate
        type (field4dReal), pointer :: f_cursor
 
        f_cursor => f
@@ -1359,8 +1729,20 @@ module mpas_grid_types
 
    end subroutine mpas_deallocate_field4d_real!}}}
 
+!***********************************************************************
+!
+!  routine mpas_deallocate_field5D_real
+!
+!> \brief   MPAS 5D real deallocation routine.
+!> \author  Doug Jacobsen
+!> \date    04/02/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine deallocates a 5D real field.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_deallocate_field5d_real(f)!{{{
-       type (field5dReal), pointer :: f
+       type (field5dReal), pointer :: f !< Input: Field to deallocate
        type (field5dReal), pointer :: f_cursor
 
        f_cursor => f
@@ -1386,8 +1768,20 @@ module mpas_grid_types
 
    end subroutine mpas_deallocate_field5d_real!}}}
 
+!***********************************************************************
+!
+!  routine mpas_deallocate_field0D_char
+!
+!> \brief   MPAS 0D character deallocation routine.
+!> \author  Doug Jacobsen
+!> \date    04/02/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine deallocates a 0D character field.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_deallocate_field0d_char(f)!{{{
-       type (field0dChar), pointer :: f
+       type (field0dChar), pointer :: f !< Input: Field to deallocate
        type (field0dChar), pointer :: f_cursor
 
        f_cursor => f
@@ -1409,8 +1803,20 @@ module mpas_grid_types
 
    end subroutine mpas_deallocate_field0d_char!}}}
 
+!***********************************************************************
+!
+!  routine mpas_deallocate_field1D_char
+!
+!> \brief   MPAS 1D character deallocation routine.
+!> \author  Doug Jacobsen
+!> \date    04/02/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine deallocates a 1D character field.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_deallocate_field1d_char(f)!{{{
-       type (field1dChar), pointer :: f
+       type (field1dChar), pointer :: f !< Input: Field to deallocate
        type (field1dChar), pointer :: f_cursor
 
        f_cursor => f
@@ -1436,16 +1842,29 @@ module mpas_grid_types
 
    end subroutine mpas_deallocate_field1d_char!}}}
 
+!***********************************************************************
+!
+!  routine mpas_deallocate_block
+!
+!> \brief   MPAS Block deallocation routine
+!> \author  Doug Jacobsen
+!> \date    04/02/13
+!> \version SVN:$Id$
+!> \details 
+!> This routine deallocates a block structure.
+!
+!-----------------------------------------------------------------------
    subroutine mpas_deallocate_block(b)!{{{
  
       implicit none
 
-      type (block_type), intent(inout) :: b
+      type (block_type), intent(inout) :: b !< Input/Output: Block to be deallocated.
 
       integer :: i
 
       ! BUG: It seems like we should be deallocating the exchange lists before we 
       !      deallocate the array of head pointers and the parinfo type...
+      !      It also seems like these deallocations should happen with mpas_dmpar_destroy_multihalo_exchange_list
 
       deallocate(b % parinfo % cellsToSend)
       deallocate(b % parinfo % cellsToRecv)
