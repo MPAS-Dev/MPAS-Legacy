@@ -1,3 +1,15 @@
+!***********************************************************************
+!
+!  mpas_spline_interpolation
+!
+!> \brief   MPAS Vector reconstruction module
+!> \author  Mark Petersen
+!> \date    04/02/13
+!> \version SVN:$Id$
+!> \details 
+!> This module provides routines for performing spline interpolation.
+!
+!-----------------------------------------------------------------------
 module mpas_spline_interpolation
 
   use mpas_kind_types
@@ -13,44 +25,42 @@ module mpas_spline_interpolation
               mpas_interpolate_linear, &
               mpas_test_interpolate
 
-! Short Descriptions:
-
-!   mpas_cubic_spline_coefficients: Compute second derivatives at nodes.  
-!      This must be run before any of the other cubic spine functions.
-
-!   mpas_interpolate_cubic_spline: Compute cubic spline interpolation. 
-
-!   mpas_integrate_cubic_spline:  Compute a single integral from spline data.
-
-!   mpas_integrate_column_cubic_spline:  Compute multiple integrals from spline data.
-
-!   mpas_interpolate_linear:  Compute linear interpolation.
-
-!   mpas_test_interpolate:  Test spline interpolation subroutines.
-
   contains
 
- subroutine mpas_cubic_spline_coefficients(x,y,n,y2ndDer)  
-
-!  Given arrays x(1:n) and y(1:n) containing a function,
-!  i.e., y(i) = f(x(i)), with x monotonically increasing
-!  this routine returns an array y2ndDer(1:n) that contains 
-!  the second derivatives of the interpolating function at x(1:n). 
-!  This routine uses boundary conditions for a natural spline, 
-!  with zero second derivative on that boundary.
+!***********************************************************************
+!
+!  routine mpas_cubic_spline_coefficients
+!
+!> \brief   MPAS Cubic spline coefficients routine
+!> \author  Mark Petersen
+!> \date    04/02/13
+!> \version SVN:$Id$
+!> \details 
+!>  This routine computes second derivatives at nodes.  
+!>  This must be run before any of the other cubic spine functions.
+!>
+!>  Given arrays x(1:n) and y(1:n) containing a function,
+!>  i.e., y(i) = f(x(i)), with x monotonically increasing
+!>  this routine returns an array y2ndDer(1:n) that contains 
+!>  the second derivatives of the interpolating function at x(1:n). 
+!>  This routine uses boundary conditions for a natural spline, 
+!>  with zero second derivative on that boundary.
+!
+!-----------------------------------------------------------------------
+ subroutine mpas_cubic_spline_coefficients(x,y,n,y2ndDer)  !{{{
 
 ! INPUT PARAMETERS:
 
   integer, intent(in) :: &
-    n     ! number of nodes
+    n     !< Input: number of nodes
   real(kind=RKIND), intent(in), dimension(n) :: &
-    x,   &! location of nodes
-    y     ! value at nodes
+    x,   &!< Input: location of nodes
+    y     !< Input: value at nodes
 
 ! OUTPUT PARAMETERS:
 
   real(kind=RKIND), intent(out), dimension(n) :: &
-    y2ndDer    ! dy^2/dx^2 at each node
+    y2ndDer    !< Output: dy^2/dx^2 at each node
 
 !  local variables:
 
@@ -75,39 +85,48 @@ module mpas_spline_interpolation
       y2ndDer(i)=y2ndDer(i)*y2ndDer(i+1)+a(i)  
    enddo
 
-  end subroutine mpas_cubic_spline_coefficients
+  end subroutine mpas_cubic_spline_coefficients!}}}
 
-
-  subroutine mpas_interpolate_cubic_spline( &
+!***********************************************************************
+!
+!  routine mpas_interpolate_cubic_spline
+!
+!> \brief   MPAS Cubic spline interpolation routine
+!> \author  Mark Petersen
+!> \date    04/02/13
+!> \version SVN:$Id$
+!> \details 
+!>  Given the arrays x(1:n) and y(1:n), which tabulate a function,
+!>  and given the array y2ndDer(1:n), which is the output from 
+!>  CubicSplineCoefficients above, this routine returns the 
+!>  cubic-spline interpolated values of yOut(1:nOut) at xOut(1:nOut).
+!>  This subroutine assumes that both x and xOut are monotonically
+!>  increasing, and that all values of xOut are within the first and
+!>  last values of x.
+!
+!-----------------------------------------------------------------------
+  subroutine mpas_interpolate_cubic_spline( &!{{{
                 x,y,y2ndDer,n, &
                 xOut,yOut,nOut)  
-
-!  Given the arrays x(1:n) and y(1:n), which tabulate a function,
-!  and given the array y2ndDer(1:n), which is the output from 
-!  CubicSplineCoefficients above, this routine returns the 
-!  cubic-spline interpolated values of yOut(1:nOut) at xOut(1:nOut).
-!  This subroutine assumes that both x and xOut are monotonically
-!  increasing, and that all values of xOut are within the first and
-!  last values of x.
 
 ! INPUT PARAMETERS:
 
   real (kind=RKIND), dimension(n), intent(in) :: &
-    x,         &! node location, input grid
-    y,       &! interpolation variable, input grid
-    y2ndDer     ! 2nd derivative of y at nodes
+    x,         &!< Input: node location, input grid
+    y,       &!< Input: interpolation variable, input grid
+    y2ndDer     !< Input: 2nd derivative of y at nodes
 
   real (kind=RKIND), dimension(nOut), intent(in) :: &
-    xOut          ! node location, output grid
+    xOut          !< Input: node location, output grid
 
   integer, intent(in) :: &
-    n,      &! number of nodes, input grid
-    nOut       ! number of nodes, output grid
+    n,      &!< Input: number of nodes, input grid
+    nOut       !< Input: number of nodes, output grid
 
 ! OUTPUT PARAMETERS:
 
   real (kind=RKIND), dimension(nOut), intent(out) :: &
-    yOut        ! interpolation variable, output grid
+    yOut        !< Output: interpolation variable, output grid
 
 !  local variables:
 
@@ -139,34 +158,43 @@ module mpas_spline_interpolation
   
   enddo kInLoop
 
-end subroutine mpas_interpolate_cubic_spline
+end subroutine mpas_interpolate_cubic_spline!}}}
 
-
-subroutine mpas_integrate_cubic_spline(x,y,y2ndDer,n,x1,x2,y_integral)  
-
-!  Given the arrays x(1:n) and y(1:n), which tabulate a function,
-!  and given the array y2ndDer(1:n), which is the output from 
-!  CubicSplineCoefficients above, this routine returns y_integral,
-!  the integral of y from x1 to x2.  The integration formula was 
-!  created by analytically integrating a cubic spline between each node.
-!  This subroutine assumes that x is monotonically increasing, and
-!  that x1 < x2.
+!***********************************************************************
+!
+!  routine mpas_integrate_cubic_spline
+!
+!> \brief   MPAS Cubic spline integration routine
+!> \author  Mark Petersen
+!> \date    04/02/13
+!> \version SVN:$Id$
+!> \details 
+!>  Given the arrays x(1:n) and y(1:n), which tabulate a function,
+!>  and given the array y2ndDer(1:n), which is the output from 
+!>  CubicSplineCoefficients above, this routine returns y_integral,
+!>  the integral of y from x1 to x2.  The integration formula was 
+!>  created by analytically integrating a cubic spline between each node.
+!>  This subroutine assumes that x is monotonically increasing, and
+!>  that x1 < x2.
+!
+!-----------------------------------------------------------------------
+subroutine mpas_integrate_cubic_spline(x,y,y2ndDer,n,x1,x2,y_integral)  !{{{
 
 ! INPUT PARAMETERS:
 
   integer, intent(in) :: &
-    n     ! number of nodes
+    n     !< Input: number of nodes
   real(kind=RKIND), intent(in), dimension(n) :: &
-    x,   &! location of nodes
-    y,   &! value at nodes
-    y2ndDer    ! dy^2/dx^2 at each node
+    x,   &!< Input: location of nodes
+    y,   &!< Input: value at nodes
+    y2ndDer    !< Input: dy^2/dx^2 at each node
   real(kind=RKIND), intent(in) :: &
-    x1,x2 ! limits of integration
+    x1,x2 !< Input: limits of integration
 
 ! OUTPUT PARAMETERS:
 
   real(kind=RKIND), intent(out) :: &
-    y_integral  ! integral of y
+    y_integral  !< Output: integral of y
 
 !  local variables:
   
@@ -215,40 +243,49 @@ subroutine mpas_integrate_cubic_spline(x,y,y2ndDer,n,x1,x2,y_integral)
 
   enddo ! j
 
-  end subroutine mpas_integrate_cubic_spline
+  end subroutine mpas_integrate_cubic_spline!}}}
 
-
-  subroutine mpas_integrate_column_cubic_spline( &
+!***********************************************************************
+!
+!  routine mpas_integrate_column_cubic_spline
+!
+!> \brief   MPAS Cubic spline column integration routine
+!> \author  Mark Petersen
+!> \date    04/02/13
+!> \version SVN:$Id$
+!> \details 
+!>  Given the arrays x(1:n) and y(1:n), which tabulate a function,
+!>  and given the array y2ndDer(1:n), which is the output from 
+!>  CubicSplineCoefficients above, this routine returns 
+!>  y_integral(1:nOut), the integral of y.
+!>  This is a cumulative integration, so that
+!>  y_integral(j) holds the integral of y from x(1) to xOut(j).
+!>  The integration formula was created by analytically integrating a 
+!>  cubic spline between each node.
+!>  This subroutine assumes that both x and xOut are monotonically
+!>  increasing, and that all values of xOut are within the first and
+!
+!-----------------------------------------------------------------------
+  subroutine mpas_integrate_column_cubic_spline( &!{{{
                x,y,y2ndDer,n, &
                xOut,y_integral, nOut)  
-
-!  Given the arrays x(1:n) and y(1:n), which tabulate a function,
-!  and given the array y2ndDer(1:n), which is the output from 
-!  CubicSplineCoefficients above, this routine returns 
-!  y_integral(1:nOut), the integral of y.
-!  This is a cumulative integration, so that
-!  y_integral(j) holds the integral of y from x(1) to xOut(j).
-!  The integration formula was created by analytically integrating a 
-!  cubic spline between each node.
-!  This subroutine assumes that both x and xOut are monotonically
-!  increasing, and that all values of xOut are within the first and
 
 ! INPUT PARAMETERS:
 
   integer, intent(in) :: &
-    n,   &! number of nodes
-    nOut  ! number of output locations to compute integral
+    n,   &!< Input: number of nodes
+    nOut  !< Input: number of output locations to compute integral
   real(kind=RKIND), intent(in), dimension(n) :: &
-    x,   &! location of nodes
-    y,   &! value at nodes
-    y2ndDer    ! dy^2/dx^2 at each node
+    x,   &!< Input: location of nodes
+    y,   &!< Input: value at nodes
+    y2ndDer    !< Input: dy^2/dx^2 at each node
   real(kind=RKIND), dimension(nOut), intent(in) :: &
-    xOut  ! output locations to compute integral
+    xOut  !< Input: output locations to compute integral
 
 ! OUTPUT PARAMETERS:
 
   real(kind=RKIND), dimension(nOut), intent(out) :: &
-    y_integral  ! integral from 0 to xOut
+    y_integral  !< Output: integral from 0 to xOut
 
 !  local variables:
 
@@ -295,37 +332,47 @@ subroutine mpas_integrate_cubic_spline(x,y,y2ndDer,n,x1,x2,y_integral)
 
   enddo k_loop
 
- end subroutine mpas_integrate_column_cubic_spline
+ end subroutine mpas_integrate_column_cubic_spline!}}}
 
-
- subroutine mpas_interpolate_linear( &
+!***********************************************************************
+!
+!  routine mpas_interpolate_linear
+!
+!> \brief   MPAS Linear interpolation routine
+!> \author  Mark Petersen
+!> \date    04/02/13
+!> \version SVN:$Id$
+!> \details 
+!>  Given the arrays x(1:n) and y(1:n), which tabulate a function,
+!>  this routine returns the linear interpolated values of yOut(1:nOut)
+!>  at xOut(1:nOut).
+!>  This subroutine assumes that both x and xOut are monotonically
+!>  increasing, and that all values of xOut are within the first and
+!>  last values of x.
+!
+!-----------------------------------------------------------------------
+ subroutine mpas_interpolate_linear( &!{{{
                 x,y,n, &
                 xOut,yOut,nOut)  
 
-!  Given the arrays x(1:n) and y(1:n), which tabulate a function,
-!  this routine returns the linear interpolated values of yOut(1:nOut)
-!  at xOut(1:nOut).
-!  This subroutine assumes that both x and xOut are monotonically
-!  increasing, and that all values of xOut are within the first and
-!  last values of x.
 
 ! !INPUT PARAMETERS:
 
   real (kind=RKIND), dimension(n), intent(in) :: &
-    x,         &! node location, input grid
-    y         ! interpolation variable, input grid
+    x,         &!< Input: node location, input grid
+    y         !< Input: interpolation variable, input grid
 
   real (kind=RKIND), dimension(nOut), intent(in) :: &
-    xOut          ! node location, output grid
+    xOut          !< Input: node location, output grid
 
   integer, intent(in) :: &
-    N,      &! number of nodes, input grid
-    NOut       ! number of nodes, output grid
+    N,      &!< Input: number of nodes, input grid
+    NOut       !< Input: number of nodes, output grid
 
 ! !OUTPUT PARAMETERS:
 
   real (kind=RKIND), dimension(nOut), intent(out) :: &
-    yOut        ! interpolation variable, output grid
+    yOut        !< Output: interpolation variable, output grid
 
 !-----------------------------------------------------------------------
 !
@@ -355,12 +402,21 @@ subroutine mpas_integrate_cubic_spline(x,y,y2ndDer,n,x1,x2,y_integral)
   
   enddo kInLoop
 
-  end subroutine mpas_interpolate_linear
+  end subroutine mpas_interpolate_linear!}}}
 
-
-  subroutine mpas_test_interpolate
-
-!  Test function to show how to operate the cubic spline subroutines
+!***********************************************************************
+!
+!  routine mpas_test_interpolate
+!
+!> \brief   MPAS Interpolation test routine
+!> \author  Mark Petersen
+!> \date    04/02/13
+!> \version SVN:$Id$
+!> \details 
+!>  Test routine to show how to operate the cubic spline subroutines
+!
+!-----------------------------------------------------------------------
+  subroutine mpas_test_interpolate!{{{
 
   integer, parameter :: &
     n = 10
@@ -426,7 +482,7 @@ subroutine mpas_integrate_cubic_spline(x,y,y2ndDer,n,x1,x2,y_integral)
    print '(a,100f8.4,a)', 'yOut = [',yOut,'];'
    print *, "plot(x,y,'-*r',xOut,yOut,'x')"
 
-  end subroutine mpas_test_interpolate
+  end subroutine mpas_test_interpolate!}}}
 
 end module mpas_spline_interpolation
 
