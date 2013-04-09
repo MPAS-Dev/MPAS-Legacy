@@ -193,9 +193,18 @@ intel-nersc:
 	"USE_PAPI = $(USE_PAPI)" \
 	"CPPFLAGS = $(MODEL_FORMULATION) -DUNDERSCORE $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
 
-CPPINCLUDES = -I../inc -I$(NETCDF)/include -I$(PIO) -I$(PNETCDF)/include
-FCINCLUDES = -I../inc -I$(NETCDF)/include -I$(PIO) -I$(PNETCDF)/include
-LIBS = -L$(PIO) -L$(PNETCDF)/lib -L$(NETCDF)/lib -lpio -lpnetcdf
+CPPINCLUDES = 
+FCINCLUDES = 
+LIBS = 
+ifneq ($(wildcard $(PIO)/lib), ) # Check for newer PIO version
+	CPPINCLUDES = -I../inc -I$(NETCDF)/include -I$(PIO)/include -I$(PNETCDF)/include
+	FCINCLUDES = -I../inc -I$(NETCDF)/include -I$(PIO)/include -I$(PNETCDF)/include
+	LIBS = -L$(PIO)/lib -L$(PNETCDF)/lib -L$(NETCDF)/lib -lpio -lpnetcdf
+else
+	CPPINCLUDES = -I../inc -I$(NETCDF)/include -I$(PIO) -I$(PNETCDF)/include
+	FCINCLUDES = -I../inc -I$(NETCDF)/include -I$(PIO) -I$(PNETCDF)/include
+	LIBS = -L$(PIO) -L$(PNETCDF)/lib -L$(NETCDF)/lib -lpio -lpnetcdf
+endif
 
 NCLIB = -lnetcdf
 NCLIBF = -lnetcdff
