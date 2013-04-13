@@ -169,6 +169,17 @@ void gen_namelists(struct namelist * nls)
    fclose(fd);
 }
 
+void gen_history_attributes(char * modelname, char * corename, char * version)
+{
+	FILE *fd;
+
+	fd = fopen("model_variables.inc","w");
+	fortprintf(fd, "       character (len=StrKIND) :: modelName = '%s' !< Constant: Name of model\n", modelname);
+	fortprintf(fd, "       character (len=StrKIND) :: coreName = '%s' !< Constant: Name of core\n", corename);
+	fortprintf(fd, "       character (len=StrKIND) :: modelVersion = '%s' !< Constant: Version number\n", version);
+	fclose(fd);
+}
+
 
 void gen_field_defs(struct group_list * groups, struct variable * vars, struct dimension * dims)
 {

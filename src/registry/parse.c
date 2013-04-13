@@ -19,6 +19,8 @@ int main(int argc, char ** argv)
    struct variable * vars;
    struct group_list * groups;
 
+   char modelname[1024], corename[1024], version[1024];
+
    if (argc != 2) {
       fprintf(stderr,"Reading registry file from standard input\n");
       regfile = stdin;
@@ -32,7 +34,7 @@ int main(int argc, char ** argv)
    dims = NULL;
    vars = NULL;
   
-   if (parse_reg_xml(regfile, &nls, &dims, &vars, &groups)) {
+   if (parse_reg_xml(regfile, &nls, &dims, &vars, &groups, &modelname, &corename, &version)) {
       return 1;
    }
   
@@ -45,6 +47,7 @@ int main(int argc, char ** argv)
    sort_vars(vars);
    sort_group_vars(groups);
 
+   gen_history_attributes(modelname, corename, version);
    gen_namelists(nls);
    gen_field_defs(groups, vars, dims);
    gen_reads(groups, vars, dims);
@@ -53,7 +56,7 @@ int main(int argc, char ** argv)
    return 0;
 }
 
-int parse_reg_xml(FILE * regfile, struct namelist **nls, struct dimension ** dims, struct variable ** vars, struct group_list ** groups)
+int parse_reg_xml(FILE * regfile, struct namelist **nls, struct dimension ** dims, struct variable ** vars, struct group_list ** groups, char * modelname, char * corename, char * version)
 {
 	struct namelist * nls_ptr, *nls_ptr2;
 	struct namelist * nls_chk_ptr;
@@ -75,6 +78,7 @@ int parse_reg_xml(FILE * regfile, struct namelist **nls, struct dimension ** dim
 	const char *vararrname, *vararrtype, *vararrdims, *vararrpersistence;
 	const char *varname, *varpersistence, *vartype, *vardims, *varunits, *vardesc, *vararrgroup, *varstreams;
 	const char *varname_in_code;
+	const char *const_model, *const_core, *const_version;
 
 	char dimensions[2048];
 	char *dimension_list;
@@ -89,6 +93,26 @@ int parse_reg_xml(FILE * regfile, struct namelist **nls, struct dimension ** dim
 	*dims = dim_ptr;
 	*vars = var_ptr;
 	*groups = grouplist_ptr;
+
+	// Get model information
+	const_model = ezxml_attr(registry, "model");
+	const_core = ezxml_attr(registry, "core");
+	const_version = ezxml_attr(registry, "version");
+
+	if(const_model == NULL)
+		sprintf(modelname, "MISSING");
+	else
+		sprintf(modelname, "%s", const_model);
+
+	if(const_core == NULL)
+		sprintf(corename, "MISSING");
+	else
+		sprintf(corename, "%s", const_core);
+
+	if(const_version == NULL)
+		sprintf(version, "MISSING");
+	else
+		sprintf(version, "%s", const_version);
 
 	// Parse Namelist Records
 	for (nmlrecs_xml = ezxml_child(registry, "nml_record"); nmlrecs_xml; nmlrecs_xml = nmlrecs_xml->next){

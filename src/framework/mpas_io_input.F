@@ -245,6 +245,22 @@ module mpas_io_input
         end if
       end if
 
+      call MPAS_readStreamAtt(input_obj % io_stream, 'history', domain % history, ierr)
+      if (ierr /= MPAS_STREAM_NOERR) then
+        write(0,*) 'Warning: Attribute History not found in '//trim(input_obj % filename)
+        write(0,*) '   Setting History to '''''
+        domain % history = ""
+      else
+        ! Remove C String NULL characters, replace C String newlines with semicolons
+        do i = 1, len(domain % history)
+          if(iachar(domain % history(i:i)) == 0) then
+            domain % history(i:i) = " "
+          else if(iachar(domain % history(i:i)) == 10) then
+            domain % history(i:i) = ";"
+          end if
+        end do
+      end if
+
       block_ptr => domain % blocklist % next
       do while (associated(block_ptr))
         block_ptr % mesh % sphere_radius = domain % blocklist % mesh % sphere_radius

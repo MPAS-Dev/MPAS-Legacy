@@ -441,6 +441,8 @@ module mpas_grid_types
    
       ! Also store parallelization info here
       type (dm_info), pointer :: dminfo
+#include "model_variables.inc"
+      character (len=StrKIND*2) :: history !< History attribute, read in from input file.
    end type domain_type
 
    interface mpas_allocate_scratch_field

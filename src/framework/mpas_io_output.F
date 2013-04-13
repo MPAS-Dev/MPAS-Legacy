@@ -343,6 +343,13 @@ module mpas_io_output
  
       integer :: nferr, ierr
       integer, dimension(10) :: dimlist
+      character (len=StrKIND*4) :: runCmd
+
+      if(len(trim(domain % history)) > 0) then
+          write(runCmd,'(a,a,i0,a,a,a)') trim(domain % history),' mpirun -n ',domain % dminfo % nProcs, ' ', trim(domain % coreName), '_model.exe; '
+      else
+          write(runCmd,'(a,i0,a,a,a)') 'mpirun -n ',domain % dminfo % nProcs, ' ', trim(domain % coreName), '_model.exe; '
+      end if
  
       call MPAS_createStream(output_obj % io_stream, trim(output_obj % filename), MPAS_IO_PNETCDF, MPAS_IO_WRITE, 1, nferr)
 
@@ -354,6 +361,10 @@ module mpas_io_output
          call MPAS_writeStreamAtt(output_obj % io_stream, 'on_a_sphere', 'NO              ', nferr)
       end if
       call MPAS_writeStreamAtt(output_obj % io_stream, 'sphere_radius', mesh % sphere_radius, nferr)
+      call MPAS_writeStreamAtt(output_obj % io_stream, 'model_name', domain % modelName, nferr)
+      call MPAS_writeStreamAtt(output_obj % io_stream, 'core_name', domain % coreName, nferr)
+      call MPAS_writeStreamAtt(output_obj % io_stream, 'model_version', domain % modelVersion, nferr)
+      call MPAS_writeStreamAtt(output_obj % io_stream, 'history', runCmd, nferr)
 
 #include "add_output_atts.inc"
  

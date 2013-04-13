@@ -114,6 +114,12 @@
 					</xs:complexType>
 				</xs:element>
 			</xs:sequence>
+			<!-- The model attribute defines the name of the model that is being run. Typically this will be MPAS. It will be written to all output files as a global attribute. -->
+			<xs:attribute name="model" type="xs:string" use="required"/>
+			<!-- The core attribute defines the core a Registry.xml file belongs to. It will be written to all output files as a global attribute. -->
+			<xs:attribute name="core" type="xs:string" use="required"/>
+			<!-- The version attribute defines the version of the model/core combination. It will be written to all output files as a global attribute. -->
+			<xs:attribute name="version" type="xs:string" use="required"/>
 		</xs:complexType>
 	</xs:element>
 </xs:schema>
