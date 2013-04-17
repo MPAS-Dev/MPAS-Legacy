@@ -1,9 +1,5 @@
 .SUFFIXES: .F .o
 
-ifdef ZOLTAN_HOME
-   ZOLTANOBJ = mpas_zoltan_interface.o
-endif
-
 OBJS = mpas_kind_types.o \
        mpas_framework.o \
        mpas_timer.o \
@@ -22,7 +18,6 @@ OBJS = mpas_kind_types.o \
        mpas_io_streams.o \
        mpas_io_input.o \
        mpas_io_output.o \
-       $(ZOLTANOBJ) \
        streams.o
 
 all: framework
@@ -58,7 +53,7 @@ mpas_io.o: mpas_dmpar_types.o
 
 mpas_io_streams.o: mpas_attlist.o mpas_grid_types.o mpas_timekeeping.o mpas_io.o
 
-mpas_io_input.o: mpas_grid_types.o mpas_dmpar.o mpas_block_decomp.o mpas_block_creator.o mpas_sort.o mpas_configure.o mpas_timekeeping.o mpas_io_streams.o $(ZOLTANOBJ)
+mpas_io_input.o: mpas_grid_types.o mpas_dmpar.o mpas_block_decomp.o mpas_block_creator.o mpas_sort.o mpas_configure.o mpas_timekeeping.o mpas_io_streams.o
 
 mpas_io_output.o: mpas_grid_types.o mpas_dmpar.o mpas_sort.o mpas_configure.o mpas_io_streams.o
 

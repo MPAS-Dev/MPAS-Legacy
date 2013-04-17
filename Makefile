@@ -4,14 +4,6 @@ MODEL_FORMULATION = -DLANL_FORMULATION
 # This flag must be off for nersc hopper:
 FILE_OFFSET = -DOFFSET64BIT
 
-#########################
-# Section for Zoltan TPL
-#########################
-ifdef ZOLTAN_HOME
-   ZOLTAN_DEFINE = -DHAVE_ZOLTAN
-endif
-#########################
-
 
 dummy:
 	( $(MAKE) error )
@@ -32,7 +24,7 @@ xlf:
 	"DEBUG = $(DEBUG)" \
 	"SERIAL = $(SERIAL)" \
 	"USE_PAPI = $(USE_PAPI)" \
-	"CPPFLAGS = $(MODEL_FORMULATION) $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
+	"CPPFLAGS = $(MODEL_FORMULATION) $(FILE_OFFSET)" )
  
 ftn:
 	( $(MAKE) all \
@@ -47,7 +39,7 @@ ftn:
 	"DEBUG = $(DEBUG)" \
 	"SERIAL = $(SERIAL)" \
 	"USE_PAPI = $(USE_PAPI)" \
-	"CPPFLAGS = $(MODEL_FORMULATION) -DUNDERSCORE $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
+	"CPPFLAGS = $(MODEL_FORMULATION) -DUNDERSCORE $(FILE_OFFSET)" )
 
 pgi:
 	( $(MAKE) all \
@@ -65,7 +57,7 @@ pgi:
 	"DEBUG = $(DEBUG)" \
 	"SERIAL = $(SERIAL)" \
 	"USE_PAPI = $(USE_PAPI)" \
-	"CPPFLAGS = $(MODEL_FORMULATION) -DUNDERSCORE $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
+	"CPPFLAGS = $(MODEL_FORMULATION) -DUNDERSCORE $(FILE_OFFSET)" )
 
 pgi-nersc:
 	( $(MAKE) all \
@@ -80,7 +72,7 @@ pgi-nersc:
 	"DEBUG = $(DEBUG)" \
 	"SERIAL = $(SERIAL)" \
 	"USE_PAPI = $(USE_PAPI)" \
-	"CPPFLAGS = $(MODEL_FORMULATION) -DUNDERSCORE $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
+	"CPPFLAGS = $(MODEL_FORMULATION) -DUNDERSCORE $(FILE_OFFSET)" )
 
 pgi-llnl:
 	( $(MAKE) all \
@@ -95,7 +87,7 @@ pgi-llnl:
 	"DEBUG = $(DEBUG)" \
 	"SERIAL = $(SERIAL)" \
 	"USE_PAPI = $(USE_PAPI)" \
-	"CPPFLAGS = $(MODEL_FORMULATION) -DUNDERSCORE $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
+	"CPPFLAGS = $(MODEL_FORMULATION) -DUNDERSCORE $(FILE_OFFSET)" )
 
 ifort:
 	( $(MAKE) all \
@@ -113,7 +105,7 @@ ifort:
 	"DEBUG = $(DEBUG)" \
 	"SERIAL = $(SERIAL)" \
 	"USE_PAPI = $(USE_PAPI)" \
-	"CPPFLAGS = $(MODEL_FORMULATION) -DUNDERSCORE -m64 $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
+	"CPPFLAGS = $(MODEL_FORMULATION) -DUNDERSCORE -m64 $(FILE_OFFSET)" )
 
 gfortran:
 	( $(MAKE) all \
@@ -131,7 +123,7 @@ gfortran:
 	"DEBUG = $(DEBUG)" \
 	"SERIAL = $(SERIAL)" \
 	"USE_PAPI = $(USE_PAPI)" \
-	"CPPFLAGS = $(MODEL_FORMULATION) -DUNDERSCORE -m64 $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
+	"CPPFLAGS = $(MODEL_FORMULATION) -DUNDERSCORE -m64 $(FILE_OFFSET)" )
 
 g95:
 	( $(MAKE) all \
@@ -146,7 +138,7 @@ g95:
 	"DEBUG = $(DEBUG)" \
 	"SERIAL = $(SERIAL)" \
 	"USE_PAPI = $(USE_PAPI)" \
-	"CPPFLAGS = $(MODEL_FORMULATION) -DUNDERSCORE $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
+	"CPPFLAGS = $(MODEL_FORMULATION) -DUNDERSCORE $(FILE_OFFSET)" )
 
 pathscale-nersc:
 	( $(MAKE) all \
@@ -161,7 +153,7 @@ pathscale-nersc:
 	"DEBUG = $(DEBUG)" \
 	"SERIAL = $(SERIAL)" \
 	"USE_PAPI = $(USE_PAPI)" \
-	"CPPFLAGS = $(MODEL_FORMULATION) -DUNDERSCORE $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
+	"CPPFLAGS = $(MODEL_FORMULATION) -DUNDERSCORE $(FILE_OFFSET)" )
 
 cray-nersc:
 	( $(MAKE) all \
@@ -176,7 +168,7 @@ cray-nersc:
 	"DEBUG = $(DEBUG)" \
 	"SERIAL = $(SERIAL)" \
 	"USE_PAPI = $(USE_PAPI)" \
-	"CPPFLAGS = $(MODEL_FORMULATION) -DUNDERSCORE $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
+	"CPPFLAGS = $(MODEL_FORMULATION) -DUNDERSCORE $(FILE_OFFSET)" )
 
 intel-nersc:
 	( $(MAKE) all \
@@ -191,7 +183,7 @@ intel-nersc:
 	"DEBUG = $(DEBUG)" \
 	"SERIAL = $(SERIAL)" \
 	"USE_PAPI = $(USE_PAPI)" \
-	"CPPFLAGS = $(MODEL_FORMULATION) -DUNDERSCORE $(FILE_OFFSET) $(ZOLTAN_DEFINE)" )
+	"CPPFLAGS = $(MODEL_FORMULATION) -DUNDERSCORE $(FILE_OFFSET)" )
 
 CPPINCLUDES = 
 FCINCLUDES = 
@@ -216,24 +208,6 @@ LIBS += $(NCLIB)
 RM = rm -f
 CPP = cpp -C -P -traditional
 RANLIB = ranlib
-
-#########################
-# Section for Zoltan TPL
-#########################
-ifdef ZOLTAN_HOME
-   ifdef ZOLTAN_INC_PATH
-      FCINCLUDES += -I$(ZOLTAN_INC_PATH)
-   else
-      FCINCLUDES += -I$(ZOLTAN_HOME)/include
-   endif
-
-   ifdef ZOLTAN_LIB_PATH
-      LIBS += -L$(ZOLTAN_LIB_PATH) -lzoltan
-   else
-      LIBS += -L$(ZOLTAN_HOME)/lib -lzoltan
-   endif
-endif
-#########################
 
 
 ifdef CORE

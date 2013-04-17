@@ -10,10 +10,6 @@ module mpas_io_input
    use mpas_io_streams
 
 
-#ifdef HAVE_ZOLTAN
-   use mpas_zoltan_interface
-#endif
-
    integer, parameter :: STREAM_INPUT=1, STREAM_SFC=2, STREAM_RESTART=3
 
    type io_input_object
@@ -355,161 +351,12 @@ module mpas_io_input
       call mpas_deallocate_field(nVerticesSolveField)
       call mpas_deallocate_field(nEdgesSolveField)
 
-#ifdef HAVE_ZOLTAN      
-      call mpas_deallocate_field(xCellField)
-      call mpas_deallocate_field(yCellField)
-      call mpas_deallocate_field(zCellField)
-      call mpas_deallocate_field(xVertexField)
-      call mpas_deallocate_field(yVertexField)
-      call mpas_deallocate_field(zVertexField)
-      call mpas_deallocate_field(xEdgeField)
-      call mpas_deallocate_field(yEdgeField)
-      call mpas_deallocate_field(zEdgeField)
-
-      call mpas_deallocate_field(xCell)
-      call mpas_deallocate_field(yCell)
-      call mpas_deallocate_field(zCell)
-      call mpas_deallocate_field(xVertex)
-      call mpas_deallocate_field(yVertex)
-      call mpas_deallocate_field(zVertex)
-      call mpas_deallocate_field(xEdge)
-      call mpas_deallocate_field(yEdge)
-      call mpas_deallocate_field(zEdge)
-#endif
-
       deallocate(local_cell_list)
       deallocate(block_id)
       deallocate(block_start)
       deallocate(block_count)
       deallocate(readingBlock)
 
-!#ifdef HAVE_ZOLTAN
-!#ifdef _MPI 
-!     allocate(xCell(size(local_cell_list)))
-!     allocate(yCell(size(local_cell_list)))
-!     allocate(zCell(size(local_cell_list)))
-!     call mpas_dmpar_alltoall_field(domain % dminfo, xCellField % array, xCell, &
-!                               size(xCellField % array), size(local_cell_list), &
-!                               sendCellList, recvCellList)
-!   
-!     call mpas_dmpar_alltoall_field(domain % dminfo, yCellField % array, yCell, &
-!                               size(yCellField % array), size(local_cell_list), &
-!                               sendCellList, recvCellList)
-!   
-!     call mpas_dmpar_alltoall_field(domain % dminfo, zCellField % array, zCell, &
-!                               size(zCellField % array), size(local_cell_list), &
-!                               sendCellList, recvCellList)
-!#endif
-!#endif
- 
-!#ifdef HAVE_ZOLTAN
-!#ifdef _MPI 
-!      !! For now, only use Zoltan with MPI
-!      !! Zoltan initialization
-!      call mpas_zoltan_start()
-!
-!      !! Zoltan hook for cells
-!      call mpas_zoltan_order_loc_hsfc_cells(block_graph_2Halo%nVertices,block_graph_2Halo%VertexID,3,xCell,yCell,zCell)
-!#endif
-!#endif
-!
-!   
-!#ifdef HAVE_ZOLTAN
-!#ifdef _MPI 
-!      allocate(xEdge(nlocal_edges))
-!      allocate(yEdge(nlocal_edges))
-!      allocate(zEdge(nlocal_edges))
-!      allocate(xVertex(nlocal_vertices))
-!      allocate(yVertex(nlocal_vertices))
-!      allocate(zVertex(nlocal_vertices))
-!#endif
-!#endif
-!    
-!#ifdef HAVE_ZOLTAN
-!#ifdef _MPI 
-!      call mpas_dmpar_alltoall_field(domain % dminfo, xEdgeField % array, xEdge, &
-!                                size(xEdgeField % array), nlocal_edges, &
-!                                sendEdgeList, recvEdgeList)
-!      call mpas_dmpar_alltoall_field(domain % dminfo, yEdgeField % array, yEdge, &
-!                                size(yEdgeField % array), nlocal_edges, &
-!                                sendEdgeList, recvEdgeList)
-!      call mpas_dmpar_alltoall_field(domain % dminfo, zEdgeField % array, zEdge, &
-!                                size(zEdgeField % array), nlocal_edges, &
-!                                sendEdgeList, recvEdgeList)
-!
-!      call mpas_dmpar_alltoall_field(domain % dminfo, xVertexField % array, xVertex, &
-!                                size(xVertexField % array), nlocal_vertices, &
-!                                sendVertexList, recvVertexList)
-!      call mpas_dmpar_alltoall_field(domain % dminfo, yVertexField % array, yVertex, &
-!                                size(yVertexField % array), nlocal_vertices, &
-!                                sendVertexList, recvVertexList)
-!      call mpas_dmpar_alltoall_field(domain % dminfo, zVertexField % array, zVertex, &
-!                                size(zVertexField % array), nlocal_vertices, &
-!                                sendVertexList, recvVertexList)
-!      !!!!!!!!!!!!!!!!!!
-!      !! Reorder edges
-!      !!!!!!!!!!!!!!!!!!
-!      call mpas_zoltan_order_loc_hsfc_edges(nOwnEdges,local_edge_list,3,xEdge,yEdge,zEdge)
-!      !!!!!!!!!!!!!!!!!!
-!
-!      !!!!!!!!!!!!!!!!!!
-!      !! Reorder vertices
-!      !!!!!!!!!!!!!!!!!!
-!      call mpas_zoltan_order_loc_hsfc_verts(nOwnVertices,local_vertex_list,3,xVertex,yVertex,zVertex)
-!      !!!!!!!!!!!!!!!!!!
-!
-!      deallocate(sendEdgeList % list)
-!      deallocate(sendEdgeList)
-!      deallocate(recvEdgeList % list)
-!      deallocate(recvEdgeList)
-!   
-!      deallocate(sendVertexList % list)
-!      deallocate(sendVertexList)
-!      deallocate(recvVertexList % list)
-!      deallocate(recvVertexList)
-!    
-!      !
-!      ! Knowing which edges/vertices are owned by this block and which are actually read
-!      !   from the input or restart file, we can build exchange lists to perform 
-!      !   all-to-all field exchanges from process that reads a field to the processes that
-!      !   need them
-!      !
-!      call mpas_dmpar_get_owner_list(domain % dminfo, &
-!                                size(indexToEdgeIDField % array), nlocal_edges, &
-!                                indexToEdgeIDField % array, local_edge_list, &
-!                                sendEdgeList, recvEdgeList)
-!   
-!      call mpas_dmpar_get_owner_list(domain % dminfo, &
-!                                size(indexToVertexIDField % array), nlocal_vertices, &
-!                                indexToVertexIDField % array, local_vertex_list, &
-!                                sendVertexList, recvVertexList)
-!
-!#endif
-!#endif
-!
-
-
-!      !
-!      ! Deallocate fields, graphs, and other memory
-!      !
-!#ifdef HAVE_ZOLTAN
-!#ifdef _MPI 
-!      deallocate(xCellField % ioinfo)
-!      deallocate(xCellField % array)
-!      deallocate(yCellField % ioinfo)
-!      deallocate(yCellField % array)
-!      deallocate(zCellField % ioinfo)
-!      deallocate(zCellField % array)
-!#endif
-!#endif
-
-!#ifdef HAVE_ZOLTAN
-!#ifdef _MPI
-!      deallocate(xCell)
-!      deallocate(yCell)
-!      deallocate(zCell)
-!#endif
-!#endif
    end subroutine mpas_input_state_for_domain!}}}
 
    !CR:TODO: an identical subroutine is found in module_io_output - merge
@@ -688,60 +535,6 @@ module mpas_io_input
      call mpas_dmpar_init_mulithalo_exchange_list(indexToCellID % copyList, nHalos)
      nullify(indexToCellID % next)
    
-#ifdef HAVE_ZOLTAN
-#ifdef _MPI 
-     ! Cell x-coordinates (in 3d Cartesian space)
-     allocate(xCell)
-     allocate(xCell % ioinfo)
-     xCell % ioinfo % fieldName = 'xCell'
-     xCell % ioinfo % start(1) = readCellStart
-     xCell % ioinfo % count(1) = nReadCells
-     allocate(xCell % array(nReadCells))
-     call MPAS_io_inq_var(inputHandle, 'xCell', ierr=ierr)
-     call MPAS_io_set_var_indices(inputHandle, 'xCell', readIndices, ierr=ierr)
-     call mpas_io_get_var(inputHandle, 'xCell', xCell % array, ierr)
-     xCell % dimSizes(1) = nReadCells
-     xCell % block => readingBlock
-     xCell % sendList => indexToCellID % sendList
-     xCell % recvList => indexToCellID % recvList
-     xCell % copyList => indexToCellID % copyList
-     nullify(xCell % next)
-
-     ! Cell y-coordinates (in 3d Cartesian space)
-     allocate(yCell)
-     allocate(yCell % ioinfo)
-     yCell % ioinfo % fieldName = 'yCell'
-     yCell % ioinfo % start(1) = readCellStart
-     yCell % ioinfo % count(1) = nReadCells
-     allocate(yCell % array(nReadCells))
-     call MPAS_io_inq_var(inputHandle, 'yCell', ierr=ierr)
-     call MPAS_io_set_var_indices(inputHandle, 'yCell', readIndices, ierr=ierr)
-     call mpas_io_get_var(inputHandle, 'yCell', yCell % array, ierr)
-     yCell % sendList => indexToCellID % sendList
-     yCell % recvList => indexToCellID % recvList
-     yCell % copyList => indexToCellID % copyList
-     yCell % dimSizes(1) = nReadCells
-     yCell % block => readingBlock
-     nullify(yCell % next)
-
-     ! Cell z-coordinates (in 3d Cartesian space)
-     allocate(zCell)
-     allocate(zCell % ioinfo)
-     zCell % ioinfo % fieldName = 'zCell'
-     zCell % ioinfo % start(1) = readCellStart
-     zCell % ioinfo % count(1) = nReadCells
-     allocate(zCell % array(nReadCells))
-     call MPAS_io_inq_var(inputHandle, 'zCell', ierr=ierr)
-     call MPAS_io_set_var_indices(inputHandle, 'zCell', readIndices, ierr=ierr)
-     call mpas_io_get_var(inputHandle, 'zCell', zCell % array, ierr)
-     zCell % dimSizes(1) = nReadCells
-     zCell % block => readingBlock
-     zCell % sendList => indexToCellID % sendList
-     zCell % recvList => indexToCellID % recvList
-     zCell % copyList => indexToCellID % copyList
-     nullify(zCell % next)
-#endif
-#endif
 
      ! Number of cell/edges/vertices adjacent to each cell
      allocate(nEdgesOnCell)
@@ -868,61 +661,6 @@ module mpas_io_input
      call mpas_dmpar_init_mulithalo_exchange_list(indexToEdgeID % copyList, nHalos+1)
      nullify(indexToEdgeID % next)
    
-#ifdef HAVE_ZOLTAN
-#ifdef _MPI 
-     ! Edge x-coordinates (in 3d Cartesian space)
-     allocate(xEdge)
-     allocate(xEdge % ioinfo)
-     xEdge % ioinfo % fieldName = 'xEdge'
-     xEdge % ioinfo % start(1) = readEdgeStart
-     xEdge % ioinfo % count(1) = nReadEdges
-     allocate(xEdge % array(nReadEdges))
-     call MPAS_io_inq_var(inputHandle, 'xEdge', ierr=ierr)
-     call MPAS_io_set_var_indices(inputHandle, 'xEdge', readIndices, ierr=ierr)
-     call mpas_io_get_var(inputHandle, 'xEdge', xEdge % array, ierr)
-     xEdge % dimSizes(1) = nReadEdges
-     xEdge % block => readingBlock
-     xEdge % sendList => indexToEdgeID % sendList
-     xEdge % recvList => indexToEdgeID % recvList
-     xEdge % copyList => indexToEdgeID % copyList
-     nullify(xEdge % next)
-
-     ! Edge y-coordinates (in 3d Cartesian space)
-     allocate(yEdge)
-     allocate(yEdge % ioinfo)
-     yEdge % ioinfo % fieldName = 'yEdge'
-     yEdge % ioinfo % start(1) = readEdgeStart
-     yEdge % ioinfo % count(1) = nReadEdges
-     allocate(yEdge % array(nReadEdges))
-     call MPAS_io_inq_var(inputHandle, 'yEdge', ierr=ierr)
-     call MPAS_io_set_var_indices(inputHandle, 'yEdge', readIndices, ierr=ierr)
-     call mpas_io_get_var(inputHandle, 'yEdge', yEdge % array, ierr)
-     yEdge % dimSizes(1) = nReadEdges
-     yEdge % block => readingBlock
-     yEdge % sendList => indexToEdgeID % sendList
-     yEdge % recvList => indexToEdgeID % recvList
-     yEdge % copyList => indexToEdgeID % copyList
-     nullify(yEdge % next)
-
-     ! Edge z-coordinates (in 3d Cartesian space)
-     allocate(zEdge)
-     allocate(zEdge % ioinfo)
-     zEdge % ioinfo % fieldName = 'zEdge'
-     zEdge % ioinfo % start(1) = readEdgeStart
-     zEdge % ioinfo % count(1) = nReadEdges
-     allocate(zEdge % array(nReadEdges))
-     call MPAS_io_inq_var(inputHandle, 'zEdge', ierr=ierr)
-     call MPAS_io_set_var_indices(inputHandle, 'zEdge', readIndices, ierr=ierr)
-     call mpas_io_get_var(inputHandle, 'zEdge', zEdge % array, ierr)
-     zEdge % dimSizes(1) = nReadEdges
-     zEdge % block => readingBlock
-     zEdge % sendList => indexToEdgeID % sendList
-     zEdge % recvList => indexToEdgeID % recvList
-     zEdge % copyList => indexToEdgeID % copyList
-     nullify(zEdge % next)
-#endif
-#endif
-
    
      ! Global indices of cells adjacent to each edge
      !    used for determining which edges are owned by a block, where 
@@ -988,61 +726,6 @@ module mpas_io_input
      call mpas_dmpar_init_mulithalo_exchange_list(indexToVertexID % copyList, nHalos+1)
      nullify(indexToVertexID % next)
    
-#ifdef HAVE_ZOLTAN
-#ifdef _MPI
-     ! Vertex x-coordinates (in 3d Cartesian space)
-     allocate(xVertex)
-     allocate(xVertex % ioinfo)
-     xVertex % ioinfo % fieldName = 'xVertex'
-     xVertex % ioinfo % start(1) = readVertexStart
-     xVertex % ioinfo % count(1) = nReadVertices
-     allocate(xVertex % array(nReadVertices))
-     call MPAS_io_inq_var(inputHandle, 'xVertex', ierr=ierr)
-     call MPAS_io_set_var_indices(inputHandle, 'xVertex', readIndices, ierr=ierr)
-     call mpas_io_get_var(inputHandle, 'xVertex', xVertex % array, ierr)
-     xVertex % dimSizes(1) = nReadVertices
-     xVertex % block => readingBlock
-     xVertex % sendList => indexToVertexID % sendList
-     xVertex % recvList => indexToVertexID % recvList
-     xVertex % copyList => indexToVertexID % copyList
-     nullify(xVertex % next)
-
-     ! Vertex y-coordinates (in 3d Cartesian space)
-     allocate(yVertex)
-     allocate(yVertex % ioinfo)
-     yVertex % ioinfo % fieldName = 'yVertex'
-     yVertex % ioinfo % start(1) = readVertexStart
-     yVertex % ioinfo % count(1) = nReadVertices
-     allocate(yVertex % array(nReadVertices))
-     call MPAS_io_inq_var(inputHandle, 'yVertex', ierr=ierr)
-     call MPAS_io_set_var_indices(inputHandle, 'yVertex', readIndices, ierr=ierr)
-     call mpas_io_get_var(inputHandle, 'yVertex', yVertex % array, ierr)
-     yVertex % dimSizes(1) = nReadVertices
-     yVertex % block => readingBlock
-     yVertex % sendList => indexToVertexID % sendList
-     yVertex % recvList => indexToVertexID % recvList
-     yVertex % copyList => indexToVertexID % copyList
-     nullify(yVertex % next)
-
-     ! Vertex z-coordinates (in 3d Cartesian space)
-     allocate(zVertex)
-     allocate(zVertex % ioinfo)
-     zVertex % ioinfo % fieldName = 'zVertex'
-     zVertex % ioinfo % start(1) = readVertexStart
-     zVertex % ioinfo % count(1) = nReadVertices
-     allocate(zVertex % array(nReadVertices))
-     call MPAS_io_inq_var(inputHandle, 'zVertex', ierr=ierr)
-     call MPAS_io_set_var_indices(inputHandle, 'zVertex', readIndices, ierr=ierr)
-     call mpas_io_get_var(inputHandle, 'zVertex', zVertex % array, ierr)
-     zVertex % dimSizes(1) = nReadVertices
-     zVertex % block => readingBlock
-     zVertex % sendList => indexToVertexID % sendList
-     zVertex % recvList => indexToVertexID % recvList
-     zVertex % copyList => indexToVertexID % copyList
-     nullify(zVertex % next)
-#endif
-#endif
-
    
      ! Global indices of cells adjacent to each vertex
      !    used for determining which vertices are owned by a block, where 
