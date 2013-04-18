@@ -36,7 +36,7 @@ module ocn_equation_of_state
    !
    !--------------------------------------------------------------------
 
-   public :: ocn_equation_of_state_rho, &
+   public :: ocn_equation_of_state_density, &
              ocn_equation_of_state_init
 
    !--------------------------------------------------------------------
@@ -66,7 +66,7 @@ contains
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_equation_of_state_rho(s, grid, k_displaced, displacement_type, err)!{{{
+   subroutine ocn_equation_of_state_density(s, grid, k_displaced, displacement_type, err)!{{{
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    !  This module contains routines necessary for computing the density
    !  from model temperature and salinity using an equation of state.
@@ -75,11 +75,11 @@ contains
    !        s - state: tracers
    !        k_displaced 
    !
-   !  If k_displaced==0, state % rho is returned with no displacement 
+   !  If k_displaced==0, state % density is returned with no displacement 
    !
-   !  If k_displaced~=0,the state % rhoDisplaced is returned, and is for
+   !  If k_displaced~=0,the state % displacedDensity is returned, and is for
    !  a parcel adiabatically displaced from its original level to level 
-   !  k_displaced.  When using the linear EOS, state % rhoDisplaced is 
+   !  k_displaced.  When using the linear EOS, state % displacedDensity is 
    !  still filled, but depth (i.e. pressure) does not modify the output.
    !
    ! Output: s - state: computed density
@@ -93,7 +93,7 @@ contains
       character(len=*), intent(in) :: displacement_type
 
       integer, dimension(:), pointer :: maxLevelCell
-      real (kind=RKIND), dimension(:,:), pointer :: rho
+      real (kind=RKIND), dimension(:,:), pointer :: density
       real (kind=RKIND), dimension(:,:,:), pointer :: tracers
       integer :: nCells, iCell, k, indexT, indexS
       type (dm_info) :: dminfo
@@ -106,24 +106,24 @@ contains
       indexT = s % index_temperature
       indexS = s % index_salinity
 
-      !  Choose to fill the array rho or rhoDisplaced
+      !  Choose to fill the array density or displacedDensity
       if (k_displaced == 0) then
-         rho => s % rho % array
+         density => s % density % array
       else
-         rho => s % rhoDisplaced % array
+         density => s % displacedDensity % array
       endif
 
       if (linearEos) then
 
-         call ocn_equation_of_state_linear_rho(grid, indexT, indexS, tracers, rho, err)
+         call ocn_equation_of_state_linear_density(grid, indexT, indexS, tracers, density, err)
 
       elseif (jmEos) then
 
-         call ocn_equation_of_state_jm_rho(grid, k_displaced, displacement_type, indexT, indexS, tracers, rho, err)
+         call ocn_equation_of_state_jm_density(grid, k_displaced, displacement_type, indexT, indexS, tracers, density, err)
 
       endif
 
-   end subroutine ocn_equation_of_state_rho!}}}
+   end subroutine ocn_equation_of_state_density!}}}
 
 !***********************************************************************
 !

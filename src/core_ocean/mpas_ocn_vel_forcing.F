@@ -68,7 +68,7 @@ contains
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_vel_forcing_tend(grid, u, u_src, ke_edge, h_edge, tend, err)!{{{
+   subroutine ocn_vel_forcing_tend(grid, u, normalVelocityForcing, kineticEnergyEdge, layerThicknessEdge, tend, err)!{{{
 
       !-----------------------------------------------------------------
       !
@@ -80,13 +80,13 @@ contains
          u    !< Input: velocity
 
       real (kind=RKIND), dimension(:,:), intent(in) :: &
-         u_src     !< Input: wind stress
+         normalVelocityForcing     !< Input: wind stress
 
       real (kind=RKIND), dimension(:,:), intent(in) :: &
-         ke_edge     !< Input: kinetic energy at edge
+         kineticEnergyEdge     !< Input: kinetic energy at edge
 
       real (kind=RKIND), dimension(:,:), intent(in) :: &
-         h_edge     !< Input: thickness at edge
+         layerThicknessEdge     !< Input: thickness at edge
 
       type (mesh_type), intent(in) :: &
          grid          !< Input: grid information
@@ -124,7 +124,7 @@ contains
       !
       !-----------------------------------------------------------------
 
-      call ocn_vel_forcing_windstress_tend(grid, u_src, h_edge, tend, err1)
+      call ocn_vel_forcing_windstress_tend(grid, normalVelocityForcing, layerThicknessEdge, tend, err1)
       call ocn_vel_forcing_rayleigh_tend(grid, u, tend, err2)
 
       err = ior(err1, err2)

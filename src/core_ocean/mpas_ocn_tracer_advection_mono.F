@@ -43,7 +43,7 @@ module mpas_ocn_tracer_advection_mono
 !>  Both horizontal and vertical.
 !
 !-----------------------------------------------------------------------
-   subroutine mpas_ocn_tracer_advection_mono_tend(tracers, uh, w, h, verticalCellSize, dt, grid, tend_h, tend)!{{{
+   subroutine mpas_ocn_tracer_advection_mono_tend(tracers, normalThicknessFlux, w, layerThickness, verticalCellSize, dt, grid, tend_layerThickness, tend)!{{{
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
    !
    ! Input: s - current model state
@@ -52,11 +52,11 @@ module mpas_ocn_tracer_advection_mono
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
 
       real (kind=RKIND), dimension(:,:,:), intent(in) :: tracers !< Input: current tracer values
-      real (kind=RKIND), dimension(:,:), intent(in) :: uh !< Input: Thichness weighted velocitiy
+      real (kind=RKIND), dimension(:,:), intent(in) :: normalThicknessFlux !< Input: Thichness weighted velocitiy
       real (kind=RKIND), dimension(:,:), intent(in) :: w !< Input: Vertical velocitiy
-      real (kind=RKIND), dimension(:,:), intent(in) :: h !< Input: Thickness
+      real (kind=RKIND), dimension(:,:), intent(in) :: layerThickness !< Input: Thickness
       real (kind=RKIND), dimension(:,:), intent(in) :: verticalCellSize !< Input: Distance between vertical interfaces of a cell
-      real (kind=RKIND), dimension(:,:), intent(in) :: tend_h !< Input: Tendency for thickness field
+      real (kind=RKIND), dimension(:,:), intent(in) :: tend_layerThickness !< Input: Tendency for thickness field
       real (kind=RKIND), intent(in) :: dt !< Input: Timestep
       type (mesh_type), intent(in) :: grid !< Input: Grid information
       real (kind=RKIND), dimension(:,:,:), intent(inout) :: tend !< Input/Output: Tracer tendency
@@ -134,7 +134,7 @@ module mpas_ocn_tracer_advection_mono
 
       do iCell = 1, nCells
         do k=1, maxLevelCell(iCell)
-          inv_h_new(k, iCell) = 1.0 / (h(k, iCell) + dt * tend_h(k, iCell))
+          inv_h_new(k, iCell) = 1.0 / (layerThickness(k, iCell) + dt * tend_layerThickness(k, iCell))
         end do
       end do
 
@@ -199,9 +199,9 @@ module mpas_ocn_tracer_advection_mono
             iCell = advCellsForEdge(i,iEdge)
             do k = 1, maxLevelCell(iCell)
               tracer_weight = lowOrderAdvectionMask(k, iEdge) * adv_coefs_2nd(i,iEdge) & 
-                            + highOrderAdvectionMask(k, iEdge) * (adv_coefs(i,iEdge) + coef_3rd_order*sign(1.0_RKIND,uh(k,iEdge))*adv_coefs_3rd(i,iEdge))
+                            + highOrderAdvectionMask(k, iEdge) * (adv_coefs(i,iEdge) + coef_3rd_order*sign(1.0_RKIND,normalThicknessFlux(k,iEdge))*adv_coefs_3rd(i,iEdge))
 
-              tracer_weight = uh(k,iEdge)*tracer_weight
+              tracer_weight = normalThicknessFlux(k,iEdge)*tracer_weight
               high_order_horiz_flux(k,iEdge) = high_order_horiz_flux(k,iEdge) + tracer_weight* tracer_cur(k,iCell)
             end do ! k loop
           end do ! i loop over nAdvCellsForEdge
@@ -247,7 +247,7 @@ module mpas_ocn_tracer_advection_mono
           invAreaCell2 = 1.0 / areaCell(cell2)
 
           do k = 1, maxLevelEdgeTop(iEdge)
-            flux_upwind = dvEdge(iEdge) * (max(0.0_RKIND,uh(k,iEdge))*tracer_cur(k,cell1) + min(0.0_RKIND,uh(k,iEdge))*tracer_cur(k,cell2))
+            flux_upwind = dvEdge(iEdge) * (max(0.0_RKIND,normalThicknessFlux(k,iEdge))*tracer_cur(k,cell1) + min(0.0_RKIND,normalThicknessFlux(k,iEdge))*tracer_cur(k,cell2))
             high_order_horiz_flux(k,iEdge) = high_order_horiz_flux(k,iEdge) - flux_upwind
           end do ! k loop
         end do ! iEdge loop
@@ -259,7 +259,7 @@ module mpas_ocn_tracer_advection_mono
             cell1 = cellsOnEdge(1,iEdge)
             cell2 = cellsOnEdge(2,iEdge)
             do k = 1, maxLevelEdgeTop(iEdge)
-              flux_upwind = dvEdge(iEdge) * (max(0.0_RKIND,uh(k,iEdge))*tracer_cur(k,cell1) + min(0.0_RKIND,uh(k,iEdge))*tracer_cur(k,cell2))
+              flux_upwind = dvEdge(iEdge) * (max(0.0_RKIND,normalThicknessFlux(k,iEdge))*tracer_cur(k,cell1) + min(0.0_RKIND,normalThicknessFlux(k,iEdge))*tracer_cur(k,cell2))
 
               upwind_tendency(k,iCell) = upwind_tendency(k,iCell) + edgeSignOncell(i, iCell) * flux_upwind * invAreaCell1
 
@@ -275,9 +275,9 @@ module mpas_ocn_tracer_advection_mono
         ! Factors are placed in the flux_incoming and flux_outgoing arrays
         do iCell = 1, nCells
           do k = 1, maxLevelCell(iCell)
-            tracer_min_new = (tracer_cur(k,iCell)*h(k,iCell) + dt*(upwind_tendency(k,iCell)+flux_outgoing(k,iCell))) * inv_h_new(k,iCell)
-            tracer_max_new = (tracer_cur(k,iCell)*h(k,iCell) + dt*(upwind_tendency(k,iCell)+flux_incoming(k,iCell))) * inv_h_new(k,iCell)
-            tracer_upwind_new = (tracer_cur(k,iCell)*h(k,iCell) + dt*upwind_tendency(k,iCell)) * inv_h_new(k,iCell)
+            tracer_min_new = (tracer_cur(k,iCell)*layerThickness(k,iCell) + dt*(upwind_tendency(k,iCell)+flux_outgoing(k,iCell))) * inv_h_new(k,iCell)
+            tracer_max_new = (tracer_cur(k,iCell)*layerThickness(k,iCell) + dt*(upwind_tendency(k,iCell)+flux_incoming(k,iCell))) * inv_h_new(k,iCell)
+            tracer_upwind_new = (tracer_cur(k,iCell)*layerThickness(k,iCell) + dt*upwind_tendency(k,iCell)) * inv_h_new(k,iCell)
            
             scale_factor = (tracer_max(k,iCell)-tracer_upwind_new)/(tracer_max_new-tracer_upwind_new+eps)
             flux_incoming(k,iCell) = min( 1.0_RKIND, max( 0.0_RKIND, scale_factor) )
@@ -337,7 +337,7 @@ module mpas_ocn_tracer_advection_mono
               tracer_new(k, iCell) = tracer_new(k, iCell) + (high_order_vert_flux(k+1, iCell) - high_order_vert_flux(k, iCell)) + upwind_tendency(k,iCell)
 
               !tracer_new is now the new state of the tracer. Only for a check on monotonicity
-              tracer_new(k, iCell) = (tracer_cur(k, iCell)*h(k, iCell) + dt * tracer_new(k, iCell)) * inv_h_new(k, iCell)
+              tracer_new(k, iCell) = (tracer_cur(k, iCell)*layerThickness(k, iCell) + dt * tracer_new(k, iCell)) * inv_h_new(k, iCell)
             end if
           end do ! k loop
         end do ! iCell loop

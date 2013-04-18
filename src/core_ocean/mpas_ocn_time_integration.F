@@ -100,7 +100,7 @@ module ocn_time_integration
      do while (associated(block))
         block % state % time_levs(2) % state % xtime % scalar = timeStamp
 
-        nanCheck = sum(block % state % time_levs(2) % state % u % array)
+        nanCheck = sum(block % state % time_levs(2) % state % normalVelocity % array)
 
         if (nanCheck /= nanCheck) then
            write(0,*) 'Abort: NaN detected'

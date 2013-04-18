@@ -109,7 +109,7 @@ contains
       integer :: err1, err2, err3, indexT, indexS
 
       real (kind=RKIND), dimension(:,:), pointer :: &
-        vertViscTopOfEdge, vertDiffTopOfCell, u, h, h_edge, rho, rhoDisplaced
+        vertViscTopOfEdge, vertDiffTopOfCell, normalVelocity, layerThickness, layerThicknessEdge, density, displacedDensity
 
       real (kind=RKIND), dimension(:,:), pointer :: RiTopOfEdge, RiTopOfCell
 
@@ -133,23 +133,23 @@ contains
       RiTopOfEdge => d % RiTopOfEdge % array
       RiTopOfCell => d % RiTopOfCell % array
 
-      u => s % u % array
-      h => s % h % array
-      h_edge => s % h_edge % array
-      rho => s % rho % array
-      rhoDisplaced => s % rhoDisplaced % array
+      normalVelocity => s % normalVelocity % array
+      layerThickness => s % layerThickness % array
+      layerThicknessEdge => s % layerThicknessEdge % array
+      density => s % density % array
+      displacedDensity => s % displacedDensity % array
       tracers => s % tracers % array
 
       call mpas_timer_start("eos rich", .false., richEOSTimer)
-      call ocn_equation_of_state_rho(s, grid, 0,'relative', err)
-      call ocn_equation_of_state_rho(s, grid, 1,'relative', err)
+      call ocn_equation_of_state_density(s, grid, 0,'relative', err)
+      call ocn_equation_of_state_density(s, grid, 1,'relative', err)
       call mpas_timer_stop("eos rich", richEOSTimer)
 
-      call ocn_vmix_get_rich_numbers(grid, indexT, indexS, u, h, h_edge, & 
-                                  rho, rhoDisplaced, tracers, RiTopOfEdge, RiTopOfCell, err1)
+      call ocn_vmix_get_rich_numbers(grid, indexT, indexS, normalVelocity, layerThickness, layerThicknessEdge, & 
+                                  density, displacedDensity, tracers, RiTopOfEdge, RiTopOfCell, err1)
 
-      call ocn_vel_vmix_coefs_rich(grid, RiTopOfEdge, h_edge, vertViscTopOfEdge, err2)
-      call ocn_tracer_vmix_coefs_rich(grid, RiTopOfCell, h, vertDiffTopOfCell, err3)
+      call ocn_vel_vmix_coefs_rich(grid, RiTopOfEdge, layerThicknessEdge, vertViscTopOfEdge, err2)
+      call ocn_tracer_vmix_coefs_rich(grid, RiTopOfCell, layerThickness, vertDiffTopOfCell, err3)
 
       err = ior(err1, ior(err2, err3))
 
@@ -170,7 +170,7 @@ contains
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_vel_vmix_coefs_rich(grid, RiTopOfEdge, h_edge, vertViscTopOfEdge, err)!{{{
+   subroutine ocn_vel_vmix_coefs_rich(grid, RiTopOfEdge, layerThicknessEdge, vertViscTopOfEdge, err)!{{{
 
       !-----------------------------------------------------------------
       !
@@ -182,7 +182,7 @@ contains
          grid          !< Input: grid information
 
       real (kind=RKIND), dimension(:,:), intent(in) :: &
-         h_edge        !< Input: thickness at edge
+         layerThicknessEdge        !< Input: thickness at edge
 
       real (kind=RKIND), dimension(:,:), intent(in) :: &
          RiTopOfEdge   !< Richardson number at top of edge
@@ -256,7 +256,7 @@ contains
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_tracer_vmix_coefs_rich(grid, RiTopOfCell, h, vertDiffTopOfCell, err)!{{{
+   subroutine ocn_tracer_vmix_coefs_rich(grid, RiTopOfCell, layerThickness, vertDiffTopOfCell, err)!{{{
 
       !-----------------------------------------------------------------
       !
@@ -268,7 +268,7 @@ contains
          grid          !< Input: grid information
 
       real (kind=RKIND), dimension(:,:), intent(in) :: &
-         h             !< Input: thickness at cell center
+         layerThickness             !< Input: thickness at cell center
 
       real (kind=RKIND), dimension(:,:), intent(in) :: &
          RiTopOfCell   !< Input: Richardson number at top of cell
@@ -309,7 +309,7 @@ contains
 
       maxLevelCell => grid % maxLevelCell % array
 
-      coef = -gravity/config_rho0/2.0
+      coef = -gravity/config_density0/2.0
       do iCell = 1,nCells
          do k = 2,maxLevelCell(iCell)
             ! efficiency note: these if statements are inside iEdge and k loops.
@@ -348,8 +348,8 @@ contains
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_vmix_get_rich_numbers(grid, indexT, indexS, u, h, h_edge, & !{{{
-                                 rho, rhoDisplaced, tracers, RiTopOfEdge, RiTopOfCell, err)
+   subroutine ocn_vmix_get_rich_numbers(grid, indexT, indexS, normalVelocity, layerThickness, layerThicknessEdge, & !{{{
+                                 density, displacedDensity, tracers, RiTopOfEdge, RiTopOfCell, err)
 
       !-----------------------------------------------------------------
       !
@@ -363,9 +363,9 @@ contains
       integer, intent(in) :: indexT !< Input: index for temperature
       integer, intent(in) :: indexS !< Input: index for salinity
 
-      real (kind=RKIND), dimension(:,:), intent(in) :: u       !< Input: horizontal velocity
-      real (kind=RKIND), dimension(:,:), intent(in) :: h       !< Input: thickness
-      real (kind=RKIND), dimension(:,:), intent(in) :: h_edge  !< Input: thickness at edge 
+      real (kind=RKIND), dimension(:,:), intent(in) :: normalVelocity       !< Input: horizontal velocity
+      real (kind=RKIND), dimension(:,:), intent(in) :: layerThickness       !< Input: thickness
+      real (kind=RKIND), dimension(:,:), intent(in) :: layerThicknessEdge  !< Input: thickness at edge 
 
       real (kind=RKIND), dimension(:,:,:), intent(in) :: tracers !< Input: tracers
 
@@ -381,8 +381,8 @@ contains
       !
       !-----------------------------------------------------------------
 
-      real (kind=RKIND), dimension(:,:), intent(inout) :: rho    !< Input/output: density
-      real (kind=RKIND), dimension(:,:), intent(inout) :: rhoDisplaced    !< Input/output: displaced density
+      real (kind=RKIND), dimension(:,:), intent(inout) :: density    !< Input/output: density
+      real (kind=RKIND), dimension(:,:), intent(inout) :: displacedDensity    !< Input/output: displaced density
       real (kind=RKIND), dimension(:,:), intent(inout) :: RiTopOfEdge     !< Input/output: Richardson number top of cell
       real (kind=RKIND), dimension(:,:), intent(inout) :: RiTopOfCell     !< Input/output: Richardson number top of cell
 
@@ -402,8 +402,8 @@ contains
 
       real (kind=RKIND) :: coef, invAreaCell
       real (kind=RKIND), dimension(:), pointer :: dcEdge, dvEdge, areaCell
-      real (kind=RKIND), dimension(:,:), allocatable :: drhoTopOfCell, du2TopOfCell, &
-                                                        drhoTopOfEdge, du2TopOfEdge
+      real (kind=RKIND), dimension(:,:), allocatable :: ddensityTopOfCell, du2TopOfCell, &
+                                                        ddensityTopOfEdge, du2TopOfEdge
 
       err = 0
 
@@ -425,26 +425,26 @@ contains
       edgeSignOnCell => grid % edgeSignOnCell % array
 
       allocate( &
-         drhoTopOfCell(nVertLevels+1,nCells+1), drhoTopOfEdge(nVertLevels+1,nEdges), &
+         ddensityTopOfCell(nVertLevels+1,nCells+1), ddensityTopOfEdge(nVertLevels+1,nEdges), &
          du2TopOfCell(nVertLevels+1,nCells+1), du2TopOfEdge(nVertLevels+1,nEdges))
 
-      ! drhoTopOfCell(k) = $\rho^*_{k-1}-\rho^*_k$
-      drhoTopOfCell = 0.0
+      ! ddensityTopOfCell(k) = $\density^*_{k-1}-\density^*_k$
+      ddensityTopOfCell = 0.0
       do iCell=1,nCells
          do k=2,maxLevelCell(iCell)
-            drhoTopOfCell(k,iCell) = rhoDisplaced(k-1,iCell) - rhoDisplaced(k,iCell)
+            ddensityTopOfCell(k,iCell) = displacedDensity(k-1,iCell) - displacedDensity(k,iCell)
           end do
       end do
 
-      ! interpolate drhoTopOfCell to drhoTopOfEdge
-      drhoTopOfEdge = 0.0
+      ! interpolate ddensityTopOfCell to ddensityTopOfEdge
+      ddensityTopOfEdge = 0.0
       do iEdge=1,nEdges
          cell1 = cellsOnEdge(1,iEdge)
          cell2 = cellsOnEdge(2,iEdge)
          do k=2,maxLevelEdgeTop(iEdge)
-            drhoTopOfEdge(k,iEdge) = &
-               (drhoTopOfCell(k,cell1) + &
-                drhoTopOfCell(k,cell2))/2  
+            ddensityTopOfEdge(k,iEdge) = &
+               (ddensityTopOfCell(k,cell1) + &
+                ddensityTopOfCell(k,cell2))/2  
          end do
        end do
 
@@ -452,7 +452,7 @@ contains
       du2TopOfEdge=0.0
       do iEdge=1,nEdges
          do k=2,maxLevelEdgeTop(iEdge)
-            du2TopOfEdge(k,iEdge) = (u(k-1,iEdge) - u(k,iEdge))**2
+            du2TopOfEdge(k,iEdge) = (normalVelocity(k-1,iEdge) - normalVelocity(k,iEdge))**2
          end do
       end do
 
@@ -469,30 +469,30 @@ contains
         end do
       end do
 
-      ! compute RiTopOfEdge using drhoTopOfEdge and du2TopOfEdge
-      ! coef = -g/rho_0/2
+      ! compute RiTopOfEdge using ddensityTopOfEdge and du2TopOfEdge
+      ! coef = -g/density_0/2
       RiTopOfEdge = 0.0
-      coef = -gravity/config_rho0/2.0
+      coef = -gravity/config_density0/2.0
       do iEdge = 1,nEdges
          do k = 2,maxLevelEdgeTop(iEdge)
-            RiTopOfEdge(k,iEdge) = coef*drhoTopOfEdge(k,iEdge) &
-               *(h_edge(k-1,iEdge)+h_edge(k,iEdge)) &
+            RiTopOfEdge(k,iEdge) = coef*ddensityTopOfEdge(k,iEdge) &
+               *(layerThicknessEdge(k-1,iEdge)+layerThicknessEdge(k,iEdge)) &
                / (du2TopOfEdge(k,iEdge) + 1e-20)
          end do
       end do
 
-      ! compute RiTopOfCell using drhoTopOfCell and du2TopOfCell
-      ! coef = -g/rho_0/2
+      ! compute RiTopOfCell using ddensityTopOfCell and du2TopOfCell
+      ! coef = -g/density_0/2
       RiTopOfCell = 0.0
       do iCell = 1,nCells
          do k = 2,maxLevelCell(iCell)
-            RiTopOfCell(k,iCell) = coef*drhoTopOfCell(k,iCell) &
-               *(h(k-1,iCell)+h(k,iCell)) &
+            RiTopOfCell(k,iCell) = coef*ddensityTopOfCell(k,iCell) &
+               *(layerThickness(k-1,iCell)+layerThickness(k,iCell)) &
                / (du2TopOfCell(k,iCell) + 1e-20)
          end do
       end do
 
-      deallocate(drhoTopOfCell, drhoTopOfEdge, &
+      deallocate(ddensityTopOfCell, ddensityTopOfEdge, &
         du2TopOfCell, du2TopOfEdge)
 
    !--------------------------------------------------------------------

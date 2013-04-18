@@ -63,7 +63,7 @@ contains
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_vel_coriolis_tend(grid, Vor_edge, h_edge, u, ke, tend, err)!{{{
+   subroutine ocn_vel_coriolis_tend(grid, Vor_edge, layerThicknessEdge, normalVelocity, kineticEnergy, tend, err)!{{{
 
       !-----------------------------------------------------------------
       !
@@ -74,11 +74,11 @@ contains
       real (kind=RKIND), dimension(:,:), intent(in) :: &
          Vor_edge  !< Input: Potential vorticity on edge
       real (kind=RKIND), dimension(:,:), intent(in) :: &
-         h_edge  !< Input: Thickness on edge
+         layerThicknessEdge  !< Input: Thickness on edge
       real (kind=RKIND), dimension(:,:), intent(in) :: &
-         u  !< Input: Horizontal velocity
+         normalVelocity  !< Input: Horizontal velocity
       real (kind=RKIND), dimension(:,:), intent(in) :: &
-         ke  !< Input: Kinetic Energy
+         kineticEnergy  !< Input: Kinetic Energy
 
       type (mesh_type), intent(in) :: &
          grid          !< Input: grid information
@@ -142,10 +142,10 @@ contains
             do j = 1,nEdgesOnEdge(iEdge)
                eoe = edgesOnEdge(j,iEdge)
                workpv = 0.5 * (Vor_edge(k,iEdge) + Vor_edge(k,eoe))
-               q = q + weightsOnEdge(j,iEdge) * u(k,eoe) * workpv * h_edge(k,eoe) 
+               q = q + weightsOnEdge(j,iEdge) * normalVelocity(k,eoe) * workpv * layerThicknessEdge(k,eoe) 
             end do
 
-           tend(k,iEdge) = tend(k,iEdge) + edgeMask(k, iEdge) * (q - (   ke(k,cell2) - ke(k,cell1) ) * invLength )
+           tend(k,iEdge) = tend(k,iEdge) + edgeMask(k, iEdge) * (q - (   kineticEnergy(k,cell2) - kineticEnergy(k,cell1) ) * invLength )
 
          end do
       end do
@@ -186,7 +186,7 @@ contains
 
       coriolisOn = .true.
 
-      if(config_disable_u_coriolis) coriolisOn = .false.
+      if(config_disable_vel_coriolis) coriolisOn = .false.
 
    !--------------------------------------------------------------------
 

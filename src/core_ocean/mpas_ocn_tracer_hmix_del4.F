@@ -67,7 +67,7 @@ contains
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_tracer_hmix_del4_tend(grid, h_edge, tracers, tend, err)!{{{
+   subroutine ocn_tracer_hmix_del4_tend(grid, layerThicknessEdge, tracers, tend, err)!{{{
 
       !-----------------------------------------------------------------
       !
@@ -76,7 +76,7 @@ contains
       !-----------------------------------------------------------------
 
       real (kind=RKIND), dimension(:,:), intent(in) :: &
-         h_edge    !< Input: thickness at edge
+         layerThicknessEdge    !< Input: thickness at edge
 
       type (mesh_type), intent(in) :: &
          grid          !< Input: grid information
@@ -168,8 +168,8 @@ contains
           do k = 1, maxLevelEdgeTop(iEdge)
             do iTracer = 1, num_tracers * edgeMask(k, iEdge)
 
-              r_tmp1 = invdcEdge * h_edge(k, iEdge) * tracers(iTracer, k, cell1)
-              r_tmp2 = invdcEdge * h_edge(k, iEdge) * tracers(iTracer, k, cell2)
+              r_tmp1 = invdcEdge * layerThicknessEdge(k, iEdge) * tracers(iTracer, k, cell1)
+              r_tmp2 = invdcEdge * layerThicknessEdge(k, iEdge) * tracers(iTracer, k, cell2)
 
               delsq_tracer(iTracer, k, iCell) = delsq_tracer(iTracer, k, iCell) - edgeSignOnCell(i, iCell) * (r_tmp2 - r_tmp1) * invAreaCell1
             end do

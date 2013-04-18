@@ -113,7 +113,7 @@
 /
 &pressure_gradient
 	config_pressure_gradient_type = 'pressure_and_zmid'
-	config_rho0 = 1014.65
+	config_density0 = 1014.65
 /
 &eos
 	config_eos_type = 'jm'
@@ -123,7 +123,7 @@
 	config_eos_linear_beta = 7.64e-1
 	config_eos_linear_Tref = 19.0
 	config_eos_linear_Sref = 35.0
-	config_eos_linear_rhoref = 1025.022
+	config_eos_linear_densityref = 1025.022
 /
 &split_explicit_ts
 	config_n_ts_iter = 2
@@ -132,11 +132,11 @@
 	config_n_bcl_iter_end = 2
 	config_n_btr_subcycles = 20
 	config_n_btr_cor_iter = 2
-	config_u_correction = .true.
+	config_vel_correction = .true.
 	config_btr_subcycle_loop_factor = 2
-	config_btr_gam1_uWt1 = 0.5
+	config_btr_gam1_velWt1 = 0.5
 	config_btr_gam2_SSHWt1 = 1.0
-	config_btr_gam3_uWt2 = 1.0
+	config_btr_gam3_velWt2 = 1.0
 	config_btr_solve_SSH2 = .false.
 /
 &debug
@@ -146,16 +146,16 @@
 	config_prescribe_thickness = .false.
 	config_include_KE_vertex = .false.
 	config_check_tracer_monotonicity = .false.
-	config_disable_h_all_tend = .false.
-	config_disable_h_hadv = .false.
-	config_disable_h_vadv = .false.
-	config_disable_u_all_tend = .false.
-	config_disable_u_coriolis = .false.
-	config_disable_u_pgrad = .false.
-	config_disable_u_hmix = .false.
-	config_disable_u_windstress = .false.
-	config_disable_u_vmix = .false.
-	config_disable_u_vadv = .false.
+	config_disable_thick_all_tend = .false.
+	config_disable_thick_hadv = .false.
+	config_disable_thick_vadv = .false.
+	config_disable_vel_all_tend = .false.
+	config_disable_vel_coriolis = .false.
+	config_disable_vel_pgrad = .false.
+	config_disable_vel_hmix = .false.
+	config_disable_vel_windstress = .false.
+	config_disable_vel_vmix = .false.
+	config_disable_vel_vadv = .false.
 	config_disable_tr_all_tend = .false.
 	config_disable_tr_adv = .false.
 	config_disable_tr_hmix = .false.

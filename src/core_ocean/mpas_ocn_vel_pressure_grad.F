@@ -45,7 +45,7 @@ module ocn_vel_pressure_grad
    !--------------------------------------------------------------------
 
    logical :: pgradOn
-   real (kind=RKIND) :: rho0Inv, grho0Inv
+   real (kind=RKIND) :: density0Inv, gdensity0Inv
 
 
 !***********************************************************************
@@ -66,7 +66,7 @@ contains
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_vel_pressure_grad_tend(grid, pressure, zMid, rho, tend, err)!{{{
+   subroutine ocn_vel_pressure_grad_tend(grid, pressure, zMid, density, tend, err)!{{{
 
       !-----------------------------------------------------------------
       !
@@ -77,7 +77,7 @@ contains
       real (kind=RKIND), dimension(:,:), intent(in) :: &
          pressure, & !< Input: Pressure field or Mongomery potential
          zMid, &     !< Input: z-coordinate at mid-depth of layer
-         rho         !< Input: density
+         density         !< Input: density
 
       type (mesh_type), intent(in) :: &
          grid          !< Input: grid information
@@ -123,12 +123,12 @@ contains
       edgeMask => grid % edgeMask % array
 
       ! pressure for generalized coordinates
-      ! -1/rho_0 (grad p_k + rho g grad z_k^{mid})
+      ! -1/density_0 (grad p_k + density g grad z_k^{mid})
 
       ! For pure isopycnal coordinates, we are still using 
       ! grad(M), the gradient of Montgomery Potential, because
-      ! we have set rho0Inv=1 and grho0Inv=0 in the init routine,
-      ! and pressure is passed in as MontPot.
+      ! we have set density0Inv=1 and gdensity0Inv=0 in the init routine,
+      ! and pressure is passed in as montgomeryPotential.
 
       do iEdge=1,nEdgesSolve
          cell1 = cellsOnEdge(1,iEdge)
@@ -137,9 +137,9 @@ contains
 
          do k=1,maxLevelEdgeTop(iEdge)
             tend(k,iEdge) = tend(k,iEdge)     &
-              - edgeMask(k,iEdge) * rho0Inv*(  pressure(k,cell2) &
+              - edgeMask(k,iEdge) * density0Inv*(  pressure(k,cell2) &
                          - pressure(k,cell1) )* invdcEdge &
-              - edgeMask(k,iEdge) * grho0Inv*  0.5*(rho(k,cell1)+rho(k,cell2)) &
+              - edgeMask(k,iEdge) * gdensity0Inv*  0.5*(density(k,cell1)+density(k,cell2)) &
                         *(  zMid(k,cell2) &
                           - zMid(k,cell1) )* invdcEdge
                       
@@ -192,14 +192,14 @@ contains
       pgradOn = .true.
 
       if (config_pressure_gradient_type.eq.'MontgomeryPotential') then
-        rho0Inv = 1.0
-        grho0Inv = 0.0
+        density0Inv = 1.0
+        gdensity0Inv = 0.0
       else 
-        rho0Inv = 1.0/config_rho0
-        grho0Inv = gravity/config_rho0
+        density0Inv = 1.0/config_density0
+        gdensity0Inv = gravity/config_density0
       end if
 
-      if(config_disable_u_pgrad) pgradOn = .false.
+      if(config_disable_vel_pgrad) pgradOn = .false.
 
 
 

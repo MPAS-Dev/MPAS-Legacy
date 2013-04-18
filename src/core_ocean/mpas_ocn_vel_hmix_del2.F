@@ -64,13 +64,13 @@ contains
 !>  This routine computes the horizontal mixing tendency for momentum
 !>  based on a Laplacian form for the mixing, \f$\nu_2 \nabla^2 u\f$
 !>  This tendency takes the
-!>  form \f$\nu( \nabla divergence + k \times \nabla vorticity )\f$,
+!>  form \f$\nu( \nabla divergence + k \times \nabla relativeVorticity )\f$,
 !>  where \f$\nu\f$ is a viscosity and \f$k\f$ is the vertical unit vector.
 !>  This form is strictly only valid for constant \f$\nu\f$ .
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_vel_hmix_del2_tend(grid, divergence, vorticity, viscosity, tend, err)!{{{
+   subroutine ocn_vel_hmix_del2_tend(grid, divergence, relativeVorticity, viscosity, tend, err)!{{{
 
       !-----------------------------------------------------------------
       !
@@ -82,7 +82,7 @@ contains
          divergence      !< Input: velocity divergence
 
       real (kind=RKIND), dimension(:,:), intent(in) :: &
-         vorticity       !< Input: vorticity
+         relativeVorticity       !< Input: relative vorticity
 
       type (mesh_type), intent(in) :: &
          grid            !< Input: grid information
@@ -151,13 +151,13 @@ contains
 
          do k=1,maxLevelEdgeTop(iEdge)
 
-            ! Here -( vorticity(k,vertex2) - vorticity(k,vertex1) ) / dvEdge(iEdge)
-            ! is - \nabla vorticity pointing from vertex 2 to vertex 1, or equivalently 
-            !    + k \times \nabla vorticity pointing from cell1 to cell2.
+            ! Here -( relativeVorticity(k,vertex2) - relativeVorticity(k,vertex1) ) / dvEdge(iEdge)
+            ! is - \nabla relativeVorticity pointing from vertex 2 to vertex 1, or equivalently 
+            !    + k \times \nabla relativeVorticity pointing from cell1 to cell2.
 
             u_diffusion = ( divergence(k,cell2)  - divergence(k,cell1) ) * invLength1 &
                           -viscVortCoef &
-                          *( vorticity(k,vertex2) - vorticity(k,vertex1) ) * invLength2
+                          *( relativeVorticity(k,vertex2) - relativeVorticity(k,vertex1) ) * invLength2
 
             visc2 = meshScalingDel2(iEdge) * eddyVisc2
 

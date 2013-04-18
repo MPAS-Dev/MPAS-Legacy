@@ -102,7 +102,7 @@ contains
       real (kind=RKIND), dimension(:,:), pointer :: windStressMonthly 
       real (kind=RKIND), dimension(:), pointer :: temperatureRestore 
       real (kind=RKIND), dimension(:), pointer :: salinityRestore 
-      real (kind=RKIND), dimension(:,:), pointer :: u_src
+      real (kind=RKIND), dimension(:,:), pointer :: normalVelocityForcing
       integer :: iCell, iEdge, nCells, nEdges, nMonths, k
       integer :: iMonth, iMonthP1, iDayInMonth, ierr
       real (kind=RKIND) :: data, dataP1, weight, weightP1
@@ -117,7 +117,7 @@ contains
 
       temperatureRestore => grid % temperatureRestore % array
       salinityRestore => grid % salinityRestore % array
-      u_src => grid % u_src % array
+      normalVelocityForcing => grid % normalVelocityForcing % array
 
       temperatureRestoreMonthly => grid % temperatureRestoreMonthly % array
       salinityRestoreMonthly => grid % salinityRestoreMonthly % array
@@ -146,7 +146,7 @@ contains
         ! Interpolate between iMonth and iMonthP1 records, using iDayInMonth
         data = windStressMonthly(iMonth,iEdge)
         dataP1 = windStressMonthly(iMonthP1,iEdge)
-        u_src(1,iEdge) = data * weight + dataP1 * weightP1
+        normalVelocityForcing(1,iEdge) = data * weight + dataP1 * weightP1
       end do
 
    !--------------------------------------------------------------------

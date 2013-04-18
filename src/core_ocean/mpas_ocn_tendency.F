@@ -31,8 +31,6 @@ module ocn_tendency
    use ocn_vel_forcing
    use ocn_vmix
 
-   use ocn_tracer_hadv
-   use ocn_tracer_vadv
    use ocn_tracer_hmix
    use ocn_restoring
 
@@ -56,8 +54,8 @@ module ocn_tendency
    !
    !--------------------------------------------------------------------
 
-   public :: ocn_tend_h, &
-             ocn_tend_u, &
+   public :: ocn_tend_thick, &
+             ocn_tend_vel, &
              ocn_tend_tracer, &
              ocn_tendency_init
 
@@ -73,7 +71,7 @@ contains
 
 !***********************************************************************
 !
-!  routine ocn_tend_h
+!  routine ocn_tend_thick
 !
 !> \brief   Computes thickness tendency
 !> \author  Doug Jacobsen
@@ -84,31 +82,31 @@ contains
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_tend_h(tend, s, grid)!{{{
+   subroutine ocn_tend_thick(tend, s, grid)!{{{
       implicit none
 
       type (tend_type), intent(inout) :: tend !< Input/Output: Tendency structure
       type (state_type), intent(in) :: s !< Input: State information
       type (mesh_type), intent(in) :: grid !< Input: Grid information
 
-      real (kind=RKIND), dimension(:,:), pointer :: h_edge, wTop, tend_h, uTransport
+      real (kind=RKIND), dimension(:,:), pointer :: layerThicknessEdge, vertTransportVelocityTop, tend_layerThickness, uTransport
 
       integer :: err
 
-      call mpas_timer_start("ocn_tend_h")
+      call mpas_timer_start("ocn_tend_thick")
 
       uTransport  => s % uTransport % array
-      wTop        => s % wTop % array
-      h_edge      => s % h_edge % array
+      vertTransportVelocityTop        => s % vertTransportVelocityTop % array
+      layerThicknessEdge      => s % layerThicknessEdge % array
 
-      tend_h      => tend % h % array
+      tend_layerThickness      => tend % layerThickness % array
                   
       !
       ! height tendency: start accumulating tendency terms
       !
-      tend_h = 0.0
+      tend_layerThickness = 0.0
 
-      if(config_disable_h_all_tend) return
+      if(config_disable_thick_all_tend) return
 
       !
       ! height tendency: horizontal advection term -\nabla\cdot ( hu)
@@ -119,23 +117,23 @@ contains
       ! QC Comment (3/15/12): need to make sure that uTranport is the right
       ! transport velocity here.
       call mpas_timer_start("hadv", .false., thickHadvTimer)
-      call ocn_thick_hadv_tend(grid, uTransport, h_edge, tend_h, err)
+      call ocn_thick_hadv_tend(grid, uTransport, layerThicknessEdge, tend_layerThickness, err)
       call mpas_timer_stop("hadv", thickHadvTimer)
 
       !
       ! height tendency: vertical advection term -d/dz(hw)
       !
       call mpas_timer_start("vadv", .false., thickVadvTimer)
-      call ocn_thick_vadv_tend(grid, wtop, tend_h, err)
+      call ocn_thick_vadv_tend(grid, vertTransportVelocityTop, tend_layerThickness, err)
       call mpas_timer_stop("vadv", thickVadvTimer)
 
-      call mpas_timer_stop("ocn_tend_h")
+      call mpas_timer_stop("ocn_tend_thick")
    
-   end subroutine ocn_tend_h!}}}
+   end subroutine ocn_tend_thick!}}}
 
 !***********************************************************************
 !
-!  routine ocn_tend_u
+!  routine ocn_tend_vel
 !
 !> \brief   Computes velocity tendency
 !> \author  Doug Jacobsen
@@ -146,7 +144,7 @@ contains
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_tend_u(tend, s, d, grid)!{{{
+   subroutine ocn_tend_vel(tend, s, d, grid)!{{{
       implicit none
 
       type (tend_type), intent(inout) :: tend !< Input/Output: Tendency structure
@@ -155,55 +153,55 @@ contains
       type (mesh_type), intent(in) :: grid !< Input: Grid information
 
       real (kind=RKIND), dimension(:,:), pointer :: &
-        h_edge, h, u, rho, zMid, pressure, &
-        tend_u, circulation, vorticity, viscosity, ke, ke_edge, Vor_edge, &
-        MontPot, wTop, divergence, vertViscTopOfEdge
+        layerThicknessEdge, h, normalVelocity, density, zMid, pressure, &
+        tend_normalVelocity, circulation, relativeVorticity, viscosity, kineticEnergy, kineticEnergyEdge, potentialVorticityEdge, &
+        montgomeryPotential, vertTransportVelocityTop, divergence, vertViscTopOfEdge
 
-      real (kind=RKIND), dimension(:,:), pointer :: u_src
+      real (kind=RKIND), dimension(:,:), pointer :: normalVelocityForcing
 
       integer :: err
 
-      call mpas_timer_start("ocn_tend_u")
+      call mpas_timer_start("ocn_tend_vel")
 
-      u           => s % u % array
-      rho         => s % rho % array
-      wTop        => s % wTop % array
+      normalVelocity => s % normalVelocity % array
+      density         => s % density % array
+      vertTransportVelocityTop        => s % vertTransportVelocityTop % array
       zMid        => s % zMid % array
-      h_edge      => s % h_edge % array
+      layerThicknessEdge      => s % layerThicknessEdge % array
       viscosity   => s % viscosity % array
-      vorticity   => s % vorticity % array
+      relativeVorticity   => s % relativeVorticity % array
       divergence  => s % divergence % array
-      ke          => s % ke % array
-      ke_edge     => s % ke_edge % array
-      Vor_edge     => s % Vor_edge % array
-      MontPot     => s % MontPot % array
+      kineticEnergy          => s % kineticEnergy % array
+      kineticEnergyEdge     => s % kineticEnergyEdge % array
+      potentialVorticityEdge     => s % potentialVorticityEdge % array
+      montgomeryPotential     => s % montgomeryPotential % array
       pressure    => s % pressure % array
       vertViscTopOfEdge => d % vertViscTopOfEdge % array
 
-      tend_u      => tend % u % array
+      tend_normalVelocity      => tend % normalVelocity % array
                   
-      u_src => grid % u_src % array
+      normalVelocityForcing => grid % normalVelocityForcing % array
 
       !
       ! velocity tendency: start accumulating tendency terms
       !
-      tend_u(:,:) = 0.0
+      tend_normalVelocity(:,:) = 0.0
 
-      if(config_disable_u_all_tend) return
+      if(config_disable_vel_all_tend) return
 
       !
       ! velocity tendency: nonlinear Coriolis term and grad of kinetic energy
       !
 
       call mpas_timer_start("coriolis", .false., velCorTimer)
-      call ocn_vel_coriolis_tend(grid, Vor_edge, h_edge, u, ke, tend_u, err)
+      call ocn_vel_coriolis_tend(grid, potentialVorticityEdge, layerThicknessEdge, normalVelocity, kineticEnergy, tend_normalVelocity, err)
       call mpas_timer_stop("coriolis", velCorTimer)
 
       !
       ! velocity tendency: vertical advection term -w du/dz
       !
       call mpas_timer_start("vadv", .false., velVadvTimer)
-      call ocn_vel_vadv_tend(grid, u, h_edge, wtop, tend_u, err)
+      call ocn_vel_vadv_tend(grid, normalVelocity, layerThicknessEdge, vertTransportVelocityTop, tend_normalVelocity, err)
       call mpas_timer_stop("vadv", velVadvTimer)
 
       !
@@ -211,19 +209,19 @@ contains
       !
       call mpas_timer_start("pressure grad", .false., velPgradTimer)
       if (config_pressure_gradient_type.eq.'MontgomeryPotential') then
-          call ocn_vel_pressure_grad_tend(grid, MontPot,  zMid, rho, tend_u, err)
+          call ocn_vel_pressure_grad_tend(grid, montgomeryPotential,  zMid, density, tend_normalVelocity, err)
       else
-          call ocn_vel_pressure_grad_tend(grid, pressure, zMid, rho, tend_u, err)
+          call ocn_vel_pressure_grad_tend(grid, pressure, zMid, density, tend_normalVelocity, err)
       end if
       call mpas_timer_stop("pressure grad", velPgradTimer)
 
       !
       ! velocity tendency: del2 dissipation, \nu_2 \nabla^2 u
-      !   computed as \nu( \nabla divergence + k \times \nabla vorticity )
+      !   computed as \nu( \nabla divergence + k \times \nabla relativeVorticity )
       !   strictly only valid for config_mom_del2 == constant
       !
       call mpas_timer_start("hmix", .false., velHmixTimer)
-      call ocn_vel_hmix_tend(grid, divergence, vorticity, viscosity, tend_u, err)
+      call ocn_vel_hmix_tend(grid, divergence, relativeVorticity, viscosity, tend_normalVelocity, err)
       call mpas_timer_stop("hmix", velHmixTimer)
 
       !
@@ -231,15 +229,15 @@ contains
       !
 
       call mpas_timer_start("forcings", .false., velForceTimer)
-      call ocn_vel_forcing_tend(grid, u, u_src, ke_edge, h_edge, tend_u, err)
+      call ocn_vel_forcing_tend(grid, normalVelocity, normalVelocityForcing, kineticEnergyEdge, layerThicknessEdge, tend_normalVelocity, err)
       call mpas_timer_stop("forcings", velForceTimer)
 
       !
       ! velocity tendency: vertical mixing d/dz( nu_v du/dz))
       !
-      call mpas_timer_stop("ocn_tend_u")
+      call mpas_timer_stop("ocn_tend_vel")
 
-   end subroutine ocn_tend_u!}}}
+   end subroutine ocn_tend_vel!}}}
 
 !***********************************************************************
 !
@@ -263,7 +261,7 @@ contains
       real (kind=RKIND), intent(in) :: dt !< Input: Time step
 
       real (kind=RKIND), dimension(:,:), pointer :: &
-        uTransport, h,wTop, h_edge, vertDiffTopOfCell, tend_h, uh
+        uTransport, layerThickness,vertTransportVelocityTop, layerThicknessEdge, vertDiffTopOfCell, tend_layerThickness, normalThicknessFlux
       real (kind=RKIND), dimension(:,:,:), pointer :: &
         tracers, tend_tr
 
@@ -272,14 +270,14 @@ contains
       call mpas_timer_start("ocn_tend_tracer")
 
       uTransport  => s % uTransport % array
-      h           => s % h % array
-      wTop        => s % wTop % array
+      layerThickness           => s % layerThickness % array
+      vertTransportVelocityTop        => s % vertTransportVelocityTop % array
       tracers     => s % tracers % array
-      h_edge      => s % h_edge % array
+      layerThicknessEdge      => s % layerThicknessEdge % array
       vertDiffTopOfCell => d % vertDiffTopOfCell % array
 
       tend_tr     => tend % tracers % array
-      tend_h      => tend % h % array
+      tend_layerThickness      => tend % layerThickness % array
 
       !
       ! initialize tracer tendency (RHS of tracer equation) to zero.
@@ -288,30 +286,30 @@ contains
 
       if(config_disable_tr_all_tend) return
 
-      allocate(uh(grid % nVertLevels, grid % nEdges+1))
+      allocate(normalThicknessFlux(grid % nVertLevels, grid % nEdges+1))
       !
       ! QC Comment (3/15/12): need to make sure that uTransport is the right
       ! transport velocity for the tracer.
       do iEdge = 1, grid % nEdges
          do k = 1, grid % nVertLevels
-            uh(k, iEdge) = uTransport(k, iEdge) * h_edge(k, iEdge)
+            normalThicknessFlux(k, iEdge) = uTransport(k, iEdge) * layerThicknessEdge(k, iEdge)
          end do
       end do
 
       !
-      ! tracer tendency: horizontal advection term -div( h \phi u)
+      ! tracer tendency: horizontal advection term -div( layerThickness \phi u)
       !
 
       ! Monotonoic Advection, or standard advection
       call mpas_timer_start("adv", .false., tracerHadvTimer)
-      call mpas_ocn_tracer_advection_tend(tracers, uh, wTop, h, h, dt, grid, tend_h, tend_tr)
+      call mpas_ocn_tracer_advection_tend(tracers, normalThicknessFlux, vertTransportVelocityTop, layerThickness, layerThickness, dt, grid, tend_layerThickness, tend_tr)
       call mpas_timer_stop("adv", tracerHadvTimer)
 
       !
       ! tracer tendency: del2 horizontal tracer diffusion, div(h \kappa_2 \nabla \phi)
       !
       call mpas_timer_start("hmix", .false., tracerHmixTimer)
-      call ocn_tracer_hmix_tend(grid, h_edge, tracers, tend_tr, err)
+      call ocn_tracer_hmix_tend(grid, layerThicknessEdge, tracers, tend_tr, err)
       call mpas_timer_stop("hmix", tracerHmixTimer)
 
       !
@@ -319,13 +317,13 @@ contains
       !
       call mpas_timer_start("restoring", .false., tracerRestoringTimer)
 
-      call ocn_restoring_tend(grid, h, s%index_temperature, s%index_salinity, tracers, tend_tr, err)
+      call ocn_restoring_tend(grid, layerThickness, s%index_temperature, s%index_salinity, tracers, tend_tr, err)
 
       call mpas_timer_stop("restoring", tracerRestoringTimer)
 
       call mpas_timer_stop("ocn_tend_tracer")
 
-      deallocate(uh)
+      deallocate(normalThicknessFlux)
 
    end subroutine ocn_tend_tracer!}}}
 

@@ -62,7 +62,7 @@ contains
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_thick_vadv_tend(grid, wTop, tend, err)!{{{
+   subroutine ocn_thick_vadv_tend(grid, vertTransportVelocityTop, tend, err)!{{{
 
       !-----------------------------------------------------------------
       !
@@ -71,7 +71,7 @@ contains
       !-----------------------------------------------------------------
 
       real (kind=RKIND), dimension(:,:), intent(in) :: &
-         wTop     !< Input: vertical velocity on top layer
+         vertTransportVelocityTop     !< Input: vertical velocity on top layer
 
       type (mesh_type), intent(in) :: &
          grid          !< Input: grid information
@@ -121,7 +121,7 @@ contains
 
       do iCell=1,nCells
          do k=1,maxLevelCell(iCell)
-            tend(k,iCell) = tend(k,iCell) + wTop(k+1,iCell) - wTop(k,iCell)
+            tend(k,iCell) = tend(k,iCell) + vertTransportVelocityTop(k+1,iCell) - vertTransportVelocityTop(k,iCell)
          end do
       end do
 
@@ -157,7 +157,7 @@ contains
 
       thickVadvOn = .true.
 
-      if(config_disable_h_vadv) thickVadvOn = .false.
+      if(config_disable_thick_vadv) thickVadvOn = .false.
       
       err = 0
 

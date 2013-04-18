@@ -66,13 +66,13 @@ contains
 !>  based on a biharmonic form for the mixing.  This mixing tendency
 !>  takes the form  \f$-\nu_4 \nabla^4 u\f$
 !>  but is computed as 
-!>  \f$\nabla^2 u = \nabla divergence + k \times \nabla vorticity\f$
+!>  \f$\nabla^2 u = \nabla divergence + k \times \nabla relativeVorticity\f$
 !>  applied recursively.
 !>  This formulation is only valid for constant \f$\nu_4\f$ .
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_vel_hmix_del4_tend(grid, divergence, vorticity, tend, err)!{{{
+   subroutine ocn_vel_hmix_del4_tend(grid, divergence, relativeVorticity, tend, err)!{{{
 
       !-----------------------------------------------------------------
       !
@@ -84,7 +84,7 @@ contains
          divergence      !< Input: velocity divergence
 
       real (kind=RKIND), dimension(:,:), intent(in) :: &
-         vorticity       !< Input: vorticity
+         relativeVorticity       !< Input: relative vorticity
 
       type (mesh_type), intent(in) :: &
          grid           !< Input: grid information
@@ -127,7 +127,7 @@ contains
             meshScalingDel4, areaCell
 
       real (kind=RKIND), dimension(:,:), allocatable :: delsq_divergence, &
-            delsq_circulation, delsq_vorticity, delsq_u
+            delsq_circulation, delsq_relativeVorticity, delsq_u
 
       err = 0
 
@@ -159,10 +159,10 @@ contains
 
       allocate(delsq_u(nVertLEvels, nEdges+1))
       allocate(delsq_divergence(nVertLevels, nCells+1))
-      allocate(delsq_vorticity(nVertLevels, nVertices+1))
+      allocate(delsq_relativeVorticity(nVertLevels, nVertices+1))
 
       delsq_u(:,:) = 0.0
-      delsq_vorticity(:,:) = 0.0
+      delsq_relativeVorticity(:,:) = 0.0
       delsq_divergence(:,:) = 0.0
 
       !Compute delsq_u
@@ -177,19 +177,19 @@ contains
          invDvEdge = 1.0 / dvEdge(iEdge)
 
          do k=1,maxLevelEdgeTop(iEdge)
-            ! Compute \nabla^2 u = \nabla divergence + k \times \nabla vorticity
+            ! Compute \nabla^2 u = \nabla divergence + k \times \nabla relativeVorticity
             delsq_u(k, iEdge) =          ( divergence(k,cell2)  - divergence(k,cell1) ) * invDcEdge  &
-                -viscVortCoef *( vorticity(k,vertex2) - vorticity(k,vertex1)) * invDcEdge * sqrt(3.0)   
+                -viscVortCoef *( relativeVorticity(k,vertex2) - relativeVorticity(k,vertex1)) * invDcEdge * sqrt(3.0)   
          end do
       end do
 
-      ! Compute delsq_vorticity
+      ! Compute delsq_relativeVorticity
       do iVertex = 1, nVertices
          invAreaTri1 = 1.0 / areaTriangle(iVertex)
          do i = 1, vertexDegree
             iEdge = edgesOnVertex(i, iVertex)
             do k = 1, maxLevelVertexTop(iVertex)
-               delsq_vorticity(k, iVertex) = delsq_vorticity(k, iVertex) + edgeSignOnVertex(i, iVertex) * dcEdge(iEdge) * delsq_u(k, iEdge) * invAreaTri1
+               delsq_relativeVorticity(k, iVertex) = delsq_relativeVorticity(k, iVertex) + edgeSignOnVertex(i, iVertex) * dcEdge(iEdge) * delsq_u(k, iEdge) * invAreaTri1
             end do
          end do
       end do
@@ -219,7 +219,7 @@ contains
 
          do k=1,maxLevelEdgeTop(iEdge)
             u_diffusion = (delsq_divergence(k,cell2) - delsq_divergence(k,cell1)) * invDcEdge  &
-                -viscVortCoef * (delsq_vorticity(k,vertex2) - delsq_vorticity(k,vertex1) ) * invDcEdge * sqrt(3.0) 
+                -viscVortCoef * (delsq_relativeVorticity(k,vertex2) - delsq_relativeVorticity(k,vertex1) ) * invDcEdge * sqrt(3.0) 
 
             tend(k,iEdge) = tend(k,iEdge) - edgeMask(k, iEdge) * u_diffusion * r_tmp
          end do
@@ -227,7 +227,7 @@ contains
 
       deallocate(delsq_u)
       deallocate(delsq_divergence)
-      deallocate(delsq_vorticity)
+      deallocate(delsq_relativeVorticity)
 
    !--------------------------------------------------------------------
 

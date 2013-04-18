@@ -35,13 +35,13 @@ contains
       type(state_type), intent(inout)        :: s
       type(mesh_type), intent(in)            :: grid
 
-      real(kind=RKIND), dimension(:,:), pointer :: uBolusGM, hEddyFlux, h_edge
+      real(kind=RKIND), dimension(:,:), pointer :: uBolusGM, hEddyFlux, layerThicknessEdge
 
       integer, dimension(:), pointer   :: maxLevelEdgeTop
       integer                          :: k, iEdge, nEdges
 
       uBolusGM         => s % uBolusGM % array
-      h_edge         => s % h_edge % array
+      layerThicknessEdge => s % layerThicknessEdge % array
       hEddyFlux      => s % hEddyFlux % array
 
       maxLevelEdgeTop => grid % maxLevelEdgeTop % array
@@ -54,7 +54,7 @@ contains
 
          do iEdge = 1, nEdges
             do k = 1, maxLevelEdgeTop(iEdge)
-               uBolusGM(k,iEdge) = hEddyFlux(k,iEdge)/h_edge(k,iEdge)
+               uBolusGM(k,iEdge) = hEddyFlux(k,iEdge)/layerThicknessEdge(k,iEdge)
             end do
          end do
 
@@ -72,14 +72,14 @@ contains
       type(state_type), intent(inout)     :: s
       type(mesh_type), intent(in)         :: grid
 
-      real(kind=RKIND), dimension(:,:), pointer  :: hEddyFlux, h
+      real(kind=RKIND), dimension(:,:), pointer  :: hEddyFlux, layerThickness
       real(kind=RKIND), dimension(:), pointer    :: dcEdge
       integer, dimension(:,:), pointer           :: cellsOnEdge
       integer, dimension(:), pointer             :: maxLevelEdgeTop
       integer                                    :: k, cell1, cell2, iEdge, nEdges
 
       hEddyFlux      => s % hEddyFlux % array
-      h              => s % h % array
+      layerThickness => s % layerThickness % array
 
       dcEdge         => grid % dcEdge % array
       cellsOnEdge    => grid % cellsOnEdge % array
@@ -94,7 +94,7 @@ contains
                cell1 = cellsOnEdge(1,iEdge)
                cell2 = cellsOnEdge(2,iEdge)
                do k=1,maxLevelEdgeTop(iEdge)
-                  hEddyFlux(k,iEdge) = -config_h_kappa * (h(k,cell2) - h(k,cell1)) / dcEdge(iEdge)
+                  hEddyFlux(k,iEdge) = -config_h_kappa * (layerThickness(k,cell2) - layerThickness(k,cell1)) / dcEdge(iEdge)
                end do
             end do
       else

@@ -34,7 +34,7 @@ module ocn_equation_of_state_jm
    !
    !--------------------------------------------------------------------
 
-   public :: ocn_equation_of_state_jm_rho, &
+   public :: ocn_equation_of_state_jm_density, &
              ocn_equation_of_state_jm_init
 
    !--------------------------------------------------------------------
@@ -49,7 +49,7 @@ contains
 
 !***********************************************************************
 !
-!  routine ocn_equation_of_state_jm_rho
+!  routine ocn_equation_of_state_jm_density
 !
 !> \brief   Calls JM equation of state
 !> \author  Doug Jacobsen
@@ -60,7 +60,7 @@ contains
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_equation_of_state_jm_rho(grid, k_displaced, displacement_type, indexT, indexS, tracers, rho, err)!{{{
+   subroutine ocn_equation_of_state_jm_density(grid, k_displaced, displacement_type, indexT, indexS, tracers, density, err)!{{{
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    !  This module contains routines necessary for computing the density
    !  from model temperature and salinity using an equation of state.
@@ -98,7 +98,7 @@ contains
       real (kind=RKIND), dimension(:), pointer :: &
         refBottomDepth, pRefEOS
       real (kind=RKIND), dimension(:,:), intent(inout) :: &
-        rho
+        density
       real (kind=RKIND), dimension(:,:,:), intent(in) :: tracers
 
       integer, dimension(:), pointer :: maxLevelCell
@@ -106,7 +106,7 @@ contains
       real (kind=RKIND) :: &
          TQ,SQ,             &! adjusted T,S
          BULK_MOD,          &! Bulk modulus
-         RHO_S,             &! density at the surface
+         density_S,             &! density at the surface
          DRDT0,             &! d(density)/d(temperature), for surface
          DRDS0,             &! d(density)/d(salinity   ), for surface
          DKDT,              &! d(bulk modulus)/d(pot. temp.)
@@ -280,7 +280,7 @@ contains
                    (uns1t2 + uns1t3*TQ + uns1t4*T2)*T2
             WORK2 = SQR*(unsqt0 + unsqt1*TQ + unsqt2*T2)
 
-            RHO_S = unt1*TQ + (unt2 + unt3*TQ + (unt4 + unt5*TQ)*T2)*T2 &
+            density_S = unt1*TQ + (unt2 + unt3*TQ + (unt4 + unt5*TQ)*T2)*T2 &
                             + (uns2t0*SQ + WORK1 + WORK2)*SQ
 
             !***
@@ -304,13 +304,13 @@ contains
   
             DENOMK = 1.0/(BULK_MOD - p(k))
    
-            rho(k,iCell) = (unt0 + RHO_S)*BULK_MOD*DENOMK
+            density(k,iCell) = (unt0 + density_S)*BULK_MOD*DENOMK
 
          end do
       end do
 
       deallocate(pRefEOS,p,p2)
-   end subroutine ocn_equation_of_state_jm_rho!}}}
+   end subroutine ocn_equation_of_state_jm_density!}}}
 
 !***********************************************************************
 !

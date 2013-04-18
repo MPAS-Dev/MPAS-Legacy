@@ -65,7 +65,7 @@ contains
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_restoring_tend(grid, h, indexT, indexS, tracers, tend, err)!{{{
+   subroutine ocn_restoring_tend(grid, layerThickness, indexT, indexS, tracers, tend, err)!{{{
 
       !-----------------------------------------------------------------
       !
@@ -74,7 +74,7 @@ contains
       !-----------------------------------------------------------------
 
       real (kind=RKIND), dimension(:,:), intent(in) :: &
-         h    !< Input: thickness
+         layerThickness    !< Input: thickness
 
       type (mesh_type), intent(in) :: &
          grid          !< Input: grid information
@@ -127,8 +127,8 @@ contains
 
       k = 1  ! restoring only in top layer
       do iCell=1,nCellsSolve
-        tend(indexT, k, iCell) = tend(indexT, k, iCell) - h(k,iCell)*(tracers(indexT, k, iCell) - temperatureRestore(iCell)) * invTemp
-        tend(indexS, k, iCell) = tend(indexS, k, iCell) - h(k,iCell)*(tracers(indexS, k, iCell) - salinityRestore(iCell)) * invSalinity
+        tend(indexT, k, iCell) = tend(indexT, k, iCell) - layerThickness(k,iCell)*(tracers(indexT, k, iCell) - temperatureRestore(iCell)) * invTemp
+        tend(indexS, k, iCell) = tend(indexS, k, iCell) - layerThickness(k,iCell)*(tracers(indexS, k, iCell) - salinityRestore(iCell)) * invSalinity
 
 !       write(6,10) iCell, tracers(indexT, k, iCell), &
 !              temperatureRestore(iCell), tracers(indexT, k, iCell), &

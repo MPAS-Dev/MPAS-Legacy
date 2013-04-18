@@ -149,7 +149,7 @@ contains
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_vel_vmix_tend_implicit(grid, dt, ke_edge, vertViscTopOfEdge, h, h_edge, u, err)!{{{
+   subroutine ocn_vel_vmix_tend_implicit(grid, dt, kineticEnergyEdge, vertViscTopOfEdge, layerThickness, layerThicknessEdge, normalVelocity, err)!{{{
 
       !-----------------------------------------------------------------
       !
@@ -161,7 +161,7 @@ contains
          grid          !< Input: grid information
 
       real (kind=RKIND), dimension(:,:), intent(in) :: &
-         ke_edge        !< Input: kinetic energy at edge
+         kineticEnergyEdge        !< Input: kinetic energy at edge
 
       real (kind=RKIND), dimension(:,:), intent(in) :: &
          vertViscTopOfEdge !< Input: vertical mixing coefficients
@@ -170,7 +170,7 @@ contains
          dt            !< Input: time step
 
       real (kind=RKIND), dimension(:,:), intent(in) :: &
-         h             !< Input: thickness at cell center
+         layerThickness !< Input: thickness at cell center
 
       !-----------------------------------------------------------------
       !
@@ -179,10 +179,10 @@ contains
       !-----------------------------------------------------------------
 
       real (kind=RKIND), dimension(:,:), intent(inout) :: &
-         u             !< Input: velocity
+         normalVelocity             !< Input: velocity
 
       real (kind=RKIND), dimension(:,:), intent(inout) :: &
-         h_edge        !< Input: thickness at edge
+         layerThicknessEdge        !< Input: thickness at edge
 
       !-----------------------------------------------------------------
       !
@@ -204,7 +204,7 @@ contains
 
       integer, dimension(:,:), pointer :: cellsOnEdge
 
-      real (kind=RKIND), dimension(:), allocatable :: A, B, C, uTemp
+      real (kind=RKIND), dimension(:), allocatable :: A, B, C, velTemp
 
       err = 0
 
@@ -215,7 +215,7 @@ contains
       maxLevelEdgeTop => grid % maxLevelEdgeTop % array
       cellsOnEdge => grid % cellsOnEdge % array
 
-      allocate(A(nVertLevels),B(nVertLevels),C(nVertLevels),uTemp(nVertLevels)) 
+      allocate(A(nVertLevels),B(nVertLevels),C(nVertLevels),velTemp(nVertLevels)) 
       A(1)=0
 
       do iEdge=1,nEdges
@@ -223,26 +223,26 @@ contains
         if (N.gt.0) then
 
          ! Compute A(k), B(k), C(k)
-         ! h_edge is computed in compute_solve_diag, and is not available yet,
-         ! so recompute h_edge here.
+         ! layerThicknessEdge is computed in compute_solve_diag, and is not available yet,
+         ! so recompute layerThicknessEdge here.
          cell1 = cellsOnEdge(1,iEdge)
          cell2 = cellsOnEdge(2,iEdge)
          do k=1,N
-            h_edge(k,iEdge) = 0.5 * (h(k,cell1) + h(k,cell2))
+            layerThicknessEdge(k,iEdge) = 0.5 * (layerThickness(k,cell1) + layerThickness(k,cell2))
          end do
 
          ! A is lower diagonal term
          do k=2,N
             A(k) = -2.0*dt*vertViscTopOfEdge(k,iEdge) &
-               / (h_edge(k-1,iEdge) + h_edge(k,iEdge)) &
-               / h_edge(k,iEdge)
+               / (layerThicknessEdge(k-1,iEdge) + layerThicknessEdge(k,iEdge)) &
+               / layerThicknessEdge(k,iEdge)
          enddo
 
          ! C is upper diagonal term
          do k=1,N-1
             C(k) = -2.0*dt*vertViscTopOfEdge(k+1,iEdge) &
-               / (h_edge(k,iEdge) + h_edge(k+1,iEdge)) &
-               / h_edge(k,iEdge)
+               / (layerThicknessEdge(k,iEdge) + layerThicknessEdge(k+1,iEdge)) &
+               / layerThicknessEdge(k,iEdge)
          enddo
 
          ! B is diagonal term
@@ -253,17 +253,17 @@ contains
 
          ! Apply bottom drag boundary condition on the viscous term
          B(N) = 1 - A(N) + dt*config_bottom_drag_coeff  &
-            *sqrt(2.0*ke_edge(k,iEdge))/h_edge(k,iEdge)
+            *sqrt(2.0*kineticEnergyEdge(k,iEdge))/layerThicknessEdge(k,iEdge)
 
-         call tridiagonal_solve(A(2:N),B,C(1:N-1),u(:,iEdge),uTemp,N)
+         call tridiagonal_solve(A(2:N),B,C(1:N-1),normalVelocity(:,iEdge),velTemp,N)
 
-         u(1:N,iEdge) = uTemp(1:N)
-         u(N+1:nVertLevels,iEdge) = 0.0
+         normalVelocity(1:N,iEdge) = velTemp(1:N)
+         normalVelocity(N+1:nVertLevels,iEdge) = 0.0
 
         end if
       end do
 
-      deallocate(A,B,C,uTemp)
+      deallocate(A,B,C,velTemp)
 
    !--------------------------------------------------------------------
 
@@ -283,7 +283,7 @@ contains
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_tracer_vmix_tend_implicit(grid, dt, vertDiffTopOfCell, h, tracers, err)!{{{
+   subroutine ocn_tracer_vmix_tend_implicit(grid, dt, vertDiffTopOfCell, layerThickness, tracers, err)!{{{
 
       !-----------------------------------------------------------------
       !
@@ -301,7 +301,7 @@ contains
          dt            !< Input: time step
 
       real (kind=RKIND), dimension(:,:), intent(in) :: &
-         h             !< Input: thickness at cell center
+         layerThickness             !< Input: thickness at cell center
 
       !-----------------------------------------------------------------
       !
@@ -352,13 +352,13 @@ contains
          A(1)=0
          do k=2,N
             A(k) = -2.0*dt*vertDiffTopOfCell(k,iCell) &
-                 / (h(k-1,iCell) + h(k,iCell)) / h(k,iCell)
+                 / (layerThickness(k-1,iCell) + layerThickness(k,iCell)) / layerThickness(k,iCell)
          enddo
 
          ! C is upper diagonal term
          do k=1,N-1
             C(k) = -2.0*dt*vertDiffTopOfCell(k+1,iCell) &
-                 / (h(k,iCell) + h(k+1,iCell)) / h(k,iCell)
+                 / (layerThickness(k,iCell) + layerThickness(k+1,iCell)) / layerThickness(k,iCell)
          enddo
          C(N) = 0.0
 
@@ -403,17 +403,17 @@ contains
       integer, intent(out) :: err
 
       integer :: nCells
-      real (kind=RKIND), dimension(:,:), pointer :: u, h, h_edge, vertViscTopOfEdge, vertDiffTopOfCell, ke_edge
+      real (kind=RKIND), dimension(:,:), pointer :: normalVelocity, layerThickness, layerThicknessEdge, vertViscTopOfEdge, vertDiffTopOfCell, kineticEnergyEdge
       real (kind=RKIND), dimension(:,:,:), pointer :: tracers
       integer, dimension(:), pointer :: maxLevelCell
 
       err = 0
 
-      u           => state % u % array
+      normalVelocity => state % normalVelocity % array
       tracers     => state % tracers % array
-      h           => state % h % array
-      h_edge      => state % h_edge % array
-      ke_edge     => state % ke_edge % array
+      layerThickness  => state % layerThickness % array
+      layerThicknessEdge      => state % layerThicknessEdge % array
+      kineticEnergyEdge     => state % kineticEnergyEdge % array
       vertViscTopOfEdge => diagnostics % vertViscTopOfEdge % array
       vertDiffTopOfCell => diagnostics % vertDiffTopOfCell % array
       maxLevelCell    => grid % maxLevelCell % array
@@ -425,13 +425,13 @@ contains
       !
       !  Implicit vertical solve for momentum
       !
-      call ocn_vel_vmix_tend_implicit(grid, dt, ke_edge, vertViscTopOfEdge, h, h_edge, u, err)
+      call ocn_vel_vmix_tend_implicit(grid, dt, kineticEnergyEdge, vertViscTopOfEdge, layerThickness, layerThicknessEdge, normalVelocity, err)
 
       !
       !  Implicit vertical solve for tracers
       !
 
-      call ocn_tracer_vmix_tend_implicit(grid, dt, vertDiffTopOfCell, h, tracers, err)
+      call ocn_tracer_vmix_tend_implicit(grid, dt, vertDiffTopOfCell, layerThickness, tracers, err)
 
    end subroutine ocn_vmix_implicit!}}}
 
@@ -469,7 +469,7 @@ contains
       velVmixOn = .true.
       tracerVmixOn = .true.
 
-      if(config_disable_u_vmix) velVmixOn = .false.
+      if(config_disable_vel_vmix) velVmixOn = .false.
       if(config_disable_tr_vmix) tracerVmixOn = .false.
 
       call ocn_vmix_coefs_const_init(err1)

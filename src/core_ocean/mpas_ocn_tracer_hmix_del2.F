@@ -67,7 +67,7 @@ contains
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_tracer_hmix_del2_tend(grid, h_edge, tracers, tend, err)!{{{
+   subroutine ocn_tracer_hmix_del2_tend(grid, layerThicknessEdge, tracers, tend, err)!{{{
 
       !-----------------------------------------------------------------
       !
@@ -76,7 +76,7 @@ contains
       !-----------------------------------------------------------------
 
       real (kind=RKIND), dimension(:,:), intent(in) :: &
-         h_edge    !< Input: thickness at edge
+         layerThicknessEdge    !< Input: thickness at edge
 
       type (mesh_type), intent(in) :: &
          grid          !< Input: grid information
@@ -168,7 +168,7 @@ contains
               tracer_turb_flux = tracers(iTracer, k, cell2) - tracers(iTracer, k, cell1)
 
               ! div(h \kappa_2 \nabla \phi) at cell center
-              flux = h_edge(k, iEdge) * tracer_turb_flux * edgeMask(k, iEdge) * r_tmp
+              flux = layerThicknessEdge(k, iEdge) * tracer_turb_flux * edgeMask(k, iEdge) * r_tmp
 
               tend(iTracer, k, iCell) = tend(iTracer, k, iCell) - edgeSignOnCell(i, iCell) * flux * invAreaCell1
             end do

@@ -45,7 +45,7 @@ module mpas_ocn_tracer_advection_std
 !>  tracer advection tendencies.
 !
 !-----------------------------------------------------------------------
-   subroutine mpas_ocn_tracer_advection_std_tend(tracers, uh, w, verticalCellSize, grid, tend)!{{{
+   subroutine mpas_ocn_tracer_advection_std_tend(tracers, normalThicknessFlux, w, verticalCellSize, grid, tend)!{{{
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
    !
    ! Input: s - current model state
@@ -56,13 +56,13 @@ module mpas_ocn_tracer_advection_std
 
       real (kind=RKIND), dimension(:,:,:), intent(inout) :: tend !< Input/Output: Tracer tendency
       real (kind=RKIND), dimension(:,:,:), intent(in) :: tracers !< Input: Tracer values
-      real (kind=RKIND), dimension(:,:), intent(in) :: uh !< Input: Thickness weighted horizontal velocity
+      real (kind=RKIND), dimension(:,:), intent(in) :: normalThicknessFlux !< Input: Thickness weighted horizontal velocity
       real (kind=RKIND), dimension(:,:), intent(in) :: w !< Input: Vertical Velocity
       real (kind=RKIND), dimension(:,:), intent(in) :: verticalCellSize !< Input: Distance between vertical interfaces of a cell
       type (mesh_type), intent(in) :: grid !< Input: Grid information
 
       call mpas_timer_start("tracer-hadv", .false.)
-      call mpas_ocn_tracer_advection_std_hadv_tend(tracers, uh, grid, tend)
+      call mpas_ocn_tracer_advection_std_hadv_tend(tracers, normalThicknessFlux, grid, tend)
       call mpas_timer_stop("tracer-hadv")
       call mpas_timer_start("tracer-vadv", .false.)
       call mpas_ocn_tracer_advection_std_vadv_tend(tracers, w, verticalCellSize, grid, tend)

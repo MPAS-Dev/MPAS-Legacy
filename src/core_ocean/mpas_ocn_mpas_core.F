@@ -22,8 +22,6 @@ module mpas_core
    use ocn_vel_forcing
    use ocn_vel_coriolis
 
-   use ocn_tracer_hadv
-   use ocn_tracer_vadv
    use ocn_tracer_hmix
    use ocn_gm
    use ocn_restoring
@@ -85,10 +83,6 @@ module mpas_core
       call ocn_vel_forcing_init(err_tmp)
       err = ior(err, err_tmp)
 
-      call ocn_tracer_hadv_init(err_tmp)
-      err = ior(err, err_tmp)
-      call ocn_tracer_vadv_init(err_tmp)
-      err = ior(err, err_tmp)
       call ocn_tracer_hmix_init(err_tmp)
       err = ior(err, err_tmp)
       call ocn_restoring_init(err_tmp)
@@ -273,29 +267,29 @@ module mpas_core
       call ocn_diagnostic_solve(dt, block % state % time_levs(1) % state, mesh)
       call mpas_timer_stop("diagnostic solve", initDiagSolveTimer)
 
-      ! Compute velocity transport, used in advection terms of h and tracer tendency
+      ! Compute velocity transport, used in advection terms of layerThickness and tracer tendency
         block % state % time_levs(1) % state % uTransport % array(:,:) &
-      = block % state % time_levs(1) % state % u % array(:,:) &
+      = block % state % time_levs(1) % state % normalVelocity % array(:,:) &
       + block % state % time_levs(1) % state % uBolusGM % array(:,:)
 
       call ocn_compute_mesh_scaling(mesh)
  
       call mpas_rbf_interp_initialize(mesh)
       call mpas_init_reconstruct(mesh)
-      call mpas_reconstruct(mesh, block % state % time_levs(1) % state % u % array,                  &
-                       block % state % time_levs(1) % state % uReconstructX % array,            &
-                       block % state % time_levs(1) % state % uReconstructY % array,            &
-                       block % state % time_levs(1) % state % uReconstructZ % array,            &
-                       block % state % time_levs(1) % state % uReconstructZonal % array,        &
-                       block % state % time_levs(1) % state % uReconstructMeridional % array    &
+      call mpas_reconstruct(mesh, block % state % time_levs(1) % state % normalVelocity % array,                  &
+                       block % state % time_levs(1) % state % normalVelocityX % array,            &
+                       block % state % time_levs(1) % state % normalVelocityY % array,            &
+                       block % state % time_levs(1) % state % normalVelocityZ % array,            &
+                       block % state % time_levs(1) % state % normalVelocityZonal % array,        &
+                       block % state % time_levs(1) % state % normalVelocityMeridional % array    &
                       )
 
-      call mpas_reconstruct(mesh, mesh % u_src % array,                  &
-                       block % state % time_levs(1) % state % uSrcReconstructX % array,            &
-                       block % state % time_levs(1) % state % uSrcReconstructY % array,            &
-                       block % state % time_levs(1) % state % uSrcReconstructZ % array,            &
-                       block % state % time_levs(1) % state % uSrcReconstructZonal % array,        &
-                       block % state % time_levs(1) % state % uSrcReconstructMeridional % array    &
+      call mpas_reconstruct(mesh, mesh % normalVelocityForcing % array,                  &
+                       block % state % time_levs(1) % state % normalVelocityForcingReconstructX % array,            &
+                       block % state % time_levs(1) % state % normalVelocityForcingReconstructY % array,            &
+                       block % state % time_levs(1) % state % normalVelocityForcingReconstructZ % array,            &
+                       block % state % time_levs(1) % state % normalVelocityForcingReconstructZonal % array,        &
+                       block % state % time_levs(1) % state % normalVelocityForcingReconstructMeridional % array    &
                       )
 
       ! initialize velocities and tracers on land to be zero.
@@ -303,11 +297,11 @@ module mpas_core
       block % mesh % areaCell % array(block % mesh % nCells+1) = -1.0e34
 
       do iEdge=1,block % mesh % nEdges
-         block % state % time_levs(1) % state % u % array( &
+         block % state % time_levs(1) % state % normalVelocity % array( &
              block % mesh % maxLevelEdgeTop % array(iEdge)+1 &
             :block % mesh % maxLevelEdgeBot % array(iEdge), iEdge) = 0.0
 
-         block % state % time_levs(1) % state % u % array( &
+         block % state % time_levs(1) % state % normalVelocity % array( &
              block % mesh % maxLevelEdgeBot % array(iEdge)+1: &
              block % mesh % nVertLevels,iEdge) = 0.0
       end do
@@ -552,14 +546,14 @@ module mpas_core
       type (block_type), pointer :: block
 
       integer :: iTracer, cell, cell1, cell2
-      real (kind=RKIND) :: uhSum, hSum, hEdge1, zMidPBC
+      real (kind=RKIND) :: normalThicknessFluxSum, thicknessSum, hEdge1, zMidPBC
 
       integer, dimension(:), pointer :: maxLevelCell
       real (kind=RKIND), dimension(:), pointer :: refBottomDepth, &
          refBottomDepthTopOfCell, vertCoordMovementWeights, hZLevel, bottomDepth
       real (kind=RKIND), dimension(:), allocatable :: minBottomDepth, minBottomDepthMid, zMidZLevel
          
-      real (kind=RKIND), dimension(:,:), pointer :: h
+      real (kind=RKIND), dimension(:,:), pointer :: layerThickness
       real (kind=RKIND), dimension(:,:,:), pointer :: tracers
       integer :: nVertLevels
       logical :: consistentSSH
@@ -568,8 +562,8 @@ module mpas_core
       block => domain % blocklist
       do while (associated(block))
 
-         h          => block % state % time_levs(1) % state % h % array
-         tracers    => block % state % time_levs(1) % state % tracers % array
+         layerThickness => block % state % time_levs(1) % state % layerThickness % array
+         tracers => block % state % time_levs(1) % state % tracers % array
          refBottomDepth => block % mesh % refBottomDepth % array
          refBottomDepthTopOfCell => block % mesh % refBottomDepthTopOfCell % array
          bottomDepth => block % mesh % bottomDepth % array
@@ -620,7 +614,7 @@ module mpas_core
           if (config_alter_ICs_for_pbcs.eq.'zlevel_pbcs_on') then
 
             write (0,'(a)') ' Altering bottomDepth to avoid very thin cells.'
-            write (0,'(a)') ' Altering h and tracer initial conditions to conform with partial bottom cells.'
+            write (0,'(a)') ' Altering layerThickness and tracer initial conditions to conform with partial bottom cells.'
 
             allocate(minBottomDepth(nVertLevels),minBottomDepthMid(nVertLevels),zMidZLevel(nVertLevels))
 
@@ -650,7 +644,7 @@ module mpas_core
                 k = maxLevelCell(iCell)
 
                ! Alter thickness of bottom level to account for PBC
-               h(k,iCell) = bottomDepth(iCell) - refBottomDepthTopOfCell(k) 
+               layerThickness(k,iCell) = bottomDepth(iCell) - refBottomDepthTopOfCell(k) 
 
                ! Linearly interpolate the initial T&S for new location of bottom cell for PBCs
                zMidPBC = -0.5*(bottomDepth(iCell) + refBottomDepthTopOfCell(k))
@@ -688,19 +682,19 @@ module mpas_core
             consistentSSH = .true.
             do iCell = 1,nCells
                ! Check if abs(ssh)>2m.  If so, print warning.
-               if (abs(sum(h(1:maxLevelCell(iCell),iCell))-bottomDepth(iCell))>2.0) then
+               if (abs(sum(layerThickness(1:maxLevelCell(iCell),iCell))-bottomDepth(iCell))>2.0) then
                   consistentSSH = .false.
 #ifdef MPAS_DEBUG
-                  write (0,'(a)') ' Warning: abs(sum(h)-bottomDepth)>2m.  Most likely, initial h does not match bottomDepth.'
+                  write (0,'(a)') ' Warning: abs(sum(h)-bottomDepth)>2m.  Most likely, initial layerThickness does not match bottomDepth.'
                   write (0,*) ' iCell, K=maxLevelCell(iCell), bottomDepth(iCell),sum(h),bottomDepth,hZLevel(K),h(K): ', &
-                                iCell, maxLevelCell(iCell), bottomDepth(iCell),sum(h(1:maxLevelCell(iCell),iCell)),bottomDepth(iCell), &
-                                hZLevel(maxLevelCell(iCell)), h(maxLevelCell(iCell),iCell)
+                                iCell, maxLevelCell(iCell), bottomDepth(iCell),sum(layerThickness(1:maxLevelCell(iCell),iCell)),bottomDepth(iCell), &
+                                hZLevel(maxLevelCell(iCell)), layerThickness(maxLevelCell(iCell),iCell)
 #endif                            
                endif
             enddo
 
             if (.not. consistentSSH) then
-               write(0,*) 'Warning: SSH is not consistent. Most likely, initial h does not match bottomDepth.'
+               write(0,*) 'Warning: SSH is not consistent. Most likely, initial layerThickness does not match bottomDepth.'
             end if
          endif
 
@@ -739,33 +733,33 @@ module mpas_core
       type (block_type), pointer :: block
 
       integer :: iTracer, cell, cell1, cell2
-      real (kind=RKIND) :: uhSum, hSum, hEdge1
+      real (kind=RKIND) :: normalThicknessFluxSum, layerThicknessSum, layerThicknessEdge1
       real (kind=RKIND), dimension(:), pointer :: refBottomDepth
          
-      real (kind=RKIND), dimension(:,:), pointer :: h
+      real (kind=RKIND), dimension(:,:), pointer :: layerThickness
       integer :: nVertLevels
 
       ! Initialize z-level grid variables from h, read in from input file.
       block => domain % blocklist
       do while (associated(block))
 
-         h          => block % state % time_levs(1) % state % h % array
+         layerThickness          => block % state % time_levs(1) % state % layerThickness % array
          refBottomDepth => block % mesh % refBottomDepth % array
          nVertLevels = block % mesh % nVertLevels
 
          ! Compute barotropic velocity at first timestep
          ! This is only done upon start-up.
          if (trim(config_time_integrator) == 'unsplit_explicit') then
-            block % state % time_levs(1) % state % uBtr % array(:) = 0.0
+            block % state % time_levs(1) % state % normalBarotropicVelocity % array(:) = 0.0
 
-              block % state % time_levs(1) % state % uBcl % array(:,:) &
-            = block % state % time_levs(1) % state % u % array(:,:) 
+              block % state % time_levs(1) % state % normalBaroclinicVelocity % array(:,:) &
+            = block % state % time_levs(1) % state % normalVelocity % array(:,:) 
 
          elseif (trim(config_time_integrator) == 'split_explicit') then
 
             if (config_filter_btr_mode) then
                do iCell=1,block % mesh % nCells
-                  block % state % time_levs(1) % state % h % array(1,iCell) & 
+                  block % state % time_levs(1) % state % layerThickness % array(1,iCell) & 
                 = block % mesh % refBottomDepth % array(1)
                enddo
             endif 
@@ -774,53 +768,53 @@ module mpas_core
                cell1 = block % mesh % cellsOnEdge % array(1,iEdge)
                cell2 = block % mesh % cellsOnEdge % array(2,iEdge)
 
-               ! uBtr = sum(u)/sum(h) on each column
+               ! normalBarotropicVelocity = sum(u)/sum(h) on each column
                ! ocn_diagnostic_solve has not yet been called, so compute hEdge 
                ! just for this edge.
 
-               ! hSum is initialized outside the loop because on land boundaries 
-               ! maxLevelEdgeTop=0, but I want to initialize hSum with a 
+               ! thicknessSum is initialized outside the loop because on land boundaries 
+               ! maxLevelEdgeTop=0, but I want to initialize thicknessSum with a 
                ! nonzero value to avoid a NaN.
-               hEdge1 = 0.5*( &
-                   block % state % time_levs(1) % state % h % array(1,cell1) & 
-                 + block % state % time_levs(1) % state % h % array(1,cell2) ) 
-               uhSum = hEdge1*block % state % time_levs(1) % state % u % array(1,iEdge)
-               hSum = hEdge1
+               layerThicknessEdge1 = 0.5*( &
+                   block % state % time_levs(1) % state % layerThickness % array(1,cell1) & 
+                 + block % state % time_levs(1) % state % layerThickness % array(1,cell2) ) 
+               normalThicknessFluxSum = layerThicknessEdge1*block % state % time_levs(1) % state % normalVelocity % array(1,iEdge)
+               layerThicknessSum = layerThicknessEdge1
 
                do k=2,block % mesh % maxLevelEdgeTop % array(iEdge)
                   ! ocn_diagnostic_solve has not yet been called, so compute hEdge 
                   ! just for this edge.
-                  hEdge1 = 0.5*( &
-                      block % state % time_levs(1) % state % h % array(k,cell1) & 
-                    + block % state % time_levs(1) % state % h % array(k,cell2) ) 
+                  layerThicknessEdge1 = 0.5*( &
+                      block % state % time_levs(1) % state % layerThickness % array(k,cell1) & 
+                    + block % state % time_levs(1) % state % layerThickness % array(k,cell2) ) 
 
-                  uhSum = uhSum &
-                     + hEdge1*block % state % time_levs(1) % state % u % array(k,iEdge)
-                  hSum = hSum + hEdge1
+                  normalThicknessFluxSum = normalThicknessFluxSum &
+                     + layerThicknessEdge1*block % state % time_levs(1) % state % normalVelocity % array(k,iEdge)
+                  layerThicknessSum = layerThicknessSum + layerThicknessEdge1
 
                enddo
-               block % state % time_levs(1) % state % uBtr % array(iEdge) = uhSum/hsum
+               block % state % time_levs(1) % state % normalBarotropicVelocity % array(iEdge) = normalThicknessFluxSum/layerThicknessSum
 
-               ! uBcl(k,iEdge) = u(k,iEdge) - uBtr(iEdge)
+               ! normalBaroclinicVelocity(k,iEdge) = normalVelocity(k,iEdge) - normalBarotropicVelocity(iEdge)
                do k=1,block % mesh % maxLevelEdgeTop % array(iEdge)
-                 block % state % time_levs(1) % state % uBcl % array(k,iEdge) &
-                 = block % state % time_levs(1) % state % u % array(k,iEdge) &
-                 - block % state % time_levs(1) % state % uBtr % array(iEdge)
+                 block % state % time_levs(1) % state % normalBaroclinicVelocity % array(k,iEdge) &
+                 = block % state % time_levs(1) % state % normalVelocity % array(k,iEdge) &
+                 - block % state % time_levs(1) % state % normalBarotropicVelocity % array(iEdge)
                enddo
 
-               ! uBcl=0, u=0 on land cells
+               ! normalBaroclinicVelocity=0, normalVelocity=0 on land cells
                do k=block % mesh % maxLevelEdgeTop % array(iEdge)+1, block % mesh % nVertLevels
-                 block % state % time_levs(1) % state % uBcl % array(k,iEdge) = 0.0
-                 block % state % time_levs(1) % state % u % array(k,iEdge) = 0.0
+                 block % state % time_levs(1) % state % normalBaroclinicVelocity % array(k,iEdge) = 0.0
+                 block % state % time_levs(1) % state % normalVelocity % array(k,iEdge) = 0.0
                enddo
             enddo
 
             if (config_filter_btr_mode) then
-               ! filter uBtr out of initial condition
-                block % state % time_levs(1) % state % u % array(:,:) &
-              = block % state % time_levs(1) % state % uBcl % array(:,:)
+               ! filter normalBarotropicVelocity out of initial condition
+                block % state % time_levs(1) % state % normalVelocity % array(:,:) &
+              = block % state % time_levs(1) % state % normalBaroclinicVelocity % array(:,:)
 
-               block % state % time_levs(1) % state % uBtr % array(:) = 0.0
+               block % state % time_levs(1) % state % normalBarotropicVelocity % array(:) = 0.0
             endif 
 
          endif

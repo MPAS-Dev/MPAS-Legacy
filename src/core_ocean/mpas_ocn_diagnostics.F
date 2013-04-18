@@ -8,7 +8,7 @@
 !> \version SVN:$Id:$
 !> \details
 !>  This module contains the routines for computing
-!>  diagnostic variables, and other quantities such as wTop.
+!>  diagnostic variables, and other quantities such as vertTransportVelocityTop.
 !
 !-----------------------------------------------------------------------
 
@@ -41,10 +41,10 @@ module ocn_diagnostics
    !--------------------------------------------------------------------
 
    public :: ocn_diagnostic_solve, &
-             ocn_wtop, &
+             ocn_vert_transport_velocity_top, &
              ocn_fuperp, &
-             ocn_filter_btr_mode_u, &
-             ocn_filter_btr_mode_tend_u, &
+             ocn_filter_btr_mode_vel, &
+             ocn_filter_btr_mode_tend_vel, &
              ocn_diagnostics_init
 
    !--------------------------------------------------------------------
@@ -92,42 +92,42 @@ contains
         verticesOnCell, edgeSignOnVertex, edgeSignOnCell, edgesOnCell
 
       real (kind=RKIND) :: d2fdx2_cell1, d2fdx2_cell2, coef_3rd_order, r_tmp, &
-        invAreaCell1, invAreaCell2, invAreaTri1, invAreaTri2, invLength, h_vertex, coef
+        invAreaCell1, invAreaCell2, invAreaTri1, invAreaTri2, invLength, layerThicknessVertex, coef
 
       real (kind=RKIND), dimension(:), allocatable:: pTop, div_hu
 
       real (kind=RKIND), dimension(:), pointer :: &
         bottomDepth, fVertex, dvEdge, dcEdge, areaCell, areaTriangle, ssh, seaSurfacePressure
       real (kind=RKIND), dimension(:,:), pointer :: &
-        weightsOnEdge, kiteAreasOnVertex, h_edge, h, u, v, pressure,&
-        circulation, vorticity, ke, ke_edge, MontPot, wTop, zMid, &
-        Vor_edge, Vor_vertex, Vor_cell, gradVor_n, gradVor_t, divergence, &
-        rho, rhoDisplaced, temperature, salinity, kev, kevc, uBolusGM, uTransport, &
+        weightsOnEdge, kiteAreasOnVertex, layerThicknessEdge, layerThickness, normalVelocity, tangentialVelocity, pressure,&
+        circulation, relativeVorticity, kineticEnergy, kineticEnergyEdge, montgomeryPotential, vertTransportVelocityTop, zMid, &
+        potentialVorticityEdge, potentialVorticityVertex, potentialVorticityCell, gradVor_n, gradVor_t, divergence, &
+        density, displacedDensity, temperature, salinity, kineticEnergyVertex, kineticEnergyVertexOnCells, uBolusGM, uTransport, &
         vertVelocityTop, BruntVaisalaFreqTop
       real (kind=RKIND), dimension(:,:,:), pointer :: tracers, deriv_two
       character :: c1*6
 
-      h           => s % h % array
-      u           => s % u % array
+      layerThickness => s % layerThickness % array
+      normalVelocity => s % normalVelocity % array
       uTransport  => s % uTransport % array
       uBolusGM    => s % uBolusGM % array
-      v           => s % v % array
-      h_edge      => s % h_edge % array
+      tangentialVelocity => s % tangentialVelocity % array
+      layerThicknessEdge => s % layerThicknessEdge % array
       circulation => s % circulation % array
-      vorticity   => s % vorticity % array
+      relativeVorticity   => s % relativeVorticity % array
       divergence  => s % divergence % array
-      ke          => s % ke % array
-      kev         => s % kev % array
-      kevc        => s % kevc % array
-      ke_edge     => s % ke_edge % array
-      Vor_edge    => s % Vor_edge % array
-      Vor_vertex  => s % Vor_vertex % array
-      Vor_cell    => s % Vor_cell % array
+      kineticEnergy          => s % kineticEnergy % array
+      kineticEnergyVertex         => s % kineticEnergyVertex % array
+      kineticEnergyVertexOnCells        => s % kineticEnergyVertexOnCells % array
+      kineticEnergyEdge     => s % kineticEnergyEdge % array
+      potentialVorticityEdge    => s % potentialVorticityEdge % array
+      potentialVorticityVertex  => s % potentialVorticityVertex % array
+      potentialVorticityCell    => s % potentialVorticityCell % array
       gradVor_n   => s % gradVor_n % array
       gradVor_t   => s % gradVor_t % array
-      rho         => s % rho % array
-      rhoDisplaced=> s % rhoDisplaced % array
-      MontPot     => s % MontPot % array
+      density         => s % density % array
+      displacedDensity=> s % displacedDensity % array
+      montgomeryPotential     => s % montgomeryPotential % array
       pressure    => s % pressure % array
       zMid        => s % zMid % array
       ssh         => s % ssh % array
@@ -174,18 +174,18 @@ contains
 
       !
       ! Compute height on cell edges at velocity locations
-      !   Namelist options control the order of accuracy of the reconstructed h_edge value
+      !   Namelist options control the order of accuracy of the reconstructed layerThicknessEdge value
       !
 
-      ! initialize h_edge to avoid divide by zero and NaN problems.
-      h_edge = -1.0e34
+      ! initialize layerThicknessEdge to avoid divide by zero and NaN problems.
+      layerThicknessEdge = -1.0e34
       coef_3rd_order = config_coef_3rd_order
 
       do iEdge=1,nEdges
          cell1 = cellsOnEdge(1,iEdge)
          cell2 = cellsOnEdge(2,iEdge)
          do k=1,maxLevelEdgeTop(iEdge)
-            h_edge(k,iEdge) = 0.5 * (h(k,cell1) + h(k,cell2))
+            layerThicknessEdge(k,iEdge) = 0.5 * (layerThickness(k,cell1) + layerThickness(k,cell2))
          end do
       end do
 
@@ -193,26 +193,26 @@ contains
       ! set the velocity and height at dummy address
       !    used -1e34 so error clearly occurs if these values are used.
       !
-      u(:,nEdges+1) = -1e34
-      h(:,nCells+1) = -1e34
+      normalVelocity(:,nEdges+1) = -1e34
+      layerThickness(:,nCells+1) = -1e34
       tracers(s % index_temperature,:,nCells+1) = -1e34
       tracers(s % index_salinity,:,nCells+1) = -1e34
 
       circulation(:,:) = 0.0
-      vorticity(:,:) = 0.0
+      relativeVorticity(:,:) = 0.0
       divergence(:,:) = 0.0
       vertVelocityTop(:,:)=0.0
-      ke(:,:) = 0.0
-      v(:,:) = 0.0
+      kineticEnergy(:,:) = 0.0
+      tangentialVelocity(:,:) = 0.0
       do iVertex = 1, nVertices
          invAreaTri1 = 1.0 / areaTriangle(iVertex)
          do i = 1, vertexDegree
             iEdge = edgesOnVertex(i, iVertex)
             do k = 1, maxLevelVertexBot(iVertex)
-              r_tmp = dcEdge(iEdge) * u(k, iEdge)
+              r_tmp = dcEdge(iEdge) * normalVelocity(k, iEdge)
 
               circulation(k, iVertex) = circulation(k, iVertex) + edgeSignOnVertex(i, iVertex) * r_tmp 
-              vorticity(k, iVertex) = vorticity(k, iVertex) + edgeSignOnVertex(i, iVertex) * r_tmp * invAreaTri1
+              relativeVorticity(k, iVertex) = relativeVorticity(k, iVertex) + edgeSignOnVertex(i, iVertex) * r_tmp * invAreaTri1
             end do
          end do
       end do
@@ -224,11 +224,11 @@ contains
          do i = 1, nEdgesOnCell(iCell)
             iEdge = edgesOnCell(i, iCell)
             do k = 1, maxLevelCell(iCell)
-               r_tmp = dvEdge(iEdge) * u(k, iEdge) * invAreaCell1
+               r_tmp = dvEdge(iEdge) * normalVelocity(k, iEdge) * invAreaCell1
 
                divergence(k, iCell) = divergence(k, iCell) - edgeSignOnCell(i, iCell) * r_tmp
-               div_hu(k)    = div_hu(k) - h_edge(k, iEdge) * edgeSignOnCell(i, iCell) * r_tmp 
-               ke(k, iCell) = ke(k, iCell) + 0.25 * r_tmp * dcEdge(iEdge) * u(k,iEdge)
+               div_hu(k)    = div_hu(k) - layerThicknessEdge(k, iEdge) * edgeSignOnCell(i, iCell) * r_tmp 
+               kineticEnergy(k, iCell) = kineticEnergy(k, iCell) + 0.25 * r_tmp * dcEdge(iEdge) * normalVelocity(k,iEdge)
             end do
          end do
          ! Vertical velocity at bottom (maxLevelCell(iCell)+1) is zero, initialized above.
@@ -243,7 +243,7 @@ contains
          do i=1,nEdgesOnEdge(iEdge)
             eoe = edgesOnEdge(i,iEdge)
             do k = 1,maxLevelEdgeTop(iEdge) 
-               v(k,iEdge) = v(k,iEdge) + weightsOnEdge(i,iEdge) * u(k, eoe)
+               tangentialVelocity(k,iEdge) = tangentialVelocity(k,iEdge) + weightsOnEdge(i,iEdge) * normalVelocity(k, eoe)
             end do
          end do
       end do
@@ -251,13 +251,13 @@ contains
       !
       ! Compute kinetic energy in each vertex
       !
-      kev(:,:) = 0.0; kevc(:,:) = 0.0
+      kineticEnergyVertex(:,:) = 0.0; kineticEnergyVertexOnCells(:,:) = 0.0
       do iVertex = 1, nVertices*ke_vertex_flag
         do i = 1, vertexDegree
           iEdge = edgesOnVertex(i, iVertex)
           r_tmp = dcEdge(iEdge) * dvEdge(iEdge) * 0.25 / areaTriangle(iVertex)
           do k = 1, nVertLevels
-            kev(k, iVertex) = kev(k, iVertex) + r_tmp * u(k, iEdge)**2
+            kineticEnergyVertex(k, iVertex) = kineticEnergyVertex(k, iVertex) + r_tmp * normalVelocity(k, iEdge)**2
           end do
         end do
       end do
@@ -268,55 +268,55 @@ contains
           j = kiteIndexOnCell(i, iCell)
           iVertex = verticesOnCell(i, iCell)
           do k = 1, nVertLevels
-            kevc(k, iCell) = kevc(k, iCell) + kiteAreasOnVertex(j, iVertex) * kev(k, iVertex) * invAreaCell1
+            kineticEnergyVertexOnCells(k, iCell) = kineticEnergyVertexOnCells(k, iCell) + kiteAreasOnVertex(j, iVertex) * kineticEnergyVertex(k, iVertex) * invAreaCell1
           end do
         end do
       end do
 
       !
-      ! Compute kinetic energy in each cell by blending ke and kevc
+      ! Compute kinetic energy in each cell by blending kineticEnergy and kineticEnergyVertexOnCells
       !
       do iCell=1,nCells*ke_vertex_flag
          do k=1,nVertLevels
-            ke(k,iCell) = 5.0/8.0*ke(k,iCell) + 3.0/8.0*kevc(k,iCell)
+            kineticEnergy(k,iCell) = 5.0/8.0*kineticEnergy(k,iCell) + 3.0/8.0*kineticEnergyVertexOnCells(k,iCell)
          end do
       end do
 
       !
-      ! Compute ke on cell edges at velocity locations for quadratic bottom drag. 
+      ! Compute kineticEnergy on cell edges at velocity locations for quadratic bottom drag. 
       !
       do iEdge=1,nEdges
          cell1 = cellsOnEdge(1,iEdge)
          cell2 = cellsOnEdge(2,iEdge)
          do k=1,maxLevelEdgeTop(iEdge)
-            ke_edge(k,iEdge) = 0.5 * (ke(k,cell1) + ke(k,cell2))
+            kineticEnergyEdge(k,iEdge) = 0.5 * (kineticEnergy(k,cell1) + kineticEnergy(k,cell2))
          end do
       end do
 
       !
       ! Compute height at vertices, pv at vertices, and average pv to edge locations
-      !  ( this computes Vor_vertex at all vertices bounding real cells and distance-1 ghost cells )
+      !  ( this computes potentialVorticityVertex at all vertices bounding real cells and distance-1 ghost cells )
       !
       do iVertex = 1,nVertices
          invAreaTri1 = 1.0 / areaTriangle(iVertex)
          do k=1,maxLevelVertexBot(iVertex)
-            h_vertex = 0.0
+            layerThicknessVertex = 0.0
             do i=1,vertexDegree
-               h_vertex = h_vertex + h(k,cellsOnVertex(i,iVertex)) * kiteAreasOnVertex(i,iVertex)
+               layerThicknessVertex = layerThicknessVertex + layerThickness(k,cellsOnVertex(i,iVertex)) * kiteAreasOnVertex(i,iVertex)
             end do
-            h_vertex = h_vertex * invAreaTri1
+            layerThicknessVertex = layerThicknessVertex * invAreaTri1
 
-            Vor_vertex(k,iVertex) = (fCoef*fVertex(iVertex) + vorticity(k,iVertex)) / h_vertex
+            potentialVorticityVertex(k,iVertex) = (fCoef*fVertex(iVertex) + relativeVorticity(k,iVertex)) / layerThicknessVertex
          end do
       end do
 
-      Vor_cell(:,:) = 0.0
-      Vor_edge(:,:) = 0.0
+      potentialVorticityCell(:,:) = 0.0
+      potentialVorticityEdge(:,:) = 0.0
       do iEdge = 1, nEdges
         vertex1 = verticesOnEdge(1, iEdge)
         vertex2 = verticesOnEdge(2, iEdge)
         do k = 1, maxLevelEdgeBot(iEdge)
-          Vor_edge(k, iEdge) = 0.5 * (Vor_vertex(k, vertex1) + Vor_vertex(k, vertex2))
+          potentialVorticityEdge(k, iEdge) = 0.5 * (potentialVorticityVertex(k, vertex1) + potentialVorticityVertex(k, vertex2))
         end do
       end do
 
@@ -327,7 +327,7 @@ contains
           j = kiteIndexOnCell(i, iCell)
           iVertex = verticesOnCell(i, iCell)
           do k = 1, maxLevelCell(iCell)
-            Vor_cell(k, iCell) = Vor_cell(k, iCell) + kiteAreasOnVertex(j, iVertex) * Vor_vertex(k, iVertex) * invAreaCell1
+            potentialVorticityCell(k, iCell) = potentialVorticityCell(k, iCell) + kiteAreasOnVertex(j, iVertex) * potentialVorticityVertex(k, iVertex) * invAreaCell1
           end do
         end do
       end do
@@ -342,14 +342,14 @@ contains
          ! Compute gradient of PV in normal direction
          !   ( this computes gradVor_n for all edges bounding real cells )
          do k=1,maxLevelEdgeTop(iEdge)
-            gradVor_n(k,iEdge) = (Vor_cell(k,cell2) - Vor_cell(k,cell1)) * invLength
+            gradVor_n(k,iEdge) = (potentialVorticityCell(k,cell2) - potentialVorticityCell(k,cell1)) * invLength
          enddo
 
          invLength = 1.0 / dvEdge(iEdge)
          ! Compute gradient of PV in the tangent direction
          !   ( this computes gradVor_t at all edges bounding real cells and distance-1 ghost cells )
          do k = 1,maxLevelEdgeBot(iEdge)
-           gradVor_t(k,iEdge) = (Vor_vertex(k,vertex2) - Vor_vertex(k,vertex1)) * invLength
+           gradVor_t(k,iEdge) = (potentialVorticityVertex(k,vertex2) - potentialVorticityVertex(k,vertex1)) * invLength
          enddo
 
       enddo
@@ -359,9 +359,9 @@ contains
       !
       do iEdge = 1,nEdges
          do k = 1,maxLevelEdgeBot(iEdge)
-           Vor_edge(k,iEdge) = Vor_edge(k,iEdge) &
-             - config_apvm_scale_factor * dt* (  u(k,iEdge) * gradVor_n(k,iEdge) &
-                          + v(k,iEdge) * gradVor_t(k,iEdge) )
+           potentialVorticityEdge(k,iEdge) = potentialVorticityEdge(k,iEdge) &
+             - config_apvm_scale_factor * dt* (  normalVelocity(k,iEdge) * gradVor_n(k,iEdge) &
+                          + tangentialVelocity(k,iEdge) * gradVor_t(k,iEdge) )
          enddo
       enddo
 
@@ -374,17 +374,17 @@ contains
          call mpas_timer_start("equation of state", .false., diagEOSTimer)
 
          ! compute in-place density
-         call ocn_equation_of_state_rho(s, grid, 0, 'relative', err)
+         call ocn_equation_of_state_density(s, grid, 0, 'relative', err)
 
-         ! compute rhoDisplaced, the potential density referenced to the top layer
-         call ocn_equation_of_state_rho(s, grid, 1, 'relative', err)
+         ! compute displacedDensity, the potential density referenced to the top layer
+         call ocn_equation_of_state_density(s, grid, 1, 'relative', err)
 
          call mpas_timer_stop("equation of state", diagEOSTimer)
       endif
 
       !
       ! Pressure
-      ! This section must be after computing rho
+      ! This section must be after computing density
       !
       if (config_pressure_gradient_type.eq.'MontgomeryPotential') then
 
@@ -399,15 +399,15 @@ contains
            ! For isopycnal mode, p is the Montgomery Potential.
            ! At top layer it is g*SSH, where SSH may be off by a 
            ! constant (ie, bottomDepth can be relative to top or bottom)
-           MontPot(1,iCell) = gravity &
-              * (bottomDepth(iCell) + sum(h(1:nVertLevels,iCell)))
+           montgomeryPotential(1,iCell) = gravity &
+              * (bottomDepth(iCell) + sum(layerThickness(1:nVertLevels,iCell)))
 
            do k=2,nVertLevels
-              pTop(k) = pTop(k-1) + rho(k-1,iCell)*gravity* h(k-1,iCell)
+              pTop(k) = pTop(k-1) + density(k-1,iCell)*gravity* layerThickness(k-1,iCell)
 
-              ! from delta M = p delta / rho
-              MontPot(k,iCell) = MontPot(k-1,iCell) &
-                 + pTop(k)*(1.0/rho(k,iCell) - 1.0/rho(k-1,iCell)) 
+              ! from delta M = p delta / density
+              montgomeryPotential(k,iCell) = montgomeryPotential(k-1,iCell) &
+                 + pTop(k)*(1.0/density(k,iCell) - 1.0/density(k-1,iCell)) 
            end do
 
         end do
@@ -419,26 +419,26 @@ contains
            ! Pressure for generalized coordinates.
            ! Pressure at top surface may be due to atmospheric pressure
            ! or an ice-shelf depression. 
-           pressure(1,iCell) = seaSurfacePressure(iCell) + rho(1,iCell)*gravity &
-              * 0.5*h(1,iCell)
+           pressure(1,iCell) = seaSurfacePressure(iCell) + density(1,iCell)*gravity &
+              * 0.5*layerThickness(1,iCell)
 
            do k=2,maxLevelCell(iCell)
               pressure(k,iCell) = pressure(k-1,iCell)  &
-                + 0.5*gravity*(  rho(k-1,iCell)*h(k-1,iCell) &
-                               + rho(k  ,iCell)*h(k  ,iCell))
+                + 0.5*gravity*(  density(k-1,iCell)*layerThickness(k-1,iCell) &
+                               + density(k  ,iCell)*layerThickness(k  ,iCell))
            end do
 
            ! Compute zMid, the z-coordinate of the middle of the layer.
-           ! This is used for the rho g grad z momentum term.
+           ! This is used for the density g grad z momentum term.
            ! Note the negative sign, since bottomDepth is positive
            ! and z-coordinates are negative below the surface.
            k = maxLevelCell(iCell)
-           zMid(k:nVertLevels,iCell) = -bottomDepth(iCell) + 0.5*h(k,iCell)
+           zMid(k:nVertLevels,iCell) = -bottomDepth(iCell) + 0.5*layerThickness(k,iCell)
 
            do k=maxLevelCell(iCell)-1, 1, -1
               zMid(k,iCell) = zMid(k+1,iCell)  &
-                + 0.5*(  h(k+1,iCell) &
-                       + h(k  ,iCell))
+                + 0.5*(  layerThickness(k+1,iCell) &
+                       + layerThickness(k  ,iCell))
            end do
 
         end do
@@ -448,11 +448,11 @@ contains
       !
       ! Brunt-Vaisala frequency
       !
-      coef = -gravity/config_rho0
+      coef = -gravity/config_density0
       do iCell=1,nCells
          BruntVaisalaFreqTop(1,iCell) = 0.0
          do k=2,maxLevelCell(iCell)
-            BruntVaisalaFreqTop(k,iCell) = coef * (rhoDisplaced(k-1,iCell) - rhoDisplaced(k,iCell)) & 
+            BruntVaisalaFreqTop(k,iCell) = coef * (displacedDensity(k-1,iCell) - displacedDensity(k,iCell)) & 
               / (zMid(k-1,iCell) - zMid(k,iCell))
           end do
       end do
@@ -466,7 +466,7 @@ contains
          ! Note the negative sign, since bottomDepth is positive
          ! and z-coordinates are negative below the surface.
 
-         ssh(iCell) = - bottomDepth(iCell) + sum(h(1:maxLevelCell(iCell),iCell))
+         ssh(iCell) = - bottomDepth(iCell) + sum(layerThickness(1:maxLevelCell(iCell),iCell))
 
       end do
 
@@ -483,7 +483,7 @@ contains
 
 !***********************************************************************
 !
-!  routine ocn_wtop
+!  routine ocn_vert_transport_velocity_top
 !
 !> \brief   Computes vertical transport
 !> \author  Mark Petersen
@@ -494,7 +494,7 @@ contains
 !>  cell.
 !
 !-----------------------------------------------------------------------
-   subroutine ocn_wtop(grid,h,h_edge,u,wTop, err)!{{{
+   subroutine ocn_vert_transport_velocity_top(grid,layerThickness,layerThicknessEdge,normalVelocity,vertTransportVelocityTop, err)!{{{
 
       !-----------------------------------------------------------------
       !
@@ -506,13 +506,13 @@ contains
          grid          !< Input: grid information
 
       real (kind=RKIND), dimension(:,:), intent(in) :: &
-         h    !< Input: thickness
+         layerThickness    !< Input: thickness
 
       real (kind=RKIND), dimension(:,:), intent(in) :: &
-         h_edge     !< Input: h interpolated to an edge
+         layerThicknessEdge     !< Input: layerThickness interpolated to an edge
 
       real (kind=RKIND), dimension(:,:), intent(in) :: &
-         u     !< Input: transport
+         normalVelocity     !< Input: transport
 
       !-----------------------------------------------------------------
       !
@@ -521,7 +521,7 @@ contains
       !-----------------------------------------------------------------
 
       real (kind=RKIND), dimension(:,:), intent(out) :: &
-         wTop     !< Output: vertical transport at top of cell
+         vertTransportVelocityTop     !< Output: vertical transport at top of cell
 
       integer, intent(out) :: err !< Output: error flag
 
@@ -532,7 +532,7 @@ contains
       !-----------------------------------------------------------------
 
       integer :: iEdge, iCell, iVertex, k, cell1, cell2, vertex1, vertex2, eoe, i, j, cov
-      real (kind=RKIND) :: flux, vorticity_abs, h_vertex, workpv, rho0Inv, hSum, invAreaCell
+      real (kind=RKIND) :: flux, layerThicknessVertex, workpv, density0Inv, thicknessSum, invAreaCell
 
       integer :: nCells, nEdges, nVertices, nVertLevels, vertexDegree
 
@@ -568,7 +568,7 @@ contains
 
       if (config_vert_coord_movement.eq.'isopycnal') then
         ! set vertical transport to zero in isopycnal case
-        wTop=0.0
+        vertTransportVelocityTop=0.0
         return
       end if
 
@@ -582,39 +582,39 @@ contains
       do iCell=1,nCells
         div_hu(:) = 0.0
         div_hu_btr = 0.0
-        hSum = 0.0
+        thicknessSum = 0.0
         invAreaCell = 1.0 / areaCell(iCell)
 
         do i = 1, nEdgesOnCell(iCell)
           iEdge = edgesOnCell(i, iCell)
 
           do k = 1, maxLevelEdgeBot(iEdge)
-            flux = h_edge(k, iEdge) * u(k, iEdge) * dvEdge(iEdge) * edgeSignOnCell(i, iCell) * invAreaCell
+            flux = layerThicknessEdge(k, iEdge) * normalVelocity(k, iEdge) * dvEdge(iEdge) * edgeSignOnCell(i, iCell) * invAreaCell
             div_hu(k) = div_hu(k) - flux
             div_hu_btr = div_hu_btr - flux
           end do
         end do
 
         do k = 1, maxLevelCell(iCell)
-           h_tend_col(k) = - vertCoordMovementWeights(k) * h(k, iCell) * div_hu_btr
-           hSum = hSum + vertCoordMovementWeights(k) * h(k, iCell)
+           h_tend_col(k) = - vertCoordMovementWeights(k) * layerThickness(k, iCell) * div_hu_btr
+           thicknessSum = thicknessSum + vertCoordMovementWeights(k) * layerThickness(k, iCell)
         end do
 
-        if(hSum > 0.0) then
-           h_tend_col = h_tend_col / hSum
+        if(thicknessSum > 0.0) then
+           h_tend_col = h_tend_col / thicknessSum
         end if
 
         ! Vertical transport through layer interface at top and bottom is zero.
-        wTop(1,iCell) = 0.0
-        wTop(maxLevelCell(iCell)+1,iCell) = 0.0
+        vertTransportVelocityTop(1,iCell) = 0.0
+        vertTransportVelocityTop(maxLevelCell(iCell)+1,iCell) = 0.0
         do k=maxLevelCell(iCell),2,-1
-           wTop(k,iCell) = wTop(k+1,iCell) - div_hu(k) - h_tend_col(k)
+           vertTransportVelocityTop(k,iCell) = vertTransportVelocityTop(k+1,iCell) - div_hu(k) - h_tend_col(k)
         end do
       end do
 
       deallocate(div_hu, h_tend_col)
 
-   end subroutine ocn_wtop!}}}
+   end subroutine ocn_vert_transport_velocity_top!}}}
 
 !***********************************************************************
 !
@@ -638,7 +638,7 @@ contains
       integer :: iEdge, cell1, cell2, eoe, i, j, k
       integer :: nEdgesSolve
       real (kind=RKIND), dimension(:), pointer :: fEdge
-      real (kind=RKIND), dimension(:,:), pointer :: weightsOnEdge, u, uBcl
+      real (kind=RKIND), dimension(:,:), pointer :: weightsOnEdge, normalVelocity, normalBaroclinicVelocity
       type (dm_info) :: dminfo
 
       integer, dimension(:), pointer :: maxLevelEdgeTop, nEdgesOnEdge
@@ -646,8 +646,8 @@ contains
 
       call mpas_timer_start("ocn_fuperp")
 
-      u           => s % u % array
-      uBcl        => s % uBcl % array
+      normalVelocity           => s % normalVelocity % array
+      normalBaroclinicVelocity        => s % normalBaroclinicVelocity % array
       weightsOnEdge     => grid % weightsOnEdge % array
       fEdge             => grid % fEdge % array
       maxLevelEdgeTop      => grid % maxLevelEdgeTop % array
@@ -660,7 +660,7 @@ contains
       nEdgesSolve = grid % nEdgesSolve
 
       !
-      ! Put f*uBcl^{perp} in u as a work variable
+      ! Put f*normalBaroclinicVelocity^{perp} in u as a work variable
       !
       do iEdge=1,nEdgesSolve
          cell1 = cellsOnEdge(1,iEdge)
@@ -668,10 +668,10 @@ contains
 
          do k=1,maxLevelEdgeTop(iEdge)
 
-            u(k,iEdge) = 0.0
+            normalVelocity(k,iEdge) = 0.0
             do j = 1,nEdgesOnEdge(iEdge)
                eoe = edgesOnEdge(j,iEdge)
-               u(k,iEdge) = u(k,iEdge) + weightsOnEdge(j,iEdge) * uBcl(k,eoe) * fEdge(eoe) 
+               normalVelocity(k,iEdge) = normalVelocity(k,iEdge) + weightsOnEdge(j,iEdge) * normalBaroclinicVelocity(k,eoe) * fEdge(eoe) 
             end do
          end do
       end do
@@ -682,7 +682,7 @@ contains
 
 !***********************************************************************
 !
-!  routine ocn_filter_btr_mode_u
+!  routine ocn_filter_btr_mode_vel
 !
 !> \brief   filters barotropic mode out of the velocity variable.
 !> \author  Mark Petersen
@@ -692,60 +692,60 @@ contains
 !>  This routine filters barotropic mode out of the velocity variable.
 !
 !-----------------------------------------------------------------------
-   subroutine ocn_filter_btr_mode_u(s, grid)!{{{
+   subroutine ocn_filter_btr_mode_vel(s, grid)!{{{
       implicit none
 
       type (state_type), intent(inout) :: s
       type (mesh_type), intent(in) :: grid
 
       integer :: iEdge, k, nEdges
-      real (kind=RKIND) :: vertSum, uhSum, hSum
-      real (kind=RKIND), dimension(:,:), pointer :: h_edge, u
+      real (kind=RKIND) :: vertSum, normalThicknessFluxSum, thicknessSum
+      real (kind=RKIND), dimension(:,:), pointer :: layerThicknessEdge, normalVelocity
       integer, dimension(:), pointer :: maxLevelEdgeTop
 
-      call mpas_timer_start("ocn_filter_btr_mode_u")
+      call mpas_timer_start("ocn_filter_btr_mode_vel")
 
-      u           => s % u % array
-      h_edge      => s % h_edge % array
+      normalVelocity => s % normalVelocity % array
+      layerThicknessEdge => s % layerThicknessEdge % array
       maxLevelEdgeTop => grid % maxLevelEdgeTop % array
       nEdges      = grid % nEdges
 
       do iEdge=1,nEdges
 
-        ! hSum is initialized outside the loop because on land boundaries 
-        ! maxLevelEdgeTop=0, but I want to initialize hSum with a 
+        ! thicknessSum is initialized outside the loop because on land boundaries 
+        ! maxLevelEdgeTop=0, but I want to initialize thicknessSum with a 
         ! nonzero value to avoid a NaN.
-        uhSum = h_edge(1,iEdge) * u(1,iEdge)
-        hSum  = h_edge(1,iEdge)
+        normalThicknessFluxSum = layerThicknessEdge(1,iEdge) * normalVelocity(1,iEdge)
+        thicknessSum  = layerThicknessEdge(1,iEdge)
 
         do k=2,maxLevelEdgeTop(iEdge)
-          uhSum = uhSum + h_edge(k,iEdge) * u(k,iEdge)
-          hSum  =  hSum + h_edge(k,iEdge)
+          normalThicknessFluxSum = normalThicknessFluxSum + layerThicknessEdge(k,iEdge) * normalVelocity(k,iEdge)
+          thicknessSum  =  thicknessSum + layerThicknessEdge(k,iEdge)
         enddo
 
-        vertSum = uhSum/hSum
+        vertSum = normalThicknessFluxSum/thicknessSum
         do k=1,maxLevelEdgeTop(iEdge)
-          u(k,iEdge) = u(k,iEdge) - vertSum
+          normalVelocity(k,iEdge) = normalVelocity(k,iEdge) - vertSum
         enddo
       enddo ! iEdge
 
-      call mpas_timer_stop("ocn_filter_btr_mode_u")
+      call mpas_timer_stop("ocn_filter_btr_mode_vel")
 
-   end subroutine ocn_filter_btr_mode_u!}}}
+   end subroutine ocn_filter_btr_mode_vel!}}}
 
 !***********************************************************************
 !
-!  routine ocn_filter_btr_mode_tend_u
+!  routine ocn_filter_btr_mode_tend_vel
 !
-!> \brief   ocn_filters barotropic mode out of the u tendency
+!> \brief   ocn_filters barotropic mode out of the velocity tendency
 !> \author  Mark Petersen
 !> \date    23 September 2011
 !> \version SVN:$Id$
 !> \details 
-!>  This routine filters barotropic mode out of the u tendency.
+!>  This routine filters barotropic mode out of the velocity tendency.
 !
 !-----------------------------------------------------------------------
-   subroutine ocn_filter_btr_mode_tend_u(tend, s, grid)!{{{
+   subroutine ocn_filter_btr_mode_tend_vel(tend, s, grid)!{{{
       implicit none
 
       type (tend_type), intent(inout) :: tend
@@ -753,40 +753,40 @@ contains
       type (mesh_type), intent(in) :: grid
 
       integer :: iEdge, k, nEdges
-      real (kind=RKIND) :: vertSum, uhSum, hSum
-      real (kind=RKIND), dimension(:,:), pointer :: h_edge, tend_u
+      real (kind=RKIND) :: vertSum, normalThicknessFluxSum, thicknessSum
+      real (kind=RKIND), dimension(:,:), pointer :: layerThicknessEdge, tend_normalVelocity
 
       integer, dimension(:), pointer :: maxLevelEdgeTop
 
-      call mpas_timer_start("ocn_filter_btr_mode_tend_u")
+      call mpas_timer_start("ocn_filter_btr_mode_tend_vel")
 
-      tend_u      => tend % u % array
-      h_edge      => s % h_edge % array
+      tend_normalVelocity      => tend % normalVelocity % array
+      layerThicknessEdge      => s % layerThicknessEdge % array
       maxLevelEdgeTop => grid % maxLevelEdgeTop % array
       nEdges      = grid % nEdges
 
       do iEdge=1,nEdges
 
-        ! hSum is initialized outside the loop because on land boundaries 
-        ! maxLevelEdgeTop=0, but I want to initialize hSum with a 
+        ! thicknessSum is initialized outside the loop because on land boundaries 
+        ! maxLevelEdgeTop=0, but I want to initialize thicknessSum with a 
         ! nonzero value to avoid a NaN.
-        uhSum = h_edge(1,iEdge) * tend_u(1,iEdge)
-        hSum  = h_edge(1,iEdge)
+        normalThicknessFluxSum = layerThicknessEdge(1,iEdge) * tend_normalVelocity(1,iEdge)
+        thicknessSum  = layerThicknessEdge(1,iEdge)
 
         do k=2,maxLevelEdgeTop(iEdge)
-          uhSum = uhSum + h_edge(k,iEdge) * tend_u(k,iEdge)
-          hSum  =  hSum + h_edge(k,iEdge)
+          normalThicknessFluxSum = normalThicknessFluxSum + layerThicknessEdge(k,iEdge) * tend_normalVelocity(k,iEdge)
+          thicknessSum  =  thicknessSum + layerThicknessEdge(k,iEdge)
         enddo
 
-        vertSum = uhSum/hSum
+        vertSum = normalThicknessFluxSum/thicknessSum
         do k=1,maxLevelEdgeTop(iEdge)
-          tend_u(k,iEdge) = tend_u(k,iEdge) - vertSum
+          tend_normalVelocity(k,iEdge) = tend_normalVelocity(k,iEdge) - vertSum
         enddo
       enddo ! iEdge
 
-      call mpas_timer_stop("ocn_filter_btr_mode_tend_u")
+      call mpas_timer_stop("ocn_filter_btr_mode_tend_vel")
 
-   end subroutine ocn_filter_btr_mode_tend_u!}}}
+   end subroutine ocn_filter_btr_mode_tend_vel!}}}
 
 !***********************************************************************
 !

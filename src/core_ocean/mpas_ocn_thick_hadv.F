@@ -62,7 +62,7 @@ contains
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_thick_hadv_tend(grid, u, h_edge, tend, err)!{{{
+   subroutine ocn_thick_hadv_tend(grid, normalVelocity, layerThicknessEdge, tend, err)!{{{
 
       !-----------------------------------------------------------------
       !
@@ -71,10 +71,10 @@ contains
       !-----------------------------------------------------------------
 
       real (kind=RKIND), dimension(:,:), intent(in) :: &
-         u    !< Input: velocity
+         normalVelocity    !< Input: velocity
 
       real (kind=RKIND), dimension(:,:), intent(in) :: &
-         h_edge     !< Input: thickness at edge
+         layerThicknessEdge     !< Input: thickness at edge
 
       type (mesh_type), intent(in) :: &
          grid          !< Input: grid information
@@ -142,7 +142,7 @@ contains
         do i = 1, nEdgesOnCell(iCell)
           iEdge = edgesOnCell(i, iCell)
           do k = 1, maxLevelEdgeBot(iEdge)
-            flux = u(k, iEdge) * dvEdge(iEdge) * h_edge(k, iEdge)
+            flux = normalVelocity(k, iEdge) * dvEdge(iEdge) * layerThicknessEdge(k, iEdge)
             tend(k, iCell) = tend(k, iCell) + edgeSignOnCell(i, iCell) * flux * invAreaCell
           end do
         end do
@@ -180,7 +180,7 @@ contains
 
       thickHadvOn = .true.
 
-      if(config_disable_h_hadv) thickHadvOn = .false.
+      if(config_disable_thick_hadv) thickHadvOn = .false.
 
       err = 0
 

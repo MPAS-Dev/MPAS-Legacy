@@ -62,7 +62,7 @@ contains
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_vel_forcing_windstress_tend(grid, u_src, h_edge, tend, err)!{{{
+   subroutine ocn_vel_forcing_windstress_tend(grid, normalVelocityForcing, layerThicknessEdge, tend, err)!{{{
 
       !-----------------------------------------------------------------
       !
@@ -71,10 +71,10 @@ contains
       !-----------------------------------------------------------------
 
       real (kind=RKIND), dimension(:,:), intent(in) :: &
-         u_src    !< Input: wind stress
+         normalVelocityForcing    !< Input: wind stress
 
       real (kind=RKIND), dimension(:,:), intent(in) :: &
-         h_edge     !< Input: thickness at edge
+         layerThicknessEdge     !< Input: thickness at edge
 
       type (mesh_type), intent(in) :: &
          grid          !< Input: grid information
@@ -130,7 +130,7 @@ contains
 
         do k = 1,min(maxLevelEdgeTop(iEdge),1)
            ! forcing in top layer only
-           tend(k,iEdge) =  tend(k,iEdge) + edgeMask(k, iEdge) * (u_src(k,iEdge) / config_rho0 / h_edge(k,iEdge))
+           tend(k,iEdge) =  tend(k,iEdge) + edgeMask(k, iEdge) * (normalVelocityForcing(k,iEdge) / config_density0 / layerThicknessEdge(k,iEdge))
         enddo
 
       enddo
@@ -168,7 +168,7 @@ contains
 
       windStressOn = .true.
 
-      if(config_disable_u_windstress) windStressOn = .false.
+      if(config_disable_vel_windstress) windStressOn = .false.
 
       err = 0
 

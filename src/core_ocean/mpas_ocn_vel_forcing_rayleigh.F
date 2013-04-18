@@ -64,7 +64,7 @@ contains
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_vel_forcing_rayleigh_tend(grid, u, tend, err)!{{{
+   subroutine ocn_vel_forcing_rayleigh_tend(grid, normalVelocity, tend, err)!{{{
 
       !-----------------------------------------------------------------
       !
@@ -73,7 +73,7 @@ contains
       !-----------------------------------------------------------------
 
       real (kind=RKIND), dimension(:,:), intent(in) :: &
-         u    !< Input: velocity 
+         normalVelocity    !< Input: velocity 
 
       type (mesh_type), intent(in) :: &
          grid          !< Input: grid information
@@ -122,7 +122,7 @@ contains
       do iEdge=1,nEdgesSolve
         do k=1,maxLevelEdgeTop(iEdge)
 
-           tend(k,iEdge) = tend(k,iEdge) - rayleighDampingCoef * u(k,iEdge)
+           tend(k,iEdge) = tend(k,iEdge) - rayleighDampingCoef * normalVelocity(k,iEdge)
 
         enddo
       enddo

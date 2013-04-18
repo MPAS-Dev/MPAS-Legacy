@@ -240,24 +240,24 @@ module mpas_ocn_tracer_advection
 !>  advection of tracers.
 !
 !-----------------------------------------------------------------------
-   subroutine mpas_ocn_tracer_advection_tend(tracers, uh, w, h, verticalCellSize, dt, grid, tend_h, tend)!{{{
+   subroutine mpas_ocn_tracer_advection_tend(tracers, normalThicknessFlux, w, layerThickness, verticalCellSize, dt, grid, tend_layerThickness, tend)!{{{
 
       real (kind=RKIND), dimension(:,:,:), intent(inout) :: tend !< Input/Output: tracer tendency
       real (kind=RKIND), dimension(:,:,:), intent(in) :: tracers !< Input/Output: tracer values
-      real (kind=RKIND), dimension(:,:), intent(in) :: uh !< Input: Thickness weighted horizontal velocity
+      real (kind=RKIND), dimension(:,:), intent(in) :: normalThicknessFlux !< Input: Thickness weighted horizontal velocity
       real (kind=RKIND), dimension(:,:), intent(in) :: w  !< Input: Vertical velocity
-      real (kind=RKIND), dimension(:,:), intent(in) :: h  !< Input: Thickness field
+      real (kind=RKIND), dimension(:,:), intent(in) :: layerThickness  !< Input: Thickness field
       real (kind=RKIND), dimension(:,:), intent(in) :: verticalCellSize !< Input: Distance between vertical interfaces of a cell
       real (kind=RKIND), intent(in) :: dt !< Input: Time step
       type (mesh_type), intent(in) :: grid !< Input: grid information
-      real (kind=RKIND), dimension(:,:), intent(in) :: tend_h !< Input: Thickness tendency information
+      real (kind=RKIND), dimension(:,:), intent(in) :: tend_layerThickness !< Input: Thickness tendency information
 
       if(.not. tracerAdvOn) return
 
       if(monotonicOn) then
-         call mpas_ocn_tracer_advection_mono_tend(tracers, uh, w, h, verticalCellSize, dt, grid, tend_h, tend)
+         call mpas_ocn_tracer_advection_mono_tend(tracers, normalThicknessFlux, w, layerThickness, verticalCellSize, dt, grid, tend_layerThickness, tend)
       else
-         call mpas_ocn_tracer_advection_std_tend(tracers, uh, w, verticalCellSize, grid, tend)
+         call mpas_ocn_tracer_advection_std_tend(tracers, normalThicknessFlux, w, verticalCellSize, grid, tend)
       endif
    end subroutine mpas_ocn_tracer_advection_tend!}}}
 

@@ -11,35 +11,35 @@ module ocn_time_average
     subroutine ocn_time_average_init(state)!{{{
         type (state_type), intent(inout) :: state
 
-        real (kind=RKIND), pointer :: nAccumulate
+        real (kind=RKIND), pointer :: nAverage
 
-        real (kind=RKIND), dimension(:), pointer :: acc_ssh, acc_sshVar
-        real (kind=RKIND), dimension(:,:), pointer :: acc_uReconstructZonal, acc_uReconstructMeridional, acc_uReconstructZonalVar, acc_uReconstructMeridionalVar
-        real (kind=RKIND), dimension(:,:), pointer :: acc_u, acc_uVar, acc_vertVelocityTop
+        real (kind=RKIND), dimension(:), pointer :: avgSSH, varSSH
+        real (kind=RKIND), dimension(:,:), pointer :: avgnormalVelocityZonal, avgnormalVelocityMeridional, varnormalVelocityZonal, varnormalVelocityMeridional
+        real (kind=RKIND), dimension(:,:), pointer :: avgNormalVelocity, varNormalVelocity, avgVertVelocityTop
 
-        nAccumulate => state % nAccumulate % scalar
+        nAverage => state % nAverage % scalar
 
-        acc_ssh => state % acc_ssh % array
-        acc_sshVar => state % acc_sshVar % array
-        acc_uReconstructZonal => state % acc_uReconstructZonal % array
-        acc_uReconstructMeridional => state % acc_uReconstructMeridional % array
-        acc_uReconstructZonalVar => state % acc_uReconstructZonalVar % array
-        acc_uReconstructMeridionalVar => state % acc_uReconstructMeridionalVar % array
-        acc_u => state % acc_u % array
-        acc_uVar => state % acc_uVar % array
-        acc_vertVelocityTop => state % acc_vertVelocityTop % array
+        avgSSH => state % avgSSH % array
+        varSSH => state % varSSH % array
+        avgnormalVelocityZonal => state % avgnormalVelocityZonal % array
+        avgnormalVelocityMeridional => state % avgnormalVelocityMeridional % array
+        varnormalVelocityZonal => state % varnormalVelocityZonal % array
+        varnormalVelocityMeridional => state % varnormalVelocityMeridional % array
+        avgNormalVelocity => state % avgNormalVelocity % array
+        varNormalVelocity => state % varNormalVelocity % array
+        avgVertVelocityTop => state % avgVertVelocityTop % array
 
-        nAccumulate = 0
+        nAverage = 0
 
-        acc_ssh = 0.0
-        acc_sshVar = 0.0
-        acc_uReconstructZonal = 0.0
-        acc_uReconstructMeridional = 0.0
-        acc_uReconstructZonalVar = 0.0
-        acc_uReconstructMeridionalVar = 0.0
-        acc_u = 0.0
-        acc_uVar = 0.0
-        acc_vertVelocityTop = 0.0
+        avgSSH = 0.0
+        varSSH = 0.0
+        avgnormalVelocityZonal = 0.0
+        avgnormalVelocityMeridional = 0.0
+        varnormalVelocityZonal = 0.0
+        varnormalVelocityMeridional = 0.0
+        avgNormalVelocity = 0.0
+        varNormalVelocity = 0.0
+        avgVertVelocityTop = 0.0
 
     end subroutine ocn_time_average_init!}}}
 
@@ -47,92 +47,92 @@ module ocn_time_average
         type (state_type), intent(inout) :: state
         type (state_type), intent(in) :: old_state
 
-        real (kind=RKIND), pointer :: nAccumulate, old_nAccumulate
+        real (kind=RKIND), pointer :: nAverage, old_nAverage
 
         real (kind=RKIND), dimension(:), pointer :: ssh
-        real (kind=RKIND), dimension(:,:), pointer :: uReconstructZonal, uReconstructMeridional, u, vertVelocityTop
+        real (kind=RKIND), dimension(:,:), pointer :: normalVelocityZonal, normalVelocityMeridional, normalVelocity, vertVelocityTop
 
-        real (kind=RKIND), dimension(:,:), pointer :: acc_u, acc_uVar, acc_vertVelocityTop
-        real (kind=RKIND), dimension(:,:), pointer :: acc_uReconstructZonal, acc_uReconstructMeridional, acc_uReconstructZonalVar, acc_uReconstructMeridionalVar
-        real (kind=RKIND), dimension(:), pointer :: acc_ssh, acc_sshVar
+        real (kind=RKIND), dimension(:,:), pointer :: avgNormalVelocity, varNormalVelocity, avgVertVelocityTop
+        real (kind=RKIND), dimension(:,:), pointer :: avgnormalVelocityZonal, avgnormalVelocityMeridional, varnormalVelocityZonal, varnormalVelocityMeridional
+        real (kind=RKIND), dimension(:), pointer :: avgSSH, varSSH
 
-        real (kind=RKIND), dimension(:,:), pointer :: old_acc_u, old_acc_uVar, old_acc_vertVelocityTop
-        real (kind=RKIND), dimension(:,:), pointer :: old_acc_uReconstructZonal, old_acc_uReconstructMeridional, old_acc_uReconstructZonalVar, old_acc_uReconstructMeridionalVar
-        real (kind=RKIND), dimension(:), pointer :: old_acc_ssh, old_acc_sshVar
+        real (kind=RKIND), dimension(:,:), pointer :: old_avgNormalVelocity, old_varNormalVelocity, old_avgVertVelocityTop
+        real (kind=RKIND), dimension(:,:), pointer :: old_avgnormalVelocityZonal, old_avgnormalVelocityMeridional, old_varnormalVelocityZonal, old_varnormalVelocityMeridional
+        real (kind=RKIND), dimension(:), pointer :: old_avgSSH, old_varSSH
 
-        old_nAccumulate => old_state % nAccumulate  % scalar
-        nAccumulate => state % nAccumulate  % scalar
+        old_nAverage => old_state % nAverage  % scalar
+        nAverage => state % nAverage  % scalar
 
         ssh => state % ssh % array
-        uReconstructZonal => state % uReconstructZonal % array
-        uReconstructMeridional => state % uReconstructMeridional % array
-        u => state % u % array
+        normalVelocityZonal => state % normalVelocityZonal % array
+        normalVelocityMeridional => state % normalVelocityMeridional % array
+        normalVelocity => state % normalVelocity % array
         vertVelocityTop => state % vertVelocityTop % array
 
-        acc_ssh => state % acc_ssh % array
-        acc_sshVar => state % acc_sshVar % array
-        acc_uReconstructZonal => state % acc_uReconstructZonal % array
-        acc_uReconstructMeridional => state % acc_uReconstructMeridional % array
-        acc_uReconstructZonalVar => state % acc_uReconstructZonalVar % array
-        acc_uReconstructMeridionalVar => state % acc_uReconstructMeridionalVar % array
-        acc_u => state % acc_u % array
-        acc_uVar => state % acc_uVar % array
-        acc_vertVelocityTop => state % acc_vertVelocityTop % array
+        avgSSH => state % avgSSH % array
+        varSSH => state % varSSH % array
+        avgnormalVelocityZonal => state % avgnormalVelocityZonal % array
+        avgnormalVelocityMeridional => state % avgnormalVelocityMeridional % array
+        varnormalVelocityZonal => state % varnormalVelocityZonal % array
+        varnormalVelocityMeridional => state % varnormalVelocityMeridional % array
+        avgNormalVelocity => state % avgNormalVelocity % array
+        varNormalVelocity => state % varNormalVelocity % array
+        avgVertVelocityTop => state % avgVertVelocityTop % array
 
-        old_acc_ssh => old_state % acc_ssh % array
-        old_acc_sshVar => old_state % acc_sshVar % array
-        old_acc_uReconstructZonal => old_state % acc_uReconstructZonal % array
-        old_acc_uReconstructMeridional => old_state % acc_uReconstructMeridional % array
-        old_acc_uReconstructZonalVar => old_state % acc_uReconstructZonalVar % array
-        old_acc_uReconstructMeridionalVar => old_state % acc_uReconstructMeridionalVar % array
-        old_acc_u => old_state % acc_u % array
-        old_acc_uVar => old_state % acc_uVar % array
-        old_acc_vertVelocityTop => old_state % acc_vertVelocityTop % array
+        old_avgSSH => old_state % avgSSH % array
+        old_varSSH => old_state % varSSH % array
+        old_avgnormalVelocityZonal => old_state % avgnormalVelocityZonal % array
+        old_avgnormalVelocityMeridional => old_state % avgnormalVelocityMeridional % array
+        old_varnormalVelocityZonal => old_state % varnormalVelocityZonal % array
+        old_varnormalVelocityMeridional => old_state % varnormalVelocityMeridional % array
+        old_avgNormalVelocity => old_state % avgNormalVelocity % array
+        old_varNormalVelocity => old_state % varNormalVelocity % array
+        old_avgVertVelocityTop => old_state % avgVertVelocityTop % array
 
-        acc_ssh = old_acc_ssh + ssh
-        acc_sshVar = old_acc_sshVar + ssh**2
-        acc_uReconstructZonal = old_acc_uReconstructZonal + uReconstructZonal
-        acc_uReconstructMeridional = old_acc_uReconstructMeridional + uReconstructMeridional
-        acc_uReconstructZonalVar = old_acc_uReconstructZonalVar + uReconstructZonal**2
-        acc_uReconstructMeridionalVar = old_acc_uReconstructMeridionalVar + uReconstructMeridional**2
-        acc_u = old_acc_u + u
-        acc_uVar = old_acc_uVar + u**2
-        acc_vertVelocityTop = old_acc_vertVelocityTop + vertVelocityTop
+        avgSSH = old_avgSSH + ssh
+        varSSH = old_varSSH + ssh**2
+        avgnormalVelocityZonal = old_avgnormalVelocityZonal + normalVelocityZonal
+        avgnormalVelocityMeridional = old_avgnormalVelocityMeridional + normalVelocityMeridional
+        varnormalVelocityZonal = old_varnormalVelocityZonal + normalVelocityZonal**2
+        varnormalVelocityMeridional = old_varnormalVelocityMeridional + normalVelocityMeridional**2
+        avgNormalVelocity = old_avgNormalVelocity + normalVelocity
+        varNormalVelocity = old_varNormalVelocity + normalVelocity**2
+        avgVertVelocityTop = old_avgVertVelocityTop + vertVelocityTop
 
-        nAccumulate = old_nAccumulate + 1
+        nAverage = old_nAverage + 1
     end subroutine ocn_time_average_accumulate!}}}
 
     subroutine ocn_time_average_normalize(state)!{{{
         type (state_type), intent(inout) :: state
 
-        real (kind=RKIND), pointer :: nAccumulate
+        real (kind=RKIND), pointer :: nAverage
 
-        real (kind=RKIND), dimension(:), pointer :: acc_ssh, acc_sshVar
-        real (kind=RKIND), dimension(:,:), pointer :: acc_uReconstructZonal, acc_uReconstructMeridional, acc_uReconstructZonalVar, acc_uReconstructMeridionalVar
-        real (kind=RKIND), dimension(:,:), pointer :: acc_u, acc_uVar, acc_vertVelocityTop
+        real (kind=RKIND), dimension(:), pointer :: avgSSH, varSSH
+        real (kind=RKIND), dimension(:,:), pointer :: avgnormalVelocityZonal, avgnormalVelocityMeridional, varnormalVelocityZonal, varnormalVelocityMeridional
+        real (kind=RKIND), dimension(:,:), pointer :: avgNormalVelocity, varNormalVelocity, avgVertVelocityTop
 
-        nAccumulate => state % nAccumulate  % scalar
+        nAverage => state % nAverage  % scalar
 
-        acc_ssh => state % acc_ssh % array
-        acc_sshVar => state % acc_sshVar % array
-        acc_uReconstructZonal => state % acc_uReconstructZonal % array
-        acc_uReconstructMeridional => state % acc_uReconstructMeridional % array
-        acc_uReconstructZonalVar => state % acc_uReconstructZonalVar % array
-        acc_uReconstructMeridionalVar => state % acc_uReconstructMeridionalVar % array
-        acc_u => state % acc_u % array
-        acc_uVar => state % acc_uVar % array
-        acc_vertVelocityTop => state % acc_vertVelocityTop % array
+        avgSSH => state % avgSSH % array
+        varSSH => state % varSSH % array
+        avgnormalVelocityZonal => state % avgnormalVelocityZonal % array
+        avgnormalVelocityMeridional => state % avgnormalVelocityMeridional % array
+        varnormalVelocityZonal => state % varnormalVelocityZonal % array
+        varnormalVelocityMeridional => state % varnormalVelocityMeridional % array
+        avgNormalVelocity => state % avgNormalVelocity % array
+        varNormalVelocity => state % varNormalVelocity % array
+        avgVertVelocityTop => state % avgVertVelocityTop % array
 
-        if(nAccumulate > 0) then
-          acc_ssh = acc_ssh / nAccumulate
-          acc_sshVar = acc_sshVar / nAccumulate
-          acc_uReconstructZonal = acc_uReconstructZonal / nAccumulate
-          acc_uReconstructMeridional = acc_uReconstructMeridional / nAccumulate
-          acc_uReconstructZonalVar = acc_uReconstructZonalVar / nAccumulate
-          acc_uReconstructMeridionalVar = acc_uReconstructMeridionalVar / nAccumulate
-          acc_u = acc_u / nAccumulate
-          acc_uVar = acc_uVar / nAccumulate
-          acc_vertVelocityTop = acc_vertVelocityTop / nAccumulate
+        if(nAverage > 0) then
+          avgSSH = avgSSH / nAverage
+          varSSH = varSSH / nAverage
+          avgnormalVelocityZonal = avgnormalVelocityZonal / nAverage
+          avgnormalVelocityMeridional = avgnormalVelocityMeridional / nAverage
+          varnormalVelocityZonal = varnormalVelocityZonal / nAverage
+          varnormalVelocityMeridional = varnormalVelocityMeridional / nAverage
+          avgNormalVelocity = avgNormalVelocity / nAverage
+          varNormalVelocity = varNormalVelocity / nAverage
+          avgVertVelocityTop = avgVertVelocityTop / nAverage
         end if
     end subroutine ocn_time_average_normalize!}}}
 

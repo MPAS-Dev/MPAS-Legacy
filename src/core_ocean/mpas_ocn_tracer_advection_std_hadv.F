@@ -45,10 +45,10 @@ module mpas_ocn_tracer_advection_std_hadv
 !>  This routine computes the tendency for 3rd order horizontal advection of tracers.
 !
 !-----------------------------------------------------------------------
-   subroutine mpas_ocn_tracer_advection_std_hadv_tend(tracers, uh, grid, tend)!{{{
+   subroutine mpas_ocn_tracer_advection_std_hadv_tend(tracers, normalThicknessFlux, grid, tend)!{{{
       real (kind=RKIND), dimension(:,:,:), intent(inout) :: tend !< Input/output: Tracer tendency
       real (kind=RKIND), dimension(:,:,:), intent(in) :: tracers !< Input: Tracer values
-      real (kind=RKIND), dimension(:,:), intent(in) :: uh !< Input: Thickness weighted horizontal velocity
+      real (kind=RKIND), dimension(:,:), intent(in) :: normalThicknessFlux !< Input: Thickness weighted horizontal velocity
       type (mesh_type), intent(in) :: grid !< Input: Grid information
 
       integer :: i, iCell, iEdge, k, iTracer, cell1, cell2
@@ -91,7 +91,7 @@ module mpas_ocn_tracer_advection_std_hadv
               iCell = advCellsForEdge(i,iEdge)
               do k=1,grid % nVertLevels
               tracer_weight = lowOrderAdvectionMask(k, iEdge) * adv_coefs_2nd(i,iEdge) & 
-                            + highOrderAdvectionMask(k, iEdge) * (adv_coefs(i,iEdge) + coef_3rd_order*sign(1.0_RKIND,uh(k,iEdge))*adv_coefs_3rd(i,iEdge))
+                            + highOrderAdvectionMask(k, iEdge) * (adv_coefs(i,iEdge) + coef_3rd_order*sign(1.0_RKIND,normalThicknessFlux(k,iEdge))*adv_coefs_3rd(i,iEdge))
                 do iTracer=1,num_tracers
                   flux_arr(iTracer,k) = flux_arr(iTracer,k) + tracer_weight* tracers(iTracer,k,iCell)
                 end do
@@ -100,8 +100,8 @@ module mpas_ocn_tracer_advection_std_hadv
 
             do k=1,grid % nVertLevels
                do iTracer=1,num_tracers
-                  tend(iTracer,k,cell1) = tend(iTracer,k,cell1) - uh(k,iEdge)*flux_arr(iTracer,k)/areaCell(cell1)
-                  tend(iTracer,k,cell2) = tend(iTracer,k,cell2) + uh(k,iEdge)*flux_arr(iTracer,k)/areaCell(cell2)
+                  tend(iTracer,k,cell1) = tend(iTracer,k,cell1) - normalThicknessFlux(k,iEdge)*flux_arr(iTracer,k)/areaCell(cell1)
+                  tend(iTracer,k,cell2) = tend(iTracer,k,cell2) + normalThicknessFlux(k,iEdge)*flux_arr(iTracer,k)/areaCell(cell2)
                end do
             end do
          end if

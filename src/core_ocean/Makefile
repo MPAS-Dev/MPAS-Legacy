@@ -15,21 +15,6 @@ OBJS = mpas_ocn_mpas_core.o \
        mpas_ocn_vel_forcing_windstress.o \
        mpas_ocn_vel_forcing_rayleigh.o \
        mpas_ocn_vel_pressure_grad.o \
-       mpas_ocn_tracer_vadv.o \
-       mpas_ocn_tracer_vadv_spline.o \
-       mpas_ocn_tracer_vadv_spline2.o \
-       mpas_ocn_tracer_vadv_spline3.o \
-       mpas_ocn_tracer_vadv_stencil.o \
-       mpas_ocn_tracer_vadv_stencil2.o \
-       mpas_ocn_tracer_vadv_stencil3.o \
-       mpas_ocn_tracer_vadv_stencil4.o \
-       mpas_ocn_tracer_hadv.o \
-       mpas_ocn_tracer_hadv2.o \
-       mpas_ocn_tracer_hadv3.o \
-       mpas_ocn_tracer_hadv4.o \
-       mpas_ocn_tracer_hmix.o \
-       mpas_ocn_tracer_hmix_del2.o \
-       mpas_ocn_tracer_hmix_del4.o \
        mpas_ocn_vmix.o \
        mpas_ocn_vmix_coefs_const.o \
        mpas_ocn_vmix_coefs_rich.o \
@@ -37,6 +22,9 @@ OBJS = mpas_ocn_mpas_core.o \
        mpas_ocn_restoring.o \
        mpas_ocn_tendency.o \
        mpas_ocn_diagnostics.o \
+	   mpas_ocn_tracer_hmix.o \
+	   mpas_ocn_tracer_hmix_del2.o \
+	   mpas_ocn_tracer_hmix_del4.o \
        mpas_ocn_tracer_advection.o \
        mpas_ocn_tracer_advection_std.o \
        mpas_ocn_tracer_advection_std_hadv.o \
@@ -104,30 +92,6 @@ mpas_ocn_vel_forcing_rayleigh.o:
 
 mpas_ocn_vel_coriolis.o:
 
-mpas_ocn_tracer_hadv.o:  mpas_ocn_tracer_hadv2.o  mpas_ocn_tracer_hadv3.o  mpas_ocn_tracer_hadv4.o
-
-mpas_ocn_tracer_hadv2.o:
-
-mpas_ocn_tracer_hadv3.o:
-
-mpas_ocn_tracer_hadv4.o:
-
-mpas_ocn_tracer_vadv.o: mpas_ocn_tracer_vadv_spline.o mpas_ocn_tracer_vadv_stencil.o
-
-mpas_ocn_tracer_vadv_spline.o: mpas_ocn_tracer_vadv_spline2.o  mpas_ocn_tracer_vadv_spline3.o
-
-mpas_ocn_tracer_vadv_spline2.o:
-
-mpas_ocn_tracer_vadv_spline3.o:
-
-mpas_ocn_tracer_vadv_stencil.o: mpas_ocn_tracer_vadv_stencil2.o mpas_ocn_tracer_vadv_stencil3.o  mpas_ocn_tracer_vadv_stencil4.o 
-
-mpas_ocn_tracer_vadv_stencil2.o:
-
-mpas_ocn_tracer_vadv_stencil3.o:
-
-mpas_ocn_tracer_vadv_stencil4.o:
-
 mpas_ocn_tracer_hmix.o: mpas_ocn_tracer_hmix_del2.o mpas_ocn_tracer_hmix_del4.o
 
 mpas_ocn_tracer_hmix_del2.o:
@@ -183,18 +147,6 @@ mpas_ocn_mpas_core.o: mpas_ocn_advection.o \
                       mpas_ocn_vel_forcing.o \
                       mpas_ocn_vel_forcing_windstress.o \
                       mpas_ocn_vel_pressure_grad.o \
-                      mpas_ocn_tracer_vadv.o \
-                      mpas_ocn_tracer_vadv_spline.o \
-                      mpas_ocn_tracer_vadv_spline2.o \
-                      mpas_ocn_tracer_vadv_spline3.o \
-                      mpas_ocn_tracer_vadv_stencil.o \
-                      mpas_ocn_tracer_vadv_stencil2.o \
-                      mpas_ocn_tracer_vadv_stencil3.o \
-                      mpas_ocn_tracer_vadv_stencil4.o \
-                      mpas_ocn_tracer_hadv.o \
-                      mpas_ocn_tracer_hadv2.o \
-                      mpas_ocn_tracer_hadv3.o \
-                      mpas_ocn_tracer_hadv4.o \
                       mpas_ocn_tracer_hmix.o \
                       mpas_ocn_tracer_hmix_del2.o \
                       mpas_ocn_tracer_hmix_del4.o \

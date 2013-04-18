@@ -64,7 +64,7 @@ contains
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_vel_vadv_tend(grid, u, h_edge, wTop, tend, err)!{{{
+   subroutine ocn_vel_vadv_tend(grid, u, layerThicknessEdge, vertTransportVelocityTop, tend, err)!{{{
 
       !-----------------------------------------------------------------
       !
@@ -75,8 +75,8 @@ contains
       real (kind=RKIND), dimension(:,:), intent(in) :: &
          u     !< Input: Horizontal velocity
       real (kind=RKIND), dimension(:,:), intent(in) :: &
-         h_edge,&!< Input: thickness at edge
-         wTop  !< Input: Vertical velocity on top layer
+         layerThicknessEdge,&!< Input: thickness at edge
+         vertTransportVelocityTop  !< Input: Vertical velocity on top layer
 
       type (mesh_type), intent(in) :: &
          grid          !< Input: grid information
@@ -109,7 +109,7 @@ contains
       integer, dimension(:), pointer :: maxLevelEdgeTop
       integer, dimension(:,:), pointer :: cellsOnEdge, edgeMask
 
-      real (kind=RKIND) :: wTopEdge
+      real (kind=RKIND) :: vertTransportVelocityTopEdge
       real (kind=RKIND), dimension(:), allocatable :: w_dudzTopEdge
 
       if(.not.velVadvOn) return
@@ -130,11 +130,11 @@ contains
 
         do k=2,maxLevelEdgeTop(iEdge)
           ! Average w from cell center to edge
-          wTopEdge = 0.5*(wTop(k,cell1)+wTop(k,cell2))
+          vertTransportVelocityTopEdge = 0.5*(vertTransportVelocityTop(k,cell1)+vertTransportVelocityTop(k,cell2))
 
           ! compute dudz at vertical interface with first order derivative.
-          w_dudzTopEdge(k) = wTopEdge * (u(k-1,iEdge)-u(k,iEdge)) &
-                       / (0.5*(h_edge(k-1,iEdge) + h_edge(k,iEdge)))
+          w_dudzTopEdge(k) = vertTransportVelocityTopEdge * (u(k-1,iEdge)-u(k,iEdge)) &
+                       / (0.5*(layerThicknessEdge(k-1,iEdge) + layerThicknessEdge(k,iEdge)))
         end do
         w_dudzTopEdge(maxLevelEdgeTop(iEdge)+1) = 0.0
         ! Average w*du/dz from vertical interface to vertical middle of cell
@@ -182,7 +182,7 @@ contains
           velVadvOn = .true.
       end if
 
-      if(config_disable_u_vadv) velVadvOn = .false.
+      if(config_disable_vel_vadv) velVadvOn = .false.
 
    !--------------------------------------------------------------------
 

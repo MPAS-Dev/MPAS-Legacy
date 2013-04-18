@@ -33,7 +33,7 @@ module ocn_equation_of_state_linear
    !
    !--------------------------------------------------------------------
 
-   public :: ocn_equation_of_state_linear_rho, &
+   public :: ocn_equation_of_state_linear_density, &
              ocn_equation_of_state_linear_init
 
    !--------------------------------------------------------------------
@@ -48,7 +48,7 @@ contains
 
 !***********************************************************************
 !
-!  routine ocn_equation_of_state_linear_rho
+!  routine ocn_equation_of_state_linear_density
 !
 !> \brief   Calls equation of state
 !> \author  Doug Jacobsen
@@ -59,7 +59,7 @@ contains
 !
 !-----------------------------------------------------------------------
 
-   subroutine ocn_equation_of_state_linear_rho(grid, indexT, indexS, tracers, rho, err)!{{{
+   subroutine ocn_equation_of_state_linear_density(grid, indexT, indexS, tracers, density, err)!{{{
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    !  This module contains routines necessary for computing the density
    !  from model temperature and salinity using an equation of state.
@@ -67,8 +67,8 @@ contains
    ! Input: grid - grid metadata
    !        s - state: tracers
    !        k_displaced 
-   !  If k_displaced<=0, state % rho is returned with no displaced
-   !  If k_displaced>0,the state % rhoDisplaced is returned, and is for
+   !  If k_displaced<=0, state % density is returned with no displaced
+   !  If k_displaced>0,the state % densityDisplaced is returned, and is for
    !  a parcel adiabatically displaced from its original level to level 
    !  k_displaced.  This does not effect the linear EOS.
    !
@@ -77,7 +77,7 @@ contains
       implicit none
 
       type (mesh_type), intent(in) :: grid
-      real (kind=RKIND), dimension(:,:), intent(inout) :: rho
+      real (kind=RKIND), dimension(:,:), intent(inout) :: density
       real (kind=RKIND), dimension(:,:,:), intent(in) :: tracers
       integer, intent(in) :: indexT, indexS
       integer, intent(out) :: err
@@ -94,13 +94,13 @@ contains
       do iCell=1,nCells
          do k=1,maxLevelCell(iCell)
             ! Linear equation of state
-            rho(k,iCell) =  config_eos_linear_rhoref &
+            density(k,iCell) =  config_eos_linear_densityref &
                   - config_eos_linear_alpha * (tracers(indexT,k,iCell)-config_eos_linear_Tref) &
                   + config_eos_linear_beta  * (tracers(indexS,k,iCell)-config_eos_linear_Sref)
          end do
       end do
 
-   end subroutine ocn_equation_of_state_linear_rho!}}}
+   end subroutine ocn_equation_of_state_linear_density!}}}
 
 !***********************************************************************
 !
