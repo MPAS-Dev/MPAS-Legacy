@@ -1,3 +1,21 @@
+----------------------------------
+  
+<div align="center">
+
+Important Note
+==============
+
+**This repository is only for bug tracking purposes. It includes a linear
+history of the previous SVN repository, and should not be used except for
+debugging.**
+
+**Current MPAS development takes place in
+the [MPAS-Model](https://github.com/MPAS-Dev/MPAS-Model) repository.**
+
+</div>
+
+----------------------------------
+
 MPAS
 ====
 
